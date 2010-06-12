@@ -347,7 +347,7 @@ bool CStaticFunctionDefinitions::GetElementVelocity ( CClientEntity& Entity, CVe
         case CCLIENTVEHICLE:
         {
             CClientVehicle& Vehicle = static_cast < CClientVehicle& > ( Entity );
-            Vehicle.GetMoveSpeed ( vecVelocity );
+            Vehicle.GetMoveSpeed ( vecVelocity );            
             break;
         }
         case CCLIENTOBJECT:
@@ -360,12 +360,6 @@ bool CStaticFunctionDefinitions::GetElementVelocity ( CClientEntity& Entity, CVe
         {
             CClientProjectile& Projectile = static_cast < CClientProjectile& > ( Entity );
             Projectile.GetVelocity ( vecVelocity );
-            break;
-        }
-        case CCLIENTSOUND:
-        {
-            CClientSound& Sound = static_cast < CClientSound& > ( Entity );
-            Sound.GetVelocity ( vecVelocity );
             break;
         }
         default: return false;
@@ -854,7 +848,7 @@ bool CStaticFunctionDefinitions::SetElementVelocity ( CClientEntity& Entity, con
         case CCLIENTVEHICLE:
         {
             CClientVehicle& Vehicle = static_cast < CClientVehicle& > ( Entity );
-            Vehicle.SetMoveSpeed ( vecVelocity );
+            Vehicle.SetMoveSpeed ( vecVelocity );            
             break;
         }
         case CCLIENTOBJECT:
@@ -867,12 +861,6 @@ bool CStaticFunctionDefinitions::SetElementVelocity ( CClientEntity& Entity, con
         {
             CClientProjectile& Projectile = static_cast < CClientProjectile& > ( Entity );
             Projectile.SetVelocity ( const_cast < CVector& > ( vecVelocity ) );
-            break;
-        }
-        case CCLIENTSOUND:
-        {
-            CClientSound& Sound = static_cast < CClientSound& > ( Entity );
-            Sound.SetVelocity ( const_cast < CVector& > ( vecVelocity ) );
             break;
         }
 
@@ -1652,9 +1640,9 @@ bool CStaticFunctionDefinitions::SetPedCanBeKnockedOffBike ( CClientEntity& Enti
 }
 
 
-bool CStaticFunctionDefinitions::SetPedAnimation ( CClientEntity& Entity, const char * szBlockName, const char * szAnimName, int iTime, bool bLoop, bool bUpdatePosition, bool bInterruptable, bool bFreezeLastFrame )
+bool CStaticFunctionDefinitions::SetPedAnimation ( CClientEntity& Entity, const char * szBlockName, const char * szAnimName, int iTime, bool bLoop, bool bUpdatePosition, bool bInterruptable )
 {    
-    RUN_CHILDREN SetPedAnimation ( **iter, szBlockName, szAnimName, iTime, bLoop, bUpdatePosition, bInterruptable, bFreezeLastFrame );
+    RUN_CHILDREN SetPedAnimation ( **iter, szBlockName, szAnimName, iTime, bLoop, bUpdatePosition, bInterruptable );
 
     if ( IS_PED ( &Entity ) )
     {
@@ -1664,7 +1652,7 @@ bool CStaticFunctionDefinitions::SetPedAnimation ( CClientEntity& Entity, const 
             CAnimBlock * pBlock = g_pGame->GetAnimManager ()->GetAnimationBlock ( szBlockName );
             if ( pBlock )
             {
-                Ped.RunNamedAnimation ( pBlock, szAnimName, iTime, bLoop, bUpdatePosition, bInterruptable, bFreezeLastFrame );
+                Ped.RunNamedAnimation ( pBlock, szAnimName, iTime, bLoop, bUpdatePosition, bInterruptable );
                 return true;
             }
         }
@@ -5501,17 +5489,17 @@ bool CStaticFunctionDefinitions::FxAddFootSplash ( CVector & vecPosition )
 }
 
 
-CClientSound* CStaticFunctionDefinitions::PlaySound ( CResource* pResource, const SString& strSound, bool bIsURL, bool bLoop )
+CClientSound* CStaticFunctionDefinitions::PlaySound ( CResource* pResource, const char* szSound, bool bLoop )
 {
-    CClientSound* pSound = m_pSoundManager->PlaySound2D ( strSound, bIsURL, bLoop );
+    CClientSound* pSound = m_pSoundManager->PlaySound2D ( szSound, bLoop );
     if ( pSound ) pSound->SetParent ( pResource->GetResourceDynamicEntity() );
     return pSound;
 }
 
 
-CClientSound* CStaticFunctionDefinitions::PlaySound3D ( CResource* pResource, const SString& strSound, bool bIsURL, const CVector& vecPosition, bool bLoop )
+CClientSound* CStaticFunctionDefinitions::PlaySound3D ( CResource* pResource, const char* szSound, CVector vecPosition, bool bLoop )
 {
-    CClientSound* pSound = m_pSoundManager->PlaySound3D ( strSound, bIsURL, vecPosition, bLoop );
+    CClientSound* pSound = m_pSoundManager->PlaySound3D ( szSound, vecPosition, bLoop );
     if ( pSound ) pSound->SetParent ( pResource->GetResourceDynamicEntity() );
     return pSound;
 }
@@ -5612,23 +5600,6 @@ bool CStaticFunctionDefinitions::GetSoundMaxDistance ( CClientSound& Sound, floa
 {
     fDistance = Sound.GetMaxDistance ();
     return true;
-}
-
-bool CStaticFunctionDefinitions::GetSoundMetaTags ( CClientSound& Sound, const SString& strFormat, SString& strMetaTags )
-{
-    strMetaTags = Sound.GetMetaTags ( strFormat );
-    return true;
-}
-
-bool CStaticFunctionDefinitions::SetSoundEffectEnabled ( CClientSound& Sound, const SString& strEffectName, bool bEnable )
-{
-    int iFxEffect = m_pSoundManager->GetFxEffectFromName ( strEffectName );
-
-    if ( iFxEffect >= 0 )
-        if ( Sound.SetFxEffect ( iFxEffect, bEnable ) )
-            return true;
-
-    return false;
 }
 
 #ifdef MTA_VOICE

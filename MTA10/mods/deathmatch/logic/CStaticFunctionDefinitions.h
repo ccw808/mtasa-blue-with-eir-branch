@@ -137,7 +137,7 @@ public:
     static bool                         SetPedWeaponSlot                    ( CClientEntity& Entity, int iSlot );
     static bool                         SetPedRotation                      ( CClientEntity& Entity, float fRotation );
     static bool                         SetPedCanBeKnockedOffBike           ( CClientEntity& Entity, bool bCanBeKnockedOffBike );
-    static bool                         SetPedAnimation                     ( CClientEntity& Entity, const char * szBlockName, const char * szAnimName, int iTime, bool bLoop, bool bUpdatePosition, bool bInterruptable, bool bFreezeLastFrame );
+    static bool                         SetPedAnimation                     ( CClientEntity& Entity, const char * szBlockName, const char * szAnimName, int iTime, bool bLoop, bool bUpdatePosition, bool bInterruptable );
     static bool                         SetPedMoveAnim                      ( CClientEntity& Entity, unsigned int iMoveAnim );
     static bool                         AddPedClothes                       ( CClientEntity& Entity, char* szTexture, char* szModel, unsigned char ucType );
     static bool                         RemovePedClothes                    ( CClientEntity& Entity, unsigned char ucType );
@@ -471,8 +471,8 @@ public:
     static bool                         FxAddFootSplash                     ( CVector & vecPosition );
 
     // Sound funcs
-    static CClientSound*                PlaySound                           ( CResource* pResource, const SString& strSound, bool bIsURL, bool bLoop );
-    static CClientSound*                PlaySound3D                         ( CResource* pResource, const SString& strSound, bool bIsURL, const CVector& vecPosition, bool bLoop );
+    static CClientSound*                PlaySound                           ( CResource* pResource, const char* szSound, bool bLoop );
+    static CClientSound*                PlaySound3D                         ( CResource* pResource, const char* szSound, CVector vecPosition, bool bLoop );
     static bool                         StopSound                           ( CClientSound& Sound );
     static bool                         SetSoundPosition                    ( CClientSound& Sound, unsigned int uiPosition );
     static bool                         GetSoundPosition                    ( CClientSound& Sound, unsigned int& uiPosition );
@@ -487,8 +487,6 @@ public:
     static bool                         GetSoundMinDistance                 ( CClientSound& Sound, float& fDistance );
     static bool                         SetSoundMaxDistance                 ( CClientSound& Sound, float fDistance );
     static bool                         GetSoundMaxDistance                 ( CClientSound& Sound, float& fDistance );
-    static bool                         GetSoundMetaTags                    ( CClientSound& Sound, const SString& strFormat, SString& strMetaTags );
-    static bool                         SetSoundEffectEnabled               ( CClientSound& Sound, const SString& strEffectName, bool bEnable );
 
 #ifdef MTA_VOICE
     // Voice funcs

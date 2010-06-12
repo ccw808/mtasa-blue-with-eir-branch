@@ -1314,7 +1314,11 @@ unsigned char CVehicleSA::GetPassengerCount ( void )
 
 unsigned char CVehicleSA::GetMaxPassengerCount ( void )
 {
-    return GetVehicleInterface ()->m_nMaxPassengers;
+    // ACHTUNG: MAX PASSENGER HACK (27/02/2007) :: PLEASE REVERT
+    #pragma message(__LOC__ "(IJs) 8 max passenger hack was installed here.")
+
+    return 8;
+    //return ((CVehicleSAInterface*)this->internalInterface)->m_nMaxPassengers;
 }
 
 bool CVehicleSA::SetTowLink ( CVehicle* pVehicle )

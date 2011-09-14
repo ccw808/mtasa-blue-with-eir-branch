@@ -230,6 +230,7 @@ public:
     LUA_DECLARE ( IsPedFootBloodEnabled );
     LUA_DECLARE ( GetPedCameraRotation );
     LUA_DECLARE ( IsPedOnFire );
+    LUA_DECLARE ( GetPedWeaponInfo );
 
     LUA_DECLARE ( SetPedRotation );
     LUA_DECLARE ( SetPedCanBeKnockedOffBike );
@@ -249,6 +250,7 @@ public:
     LUA_DECLARE ( SetPedCameraRotation );
     LUA_DECLARE ( SetPedAimTarget );
     LUA_DECLARE ( SetPedOnFire );
+    LUA_DECLARE ( SetPedWeaponInfo );
 
     // Clothes and body functions
     LUA_DECLARE ( GetBodyPartName );

@@ -6592,3 +6592,129 @@ bool CStaticFunctionDefinitions::GetEntryHandling ( CHandlingEntry* pEntry, eHan
 
     return true;
 }
+
+bool CStaticFunctionDefinitions::SetPedWeaponInfo ( CClientPed& ped, eWeaponProperty eProperty, eWeaponType eWeapon, float fData )
+{
+    CWeaponInfo* pWeaponInfo = ped.GetWeapon ( eWeapon )->GetInfo();
+    switch ( eProperty )
+    {
+        case WEAPON_WEAPON_RANGE:
+        {
+            pWeaponInfo->SetWeaponRange ( fData );
+            break;
+        }
+        case WEAPON_TARGET_RANGE:
+        {
+            pWeaponInfo->SetTargetRange ( fData );
+            break;
+        }
+        case WEAPON_ACCURACY:
+        {
+            pWeaponInfo->SetAccuracy ( fData );
+            break;
+        }
+        case WEAPON_DAMAGE:
+        {
+            pWeaponInfo->SetDamagePerHit ( fData );
+            break;
+        }
+        case WEAPON_LIFE_SPAN:
+        {
+            pWeaponInfo->SetLifeSpan ( fData );
+        }
+        default:
+            return false;
+    }
+    return true;
+}
+
+bool CStaticFunctionDefinitions::SetPedWeaponInfo ( CClientPed& ped, eWeaponProperty eProperty, eWeaponType eWeapon, short sData )
+{
+    CWeapon* pWeapon = ped.GetWeapon ( eWeapon );
+    if ( pWeapon )
+    {
+        CWeaponInfo* pWeaponInfo = pWeapon->GetInfo();
+        if ( pWeaponInfo )
+        {
+            switch ( eProperty )
+            {
+                case WEAPON_DAMAGE:
+                {
+                    pWeaponInfo->SetDamagePerHit ( sData );
+                    break;
+                }
+                default:
+                    return false;
+            }
+        }
+        else
+            return false;
+    }
+    else
+        return false;
+
+    return true;
+}
+
+bool CStaticFunctionDefinitions::GetPedWeaponInfo ( CClientPed& ped, eWeaponProperty eProperty, eWeaponType eWeapon, float & fData )
+{
+    CWeaponInfo* pWeaponInfo = ped.GetWeapon ( eWeapon )->GetInfo();
+    switch ( eProperty )
+    {
+        case WEAPON_WEAPON_RANGE:
+        {
+            fData = pWeaponInfo->GetWeaponRange ( );
+            break;
+        }
+        case WEAPON_TARGET_RANGE:
+        {
+            fData = pWeaponInfo->GetTargetRange ( );
+            break;
+        }
+        case WEAPON_ACCURACY:
+        {
+            fData = pWeaponInfo->GetAccuracy ( );
+            break;
+        }
+        case WEAPON_DAMAGE:
+        {
+            fData = pWeaponInfo->GetDamagePerHit ( );
+            break;
+        }
+        case WEAPON_LIFE_SPAN:
+        {
+            fData = pWeaponInfo->GetLifeSpan ( );
+        }
+        default:
+            return false;
+    }
+    return true;
+}
+
+bool CStaticFunctionDefinitions::GetPedWeaponInfo ( CClientPed& ped, eWeaponProperty eProperty, eWeaponType eWeapon, short & sData )
+{
+    CWeapon* pWeapon = ped.GetWeapon ( eWeapon );
+    if ( pWeapon )
+    {
+        CWeaponInfo* pWeaponInfo = pWeapon->GetInfo();
+        if ( pWeaponInfo )
+        {
+            switch ( eProperty )
+            {
+                case WEAPON_DAMAGE:
+                {
+                    sData = pWeaponInfo->GetDamagePerHit ( );
+                    break;
+                }
+                default:
+                    return false;
+            }
+        }
+        else
+            return false;
+    }
+    else
+        return false;
+
+    return true;
+}

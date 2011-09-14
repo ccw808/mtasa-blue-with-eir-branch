@@ -1721,3 +1721,127 @@ int CLuaFunctionDefs::DetonateSatchels ( lua_State* luaVM )
     return 1;
 }
 
+int CLuaFunctionDefs::SetPedWeaponInfo ( lua_State* luaVM )
+{
+    // Check types
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TNUMBER ) &&
+        ( lua_type ( luaVM, 3 ) == LUA_TNUMBER ) &&
+        ( lua_type ( luaVM, 4 ) == LUA_TNUMBER ) )
+    {
+        // Grab the element
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
+        if ( pPed )
+        {
+            eWeaponType eWep = (eWeaponType) lua_tointeger ( luaVM, 2 );
+            eWeaponProperty eProp = (eWeaponProperty) lua_tointeger ( luaVM, 3 );
+
+            switch ( eProp )
+            {
+                case WEAPON_WEAPON_RANGE:
+                case WEAPON_TARGET_RANGE:
+                case WEAPON_ACCURACY:
+                case WEAPON_FIRING_SPEED:
+                case WEAPON_LIFE_SPAN:
+                case WEAPON_SPREAD:
+                {
+                    float fWeaponInfo = static_cast < float > ( lua_tonumber ( luaVM, 4 ) );
+
+                    if ( CStaticFunctionDefinitions::SetPedWeaponInfo ( *pPed, eProp, eWep, fWeaponInfo ) )
+                    {
+                        lua_pushboolean ( luaVM, true );
+                        return 1;
+                    }
+                    break;
+                }
+                case WEAPON_DAMAGE:
+                {
+                    short sWeaponInfo = static_cast < short > ( lua_tonumber ( luaVM, 4 ) );
+
+                    if ( CStaticFunctionDefinitions::SetPedWeaponInfo ( *pPed, eProp, eWep, sWeaponInfo ) )
+                    {
+                        lua_pushboolean ( luaVM, true );
+                        return 1;
+                    }
+                    break;
+                }
+                default:
+                {
+                    m_pScriptDebugging->LogBadType ( luaVM, "setPedWeaponInfo" );
+                    break;
+                }
+
+            }
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedWeaponInfo", "ped", 1 );
+    }
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedWeaponInfo" );
+
+    // Failed
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+int CLuaFunctionDefs::GetPedWeaponInfo ( lua_State* luaVM )
+{
+    // Check types
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TNUMBER ) &&
+        ( lua_type ( luaVM, 3 ) == LUA_TNUMBER ) )
+    {
+        // Grab the element
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
+        if ( pPed )
+        {
+            eWeaponType eWep = (eWeaponType) lua_tointeger ( luaVM, 2 );
+            eWeaponProperty eProp = (eWeaponProperty) lua_tointeger ( luaVM, 3 );
+
+            switch ( eProp )
+            {
+                case WEAPON_WEAPON_RANGE:
+                case WEAPON_TARGET_RANGE:
+                case WEAPON_ACCURACY:
+                case WEAPON_FIRING_SPEED:
+                case WEAPON_LIFE_SPAN:
+                case WEAPON_SPREAD:
+                {
+                    float fWeaponInfo = 0.0f;
+
+                    if ( CStaticFunctionDefinitions::GetPedWeaponInfo ( *pPed, eProp, eWep, fWeaponInfo ) )
+                    {
+                        lua_pushnumber ( luaVM, fWeaponInfo );
+                        return 1;
+                    }
+                    break;
+                }
+                case WEAPON_DAMAGE:
+                {
+                    short sWeaponInfo = 0;
+
+                    if ( CStaticFunctionDefinitions::GetPedWeaponInfo ( *pPed, eProp, eWep, sWeaponInfo ) )
+                    {
+                        lua_pushinteger ( luaVM, sWeaponInfo );
+                        return 1;
+                    }
+                    break;
+                }
+                default:
+                {
+                    m_pScriptDebugging->LogBadType ( luaVM, "getPedWeaponInfo" );
+                    break;
+                }
+
+            }
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedWeaponInfo", "ped", 1 );
+    }
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedWeaponInfo" );
+
+    // Failed
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}

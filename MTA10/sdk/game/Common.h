@@ -1386,6 +1386,15 @@ enum eHandlingProperty
     HANDLING_ANIMGROUP,
     HANDLING_MAX,
 };
-
+enum eWeaponProperty
+{
+    WEAPON_WEAPON_RANGE = 1,
+    WEAPON_TARGET_RANGE,
+    WEAPON_ACCURACY,
+    WEAPON_DAMAGE,
+    WEAPON_LIFE_SPAN,
+    WEAPON_FIRING_SPEED,
+    WEAPON_SPREAD,
+};
 
 #endif

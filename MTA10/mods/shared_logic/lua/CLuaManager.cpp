@@ -452,6 +452,8 @@ void CLuaManager::LoadCFunctions ( void )
     CLuaCFunctions::AddFunction ( "setPedFootBloodEnabled", CLuaFunctionDefs::SetPedFootBloodEnabled );
     CLuaCFunctions::AddFunction ( "setPedCameraRotation", CLuaFunctionDefs::SetPedCameraRotation );
     CLuaCFunctions::AddFunction ( "setPedAimTarget", CLuaFunctionDefs::SetPedAimTarget );
+    CLuaCFunctions::AddFunction ( "setPedWeaponInfo", CLuaFunctionDefs::SetPedWeaponInfo );
+    CLuaCFunctions::AddFunction ( "getPedWeaponInfo", CLuaFunctionDefs::GetPedWeaponInfo );
 
     // Clothes and body functions
     CLuaCFunctions::AddFunction ( "getBodyPartName", CLuaFunctionDefs::GetBodyPartName );

@@ -319,6 +319,10 @@
 				>
 			</File>
 			<File
+				RelativePath="..\shared_logic\CClientWeaponManager.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\Client.cpp"
 				>
 			</File>
@@ -946,6 +950,10 @@
 				</File>
 				<File
 					RelativePath="..\shared_logic\CClientWaterManager.cpp"
+					>
+				</File>
+				<File
+					RelativePath="..\shared_logic\CClientWeapon.cpp"
 					>
 				</File>
 				<File
@@ -2468,6 +2476,14 @@
 				</File>
 				<File
 					RelativePath="..\shared_logic\CClientWaterManager.h"
+					>
+				</File>
+				<File
+					RelativePath="..\shared_logic\CClientWeapon.h"
+					>
+				</File>
+				<File
+					RelativePath="..\shared_logic\CClientWeaponManager.h"
 					>
 				</File>
 				<File

@@ -791,6 +791,10 @@ public:
     LUA_DECLARE ( GetWeaponNameFromID );
     LUA_DECLARE ( GetWeaponIDFromName );
     LUA_DECLARE ( GetSlotFromWeapon );
+    LUA_DECLARE ( CreateWeapon );
+    LUA_DECLARE ( FireWeapon );
+    LUA_DECLARE ( SetWeaponAimPosition );
+    LUA_DECLARE ( SetWeaponState );
 
     // Command funcs
     LUA_DECLARE ( AddCommandHandler );

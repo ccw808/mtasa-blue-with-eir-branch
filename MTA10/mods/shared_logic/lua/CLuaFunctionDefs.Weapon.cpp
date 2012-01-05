@@ -82,3 +82,96 @@ int CLuaFunctionDefs::GetWeaponIDFromName ( lua_State* luaVM )
 }
 
 
+int CLuaFunctionDefs::CreateWeapon ( lua_State* luaVM )
+{
+    CVector vecPos;
+    CScriptArgReader argStream ( luaVM );
+    argStream.ReadNumber ( vecPos.fX );
+    argStream.ReadNumber ( vecPos.fY );
+    argStream.ReadNumber ( vecPos.fZ );
+    if ( !argStream.HasErrors () )
+    {
+        CClientWeapon * pWeapon = CStaticFunctionDefinitions::CreateWeapon ( vecPos );
+        if ( pWeapon )
+        {
+            lua_pushelement ( luaVM, pWeapon );
+            return 1;
+        }
+    }
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "createWeapon" );
+
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+int CLuaFunctionDefs::FireWeapon ( lua_State* luaVM )
+{
+    CClientWeapon * pWeapon;
+    CScriptArgReader argStream ( luaVM );
+    argStream.ReadUserData ( pWeapon );
+
+    if ( !argStream.HasErrors () )
+    {
+        if ( CStaticFunctionDefinitions::FireWeapon ( pWeapon ) )
+        {
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+    }
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "createWeapon" );
+
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+int CLuaFunctionDefs::SetWeaponAimPosition ( lua_State* luaVM )
+{
+    CClientWeapon * pWeapon;
+    CVector vecPos;
+    CScriptArgReader argStream ( luaVM );
+    argStream.ReadUserData ( pWeapon );
+    argStream.ReadNumber ( vecPos.fX );
+    argStream.ReadNumber ( vecPos.fY );
+    argStream.ReadNumber ( vecPos.fZ );
+
+    if ( !argStream.HasErrors () )
+    {
+        if ( CStaticFunctionDefinitions::SetAimPosition ( pWeapon, vecPos ) )
+        {
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+    }
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "createWeapon" );
+
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+
+
+int CLuaFunctionDefs::SetWeaponState ( lua_State* luaVM )
+{
+    CClientWeapon * pWeapon;
+    eWeaponState weaponState;
+    CScriptArgReader argStream ( luaVM );
+    argStream.ReadUserData ( pWeapon );
+    argStream.ReadEnumString ( weaponState );
+
+    if ( !argStream.HasErrors () )
+    {
+        if ( CStaticFunctionDefinitions::SetWeaponState ( pWeapon, weaponState ) )
+        {
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+    }
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "createWeapon" );
+
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+

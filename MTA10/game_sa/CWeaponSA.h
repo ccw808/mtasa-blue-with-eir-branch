@@ -22,6 +22,12 @@
 
 #define FUNC_Shutdown                                   0x73A380
 #define FUNC_CWeapon_CheckForShootingVehicleOccupant    0x73f480
+#define FUNC_CWeapon_Initialize                         0x73b4a0
+#define FUNC_CWeapon_Update                             0x73db40
+#define FUNC_CWeapon_Fire                               0x742300
+#define FUNC_CWeapon_AddGunshell                        0x73a3e0
+#define FUNC_CWeapon_DoBulletImpact                     0x73b550
+#define FUNC_CWeapon_GenerateDamageEvent                0x73a530
 
 extern CGameSA * pGame;
 
@@ -53,14 +59,22 @@ public:
     VOID            SetAmmoInClip( DWORD dwAmmoInClip );
     DWORD           GetAmmoTotal(  );
     VOID            SetAmmoTotal( DWORD dwAmmoTotal );
-    
+
     CPed            * GetPed();
     eWeaponSlot     GetSlot();
 
     VOID            SetAsCurrentWeapon();
     CWeaponInfo     * GetInfo( eWeaponSkill skill ) { return pGame->GetWeaponInfo( internalInterface->m_eWeaponType, skill ); };
 
-    void            Remove ();
+    void                    Destroy             ( void );
+    void                    Remove ();
+    void                    Initialize          ( eWeaponType type, unsigned int uiAmmo, CPed * pPed );
+    void                    Update              ( CPed * pPed );
+    bool                    Fire                ( CEntity * pFiringEntity, CVector * pvecOrigin, CVector * pvecOffset, CEntity * pTargetEntity, CVector * pvec_1, CVector * pvec_2 );
+    void                    AddGunshell         ( CEntity * pFiringEntity, CVector * pvecOrigin, CVector2D * pvecDirection, float fSize );
+    void                    DoBulletImpact      ( CEntity * pFiringEntity, CEntity * pEntity, CVector * pvecOrigin, CVector * pvecTarget, CColPoint * pColPoint, int i_1 );
+    unsigned char           GenerateDamageEvent ( CPed * pPed, CEntity * pResponsible, eWeaponType weaponType, int iDamagePerHit, ePedPieceTypes hitZone, int i_2 );
+
 };
 
 #endif

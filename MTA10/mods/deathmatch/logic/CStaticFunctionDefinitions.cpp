@@ -3553,9 +3553,9 @@ bool CStaticFunctionDefinitions::PlayMissionAudio ( const CVector& vecPosition, 
     // TODO: Position of the sound
 
     // Play the sound if it's loaded
-    if ( g_pGame->GetAudio ()->GetMissionAudioLoadingStatus ( usSlot ) == 1 )
+    if ( g_pGame->GetAudioEngine ()->GetMissionAudioLoadingStatus ( usSlot ) == 1 )
     {
-        g_pGame->GetAudio ()->PlayLoadedMissionAudio ( usSlot );
+        g_pGame->GetAudioEngine ()->PlayLoadedMissionAudio ( usSlot );
         return true;
     }
 
@@ -3565,7 +3565,7 @@ bool CStaticFunctionDefinitions::PlayMissionAudio ( const CVector& vecPosition, 
 
 bool CStaticFunctionDefinitions::PlaySoundFrontEnd ( unsigned char ucSound )
 {
-    g_pGame->GetAudio ()->PlayFrontEndSound ( ucSound );
+    g_pGame->GetAudioEngine ()->PlayFrontEndSound ( ucSound );
     return true;
 }
 
@@ -3573,28 +3573,28 @@ bool CStaticFunctionDefinitions::PlaySoundFrontEnd ( unsigned char ucSound )
 bool CStaticFunctionDefinitions::PreloadMissionAudio ( unsigned short usSound, unsigned short usSlot )
 {
     g_pCore->ChatPrintf ( "Preload %u into slot %u", false, usSound, usSlot );
-    g_pGame->GetAudio ()->PreloadMissionAudio ( usSound, usSlot );
+    g_pGame->GetAudioEngine ()->PreloadMissionAudio ( usSound, usSlot );
     return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetAmbientSoundEnabled ( eAmbientSoundType eType, bool bMute )
 {
-    g_pGame->GetAudio ()->SetAmbientSoundEnabled ( eType, bMute );
+    g_pGame->GetAudioEngine ()->SetAmbientSoundEnabled ( eType, bMute );
     return true;
 }
 
 
 bool CStaticFunctionDefinitions::IsAmbientSoundEnabled ( eAmbientSoundType eType, bool& bOutMute )
 {
-    bOutMute = g_pGame->GetAudio ()->IsAmbientSoundEnabled ( eType );
+    bOutMute = g_pGame->GetAudioEngine ()->IsAmbientSoundEnabled ( eType );
     return true;
 }
 
 
 bool CStaticFunctionDefinitions::ResetAmbientSounds ( void )
 {
-    g_pGame->GetAudio ()->ResetAmbientSounds ();
+    g_pGame->GetAudioEngine ()->ResetAmbientSounds ();
     return true;
 }
 
@@ -6117,6 +6117,42 @@ bool CStaticFunctionDefinitions::GetWeaponIDFromName ( const char* szName, unsig
     return ucID != 0xFF;
 }
 
+CClientWeapon* CStaticFunctionDefinitions::CreateWeapon ( CVector vecPosition )
+{
+    CClientWeapon * pWeapon = new CClientWeapon ( m_pManager, INVALID_ELEMENT_ID, WEAPONTYPE_M4 );
+    pWeapon->SetPosition ( vecPosition );
+    return pWeapon;
+}
+
+bool CStaticFunctionDefinitions::FireWeapon ( CClientWeapon * pWeapon )
+{
+    if ( pWeapon )
+    {
+        pWeapon->Fire ( );
+        return true;
+    }
+    return false;
+}
+
+bool CStaticFunctionDefinitions::SetAimPosition ( CClientWeapon * pWeapon, CVector vecPosition )
+{
+    if ( pWeapon )
+    {
+        pWeapon->SetTargetDirection ( vecPosition );
+        return true;
+    }
+    return false;
+}
+
+bool CStaticFunctionDefinitions::SetWeaponState ( CClientWeapon * pWeapon, eWeaponState weaponState )
+{
+    if ( pWeapon )
+    {
+        pWeapon->SetWeaponState ( weaponState );
+        return true;
+    }
+    return false;
+}
 
 bool CStaticFunctionDefinitions::GetTickCount_ ( double& dCount )
 {

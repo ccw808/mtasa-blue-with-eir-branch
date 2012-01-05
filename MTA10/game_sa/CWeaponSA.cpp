@@ -22,6 +22,14 @@ CWeaponSA::CWeaponSA( CWeaponSAInterface * weaponInterface, CPed * ped, eWeaponS
     this->m_weaponSlot = weaponSlot;
     internalInterface = weaponInterface;    
 }
+void CWeaponSA::Destroy ( void )
+{
+    if ( !owner )
+    {
+        delete internalInterface;
+        delete this;
+    }
+}
 
 eWeaponType CWeaponSA::GetType(  )
 {
@@ -111,4 +119,125 @@ void CWeaponSA::Remove ()
         }
         owner->SetCurrentWeaponSlot ( WEAPONSLOT_TYPE_UNARMED );
     }
+}
+void CWeaponSA::Initialize ( eWeaponType type, unsigned int uiAmmo, CPed * pPed )
+{
+    DWORD dwPedInterface = 0;
+    if ( pPed ) dwPedInterface = ( DWORD ) pPed->GetInterface ();
+    unsigned int uiType = ( unsigned int ) type;
+    DWORD dwThis = ( DWORD ) internalInterface;
+    DWORD dwFunc = FUNC_CWeapon_Initialize;
+    _asm
+    {
+        mov     ecx, dwThis
+        push    dwPedInterface
+        push    uiAmmo
+        push    uiType
+        call    dwFunc
+    }
+}
+
+
+void CWeaponSA::Update ( CPed * pPed )
+{
+    // Note: CWeapon::Update is called mainly to check for reload
+    DWORD dwPedInterface = ( DWORD ) pPed->GetInterface ();
+    DWORD dwThis = ( DWORD ) internalInterface;
+    DWORD dwFunc = FUNC_CWeapon_Update;
+    _asm
+    {
+        mov     ecx, dwThis
+        push    dwPedInterface
+        call    dwFunc
+    }
+}
+
+
+bool CWeaponSA::Fire ( CEntity * pFiringEntity, CVector * pvecOrigin, CVector * pvecTarget, CEntity * pTargetEntity, CVector * pvec_1, CVector * pvec_2 )
+{
+    bool bReturn;
+    DWORD dwFiringInterface = 0;
+    if ( pFiringEntity ) dwFiringInterface = ( DWORD ) pFiringEntity->GetInterface ();
+    DWORD dwTargetInterface = 0;
+    if ( pTargetEntity ) dwTargetInterface = ( DWORD ) pTargetEntity->GetInterface ();
+    DWORD dwThis = ( DWORD ) internalInterface;
+    DWORD dwFunc = FUNC_CWeapon_Fire;
+    _asm
+    {
+        mov     ecx, dwThis
+        push    pvec_2
+        push    pvec_1
+        push    dwTargetInterface
+        push    pvecTarget
+        push    pvecOrigin
+        push    dwFiringInterface
+        call    dwFunc
+        mov     bReturn, al
+    }
+    return bReturn;
+}
+
+
+void CWeaponSA::AddGunshell ( CEntity * pFiringEntity, CVector * pvecOrigin, CVector2D * pvecDirection, float fSize )
+{
+    DWORD dwEntityInterface = 0;
+    if ( pFiringEntity ) dwEntityInterface = ( DWORD ) pFiringEntity->GetInterface ();
+    DWORD dwThis = ( DWORD ) internalInterface;
+    DWORD dwFunc = FUNC_CWeapon_AddGunshell;
+    _asm
+    {
+        mov     ecx, dwThis
+        push    fSize
+        push    pvecDirection
+        push    pvecOrigin
+        push    dwEntityInterface
+        call    dwFunc
+    }
+}
+
+
+void CWeaponSA::DoBulletImpact ( CEntity * pFiringEntity, CEntity * pEntity, CVector * pvecOrigin, CVector * pvecTarget, CColPoint * pColPoint, int i_1 )
+{
+    DWORD dwEntityInterface = 0;
+    if ( pFiringEntity ) dwEntityInterface = ( DWORD ) pFiringEntity->GetInterface ();
+    DWORD dwEntityInterface_2 = 0;
+    if ( pEntity ) dwEntityInterface_2 = ( DWORD ) pEntity->GetInterface ();
+    DWORD dwColPointInterface = 0;
+    if ( pColPoint ) dwColPointInterface = ( DWORD )  pColPoint->GetInterface ();
+    DWORD dwThis = ( DWORD ) internalInterface;
+    DWORD dwFunc = FUNC_CWeapon_DoBulletImpact;
+    _asm
+    {
+        mov     ecx, dwThis
+        push    i_1
+        push    dwColPointInterface
+        push    pvecTarget
+        push    pvecOrigin
+        push    dwEntityInterface_2
+        push    dwEntityInterface
+        call    dwFunc
+    }
+}
+
+
+unsigned char CWeaponSA::GenerateDamageEvent ( CPed * pPed, CEntity * pResponsible, eWeaponType weaponType, int iDamagePerHit, ePedPieceTypes hitZone, int i_2 )
+{
+    unsigned int ucReturn;
+    DWORD dwPedInterface = ( DWORD ) pPed->GetInterface ();
+    DWORD dwResponsibleInterface = 0;
+    if ( pResponsible ) dwResponsibleInterface = ( DWORD ) pResponsible->GetInterface ();
+    DWORD dwFunc = FUNC_CWeapon_GenerateDamageEvent;
+    _asm
+    {
+        push    i_2
+        push    hitZone
+        push    iDamagePerHit
+        push    weaponType
+        push    dwResponsibleInterface
+        push    dwPedInterface
+        call    dwFunc
+        add     esp, 24
+        mov     ucReturn, eax
+    }
+    return ( unsigned char ) ucReturn;
 }

@@ -26,6 +26,7 @@ DECLARE_ENUM( eDxTestMode )
 DECLARE_ENUM( eWeaponType )
 DECLARE_ENUM( eWeaponProperty )
 DECLARE_ENUM( eWeaponSkill )
+DECLARE_ENUM( eWeaponState )
 
 enum eDXHorizontalAlign
 {
@@ -109,6 +110,7 @@ inline SString GetClassTypeName ( CClientDxFont* )          { return "dx-font"; 
 inline SString GetClassTypeName ( CClientGuiFont* )         { return "gui-font"; }
 inline SString GetClassTypeName ( CClientMaterial* )        { return "material"; }
 inline SString GetClassTypeName ( CClientTexture* )         { return "texture"; }
+inline SString GetClassTypeName ( CClientWeapon* )          { return "weapon"; }
 
 inline SString GetClassTypeName ( CGUIButton* )      { return "gui-button"; }
 inline SString GetClassTypeName ( CGUICheckBox* )    { return "gui-checkbox"; }

@@ -509,7 +509,10 @@ public:
     // Weapon funcs
     static bool                         GetWeaponNameFromID                 ( unsigned char ucID, char* szName, unsigned short len );
     static bool                         GetWeaponIDFromName                 ( const char* szName, unsigned char& ucID );
-
+    static CClientWeapon*               CreateWeapon                        ( CVector vecPosition );
+    static bool                         FireWeapon                          ( CClientWeapon * pWeapon );
+    static bool                         SetAimPosition                      ( CClientWeapon * pWeapon, CVector vecPosition );
+    static bool                         SetWeaponState                      ( CClientWeapon * pWeapon, eWeaponState weaponState );
     // Util funcs
     static bool                         GetTickCount_                       ( double& dCount );
 

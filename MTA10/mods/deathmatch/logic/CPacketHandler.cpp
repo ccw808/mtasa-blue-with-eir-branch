@@ -3607,7 +3607,7 @@ void CPacketHandler::Packet_PickupHitConfirm ( NetBitStreamInterface& bitStream 
         if ( bPlaySound )
         {
             // Play the pick up sound
-            g_pGame->GetAudio ()->PlayFrontEndSound ( 40 );
+            g_pGame->GetAudioEngine ()->PlayFrontEndSound ( 40 );
         }
     }
 }

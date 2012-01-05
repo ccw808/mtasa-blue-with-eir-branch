@@ -318,8 +318,8 @@ CClientGame::~CClientGame ( void )
     // playing these special IDS.
     if ( m_bGameLoaded )
     {
-        g_pGame->GetAudio ()->PlayFrontEndSound ( 35 );
-        g_pGame->GetAudio ()->PlayFrontEndSound ( 48 );
+        g_pGame->GetAudioEngine ()->PlayFrontEndSound ( 35 );
+        g_pGame->GetAudioEngine ()->PlayFrontEndSound ( 48 );
     }
 
     // Reset the GUI input mode
@@ -4587,7 +4587,7 @@ void CClientGame::ResetMapInfo ( void )
     g_pClientGame->SetCloudsEnabled ( true );
 
     // Ambient sounds
-    g_pGame->GetAudio ()->ResetAmbientSounds ();
+    g_pGame->GetAudioEngine ()->ResetAmbientSounds ();
 
     // Cheats
     g_pGame->ResetCheats ();

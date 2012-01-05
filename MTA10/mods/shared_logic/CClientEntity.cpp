@@ -70,6 +70,8 @@ CClientEntity::CClientEntity ( ElementID ID )
 
     m_pElementGroup = NULL;
     m_pModelInfo = NULL;
+
+    m_bWorldIgnored = false;
 }
 
 
@@ -1508,4 +1510,20 @@ float CClientEntity::GetDistanceBetweenBoundingSpheres ( CClientEntity* pOther )
     CSphere sphere = GetWorldBoundingSphere ();
     CSphere otherSphere = pOther->GetWorldBoundingSphere ();
     return ( sphere.vecPosition - otherSphere.vecPosition ).Length () - sphere.fRadius - otherSphere.fRadius;
+}
+void CClientEntity::WorldIgnore ( bool bIgnore )
+{
+    CEntity * pEntity = GetGameEntity ();
+    if ( bIgnore )
+    {
+        if ( pEntity )
+        {
+            g_pGame->GetWorld ()->IgnoreEntity ( pEntity );
+        }
+    }
+    else
+    {
+        g_pGame->GetWorld ()->IgnoreEntity ( NULL );
+    }
+    m_bWorldIgnored = bIgnore;
 }

@@ -230,6 +230,12 @@ ADD_ENUM ( WEAPONSKILL_STD,                             "std" )
 ADD_ENUM ( WEAPONSKILL_PRO,                             "pro" )
 IMPLEMENT_ENUM_END( "weapon-skill" )
 
+IMPLEMENT_ENUM_BEGIN( eWeaponState )
+ADD_ENUM ( WEAPONSTATE_READY,                           "ready" )
+ADD_ENUM ( WEAPONSTATE_FIRING,                          "firing" )
+ADD_ENUM ( WEAPONSTATE_RELOADING,                       "reloading" )
+IMPLEMENT_ENUM_END( "weapon-skill" )
+
 //
 // Get best guess at name of userdata type
 //

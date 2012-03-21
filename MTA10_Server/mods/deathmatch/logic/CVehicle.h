@@ -114,6 +114,20 @@ enum eVehicleType
     VEHICLE_TRAILER
 };
 
+struct SSirenBeaconInfo
+{
+    CVector                     m_vecSirenPositions;
+    SColor                      m_RGBBeaconColour;
+    float                       m_fMinSirenAlpha;
+};
+struct SSirenInfo
+{
+    bool                        m_bOverrideSirens;
+    unsigned char               m_ucSirenType;
+    unsigned char               m_ucSirenCount;
+    SSirenBeaconInfo            m_tSirenInfo [8];
+};
+
 class CVehicle : public CElement
 {
     friend class CPlayer;
@@ -388,6 +402,7 @@ public: // 'Safe' variables (that have no need for accessors)
     unsigned char                   m_ucWheelStates [MAX_WHEELS];
     unsigned char                   m_ucPanelStates [MAX_PANELS];
     unsigned char                   m_ucLightStates [MAX_LIGHTS];
+    SSirenInfo                      m_tSirenBeaconInfo;
 };
 
 #endif

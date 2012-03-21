@@ -4178,6 +4178,47 @@ int CLuaFunctionDefinitions::SetVehicleDoorsUndamageable ( lua_State* luaVM )
     return 1;
 }
 
+int CLuaFunctionDefinitions::GiveVehicleSirens ( lua_State* luaVM )
+{
+    CScriptArgReader argStream ( luaVM );
+    CVehicle* pVehicle = NULL;
+    unsigned char ucSirenType = 0;
+    unsigned char ucSirenCount = 0;
+    SSirenInfo tSirenInfo;
+
+    argStream.ReadUserData ( pVehicle );
+    argStream.ReadNumber ( ucSirenCount );
+    argStream.ReadNumber ( ucSirenType );
+    for ( int i = 0; i <= ucSirenCount;i++ )
+    {
+        argStream.ReadNumber( tSirenInfo.m_tSirenInfo[i].m_vecSirenPositions.fX );
+        argStream.ReadNumber( tSirenInfo.m_tSirenInfo[i].m_vecSirenPositions.fY );
+        argStream.ReadNumber( tSirenInfo.m_tSirenInfo[i].m_vecSirenPositions.fZ );
+        argStream.ReadNumber( tSirenInfo.m_tSirenInfo[i].m_RGBBeaconColour.R );
+        argStream.ReadNumber( tSirenInfo.m_tSirenInfo[i].m_RGBBeaconColour.G );
+        argStream.ReadNumber( tSirenInfo.m_tSirenInfo[i].m_RGBBeaconColour.B );
+        argStream.ReadNumber( tSirenInfo.m_tSirenInfo[i].m_RGBBeaconColour.A );
+        argStream.ReadNumber( tSirenInfo.m_tSirenInfo[i].m_fMinSirenAlpha );
+    }
+    if ( argStream.HasErrors ( ) == false )
+    {
+        if ( pVehicle )
+        {
+            if ( CStaticFunctionDefinitions::GiveVehicleSirens ( pVehicle, ucSirenType, ucSirenCount, tSirenInfo ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "giveVehicleSirens", "vehicle", 1 );
+    }
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "giveVehicleSirens" );
+
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
 
 int CLuaFunctionDefinitions::GetVehicleMaxPassengers ( lua_State* luaVM )
 {

@@ -2233,7 +2233,12 @@ void CClientVehicle::Create ( void )
         m_pVehicle->SetTurnSpeed ( &m_vecTurnSpeed );
         m_pVehicle->SetVisible ( m_bVisible );
         m_pVehicle->SetUsesCollision ( m_bIsCollisionEnabled );
-        m_pVehicle->SetEngineBroken ( m_bEngineBroken );
+        m_pVehicle->SetEngineBroken ( m_bEngineBroken );        
+        if ( m_bSireneOrAlarmActive == true )
+        {
+            SetSirenOrAlarmActive ( false );
+            m_tSirenBeaconInfo.m_bOverrideSirens = false;
+        }
         m_pVehicle->SetSirenOrAlarmActive ( m_bSireneOrAlarmActive );
         SetLandingGearDown ( m_bLandingGearDown );
         _SetAdjustablePropertyValue ( m_usAdjustablePropertyValue );
@@ -2393,6 +2398,26 @@ void CClientVehicle::Create ( void )
         // Re-add all the upgrades - Has to be applied after handling *shrugs*
         if ( m_pUpgrades )
             m_pUpgrades->ReAddAll ();
+
+        if ( m_usModel == 560 )
+        {
+            GiveVehicleSirens ( 3, 1 );
+            SetVehicleSirenPosition( 0, CVector ( -0.7f, 2.7f, -0.23f ) );
+            SetVehicleSirenPosition( 1, CVector ( 0.7f, 2.7f, -0.23f ) );
+            SetVehicleSirenMinimumAlpha ( 0, 0.20f );
+            SetVehicleSirenMinimumAlpha ( 1, 0.20f );
+        }
+        else if ( m_usModel == 415 )
+        {
+            GiveVehicleSirens ( 2, 0 );
+            SetVehicleSirenPosition( 0, CVector ( -0.4f, -0.3f, 0.6f ) );
+        }
+        else
+        {   
+            m_tSirenBeaconInfo.m_bOverrideSirens = false;
+        }
+        for ( unsigned char i = 0; i <= 7; i++ )
+            m_pVehicle->SetVehicleSirenPosition( i, m_tSirenBeaconInfo.m_tSirenInfo[i].m_vecSirenPositions );
 
         // Tell the streamer we've created this object
         NotifyCreate ();
@@ -3787,4 +3812,40 @@ void CClientVehicle::HandleWaitingForGroundToLoad ( void )
         for ( unsigned int i = 0 ; i < lineList.size () ; i++ )
             g_pCore->GetGraphics ()->DrawText ( 10, 230 + i * 10, -1, 1, lineList[i] );
     #endif
+}
+
+bool CClientVehicle::GiveVehicleSirens ( unsigned char ucSirenType, unsigned char ucSirenCount )
+{
+    m_tSirenBeaconInfo.m_ucSirenType = ucSirenType;
+    if ( m_pVehicle )
+    {
+        m_pVehicle->GiveVehicleSirens ( ucSirenType, ucSirenCount );
+    }
+    return true;
+}
+void CClientVehicle::SetVehicleSirenPosition ( unsigned char ucSirenID, CVector vecPos )
+{
+    m_tSirenBeaconInfo.m_tSirenInfo[ucSirenID].m_vecSirenPositions = vecPos;
+    if ( m_pVehicle )
+    {
+        m_pVehicle->SetVehicleSirenPosition ( ucSirenID, vecPos );
+    }
+}
+
+void CClientVehicle::SetVehicleSirenMinimumAlpha( unsigned char ucSirenID, float fPercentage )
+{
+    m_tSirenBeaconInfo.m_tSirenInfo[ucSirenID].m_fMinSirenAlpha = fPercentage;
+    if ( m_pVehicle )
+    {
+        m_pVehicle->SetVehicleSirenMinimumAlpha ( ucSirenID, fPercentage );
+    }
+}
+
+void CClientVehicle::SetVehicleSirenColour ( unsigned char ucSirenID, SColor tVehicleSirenColour )
+{
+    m_tSirenBeaconInfo.m_tSirenInfo[ucSirenID].m_RGBBeaconColour = tVehicleSirenColour;
+    if ( m_pVehicle )
+    {
+        m_pVehicle->SetVehicleSirenColour ( ucSirenID, tVehicleSirenColour );
+    }
 }

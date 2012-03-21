@@ -3000,6 +3000,20 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                         //pEntry->SetTailLight ( (CHandlingEntry::eLightType)handling.data.ucTailLight );
                         //pEntry->SetAnimGroup ( handling.data.ucAnimGroup );
                     }
+                    if ( bitStream.Version ( ) >= 0x02B )
+                    {
+                        SVehicleSirenSync sirenData;
+                        bitStream.Read ( &sirenData );
+                        if ( sirenData.data.m_ucSirenCount > 0 )
+                        {
+                            pVehicle->GiveVehicleSirens( sirenData.data.m_ucSirenType, sirenData.data.m_ucSirenCount );
+                            for ( int i = 0; i <= Min ( sirenData.data.m_ucSirenCount, (unsigned char)8 ); i++ )
+                            {
+                                pVehicle->SetVehicleSirenPosition ( i, sirenData.data.m_vecSirenPositions[i] );
+                                pVehicle->SetVehicleSirenMinimumAlpha ( i, sirenData.data.m_fSirenMinAlpha[i] );
+                            }
+                        }
+                    }
                     pVehicle->ApplyHandling();
                  
                     // Set the matrix

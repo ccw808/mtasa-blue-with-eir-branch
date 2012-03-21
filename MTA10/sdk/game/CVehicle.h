@@ -36,6 +36,20 @@ class CPed;
 class CObject;
 class CColModel;
 
+struct SSirenBeaconInfo
+{
+    CVector                     m_vecSirenPositions;
+    SColor                      m_RGBBeaconColour;
+    float                       m_fMinSirenAlpha;
+};
+struct SSirenInfo
+{
+    bool                        m_bOverrideSirens;
+    unsigned char               m_ucSirenType;
+    unsigned char               m_ucSirenCount;
+    unsigned char               m_ucCurrentSirenID;
+    SSirenBeaconInfo            m_tSirenInfo [8];
+};
 class CVehicle : public virtual CPhysical
 {
 public:
@@ -223,6 +237,21 @@ public:
     virtual void*                GetPrivateSuspensionLines              ( void ) = 0;
 
     virtual bool                 CheckVTBL                              ( void ) = 0;
+
+    virtual bool                 DoesVehicleHaveSirens                  ( void ) = 0;
+
+    virtual void                 RemoveVehicleSirens                    ( void ) = 0;
+    virtual void                 GiveVehicleSirens                      ( unsigned char ucSirenType, unsigned char ucSirenCount ) = 0;
+    virtual void                 SetVehicleSirenMinimumAlpha            ( unsigned char ucSirenID, float fPercentage ) = 0;
+    virtual void                 SetVehicleSirenPosition                ( unsigned char ucSirenID, CVector vecPos ) = 0;
+    virtual void                 GetVehicleSirenPosition                ( unsigned char ucSirenID, CVector & vecPos ) = 0;
+    virtual unsigned char        GetVehicleSirenCount                   ( void ) = 0;
+    virtual unsigned char        GetVehicleSirenType                    ( void ) = 0;
+    virtual float                GetVehicleSirenMinimumAlpha            ( unsigned char ucSirenID ) = 0;
+    virtual SColor               GetVehicleSirenColour                  ( unsigned char ucSirenCount ) = 0;
+    virtual void                 SetVehicleSirenColour                  ( unsigned char ucSirenID, SColor tVehicleSirenColour ) = 0;
+    virtual void                 SetVehicleCurrentSirenID               ( unsigned char ucCurrentSirenID ) = 0;
+    virtual unsigned char        GetVehicleCurrentSirenID               ( void ) = 0;
 };
 
 #endif

@@ -96,6 +96,7 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
 
     // Generate the handling data
     GenerateHandlingData ();
+    m_tSirenBeaconInfo.m_bOverrideSirens = false;
 }
 
 

@@ -47,6 +47,7 @@ void CVehicleRPCs::LoadFunctions ( void )
     AddHandler ( SET_VEHICLE_TURRET_POSITION, SetVehicleTurretPosition, "SetVehicleTurretPosition" );
     AddHandler ( SET_VEHICLE_DOOR_OPEN_RATIO, SetVehicleDoorOpenRatio, "SetVehicleDoorOpenRatio" );
     AddHandler ( SET_VEHICLE_VARIANT, SetVehicleVariant, "SetVehicleVariant" );
+    AddHandler ( GIVE_VEHICLE_SIRENS, GiveVehicleSirens, "giveVehicleSirens");
 }
 
 
@@ -585,6 +586,24 @@ void CVehicleRPCs::SetVehicleVariant ( CClientEntity* pSource, NetBitStreamInter
         if ( pVehicle )
         {
             pVehicle->SetVariant ( ucVariant, ucVariant2 );
+        }
+    }
+}
+void CVehicleRPCs::GiveVehicleSirens ( CClientEntity* pSourceEntity, NetBitStreamInterface& bitStream )
+{
+    SVehicleSirenSync sirenData;
+    if ( bitStream.Read ( &sirenData ) )
+    {
+        CClientVehicle* pVehicle = m_pVehicleManager->Get ( pSourceEntity->GetID () );
+        if ( sirenData.data.m_ucSirenCount >= 0 )
+        {
+            pVehicle->GiveVehicleSirens( sirenData.data.m_ucSirenType, sirenData.data.m_ucSirenCount );
+            for ( int i = 0; i <= Min ( sirenData.data.m_ucSirenCount, (unsigned char)8 ); i++ )
+            {
+                pVehicle->SetVehicleSirenPosition ( i, sirenData.data.m_vecSirenPositions[i] );
+                pVehicle->SetVehicleSirenMinimumAlpha ( i, sirenData.data.m_fSirenMinAlpha[i] );
+                pVehicle->SetVehicleSirenColour ( i, sirenData.data.m_colSirenColour[i] );
+            }
         }
     }
 }

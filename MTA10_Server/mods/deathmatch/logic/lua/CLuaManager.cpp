@@ -447,6 +447,7 @@ void CLuaManager::LoadCFunctions ( void )
     CLuaCFunctions::AddFunction ( "setVehicleTurretPosition", CLuaFunctionDefinitions::SetVehicleTurretPosition );
     CLuaCFunctions::AddFunction ( "setVehicleDoorOpenRatio", CLuaFunctionDefinitions::SetVehicleDoorOpenRatio );
     CLuaCFunctions::AddFunction ( "setVehicleVariant", CLuaFunctionDefinitions::SetVehicleVariant );
+    CLuaCFunctions::AddFunction ( "giveVehicleSirens", CLuaFunctionDefinitions::GiveVehicleSirens );
 
     // Marker functions
     CLuaCFunctions::AddFunction ( "createMarker", CLuaFunctionDefinitions::CreateMarker );

@@ -4730,7 +4730,32 @@ bool CStaticFunctionDefinitions::SetVehicleVariant ( CVehicle* pVehicle, unsigne
     }
     return false;
 }
+bool CStaticFunctionDefinitions::GiveVehicleSirens( CVehicle* pVehicle, unsigned char ucSirenType, unsigned char ucSirenCount, SSirenInfo tSirenInfo )
+{
+    assert ( pVehicle );
+    pVehicle->m_tSirenBeaconInfo.m_bOverrideSirens = true;
+    for ( int i = 0; i <= ucSirenCount; i++)
+        pVehicle->m_tSirenBeaconInfo.m_tSirenInfo[i] = tSirenInfo.m_tSirenInfo[i];
+    pVehicle->m_tSirenBeaconInfo.m_ucSirenCount = ucSirenCount;
+    pVehicle->m_tSirenBeaconInfo.m_ucSirenType = ucSirenType;
 
+
+    SVehicleSirenSync tSirenSync;
+    tSirenSync.data.m_bOverrideSirens =  pVehicle->m_tSirenBeaconInfo.m_bOverrideSirens;
+    tSirenSync.data.m_ucSirenCount =  pVehicle->m_tSirenBeaconInfo.m_ucSirenCount;
+    tSirenSync.data.m_ucSirenType =  pVehicle->m_tSirenBeaconInfo.m_ucSirenType;
+    for ( int i = 0; i <= Min ( tSirenSync.data.m_ucSirenCount, (unsigned char) 8 );i++ )
+    {
+        tSirenSync.data.m_vecSirenPositions[i] = pVehicle->m_tSirenBeaconInfo.m_tSirenInfo[i].m_vecSirenPositions;
+        tSirenSync.data.m_colSirenColour[i] = pVehicle->m_tSirenBeaconInfo.m_tSirenInfo[i].m_RGBBeaconColour;
+        tSirenSync.data.m_fSirenMinAlpha[i] = pVehicle->m_tSirenBeaconInfo.m_tSirenInfo[i].m_fMinSirenAlpha;
+    }
+
+    CBitStream BitStream;
+    BitStream.pBitStream->Write ( &tSirenSync );
+    m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pVehicle, GIVE_VEHICLE_SIRENS, *BitStream.pBitStream ) );
+    return true;
+}
 bool CStaticFunctionDefinitions::GetVehicleVariant ( CVehicle* pVehicle, unsigned char& ucVariant, unsigned char& ucVariant2 )
 {
     assert ( pVehicle );

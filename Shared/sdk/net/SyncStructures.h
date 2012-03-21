@@ -1531,6 +1531,73 @@ struct SVehicleHandlingSync : public ISyncStructure
     } data;
 };
 
+//////////////////////////////////////////
+//                                      //
+//           Vehicle sirens sync        //
+//                                      //
+//////////////////////////////////////////
+struct SVehicleSirenSync : public ISyncStructure
+{
+    bool Read ( NetBitStreamInterface& bitStream )
+    {
+        if ( bitStream.ReadBit ( data.m_bOverrideSirens ) && 
+            data.m_bOverrideSirens )
+        {
+            if (
+                bitStream.Read ( data.m_ucSirenType ) &&
+                bitStream.Read ( data.m_ucSirenCount )
+                )
+            {
+                for ( int i = 0; i <= Min ( data.m_ucSirenCount, (unsigned char) 8 );i++ )
+                {
+                    bitStream.Read ( data.m_vecSirenPositions[i].fX );
+                    bitStream.Read ( data.m_vecSirenPositions[i].fY );
+                    bitStream.Read ( data.m_vecSirenPositions[i].fZ );
+                    bitStream.Read ( data.m_colSirenColour[i].A );
+                    bitStream.Read ( data.m_colSirenColour[i].R );
+                    bitStream.Read ( data.m_colSirenColour[i].G );
+                    bitStream.Read ( data.m_colSirenColour[i].B );
+                    bitStream.Read ( data.m_fSirenMinAlpha[i] );
+                }
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    void Write ( NetBitStreamInterface& bitStream ) const
+    {
+        bitStream.WriteBit    ( data.m_bOverrideSirens );
+        if ( data.m_bOverrideSirens )
+        {
+            bitStream.Write ( data.m_ucSirenType );
+            bitStream.Write ( data.m_ucSirenCount );
+            for ( int i = 0; i <= Min ( data.m_ucSirenCount, (unsigned char) 8 );i++ )
+            {
+                bitStream.Write ( data.m_vecSirenPositions[i].fX );
+                bitStream.Write ( data.m_vecSirenPositions[i].fY );
+                bitStream.Write ( data.m_vecSirenPositions[i].fZ );
+                bitStream.Write ( data.m_colSirenColour[i].A );
+                bitStream.Write ( data.m_colSirenColour[i].R );
+                bitStream.Write ( data.m_colSirenColour[i].G );
+                bitStream.Write ( data.m_colSirenColour[i].B );
+                bitStream.Write ( data.m_fSirenMinAlpha[i] );
+            }
+        }
+    }
+
+    struct
+    {
+        bool                        m_bOverrideSirens;
+        unsigned char               m_ucSirenType;
+        unsigned char               m_ucSirenCount;
+        CVector                     m_vecSirenPositions[8];
+        SColor                      m_colSirenColour[8];
+        float                       m_fSirenMinAlpha[8];
+    } data;
+};
+
 
 
 //////////////////////////////////////////

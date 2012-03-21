@@ -519,7 +519,7 @@ private:
     SColor                      m_RGBColors[4];
     CDoorSA                     m_doors[6];
     bool                        m_bSwingingDoorsAllowed;
-
+    SSirenInfo                  m_tSirenInfo;
 public:
                                 CVehicleSA                      ();
                                 CVehicleSA                      ( CVehicleSAInterface * vehicleInterface );
@@ -720,6 +720,22 @@ public:
     CVehicleSAInterface*        GetVehicleInterface             ()  { return (CVehicleSAInterface*) m_pInterface; }
 
     bool                        CheckVTBL                       ( void ) { return (m_pInterface->vtbl && (DWORD)m_pInterface->vtbl == VTBL_CPlaceable); }
+
+    bool                        DoesVehicleHaveSirens           ( void ) { return m_tSirenInfo.m_bOverrideSirens; }
+
+    void                        GiveVehicleSirens               ( unsigned char ucSirenType, unsigned char ucSirenCount );
+    void                        RemoveVehicleSirens             ( void )  { m_tSirenInfo.m_bOverrideSirens = false; }
+    void                        SetVehicleSirenMinimumAlpha     ( unsigned char ucSirenCount, float fPercentage )  { m_tSirenInfo.m_tSirenInfo[ucSirenCount].m_fMinSirenAlpha = fPercentage; }
+    void                        SetVehicleSirenPosition         ( unsigned char ucSirenID, CVector vecPos );
+    void                        GetVehicleSirenPosition         ( unsigned char ucSirenID, CVector & vecPos );
+    unsigned char               GetVehicleSirenCount            ( void )  { return m_tSirenInfo.m_ucSirenCount; }
+    unsigned char               GetVehicleSirenType             ( void )  { return m_tSirenInfo.m_ucSirenType; }
+    float                       GetVehicleSirenMinimumAlpha     ( unsigned char ucSirenID )  { return m_tSirenInfo.m_tSirenInfo[ucSirenID].m_fMinSirenAlpha; }
+    SColor                      GetVehicleSirenColour           ( unsigned char ucSirenID )  { return m_tSirenInfo.m_tSirenInfo[ucSirenID].m_RGBBeaconColour; }
+    void                        SetVehicleSirenColour           ( unsigned char ucSirenID, SColor tVehicleSirenColour )  { m_tSirenInfo.m_tSirenInfo[ucSirenID].m_RGBBeaconColour = tVehicleSirenColour; }
+    void                        SetVehicleCurrentSirenID        ( unsigned char ucCurrentSirenID )  { m_tSirenInfo.m_ucCurrentSirenID = ucCurrentSirenID; }
+    unsigned char               GetVehicleCurrentSirenID        ( void )  { return m_tSirenInfo.m_ucCurrentSirenID; }
+
 private:
     void                        RecalculateSuspensionLines          ( void );
     void                        CopyGlobalSuspensionLinesToPrivate  ( void );

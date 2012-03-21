@@ -53,6 +53,7 @@ public:
     DECLARE_ELEMENT_RPC ( SetVehicleTurretPosition );
     DECLARE_ELEMENT_RPC ( SetVehicleDoorOpenRatio );
     DECLARE_ELEMENT_RPC ( SetVehicleVariant );
+    DECLARE_ELEMENT_RPC ( GiveVehicleSirens );
 };
 
 #endif

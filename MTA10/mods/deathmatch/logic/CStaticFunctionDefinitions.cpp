@@ -2573,12 +2573,14 @@ bool CStaticFunctionDefinitions::SetVehicleSirensOn ( CClientEntity& Entity, boo
         CClientVehicle& Vehicle = static_cast < CClientVehicle& > ( Entity );
 
         // Has Sirens and different state than before?
-        if ( CClientVehicleManager::HasSirens ( Vehicle.GetModel () ) &&
-             bSirensOn != Vehicle.IsSirenOrAlarmActive () )
+        if ( CClientVehicleManager::HasSirens ( Vehicle.GetModel () ) || Vehicle.DoesVehicleHaveSirens ( ) )
         {
-            // Set the new state
-            Vehicle.SetSirenOrAlarmActive ( bSirensOn );
-            return true;
+            if ( bSirensOn != Vehicle.IsSirenOrAlarmActive () )
+            {
+                // Set the new state
+                Vehicle.SetSirenOrAlarmActive ( bSirensOn );
+                return true;
+            }
         }
     }
 

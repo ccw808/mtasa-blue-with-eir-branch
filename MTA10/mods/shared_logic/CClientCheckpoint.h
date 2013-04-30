@@ -86,7 +86,7 @@ private:
     void                            Destroy                         ( void );
     void                            ReCreate                        ( void );
 
-    CClientMarkerPtr                m_pThis;
+    CClientMarker *                 m_pThis;
     bool                            m_bStreamedIn;
     CMatrix                         m_Matrix;
     CVector                         m_vecDirection;

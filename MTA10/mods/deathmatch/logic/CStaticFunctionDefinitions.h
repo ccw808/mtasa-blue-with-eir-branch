@@ -39,15 +39,11 @@ public:
     static bool                         AddEvent                            ( CLuaMain& LuaMain, const char* szName, bool bAllowRemoteTrigger );
     static bool                         AddEventHandler                     ( CLuaMain& LuaMain, const char* szName, CClientEntity& Entity, const CLuaFunctionRef& iLuaFunction, bool bPropagated, EEventPriorityType eventPriority, float fPriorityMod );
     static bool                         RemoveEventHandler                  ( CLuaMain& LuaMain, const char* szName, CClientEntity& Entity, const CLuaFunctionRef& iLuaFunction );
-    static bool                         GetEventHandlers                    ( CLuaMain& LuaMain, const char* szName );
     static bool                         TriggerEvent                        ( const char* szName, CClientEntity& Entity, const CLuaArguments& Arguments, bool& bWasCancelled );
     static bool                         TriggerServerEvent                  ( const char* szName, CClientEntity& CallWithEntity, CLuaArguments& Arguments );
     static bool                         TriggerLatentServerEvent            ( const char* szName, CClientEntity& CallWithEntity, CLuaArguments& Arguments, int bandwidth, CLuaMain* pLuaMain, ushort usResourceNetId );
     static bool                         CancelEvent                         ( bool bCancel );
     static bool                         WasEventCancelled                   ( void );
-
-    // Misc funcs
-    static bool                         DownloadFile                        ( CResource* pResource, const char* szFile, CChecksum checksum = CChecksum() );
 
     // Output funcs
     static bool                         OutputConsole                       ( const char* szText );
@@ -258,7 +254,6 @@ public:
     static bool                         IsObjectStatic                      ( CClientObject& Object, bool & bStatic );
     static bool                         GetObjectScale                      ( CClientObject& Object, CVector& vecScale );
     static bool                         IsObjectBreakable                   ( CClientObject& Object, bool& bBreakable );
-    static bool                         GetObjectMass                       ( CClientObject& Object, float& fMass );
 
     // Object set funcs
     static bool                         SetObjectRotation                   ( CClientEntity& Entity, const CVector& vecRotation );
@@ -270,7 +265,6 @@ public:
     static bool                         BreakObject                         ( CClientEntity& Entity );
     static bool                         RespawnObject                       ( CClientEntity& Entity );
     static bool                         ToggleObjectRespawn                 ( CClientEntity& Entity, bool bRespawn );
-    static bool                         SetObjectMass                       ( CClientEntity& Entity, float fMass );
     
     // Radar-area get funcs
     static CClientRadarArea*            CreateRadarArea                     ( CResource& Resource, const CVector2D& vecPosition2D, const CVector2D& vecSize, const SColor color );
@@ -347,8 +341,6 @@ public:
     // Cursor funcs
     static bool                         GetCursorPosition                   ( CVector2D& vecCursor, CVector& vecWorld );
     static bool                         IsCursorShowing                     ( bool& bShowing );
-    static bool                         GetCursorAlpha                      ( float& fAlpha );
-    static bool                         SetCursorAlpha                      ( float fAlpha );
 
     // Drawing funcs
     static void                         DrawText                            ( float fLeft, float fTop, float fRight, float fBottom, unsigned long dwColor, const char* szText, float fScaleX, float fScaleY, unsigned long ulFormat, ID3DXFont* pDXFont, bool bPostGUI, bool bColorCoded, bool bSubPixelPositioning );
@@ -525,8 +517,6 @@ public:
     static bool                         SetBirdsEnabled                     ( bool bEnabled );
     static bool                         GetBirdsEnabled                     ( void );
     static bool                         SetMoonSize                         ( int iSize );
-    static bool                         SetFPSLimit                         ( int iLimit );
-    static bool                         GetFPSLimit                         ( int& iLimit );
 
     // Input functions
     static bool                         BindKey                             ( const char* szKey, const char* szHitState, CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFunction, CLuaArguments& Arguments );

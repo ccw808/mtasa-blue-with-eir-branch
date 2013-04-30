@@ -1071,6 +1071,8 @@ void CCore::DoPostFramePulse ( )
         ApplyConsoleSettings ();
         ApplyGameSettings ();
 
+        m_pGUI->SetMouseClickHandler ( INPUT_CORE, GUI_CALLBACK_MOUSE ( &CCore::OnMouseClick, this ) );
+        m_pGUI->SetMouseDoubleClickHandler ( INPUT_CORE, GUI_CALLBACK_MOUSE ( &CCore::OnMouseDoubleClick, this ) );
         m_pGUI->SelectInputHandlers( INPUT_CORE );
 
         m_Community.Initialize ();
@@ -1224,9 +1226,6 @@ void CCore::OnModUnload ( )
     // Ensure all these have been removed
     m_pKeyBinds->RemoveAllFunctions ();
     m_pKeyBinds->RemoveAllControlFunctions ();
-
-    // Reset client script frame rate limit
-    m_uiClientScriptFrameRateLimit = 0;
 }
 
 
@@ -1351,6 +1350,29 @@ void CCore::Quit ( bool bInstantly )
     {
         m_bQuitOnPulse = true;
     }
+}
+
+
+bool CCore::OnMouseClick ( CGUIMouseEventArgs Args )
+{
+    bool bHandled = false;
+
+    bHandled = m_pLocalGUI->GetMainMenu ()->GetServerBrowser ()->OnMouseClick ( Args );     // CServerBrowser
+
+    return bHandled;
+}
+
+
+bool CCore::OnMouseDoubleClick ( CGUIMouseEventArgs Args )
+{
+    bool bHandled = false;
+
+    // Call the event handlers, where necessary
+    bHandled =
+        m_pLocalGUI->GetMainMenu ()->GetSettingsWindow ()->OnMouseDoubleClick ( Args ) |    // CSettings
+        m_pLocalGUI->GetMainMenu ()->GetServerBrowser ()->OnMouseDoubleClick ( Args );      // CServerBrowser
+    
+    return bHandled;
 }
 
 
@@ -1694,49 +1716,29 @@ void CCore::SetXfireData ( std::string strServerName, std::string strVersion, bo
 // Recalculate FPS limit to use
 //
 // Uses client rate from config
-// Uses client rate from script
 // Uses server rate from argument, or last time if not supplied
 //
-void CCore::RecalculateFrameRateLimit ( uint uiServerFrameRateLimit, bool bLogToConsole )
+void CCore::RecalculateFrameRateLimit ( uint uiServerFrameRateLimit )
 {
     // Save rate from server if valid
     if ( uiServerFrameRateLimit != -1 )
         m_uiServerFrameRateLimit = uiServerFrameRateLimit;
 
-    // Start with value set by the server
-    m_uiFrameRateLimit = m_uiServerFrameRateLimit;
+    // Fetch client setting
+    uint uiClientRate;
+    g_pCore->GetCVars ()->Get ( "fps_limit", uiClientRate );
 
-    // Apply client config setting
-    uint uiClientConfigRate;
-    g_pCore->GetCVars ()->Get ( "fps_limit", uiClientConfigRate );
     // Lowest wins (Although zero is highest)
-    if ( ( m_uiFrameRateLimit == 0 || uiClientConfigRate < m_uiFrameRateLimit ) && uiClientConfigRate > 0 )
-        m_uiFrameRateLimit = uiClientConfigRate;
-
-    // Apply client script setting
-    uint uiClientScriptRate = m_uiClientScriptFrameRateLimit;
-    // Lowest wins (Although zero is highest)
-    if ( ( m_uiFrameRateLimit == 0 || uiClientScriptRate < m_uiFrameRateLimit ) && uiClientScriptRate > 0 )
-        m_uiFrameRateLimit = uiClientScriptRate;
+    if ( ( m_uiServerFrameRateLimit > 0 && uiClientRate > m_uiServerFrameRateLimit ) || uiClientRate == 0 )
+        m_uiFrameRateLimit = m_uiServerFrameRateLimit;
+    else
+        m_uiFrameRateLimit = uiClientRate;
 
     // Print new limits to the console
-    if ( bLogToConsole )
-    {
-        SString strStatus (  "Server FPS limit: %d", m_uiServerFrameRateLimit );
-        if ( m_uiFrameRateLimit != m_uiServerFrameRateLimit )
-            strStatus += SString (  " (Using %d)", m_uiFrameRateLimit );
-        CCore::GetSingleton ().GetConsole ()->Print( strStatus );
-    }
-}
-
-
-//
-// Change client rate as set by script
-//
-void CCore::SetClientScriptFrameRateLimit ( uint uiClientScriptFrameRateLimit )
-{
-    m_uiClientScriptFrameRateLimit = uiClientScriptFrameRateLimit;
-    RecalculateFrameRateLimit( -1, false );
+    SString strStatus (  "Server FPS limit: %d", m_uiServerFrameRateLimit );
+    if ( m_uiFrameRateLimit != m_uiServerFrameRateLimit )
+        strStatus += SString (  " (Using %d)", m_uiFrameRateLimit );
+    CCore::GetSingleton ().GetConsole ()->Print( strStatus );
 }
 
 

@@ -131,16 +131,19 @@ public:
     virtual void                    OnTimingCheckpoint              ( const char* szTag ) = 0;
     virtual void                    OnTimingDetail                  ( const char* szTag ) = 0;
 
+    // CGUI Callbacks
+    virtual bool                    OnMouseClick                    ( CGUIMouseEventArgs Args ) = 0;
+    virtual bool                    OnMouseDoubleClick              ( CGUIMouseEventArgs Args ) = 0;
+
     virtual void                    Quit                            ( bool bInstantly = true) = 0;
     virtual void                    InitiateUpdate                  ( const char* szType, const char* szData, const char* szHost ) = 0;
     virtual bool                    IsOptionalUpdateInfoRequired    ( const char* szHost ) = 0;
     virtual void                    InitiateDataFilesFix            ( void ) = 0;
 
     virtual uint                    GetFrameRateLimit               ( void ) = 0;
-    virtual void                    RecalculateFrameRateLimit       ( uint uiServerFrameRateLimit = -1, bool bLogToConsole = true ) = 0;
+    virtual void                    RecalculateFrameRateLimit       ( uint uiServerFrameRateLimit = -1 ) = 0;
     virtual void                    ApplyFrameRateLimit             ( uint uiOverrideRate = -1 ) = 0;
     virtual void                    EnsureFrameRateLimitApplied     ( void ) = 0;
-    virtual void                    SetClientScriptFrameRateLimit   ( uint uiClientScriptFrameRateLimit ) = 0;
 
     virtual void                    OnPreFxRender                   ( void ) = 0;
     virtual void                    OnPreHUDRender                  ( void ) = 0;

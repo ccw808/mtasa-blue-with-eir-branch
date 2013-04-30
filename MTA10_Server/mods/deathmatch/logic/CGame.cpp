@@ -28,11 +28,10 @@
 #define MAX_EXPLOSION_SYNC_DISTANCE 400.0f
 #define MAX_PROJECTILE_SYNC_DISTANCE 400.0f
 
-#define RELEASE_MIN_CLIENT_VERSION              "1.4.0-0.00000"
+#define RELEASE_MIN_CLIENT_VERSION              "1.3.0-9.03724"
 #define BULLET_SYNC_MIN_CLIENT_VERSION          "1.3.0-9.04311"
 #define VEH_EXTRAPOLATION_MIN_CLIENT_VERSION    "1.3.0-9.04460"
 #define ALT_PULSE_ORDER_MIN_CLIENT_VERSION      "1.3.1-9.04913"
-#define HIT_ANIM_CLIENT_VERSION                 "1.3.2"
 
 CGame* g_pGame = NULL;
 
@@ -140,7 +139,6 @@ CGame::CGame ( void )
     m_pWaterManager = NULL;
     m_pWeaponStatsManager = NULL;
     m_pBuildingRemovalManager = NULL;
-    m_pCustomWeaponManager = NULL;
 #ifdef WITH_OBJECT_SYNC
     m_pObjectSync = NULL;
 #endif
@@ -169,7 +167,6 @@ CGame::CGame ( void )
     m_Glitches [ GLITCH_FASTMOVE ] = false;
     m_Glitches [ GLITCH_CROUCHBUG ] = false;
     m_Glitches [ GLITCH_CLOSEDAMAGE ] = false;
-    m_Glitches [ GLITCH_HITANIM ] = false;
     for ( int i = 0; i < WEAPONTYPE_LAST_WEAPONTYPE; i++ )
         m_JetpackWeapons [ i ] = false;
 
@@ -182,7 +179,6 @@ CGame::CGame ( void )
     m_GlitchNames["fastmove"] = GLITCH_FASTMOVE;
     m_GlitchNames["crouchbug"] = GLITCH_CROUCHBUG;
     m_GlitchNames["highcloserangedamage"] = GLITCH_CLOSEDAMAGE;
-    m_GlitchNames["hitanim"] = GLITCH_HITANIM;
 
     m_bCloudsEnabled = true;
 
@@ -304,7 +300,6 @@ CGame::~CGame ( void )
     SAFE_DELETE ( m_pWaterManager );
     SAFE_DELETE ( m_pWeaponStatsManager );
     SAFE_DELETE ( m_pBuildingRemovalManager );
-    SAFE_DELETE ( m_pCustomWeaponManager );
     SAFE_DELETE ( m_pOpenPortsTester );
     CSimControl::Shutdown ();
 
@@ -501,7 +496,6 @@ bool CGame::Start ( int iArgumentCount, char* szArguments [] )
 
     m_pBuildingRemovalManager = new CBuildingRemovalManager;
 
-    m_pCustomWeaponManager = new CCustomWeaponManager ( );
 
     // Parse the commandline
     if ( !m_CommandLineParser.Parse ( iArgumentCount, szArguments ) )
@@ -1097,27 +1091,9 @@ bool CGame::ProcessPacket ( CPacket& Packet )
             return true;
         }
 
-        case PACKET_ID_WEAPON_BULLETSYNC:
-        {
-            Packet_WeaponBulletsync ( static_cast < CCustomWeaponBulletSyncPacket& > ( Packet ) );
-            return true;
-        }
-
-        case PACKET_ID_PED_TASK:
-        {
-            Packet_PedTask ( static_cast < CPedTaskPacket& > ( Packet ) );
-            return true;
-        }
-
         case PACKET_ID_DETONATE_SATCHELS:
         {
             Packet_DetonateSatchels ( static_cast < CDetonateSatchelsPacket& > ( Packet ) );
-            return true;
-        }
-
-        case PACKET_ID_DESTROY_SATCHELS:
-        {
-            Packet_DestroySatchels ( static_cast < CDestroySatchelsPacket& > ( Packet ) );
             return true;
         }
 
@@ -1559,9 +1535,6 @@ void CGame::AddBuiltInEvents ( void )
     // Other events
     m_Events.AddEvent ( "onSettingChange", "setting, oldValue, newValue", NULL, false );
     m_Events.AddEvent ( "onChatMessage", "message, element", NULL, false );
-
-    // Weapon events
-    m_Events.AddEvent ( "onWeaponFire", "", NULL, false );
 }
 
 void CGame::ProcessTrafficLights ( unsigned long ulCurrentTime )
@@ -2247,17 +2220,11 @@ void CGame::Packet_VehiclePuresync ( CVehiclePuresyncPacket& Packet )
             RelayPlayerPuresync ( Packet );
             UNCLOCK( "VehiclePuresync", "RelayPlayerPuresync" );
 
-            CVehicle * pTrailer = pVehicle->GetTowedVehicle();
 
             // Run colpoint checks
             CLOCK( "VehiclePuresync", "DoHitDetection" );
             m_pColManager->DoHitDetection ( pPlayer->GetPosition (), pPlayer );
             m_pColManager->DoHitDetection ( pVehicle->GetPosition (), pVehicle );
-            while ( pTrailer )
-            {
-                m_pColManager->DoHitDetection ( pTrailer->GetPosition (), pTrailer );
-                pTrailer = pTrailer->GetTowedVehicle();
-            }
             UNCLOCK( "VehiclePuresync", "DoHitDetection" );
         }
     }
@@ -2344,69 +2311,6 @@ void CGame::Packet_Bulletsync ( CBulletsyncPacket& Packet )
         // Relay to other players
         RelayBulletsync ( Packet );
     }
-}
-
-void CGame::Packet_WeaponBulletsync ( CCustomWeaponBulletSyncPacket& Packet )
-{
-    // Grab the source player
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-    CCustomWeapon * pWeapon = Packet.GetWeapon ( );
-    if ( pPlayer && pPlayer->IsJoined () && pPlayer == Packet.GetWeaponOwner ( ) )
-    {
-        // Tell our scripts the player has fired
-        CLuaArguments Arguments;
-        Arguments.PushElement ( pPlayer );
-
-        if ( pWeapon->CallEvent ( "onWeaponFire", Arguments ) )
-        {
-            // Relay to other players
-            m_pPlayerManager->BroadcastOnlyJoined ( Packet, pPlayer );
-        }
-    }
-}
-
-void CGame::Packet_PedTask ( CPedTaskPacket& Packet )
-{
-    // Grab the source player
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-    if ( pPlayer && pPlayer->IsJoined () )
-    {
-        // Relay to other players
-        RelayPedTask ( Packet );
-    }
-}
-
-
-// Relay this (ped task) packet to other players using distance rules
-void CGame::RelayPedTask ( CPacket& Packet )
-{
-    // Make a list of players to send this packet to
-    std::vector < CPlayer* > sendList;
-
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-
-    //
-    // Process near sync
-    //
-    {
-        // Update list of players who need the packet
-        pPlayer->MaybeUpdateOthersNearList ();
-
-        // Use this players bulletsync near list for sending packets
-        SViewerMapType& nearList = pPlayer->GetNearPlayerList ();
-
-        // For each bulletsync near player
-        for ( SViewerMapType ::iterator it = nearList.begin (); it != nearList.end (); ++it )
-        {
-            CPlayer* pSendPlayer = it->first;
-            // Standard sending
-            sendList.push_back ( pSendPlayer );
-        }
-    }
-
-    // Relay packet
-    if ( !sendList.empty () )
-        CPlayerManager::Broadcast ( Packet, sendList );
 }
 
 
@@ -2539,20 +2443,6 @@ void CGame::Packet_DetonateSatchels ( CDetonateSatchelsPacket& Packet )
     if ( pPlayer && pPlayer->IsJoined () )
     {
         // Tell everyone to blow up this guy's satchels
-        m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-        //Take away their detonator
-        CStaticFunctionDefinitions::TakeWeapon( pPlayer, 40 );
-    }
-}
-
-
-void CGame::Packet_DestroySatchels ( CDestroySatchelsPacket& Packet )
-{
-    // Grab the source player
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-    if ( pPlayer && pPlayer->IsJoined () )
-    {
-        // Tell everyone to destroy up this player's satchels
         m_pPlayerManager->BroadcastOnlyJoined ( Packet );
         //Take away their detonator
         CStaticFunctionDefinitions::TakeWeapon( pPlayer, 40 );
@@ -2828,14 +2718,9 @@ void CGame::Packet_Vehicle_InOut ( CVehicleInOutPacket& Packet )
                                                     }
                                                     else
                                                     {
-                                                        // Has he been warped to a vehicle in the mean time? (by lua f.e.)
-                                                        if ( !pPlayer->GetOccupiedVehicle () )
-                                                        {
-                                                            pPlayer->SetOccupiedVehicle ( NULL, 0 );
-                                                            pVehicle->SetOccupant ( NULL, 0 );
-                                                        }
-                                                        
+                                                        pPlayer->SetOccupiedVehicle ( NULL, 0 );
                                                         pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
+                                                        pVehicle->SetOccupant ( NULL, 0 );
                                                         failReason = FAIL_SCRIPT;
                                                     }
                                                 }
@@ -2939,13 +2824,9 @@ void CGame::Packet_Vehicle_InOut ( CVehicleInOutPacket& Packet )
                                                     }
                                                     else
                                                     {
-                                                        // Has he been warped to a vehicle in the mean time? (by lua f.e.)
-                                                        if ( !pPlayer->GetOccupiedVehicle () )
-                                                        {
-                                                            pPlayer->SetOccupiedVehicle ( NULL, 0 );
-                                                            pVehicle->SetOccupant ( NULL, ucSeat );
-                                                        }
+                                                        pPlayer->SetOccupiedVehicle ( NULL, 0 );
                                                         pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
+                                                        pVehicle->SetOccupant ( NULL, ucSeat );
                                                         failReason = FAIL_SCRIPT;
                                                     }
                                                 }
@@ -4207,11 +4088,6 @@ SString CGame::CalculateMinClientRequirement ( void )
         if ( strNewMin < ALT_PULSE_ORDER_MIN_CLIENT_VERSION )
             strNewMin = ALT_PULSE_ORDER_MIN_CLIENT_VERSION;
     }
-    if ( g_pGame->IsGlitchEnabled( GLITCH_HITANIM ) )
-    {
-        if ( strNewMin < HIT_ANIM_CLIENT_VERSION )
-            strNewMin = HIT_ANIM_CLIENT_VERSION;
-    }
 
     if ( strNewMin != m_strPrevMinClientConnectRequirement )
     {
@@ -4263,9 +4139,11 @@ SString CGame::CalculateMinClientRequirement ( void )
         }
     }
 
-#ifndef MTA_DEBUG
-    if ( strNewMin < RELEASE_MIN_CLIENT_VERSION )
-        strNewMin = RELEASE_MIN_CLIENT_VERSION;
+#if MTASA_VERSION_TYPE == VERSION_TYPE_RELEASE
+    #ifndef MTA_DEBUG
+        if ( strNewMin < RELEASE_MIN_CLIENT_VERSION )
+            strNewMin = RELEASE_MIN_CLIENT_VERSION;
+    #endif
 #endif
 
     return strNewMin;

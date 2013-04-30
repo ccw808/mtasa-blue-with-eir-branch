@@ -142,8 +142,6 @@ public:
 
     void                            SetCursorEnabled            ( bool bEnabled );
     bool                            IsCursorEnabled             ( void );
-    void                            SetCursorAlpha              ( float fAlpha, bool bOnlyCurrentServer = false );
-    float                           GetCurrentServerCursorAlpha ( void );
 
     void                            AddChild                    ( CGUIElement_Impl* pChild );
     CEGUI::FontManager*             GetFontManager              ( void );
@@ -153,7 +151,6 @@ public:
     CEGUI::SchemeManager*           GetSchemeManager            ( void );
     CEGUI::WindowManager*           GetWindowManager            ( void );
     void                            GetUniqueName               ( char* pBuf );
-    CEGUI::Window*                  GetMasterWindow             ( CEGUI::Window* Window );
 
     CVector2D                       GetResolution               ( void );
     void                            SetResolution               ( float fWidth, float fHeight );
@@ -247,7 +244,6 @@ private:
 
     CEGUI::DefaultWindow*           m_pTop;
     const CEGUI::Image*             m_pCursor;
-    float                           m_fCurrentServerCursorAlpha;
 
     CGUIFont_Impl*                  m_pDefaultFont;
     CGUIFont_Impl*                  m_pSmallFont;

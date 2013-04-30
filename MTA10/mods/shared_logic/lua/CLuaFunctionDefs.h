@@ -56,7 +56,6 @@ public:
     LUA_DECLARE ( AddEvent );
     LUA_DECLARE ( AddEventHandler );
     LUA_DECLARE ( RemoveEventHandler );
-    LUA_DECLARE ( GetEventHandlers );
     LUA_DECLARE ( TriggerEvent );
     LUA_DECLARE ( TriggerServerEvent );
     LUA_DECLARE ( CancelEvent );
@@ -65,9 +64,6 @@ public:
     LUA_DECLARE ( GetLatentEventHandles );
     LUA_DECLARE ( GetLatentEventStatus );
     LUA_DECLARE ( CancelLatentEvent );
-
-    // Misc functions
-    LUA_DECLARE ( DownloadFile );
 
     // Sound effects and synth functions
     LUA_DECLARE ( PlaySound );
@@ -402,7 +398,6 @@ public:
     LUA_DECLARE ( IsObjectStatic );
     LUA_DECLARE ( GetObjectScale );
     LUA_DECLARE ( IsObjectBreakable );
-    LUA_DECLARE ( GetObjectMass );
 
     // Object set funcs
     LUA_DECLARE ( SetObjectRotation );
@@ -414,7 +409,6 @@ public:
     LUA_DECLARE ( BreakObject );
     LUA_DECLARE ( RespawnObject );
     LUA_DECLARE ( ToggleObjectRespawn );
-    LUA_DECLARE ( SetObjectMass );
 
     // Explosion functions
     LUA_DECLARE ( CreateExplosion );
@@ -508,8 +502,6 @@ public:
     LUA_DECLARE ( GetCursorPosition );
     LUA_DECLARE ( SetCursorPosition );
     LUA_DECLARE ( IsCursorShowing );
-    LUA_DECLARE ( GetCursorAlpha );
-    LUA_DECLARE ( SetCursorAlpha );
     
     LUA_DECLARE ( ShowCursor );
 
@@ -816,9 +808,6 @@ public:
     LUA_DECLARE ( SetMoonSize );
     LUA_DECLARE ( GetMoonSize );
     LUA_DECLARE ( ResetMoonSize );
-    LUA_DECLARE ( SetFPSLimit );
-    LUA_DECLARE ( GetFPSLimit );
-    LUA_DECLARE ( FetchRemote );
 
     // Input functions
     LUA_DECLARE ( BindKey );
@@ -928,10 +917,6 @@ public:
     // Utility
     LUA_DECLARE ( Md5 );
     LUA_DECLARE ( Sha256 );
-    LUA_DECLARE ( TeaEncode );
-    LUA_DECLARE ( TeaDecode );
-    LUA_DECLARE ( Base64encode );
-    LUA_DECLARE ( Base64decode );
     LUA_DECLARE ( GetNetworkUsageData );
     LUA_DECLARE ( GetNetworkStats );
     LUA_DECLARE ( GetPerformanceStats );
@@ -949,48 +934,8 @@ public:
     LUA_DECLARE ( UtfChar );
     LUA_DECLARE ( UtfCode );
 
-    // PCRE functions
-
-    LUA_DECLARE ( PregFind );
-    LUA_DECLARE ( PregReplace );
-    LUA_DECLARE ( PregMatch );
-
     // Voice functions
     LUA_DECLARE ( IsVoiceEnabled );
-
-    // Bitwise operator functions
-    LUA_DECLARE ( BitAnd );
-    LUA_DECLARE ( BitNot );
-    LUA_DECLARE ( BitOr );
-    LUA_DECLARE ( BitTest );
-    LUA_DECLARE ( BitXor );
-    LUA_DECLARE ( BitLRotate );
-    LUA_DECLARE ( BitRRotate );
-    LUA_DECLARE ( BitLShift );
-    LUA_DECLARE ( BitRShift );
-    LUA_DECLARE ( BitArShift );
-    LUA_DECLARE ( BitExtract );
-    LUA_DECLARE ( BitReplace );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    // OOP Specific functions
-    LUA_DECLARE ( SetPedOccupiedVehicle );
 
 private:
     // Static references to objects

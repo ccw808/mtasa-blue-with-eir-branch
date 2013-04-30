@@ -93,7 +93,9 @@ int CLuaFunctionDefs::CreateWeapon ( lua_State* luaVM )
     eWeaponType weaponType;
     CScriptArgReader argStream ( luaVM );
     argStream.ReadEnumStringOrNumber ( weaponType );
-    argStream.ReadVector3D ( vecPos );
+    argStream.ReadNumber ( vecPos.fX );
+    argStream.ReadNumber ( vecPos.fY );
+    argStream.ReadNumber ( vecPos.fZ );
 
     if ( !argStream.HasErrors () )
     {
@@ -256,7 +258,9 @@ int CLuaFunctionDefs::SetWeaponTarget ( lua_State* luaVM )
     else if ( argStream.NextIsNumber() )
     {
         CVector vecTarget;
-        argStream.ReadVector3D ( vecTarget );
+        argStream.ReadNumber( vecTarget.fX );
+        argStream.ReadNumber( vecTarget.fY );
+        argStream.ReadNumber( vecTarget.fZ );
         if ( !argStream.HasErrors () )
         {
             if ( CStaticFunctionDefinitions::SetWeaponTarget ( pWeapon, vecTarget ) )

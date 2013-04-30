@@ -49,7 +49,7 @@ protected:
     void                            DoPulse                             ( void );
 
 private:
-    CClientMarkerPtr                m_pThis;
+    CClientMarker *                 m_pThis;
     bool                            m_bStreamedIn;
     unsigned long                   m_ulIdentifier;
     CMatrix                         m_Matrix;

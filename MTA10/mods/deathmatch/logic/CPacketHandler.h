@@ -70,12 +70,10 @@ public:
     void                Packet_ResourceStop             ( NetBitStreamInterface& bitStream );
     void                Packet_ResourceClientScripts    ( NetBitStreamInterface& bitStream );
     void                Packet_DetonateSatchels         ( NetBitStreamInterface& bitStream );
-    void                Packet_DestroySatchels          ( NetBitStreamInterface& bitStream );
     void                Packet_VoiceData                ( NetBitStreamInterface& bitStream );
     void                Packet_UpdateInfo               ( NetBitStreamInterface& bitStream );
     void                Packet_LatentTransfer           ( NetBitStreamInterface& bitStream );
     void                Packet_SyncSettings             ( NetBitStreamInterface& bitStream );
-    void                Packet_PedTask                  ( NetBitStreamInterface& bitStream );
 };
 
 #endif

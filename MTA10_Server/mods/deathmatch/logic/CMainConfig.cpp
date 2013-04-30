@@ -643,7 +643,7 @@ bool CMainConfig::LoadExtended ( void )
 
                 if ( IsValidFilePath ( strBuffer.c_str () ) )
                 {
-                    m_pLuaManager->GetLuaModuleManager ()->LoadModule ( strBuffer.c_str (), strFilename, false );
+                    m_pLuaManager->GetLuaModuleManager ()->_LoadModule ( strBuffer.c_str (), strFilename, false );
                 }
             }
         }
@@ -789,8 +789,8 @@ bool CMainConfig::LoadExtended ( void )
     RegisterCommand ( "help", CConsoleCommands::Help, false );
 
     RegisterCommand ( "loadmodule", CConsoleCommands::LoadModule, false );
-    RegisterCommand ( "unloadmodule", CConsoleCommands::UnloadModule, false );
-    RegisterCommand ( "reloadmodule", CConsoleCommands::ReloadModule, false );
+    //RegisterCommand ( "unloadmodule", CConsoleCommands::UnloadModule, false );
+    //RegisterCommand ( "reloadmodule", CConsoleCommands::ReloadModule, false );
 
     RegisterCommand ( "ver", CConsoleCommands::Ver, false );
     RegisterCommand ( "sver", CConsoleCommands::Ver, false );
@@ -1377,8 +1377,8 @@ const std::vector < SIntSetting >& CMainConfig::GetIntSettingList ( void )
             { true, true,   50,     100,    4000,   "player_sync_interval",                 &g_TickRateSettings.iPureSync,              &CMainConfig::OnTickRateChange },
             { true, true,   50,     1500,   4000,   "lightweight_sync_interval",            &g_TickRateSettings.iLightSync,             &CMainConfig::OnTickRateChange },
             { true, true,   50,     500,    4000,   "camera_sync_interval",                 &g_TickRateSettings.iCamSync,               &CMainConfig::OnTickRateChange },
-            { true, true,   50,     400,    4000,   "ped_sync_interval",                    &g_TickRateSettings.iPedSync,               &CMainConfig::OnTickRateChange },
-            { true, true,   50,     400,    4000,   "unoccupied_vehicle_sync_interval",     &g_TickRateSettings.iUnoccupiedVehicle,     &CMainConfig::OnTickRateChange },
+            { true, true,   50,     500,    4000,   "ped_sync_interval",                    &g_TickRateSettings.iPedSync,               &CMainConfig::OnTickRateChange },
+            { true, true,   50,     1000,   4000,   "unoccupied_vehicle_sync_interval",     &g_TickRateSettings.iUnoccupiedVehicle,     &CMainConfig::OnTickRateChange },
             { true, true,   50,     100,    4000,   "keysync_mouse_sync_interval",          &g_TickRateSettings.iKeySyncRotation,       &CMainConfig::OnTickRateChange },
             { true, true,   50,     100,    4000,   "keysync_analog_sync_interval",         &g_TickRateSettings.iKeySyncAnalogMove,     &CMainConfig::OnTickRateChange },
             { true, true,   50,     100,    4000,   "donkey_work_interval",                 &g_TickRateSettings.iNearListUpdate,        &CMainConfig::OnTickRateChange },
@@ -1390,8 +1390,6 @@ const std::vector < SIntSetting >& CMainConfig::GetIntSettingList ( void )
             { true, true,   0,      1,      1,      "donotbroadcastlan",                    &m_bDontBroadcastLan,                       &CMainConfig::OnAseSettingChange },
             { true, true,   0,      1,      1,      "net_auto_filter",                      &m_bNetAutoFilter,                          &CMainConfig::ApplyNetOptions },
             { true, true,   1,      5,      100,    "update_cycle_datagrams_limit",         &m_iUpdateCycleDatagramsLimit,              &CMainConfig::ApplyNetOptions },
-            { true, true,   50,     100,    400,    "ped_syncer_distance",                  &g_TickRateSettings.iPedSyncerDistance,     &CMainConfig::OnTickRateChange },
-            { true, true,   50,     100,    400,    "unoccupied_vehicle_syncer_distance",   &g_TickRateSettings.iUnoccupiedVehicleSyncerDistance,   &CMainConfig::OnTickRateChange },
         };
 
     static std::vector < SIntSetting > settingsList;

@@ -83,46 +83,6 @@ public:
         m_iIndex++;
     }
 
-#ifdef MTA_CLIENT
-    //
-    // Read next Vector3d
-    //
-    void ReadVector3D ( CVector& outValue )
-    {
-        if ( ReadVector3D ( outValue, CVector () ) )
-            return;
-
-        SetTypeError ( "vector3" );
-        m_iIndex++;
-    }
-
-    bool ReadVector3D ( CVector& outValue, CVector vecDefault )
-    {
-        outValue = vecDefault;
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TNUMBER )
-        {
-            ReadNumber ( outValue.fX, vecDefault.fX );
-            ReadNumber ( outValue.fY, vecDefault.fY );
-            ReadNumber ( outValue.fZ, vecDefault.fZ );
-            return true;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            // we don't pass around the pointer as it may get destroyed any time
-            CLuaVector3D* pVector = NULL;
-            ReadUserData ( pVector );
-            if ( pVector )
-            {
-                outValue.fX = pVector->fX;
-                outValue.fY = pVector->fY;
-                outValue.fZ = pVector->fZ;
-                return true;
-            }
-        }
-        return false;
-    }
-#endif
 
     //
     // Read next bool
@@ -380,15 +340,6 @@ protected:
                 return;
             }
         }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            outValue = (T*)UserDataCast < T > ( (T*)0, * ( ( void** ) lua_touserdata ( m_luaVM, m_iIndex ) ), m_luaVM );
-            if ( outValue )
-            {
-                m_iIndex++;
-                return;
-            }
-        }
         else
         if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL )
         {
@@ -601,8 +552,7 @@ public:
     bool NextIsNone         ( int iOffset = 0 ) const  { return NextIs ( LUA_TNONE, iOffset ); }
     bool NextIsNil          ( int iOffset = 0 ) const  { return NextIs ( LUA_TNIL, iOffset ); }
     bool NextIsBool         ( int iOffset = 0 ) const  { return NextIs ( LUA_TBOOLEAN, iOffset ); }
-    bool NextIsUserData     ( int iOffset = 0 ) const  { return NextIs ( LUA_TUSERDATA, iOffset ) || NextIsLightUserData ( iOffset ); }
-    bool NextIsLightUserData( int iOffset = 0 ) const  { return NextIs ( LUA_TLIGHTUSERDATA, iOffset ); }
+    bool NextIsUserData     ( int iOffset = 0 ) const  { return NextIs ( LUA_TLIGHTUSERDATA, iOffset ); }
     bool NextIsNumber       ( int iOffset = 0 ) const  { return NextIs ( LUA_TNUMBER, iOffset ); }
     bool NextIsString       ( int iOffset = 0 ) const  { return NextIs ( LUA_TSTRING, iOffset ); }
     bool NextIsTable        ( int iOffset = 0 ) const  { return NextIs ( LUA_TTABLE, iOffset ); }
@@ -630,11 +580,6 @@ public:
         if ( iArgument == LUA_TLIGHTUSERDATA )
         {
             if ( UserDataCast < T > ( (T*)0, lua_touserdata ( m_luaVM, m_iIndex + iOffset ), m_luaVM ) )
-                return true;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            if ( UserDataCast < T > ( (T*)0, * ( ( void** ) lua_touserdata ( m_luaVM, m_iIndex + iOffset ) ), m_luaVM ) )
                 return true;
         }
         return false;
@@ -745,11 +690,6 @@ public:
         {
 	        // Get name of userdata type
             strGotArgumentType = GetUserDataClassName ( lua_touserdata ( m_luaVM, m_iErrorIndex ), m_luaVM );
-            strGotArgumentValue = "";
-        }
-        else if ( m_iErrorGotArgumentType == LUA_TUSERDATA )
-        {
-            strGotArgumentType = GetUserDataClassName ( * ( ( void** ) lua_touserdata ( m_luaVM, m_iErrorIndex ) ), m_luaVM );
             strGotArgumentValue = "";
         }
 

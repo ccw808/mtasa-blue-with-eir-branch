@@ -54,7 +54,6 @@
 #include "../../shared_logic/CClientGUIElement.h"
 #include "CLocalServer.h"
 #include "CVoiceRecorder.h"
-#include "CSingularFileDownloadManager.h"
 #include "CObjectRespawner.h"
 #define HeliKill_List_Clear_Rate 500
 #define MIN_PUSH_ANTISPAM_RATE 1500
@@ -80,13 +79,6 @@ public:
         STATUS_CONNECTING,
         STATUS_JOINING,
         STATUS_JOINED,
-    };
-
-    enum eServerType
-    {
-        SERVER_TYPE_NORMAL,
-        SERVER_TYPE_LOCAL,
-        SERVER_TYPE_EDITOR,
     };
 
     enum
@@ -116,7 +108,6 @@ public:
         COLSHAPE,
         SCRIPTFILE,
         WATER,
-        WEAPON,
         UNKNOWN,
     };
 
@@ -182,7 +173,6 @@ public:
         GLITCH_FASTMOVE,
         GLITCH_CROUCHBUG,
         GLITCH_CLOSEDAMAGE,
-        GLITCH_HITANIM,
         NUM_GLITCHES
     };
     class CStoredWeaponSlot
@@ -216,9 +206,9 @@ public:
                                         CClientGame                     ( bool bLocalPlay = false );
                                         ~CClientGame                    ( void );
 
-    bool                                StartGame                       ( const char* szNick, const char* szPassword, eServerType Type = SERVER_TYPE_NORMAL );
-    bool                                StartLocalGame                  ( eServerType Type, const char* szPassword = NULL );
-    void                                SetupLocalGame                  ( eServerType Type );
+    bool                                StartGame                       ( const char* szNick, const char* szPassword );
+    bool                                StartLocalGame                  ( const char* szConfig, const char* szPassword = NULL );
+    void                                SetupLocalGame                  ( const char* szConfig );
     //bool                                StartGame                       ( void );
     inline bool                         IsLocalGame                     ( ) const { return m_bLocalPlay; }
     bool                                OnCancelLocalGameClick          ( CGUIElement* pElement );
@@ -266,7 +256,6 @@ public:
     inline CNametags*                   GetNametags                     ( void )        { return m_pNametags; }
     inline CSyncDebug*                  GetSyncDebug                    ( void )        { return m_pSyncDebug; };
     inline CRPCFunctions*               GetRPCFunctions                 ( void )        { return m_pRPCFunctions; }
-    inline CSingularFileDownloadManager* GetSingularFileDownloadManager ( void )        { return m_pSingularFileDownloadManager; };
 
     inline CClientEntity*               GetRootEntity                   ( void )        { return m_pRootEntity; }
     inline CEvents*                     GetEvents                       ( void )        { return &m_Events; }
@@ -288,7 +277,6 @@ public:
 
     inline CElementDeleter*             GetElementDeleter               ( void )        { return &m_ElementDeleter; }
     inline CObjectRespawner*            GetObjectRespawner              ( void )        { return &m_ObjectRespawner; }
-    CRemoteCalls*                       GetRemoteCalls                  ( void )        { return m_pRemoteCalls; }
 
     // Status toggles
     void                                ShowNetstat                     ( int iCmd );
@@ -413,7 +401,6 @@ public:
     void                                SetWeaponTypesUsingBulletSync   ( const std::set < eWeaponType >& weaponTypesUsingBulletSync );
     bool                                GetWeaponTypeUsesBulletSync     ( eWeaponType weaponType );
 
-    SString                             GetHTTPURL                      ( void ) { return m_strHTTPDownloadURL; };
     void                                ProjectileInitiateHandler       ( CClientProjectile * pProjectile );
     void                                IdleHandler                     ( void );
 
@@ -462,7 +449,6 @@ private:
     #endif
 
     void                                DownloadInitialResourceFiles    ( void );
-    void                                DownloadSingularResourceFiles   ( void );
 
     void                                QuitPlayer                      ( CClientPlayer* pPlayer, eQuitReason Reason );
 
@@ -494,7 +480,6 @@ private:
     static void                         StaticGameModelRemoveHandler        ( ushort usModelId );
     static void                         StaticWorldSoundHandler         ( uint uiGroup, uint uiIndex );
     static void                         StaticGameEntityRenderHandler   ( CEntitySAInterface* pEntity );
-    static void                         StaticTaskSimpleBeHitHandler    ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
 
     bool                                DamageHandler                   ( CPed* pDamagePed, CEventDamage * pEvent );
     void                                FireHandler                     ( CFire* pFire );
@@ -517,7 +502,6 @@ private:
     void                                GamePlayerDestructHandler       ( CEntitySAInterface* pPlayer );
     void                                GameModelRemoveHandler          ( ushort usModelId );
     void                                WorldSoundHandler               ( uint uiGroup, uint uiIndex );
-    void                                TaskSimpleBeHitHandler          ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
 
     static bool                         StaticProcessMessage            ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
     bool                                ProcessMessage                  ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
@@ -541,8 +525,6 @@ public:
 
     void                                SetTransferringInitialFiles     ( bool bTransfer );
     bool                                IsTransferringInitialFiles      ( void )            { return m_bTransferringInitialFiles; }
-    void                                SetTransferringSingularFiles    ( bool bTransfer )  { m_bTransferringSingularFiles = bTransfer; }
-    bool                                IsTransferringSingularFiles     ( void )            { return m_bTransferringSingularFiles; }
 
     void                                SetVehExtrapolateSettings       ( const SVehExtrapolateSettings& settings ) { m_VehExtrapolateSettings = settings; }
     const SVehExtrapolateSettings&      GetVehExtrapolateSettings       ( void )                                    { return m_VehExtrapolateSettings; }
@@ -550,7 +532,6 @@ public:
 
 private:
     eStatus                             m_Status;
-    eServerType                         m_ServerType;
     unsigned long                       m_ulTimeStart;
     unsigned long                       m_ulVerifyTimeStart;
     unsigned long                       m_ulLastClickTick;
@@ -601,10 +582,8 @@ private:
     CLatentTransferManager*             m_pLatentTransferManager;
     bool                                m_bInitiallyFadedOut;
     bool                                m_bHudAreaNameDisabled;
-    CSingularFileDownloadManager*       m_pSingularFileDownloadManager;
     CGameEntityXRefManager*             m_pGameEntityXRefManager;
     CClientModelCacheManager*           m_pModelCacheManager;
-    CRemoteCalls*                       m_pRemoteCalls;
 
     // Revised facilities
     CServer                             m_Server;
@@ -667,7 +646,6 @@ private:
     bool                                m_bShowFPS;
 
     bool                                m_bTransferringInitialFiles;
-    bool                                m_bTransferringSingularFiles;
 
     float                               m_fGameSpeed;
     long                                m_lMoney;
@@ -703,11 +681,6 @@ private:
     bool                                m_bBeingDeleted;        // To enable speedy disconnect
 
     bool                                m_bWasMinimized;
-
-    bool                                m_bMuteSFX;
-    bool                                m_bMuteRadio;
-    bool                                m_bMuteMTA;
-    bool                                m_bMuteVoice;
 
     // Cache for speeding up collision processing
 public:

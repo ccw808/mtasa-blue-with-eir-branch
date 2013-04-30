@@ -120,15 +120,16 @@ namespace
                                          { "guiGridListGetColumnTitle",     "1.3.1-9.04945" },
                                          { "setAircraftMaxVelocity",        "1.3.1-9.04997" },
                                          { "getAircraftMaxVelocity",        "1.3.1-9.04997" },
-                                         { "guiStaticImageGetNativeSize",   "1.3.1-9.05122" },
-                                         { "toggleObjectRespawn",           "1.3.1-9.05122" },
-                                         { "breakObject",                   "1.3.1-9.05122" },
-                                         { "setObjectMass",                 "1.3.2" },
-                                         { "getObjectMass",                 "1.3.2" },
-                                         { "setCursorAlpha",                "1.3.2" },
-                                         { "getCursorAlpha",                "1.3.2" },
-                                         { "setFPSLimit",                   "1.3.2" },
-                                         { "fetchRemote",                   "1.3.2" },
+                                         { "setVehicleNitroActivated",      "1.3.1-9.04993" },
+                                         { "setVehicleNitroCount",          "1.3.1-9.04993" },
+                                         { "setVehicleNitroLevel",          "1.3.1-9.04993" },
+                                         { "isVehicleNitroRecharging",      "1.3.1-9.04993" },
+                                         { "isVehicleNitroActivated",       "1.3.1-9.04993" },
+                                         { "getVehicleNitroCount",          "1.3.1-9.04993" },
+                                         { "getVehicleNitroLevel",          "1.3.1-9.04993" },
+                                         { "setMoonSize",                   "1.3.1-9.05064" },
+                                         { "resetMoonSize",                 "1.3.1-9.05064" },
+                                         { "getMoonSize",                   "1.3.1-9.05064" },
                                         };
 
     SVersionItem serverFunctionInitList[] = {
@@ -179,6 +180,9 @@ namespace
                                          { "setPedWalkingStyle",        "1.3.1-9.04935" },
                                          { "setAircraftMaxVelocity",    "1.3.1-9.04997" },
                                          { "getAircraftMaxVelocity",    "1.3.1-9.04997" },
+                                         { "setMoonSize",               "1.3.1-9.05064" },
+                                         { "resetMoonSize",             "1.3.1-9.05064" },
+                                         { "getMoonSize",               "1.3.1-9.05064" },
                                         };
 
 

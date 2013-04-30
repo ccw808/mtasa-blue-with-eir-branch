@@ -230,16 +230,6 @@ bool CStaticFunctionDefinitions::WasEventCancelled ( void )
 }
 
 
-bool CStaticFunctionDefinitions::DownloadFile ( CResource* pResource, const char* szFile, CChecksum checksum )
-{
-    SString strHTTPDownloadURLFull ( "%s/%s/%s", g_pClientGame->GetHTTPURL().c_str(), pResource->GetName(), szFile );
-    SString strPath ( "%s\\resources\\%s\\%s", g_pClientGame->GetModRoot (),pResource->GetName(), szFile ); 
-    // Call SingularFileDownloadManager
-    g_pClientGame->GetSingularFileDownloadManager()->AddFile ( pResource, strPath.c_str(), szFile, strHTTPDownloadURLFull, checksum );
-    return true;
-}
-
-
 bool CStaticFunctionDefinitions::OutputConsole ( const char* szText )
 {
     m_pCore->GetConsole ()->Print ( szText );
@@ -3437,12 +3427,6 @@ bool CStaticFunctionDefinitions::IsObjectBreakable ( CClientObject& Object, bool
     return true;
 }
 
-bool CStaticFunctionDefinitions::GetObjectMass ( CClientObject& Object, float& fMass )
-{
-    fMass = Object.GetMass ();
-    return true;
-}
-
 bool CStaticFunctionDefinitions::SetObjectRotation ( CClientEntity& Entity, const CVector& vecRotation )
 {
     RUN_CHILDREN SetObjectRotation ( **iter, vecRotation );
@@ -3596,22 +3580,6 @@ bool CStaticFunctionDefinitions::ToggleObjectRespawn ( CClientEntity& Entity, bo
         CDeathmatchObject& Object = static_cast < CDeathmatchObject& > ( Entity );
         Object.SetRespawnEnabled ( bRespawn );
         return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetObjectMass ( CClientEntity& Entity, float fMass )
-{
-    if ( fMass >= 0.0f )
-    {
-        RUN_CHILDREN SetObjectMass ( **iter, fMass );
-
-        if ( IS_OBJECT ( &Entity ) )
-        {
-            CDeathmatchObject& Object = static_cast < CDeathmatchObject& > ( Entity );
-            Object.SetMass ( fMass );
-            return true;
-        }
     }
     return false;
 }
@@ -4408,24 +4376,6 @@ bool CStaticFunctionDefinitions::IsCursorShowing ( bool& bShowing )
 {
     bShowing = m_pClientGame->AreCursorEventsEnabled () || m_pCore->IsCursorForcedVisible();
     return true;
-}
-
-
-bool CStaticFunctionDefinitions::GetCursorAlpha ( float& fAlpha )
-{
-    fAlpha = m_pGUI->GetCurrentServerCursorAlpha ();
-    return true;
-}
-
-
-bool CStaticFunctionDefinitions::SetCursorAlpha ( float fAlpha )
-{
-    if ( fAlpha >= 0.0f && fAlpha <= 1.0f )
-    {
-        m_pGUI->SetCursorAlpha ( fAlpha, true );
-        return true;
-    }
-    return false;
 }
 
 
@@ -6157,22 +6107,6 @@ bool CStaticFunctionDefinitions::SetMoonSize ( int iSize )
     return false;
 }  
 
-bool CStaticFunctionDefinitions::SetFPSLimit( int iLimit )
-{
-    if ( iLimit == 0 || ( iLimit >= 25 && iLimit <= 100 ) )
-    {
-        g_pCore->SetClientScriptFrameRateLimit( iLimit );
-        return true;
-    }
-    return false;
-}  
-
-bool CStaticFunctionDefinitions::GetFPSLimit( int& iLimit )
-{
-    iLimit = g_pCore->GetFrameRateLimit();
-    return true;
-}  
-
 bool CStaticFunctionDefinitions::BindKey ( const char* szKey, const char* szHitState, CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFunction, CLuaArguments& Arguments )
 {
     assert ( szKey );
@@ -6851,7 +6785,7 @@ bool CStaticFunctionDefinitions::GetWeaponAmmo ( CClientWeapon * pWeapon, int &i
 {
     if ( pWeapon )
     {
-        iAmmo = pWeapon->GetAmmo( );
+        pWeapon->GetAmmo( iAmmo );
         return true;
     }
     return false;
@@ -6861,7 +6795,7 @@ bool CStaticFunctionDefinitions::GetWeaponClipAmmo ( CClientWeapon * pWeapon, in
 {
     if ( pWeapon )
     {
-        iAmmo = pWeapon->GetClipAmmo( );
+        pWeapon->GetClipAmmo( iAmmo );
         return true;
     }
     return false;
@@ -7034,10 +6968,6 @@ CClientSound* CStaticFunctionDefinitions::PlaySound3D ( CResource* pResource, co
 
 bool CStaticFunctionDefinitions::StopSound ( CClientSound& Sound )
 {
-    // call onClientSoundStopped
-    CLuaArguments Arguments;
-    Arguments.PushString ( "destroyed" );     // Reason
-    Sound.CallEvent ( "onClientSoundStopped", Arguments, false );
     g_pClientGame->GetElementDeleter()->Delete ( &Sound );
     return true;
 }

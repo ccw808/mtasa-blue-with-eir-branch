@@ -22,7 +22,6 @@
 #include <cstdio>
 #include <cstring>
 
-#include <base64.h>
 #include <zlib.h>
 
 // SDK includes
@@ -46,7 +45,6 @@
 #include "Enums.h"
 #include "net/SyncStructures.h"
 #include "CIdArray.h"
-#include "pcrecpp.h"
 
 // Shared logic includes
 #include <Utils.h>
@@ -84,6 +82,7 @@
 #include <CClientTexture.h>
 #include <CClientShader.h>
 #include <CCustomData.h>
+#include <CConfig.h>
 #include <CElementArray.h>
 #include <CLogger.h>
 #include <CMapEventManager.h>
@@ -98,12 +97,9 @@
 #include <lua/CLuaFunctionParseHelpers.h>
 #include <CScriptArgReader.h>
 #include <luadefs/CLuaDefs.h>
-#include <luadefs/CLuaClassDefs.h>
-#include <luadefs/CLuaVectorDefs.h>
 #include <luadefs/CLuaTaskDefs.h>
 #include <luadefs/CLuaFxDefs.h>
 #include <luadefs/CLuaFileDefs.h>
-#include <CRemoteCalls.h>
 
 // Shared includes
 #include "TInterpolation.h"
@@ -118,6 +114,7 @@
 #include "HeapTrace.h"
 #include "logic/CClientGame.h"
 #include "net/Packets.h"
+#include "logic/CClientEntityRefManager.h"
 #include "logic/CGameEntityXRefManager.h"
 #include "logic/CClientModelCacheManager.h"
 #include "logic/CClientPerfStatManager.h"
@@ -125,5 +122,3 @@
 #include "logic/CResource.h"
 #include "logic/CStaticFunctionDefinitions.h"
 #include "../../version.h"
-
-

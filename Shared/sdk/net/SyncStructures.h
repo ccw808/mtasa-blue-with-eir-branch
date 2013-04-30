@@ -714,6 +714,19 @@ struct SVehiclePuresyncFlags : public ISyncStructure
         bool bHasAWeapon : 1;
         bool bIsHeliSearchLightVisible : 1;
     } data;
+
+    void FixDerailedState ( const unsigned short uiModel )
+    {
+        if ( uiModel == 449 ||
+            uiModel == 537 ||
+            uiModel == 538 ||
+            uiModel == 570 ||
+            uiModel == 569 ||
+            uiModel == 590 )
+        {
+            data.bIsLandingGearDown = data.bIsDerailed;
+        }
+    }
 };
 
 
@@ -1799,22 +1812,14 @@ struct SMapInfoFlagsSync : public ISyncStructure
 struct SFunBugsStateSync : public ISyncStructure
 {
     enum { BITCOUNT = 5 };
-    enum { BITCOUNT2 = 1 };
 
     bool Read ( NetBitStreamInterface& bitStream )
     {
-        bool bOk = bitStream.ReadBits ( reinterpret_cast < char* > ( &data ), BITCOUNT );
-        if ( bitStream.Version() >= 0x046 )
-            bOk &= bitStream.ReadBits ( reinterpret_cast < char* > ( &data2 ), BITCOUNT2 );
-        else
-            data2.bHitAnim = 0;
-        return bOk;
+        return bitStream.ReadBits ( reinterpret_cast < char* > ( &data ), BITCOUNT );
     }
     void Write ( NetBitStreamInterface& bitStream ) const
     {
         bitStream.WriteBits ( reinterpret_cast < const char* > ( &data ), BITCOUNT );
-        if ( bitStream.Version() >= 0x046 )
-            bitStream.WriteBits ( reinterpret_cast < const char* > ( &data2 ), BITCOUNT2 );
     }
 
     struct
@@ -1825,12 +1830,6 @@ struct SFunBugsStateSync : public ISyncStructure
         bool bFastMove : 1;
         bool bCrouchBug : 1;
     } data;
-
-    // Add new ones in separate structs
-    struct
-    {
-        bool bHitAnim : 1;
-    } data2;
 };
 
 
@@ -2021,7 +2020,7 @@ struct SColorSync : public ISyncStructure
 //////////////////////////////////////////
 struct SOccupiedSeatSync : public ISyncStructure
 {
-    enum { BITCOUNT = 4 };
+    enum { BITCOUNT = 3 };
 
     bool Read ( NetBitStreamInterface& bitStream )
     {
@@ -2034,7 +2033,7 @@ struct SOccupiedSeatSync : public ISyncStructure
 
     struct
     {
-        unsigned char ucSeat : 4;
+        unsigned char ucSeat : 3;
     } data;
 };
 

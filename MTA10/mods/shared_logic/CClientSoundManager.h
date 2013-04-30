@@ -48,9 +48,6 @@ public:
     void                    OnDistanceStreamIn          ( CClientSound* pSound );
     void                    OnDistanceStreamOut         ( CClientSound* pSound );
 
-    inline bool             IsMTAMuted                  ( void )                    { return m_bMuteMTA; };
-    inline void             SetMTAMuted                 ( bool bMute )              { m_bMuteMTA = bMute; };
-
 private:
 
     CClientManager*                 m_pClientManager;
@@ -62,8 +59,6 @@ private:
 
     std::map < std::string, int >   m_FxEffectNames;
     SString                         m_strUserAgent;
-
-    bool                            m_bMuteMTA;
 };
 
 #endif

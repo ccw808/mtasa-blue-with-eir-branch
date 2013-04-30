@@ -72,11 +72,9 @@ enum eMovementState
     MOVEMENTSTATE_JOG, //Jogging
     MOVEMENTSTATE_SPRINT, //Sprinting
     MOVEMENTSTATE_CROUCH, //Crouching still
+    // Duds for now.  We should add methods to detect these
     MOVEMENTSTATE_CRAWL, //Crouch-moving
-    MOVEMENTSTATE_ROLL, //Crouch-rolling (Needs adding)
-    MOVEMENTSTATE_JUMP, // Jumping
-    MOVEMENTSTATE_FALL, // Falling
-    MOVEMENTSTATE_CLIMB // Climbing
+    MOVEMENTSTATE_ROLL, //Crouch-rolling
 };
 
 enum eDeathAnims
@@ -242,7 +240,6 @@ public:
     bool                        IsDead                      ( void );
     void                        Kill                        ( eWeaponType weaponType, unsigned char ucBodypart, bool bStealth = false, bool bSetDirectlyDead = false, AssocGroupId animGroup = 0, AnimationId animID = 15 );
     void                        StealthKill                 ( CClientPed * pPed );
-    void                        BeHit                       ( CClientPed* pClientPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
 
     inline int                  GetRespawnState             ( void )                                    { return m_pRespawnState; };
     inline void                 SetRespawnState             ( int iRespawnState )                       { m_pRespawnState = iRespawnState; };
@@ -495,8 +492,8 @@ public:
     bool                        m_bHealthLocked;
     bool                        m_bArmorLocked;
     unsigned long               m_ulLastOnScreenTime;
-    CClientVehiclePtr           m_pOccupiedVehicle;
-    CClientVehiclePtr           m_pOccupyingVehicle;
+    CClientVehicle*             m_pOccupiedVehicle;
+    CClientVehicle*             m_pOccupyingVehicle;
     //unsigned int                m_uiOccupyingSeat;
     unsigned int                m_uiOccupiedVehicleSeat;
     bool                        m_bForceGettingIn;
@@ -535,7 +532,7 @@ public:
     CVector                     m_vecTargetTarget;
     CVector                     m_vecTargetTargetAngle;
     CVector                     m_vecTargetInterpolateAngle;
-    CClientEntityPtr            m_pTargetedEntity;
+    CClientEntity*              m_pTargetedEntity;
     std::list < SDelayedSyncData* >  m_SyncBuffer;
     bool                        m_bDucked;
     bool                        m_bWasDucked; //For knowing when to register standing up
@@ -563,7 +560,7 @@ public:
     float                       m_fTargetRotation;
     int                         m_iVehicleInOutState;
     bool                        m_bRecreatingModel;
-    CClientEntityPtr            m_pCurrentContactEntity;
+    CClientEntity *             m_pCurrentContactEntity;
     bool                        m_bSunbathing;
     CClientPad                  m_Pad;
     bool                        m_bDestroyingSatchels;
@@ -593,7 +590,7 @@ public:
     uint                        m_uiFrameLastRebuildPlayer;
 
     bool                        m_bBulletImpactData;
-    CClientEntityPtr            m_pBulletImpactEntity;
+    CClientEntity*              m_pBulletImpactEntity;
     CVector                     m_vecBulletImpactHit;
 
     // Time dependent interpolation
@@ -608,7 +605,7 @@ public:
             float           fLastAlpha;
         } pos;
 
-        CClientEntityPtr    pTargetOriginSource;
+        CClientEntity*      pTargetOriginSource;
         // These variables are used to track the last known position
         // of the contact entity for if it's removed during the
         // interpolation.

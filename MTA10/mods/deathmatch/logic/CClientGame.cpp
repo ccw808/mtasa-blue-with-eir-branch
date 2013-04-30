@@ -120,7 +120,6 @@ CClientGame::CClientGame ( bool bLocalPlay )
     m_Glitches [ GLITCH_CROUCHBUG ] = false;
     m_Glitches [ GLITCH_CLOSEDAMAGE ] = false;
     g_pMultiplayer->DisableCloseRangeDamage ( true );
-    m_Glitches [ GLITCH_HITANIM ] = false;
 
     // Remove Night & Thermal vision view (if enabled).
     g_pMultiplayer->SetNightVisionEnabled ( false );
@@ -187,7 +186,6 @@ CClientGame::CClientGame ( bool bLocalPlay )
     m_pLatentTransferManager = new CLatentTransferManager ();
     m_pZoneNames = new CZoneNames;
     m_pScriptKeyBinds = new CScriptKeyBinds;
-    m_pRemoteCalls = new CRemoteCalls();
 
     // Create our net API
     m_pNetAPI = new CNetAPI ( m_pManager );
@@ -228,9 +226,6 @@ CClientGame::CClientGame ( bool bLocalPlay )
     // MTA Voice
     m_pVoiceRecorder = new CVoiceRecorder();
 
-    // Singular file download manager
-    m_pSingularFileDownloadManager = new CSingularFileDownloadManager();
-
     // Register the message and the net packet handler
     g_pMultiplayer->SetPreWeaponFireHandler ( CClientGame::PreWeaponFire );
     g_pMultiplayer->SetPostWeaponFireHandler ( CClientGame::PostWeaponFire );
@@ -264,7 +259,6 @@ CClientGame::CClientGame ( bool bLocalPlay )
     g_pMultiplayer->SetGameEntityRenderHandler( CClientGame::StaticGameEntityRenderHandler );
     g_pGame->SetPreWeaponFireHandler ( CClientGame::PreWeaponFire );
     g_pGame->SetPostWeaponFireHandler ( CClientGame::PostWeaponFire );
-    g_pGame->SetTaskSimpleBeHitHandler ( CClientGame::StaticTaskSimpleBeHitHandler );
     g_pCore->SetMessageProcessor ( CClientGame::StaticProcessMessage );
     g_pCore->GetKeyBinds ()->SetKeyStrokeHandler ( CClientGame::StaticKeyStrokeHandler );
     g_pCore->GetKeyBinds ()->SetCharacterKeyHandler ( CClientGame::StaticCharacterKeyHandler );
@@ -373,10 +367,6 @@ CClientGame::~CClientGame ( void )
     delete m_pVoiceRecorder;
     m_pVoiceRecorder = NULL;
 
-    // Singular file download manager
-    delete m_pSingularFileDownloadManager;
-    m_pSingularFileDownloadManager = NULL;
-
     // NULL the message/net stuff
     g_pMultiplayer->SetPreContextSwitchHandler ( NULL );
     g_pMultiplayer->SetPostContextSwitchHandler ( NULL );
@@ -410,7 +400,6 @@ CClientGame::~CClientGame ( void )
     g_pMultiplayer->SetGameEntityRenderHandler( NULL );
     g_pGame->SetPreWeaponFireHandler ( NULL );
     g_pGame->SetPostWeaponFireHandler ( NULL );
-    g_pGame->SetTaskSimpleBeHitHandler ( NULL );
     g_pGame->GetAudio ()->SetWorldSoundHandler ( NULL );
     g_pCore->SetMessageProcessor ( NULL );
     g_pCore->GetKeyBinds ()->SetKeyStrokeHandler ( NULL );
@@ -452,7 +441,6 @@ CClientGame::~CClientGame ( void )
     delete m_pGameEntityXRefManager;
     delete m_pZoneNames;
     delete m_pScriptKeyBinds;    
-    SAFE_DELETE( m_pRemoteCalls );
 
     // Delete the scriptdebugger
     delete m_pScriptDebugging;
@@ -518,9 +506,8 @@ void CClientGame::StartPlayback ( void )
     }
 }
 
-bool CClientGame::StartGame ( const char* szNick, const char* szPassword, eServerType Type )
+bool CClientGame::StartGame ( const char* szNick, const char* szPassword )
 {
-    m_ServerType = Type;
     int dbg = _CrtSetDbgFlag ( _CRTDBG_REPORT_FLAG );
     //dbg |= _CRTDBG_ALLOC_MEM_DF;
     //dbg |= _CRTDBG_CHECK_ALWAYS_DF;
@@ -614,16 +601,15 @@ bool CClientGame::StartGame ( const char* szNick, const char* szPassword, eServe
 }
 
 
-void CClientGame::SetupLocalGame ( eServerType Type )
+void CClientGame::SetupLocalGame ( const char* szConfig )
 {
-    SString strConfig = (Type == SERVER_TYPE_EDITOR) ? "editor.conf" : "local.conf";
     m_bWaitingForLocalConnect = true;
     if ( !m_pLocalServer )
-        m_pLocalServer = new CLocalServer ( strConfig );
+        m_pLocalServer = new CLocalServer ( szConfig );
 }
 
 
-bool CClientGame::StartLocalGame ( eServerType Type, const char* szPassword )
+bool CClientGame::StartLocalGame ( const char* szConfig, const char* szPassword )
 {
     // Verify that the nickname is valid
     std::string strNick;
@@ -637,8 +623,9 @@ bool CClientGame::StartLocalGame ( eServerType Type, const char* szPassword )
     }
 
     m_bWaitingForLocalConnect = false;
-    m_ServerType = Type;
-    SString strTemp = (Type == SERVER_TYPE_EDITOR) ? "editor.conf" : "local.conf";
+
+    // Gotta copy the config in case we got it from local server setup gui
+    SString strTemp = szConfig;
 
     if ( m_pLocalServer )
     {
@@ -714,33 +701,6 @@ void CClientGame::DoPulsePreHUDRender ( bool bDidUnminimize, bool bDidRecreateRe
         Arguments.PushBoolean ( bDidRecreateRenderTargets );
         m_pRootEntity->CallEvent ( "onClientRestore", Arguments, false );
         m_bWasMinimized = false;
-
-        if ( m_bMuteSFX )
-        {
-            unsigned char ucOldSFXVolume = g_pGame->GetSettings ()->GetSFXVolume ();
-            g_pGame->GetAudio ()->SetEffectsMasterVolume ( ucOldSFXVolume );
-        }
-
-        if ( m_bMuteRadio )
-        {
-            unsigned char ucOldRadioVolume = g_pGame->GetSettings ()->GetRadioVolume ();
-            g_pGame->GetAudio ()->SetMusicMasterVolume ( ucOldRadioVolume );
-        }
-
-        if ( m_bMuteMTA )
-        {
-            m_pManager->GetSoundManager ()->SetMTAMuted ( false );
-        }
-
-        if ( m_bMuteVoice )
-        {
-            CClientPlayer* pPlayer = g_pClientGame->m_pPlayerManager->GetLocalPlayer ();
-            CClientPlayerVoice * pVoice = pPlayer->GetVoice();
-            if ( pVoice != NULL )
-            {
-                pVoice->SetVoiceMuted ( false );
-            }
-        }
     }
 
     // Call onClientHUDRender LUA event
@@ -1079,7 +1039,7 @@ void CClientGame::DoPulses ( void )
             g_pNet->SetServerBitStreamVersion ( MTA_DM_BITSTREAM_VERSION );
 
             // Run the game normally.
-            StartGame ( m_strLocalNick, m_Server.GetPassword().c_str(), m_ServerType );
+            StartGame ( m_strLocalNick, m_Server.GetPassword().c_str() );
         }
         else
         {
@@ -1187,8 +1147,7 @@ void CClientGame::DoPulses ( void )
     {
         // Pulse DownloadFiles if we're transferring stuff
         DownloadInitialResourceFiles ();
-        DownloadSingularResourceFiles ();
-        g_pNet->GetHTTPDownloadManager ( EDownloadMode::CALL_REMOTE )->ProcessQueuedFiles ();
+
     }
 
     // Not waiting for local connect?
@@ -2840,16 +2799,11 @@ void CClientGame::AddBuiltInEvents ( void )
     m_Events.AddEvent ( "onClientSoundStream", "success, length, streamName", NULL, false );
     m_Events.AddEvent ( "onClientSoundFinishedDownload", "length", NULL, false );
     m_Events.AddEvent ( "onClientSoundChangedMeta", "streamTitle", NULL, false );
-    m_Events.AddEvent ( "onClientSoundStarted", "reason", NULL, false );
-    m_Events.AddEvent ( "onClientSoundStopped", "reason", NULL, false );
     m_Events.AddEvent ( "onClientSoundBeat", "time", NULL, false );
 
     // Object events
     m_Events.AddEvent ( "onClientObjectDamage", "loss, attacker", NULL, false );
     m_Events.AddEvent ( "onClientObjectBreak", "attacker", NULL, false );
-
-    // Misc events
-    m_Events.AddEvent ( "onClientFileDownloadComplete", "fileName, success", NULL, false );
     
     m_Events.AddEvent ( "onClientWeaponFire", "ped, x, y, z", NULL, false );
 }
@@ -3569,11 +3523,6 @@ void CClientGame::Event_OnIngameAndConnected ( void )
     //g_pCore->ShowMessageBox ( "Connecting", "Verifying client ...", false );
     m_ulVerifyTimeStart = CClientTime::GetTime ();
     
-    // Keep criminal records of how many times they've connected to servers
-    SetApplicationSettingInt ( "times-connected", GetApplicationSettingInt("times-connected") + 1 );
-    if ( m_ServerType == SERVER_TYPE_EDITOR )
-        SetApplicationSettingInt ( "times-connected-editor", GetApplicationSettingInt ("times-connected-editor") + 1 );
-
     /*
     // Notify the server telling we're ingame
     NetBitStreamInterface* pBitStream = g_pNet->AllocateNetBitStream ();
@@ -3730,11 +3679,6 @@ void CClientGame::StaticGameEntityRenderHandler ( CEntitySAInterface* pGameEntit
     g_pGame->GetRenderWare ()->SetRenderingClientEntity ( NULL, 0xFFFF, TYPE_MASK_WORLD );
 }
 
-void CClientGame::StaticTaskSimpleBeHitHandler ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId )
-{
-    g_pClientGame->TaskSimpleBeHitHandler ( pPedAttacker, hitBodyPart, hitBodySide, weaponId );
-}
-
 void CClientGame::DrawRadarAreasHandler ( void )
 {
     m_pRadarAreaManager->DoPulse ();
@@ -3844,36 +3788,6 @@ void CClientGame::IdleHandler ( void )
             // Call onClientMinimize LUA event
             CLuaArguments Arguments;
             m_pRootEntity->CallEvent ( "onClientMinimize", Arguments, false );
-
-            g_pCore->GetCVars ()->Get ( "mute_sfx_when_minimized", m_bMuteSFX );
-            g_pCore->GetCVars ()->Get ( "mute_radio_when_minimized", m_bMuteRadio );
-            g_pCore->GetCVars ()->Get ( "mute_mta_when_minimized", m_bMuteMTA );
-            g_pCore->GetCVars ()->Get ( "mute_voice_when_minimized", m_bMuteVoice );
-
-            if ( m_bMuteSFX )
-            {
-                g_pGame->GetAudio ()->SetEffectsMasterVolume ( 0 );
-            }
-
-            if ( m_bMuteRadio )
-            {
-                g_pGame->GetAudio ()->SetMusicMasterVolume ( 0 );
-            }
-
-            if ( m_bMuteMTA )
-            {
-                m_pManager->GetSoundManager ()->SetMTAMuted ( true );
-            }
-
-            if ( m_bMuteVoice )
-            {
-                CClientPlayer* pPlayer = g_pClientGame->m_pPlayerManager->GetLocalPlayer ();
-                CClientPlayerVoice * pVoice = pPlayer->GetVoice();
-                if ( pVoice != NULL )
-                {
-                    pVoice->SetVoiceMuted ( true );
-                }
-            }
         }
     }
 
@@ -4006,31 +3920,6 @@ void CClientGame::DownloadInitialResourceFiles ( void )
             g_pCore->GetModManager ()->RequestUnload ();
             g_pCore->ShowMessageBox ( "Error", szHTTPError, MB_BUTTON_OK | MB_ICON_ERROR );
             g_pCore->GetConsole ()->Printf ( "Download error: %s", szHTTPError );
-        }
-    }
-}
-
-
-//
-// On demand files
-//
-void CClientGame::DownloadSingularResourceFiles ( void )
-{
-    if ( !IsTransferringSingularFiles () )
-        return;
-
-    CNetHTTPDownloadManagerInterface* pHTTP = g_pNet->GetHTTPDownloadManager ( EDownloadMode::RESOURCE_SINGULAR_FILES );
-    if ( !pHTTP->ProcessQueuedFiles () )
-    {
-        // Downloading
-    }
-    else
-    {
-        // Can't clear list until all files have been processed
-        if ( m_pSingularFileDownloadManager->AllComplete () )
-        {
-            SetTransferringSingularFiles ( false );
-            m_pSingularFileDownloadManager->ClearList ();
         }
     }
 }
@@ -4241,7 +4130,6 @@ bool CClientGame::DamageHandler ( CPed* pDamagePed, CEventDamage * pEvent )
             }
 
             bool bIsBeingShotWhilstAiming = ( weaponUsed >= WEAPONTYPE_PISTOL && weaponUsed <= WEAPONTYPE_MINIGUN && pDamagedPed->IsUsingGun () );
-            bool bOldBehaviour = !IsGlitchEnabled( GLITCH_HITANIM );
 
             // Check if their health or armor is locked, and if so prevent applying the damage locally
             if ( pDamagedPed->IsHealthLocked () || pDamagedPed->IsArmorLocked () )
@@ -4250,18 +4138,11 @@ bool CClientGame::DamageHandler ( CPed* pDamagePed, CEventDamage * pEvent )
                 pDamagedPed->GetGamePlayer ()->SetHealth ( pDamagedPed->GetHealth () );
                 pDamagedPed->GetGamePlayer ()->SetArmor ( pDamagedPed->GetArmor () );
 
-                if ( bOldBehaviour )
-                {
-                    // Don't play the animation if it's going to be a death one, or if it's going to interrupt aiming
-                    if ( fCurrentHealth == 0.0f || bIsBeingShotWhilstAiming )
-                        return false;
+                // Don't play the animation if it's going to be a death one, or if it's going to interrupt aiming
+                if ( fCurrentHealth == 0.0f || bIsBeingShotWhilstAiming ) return false;
 
-                    // Allow animation for remote players
-                    return true;
-                }
-
-                // No hit animation for remote players
-                return false;
+                // Allow animation and ensure the code below is not executed if health and armor are locked (i.e. remote players)
+                return true;
             }
 
             // Update our stored health/armor
@@ -4329,10 +4210,8 @@ bool CClientGame::DamageHandler ( CPed* pDamagePed, CEventDamage * pEvent )
                     }
                 }
             }
-
             // Inhibit hit-by-gun animation for local player if required
-            if ( bOldBehaviour )
-                if ( pDamagedPed->IsLocalPlayer () && bIsBeingShotWhilstAiming ) return false;
+            if ( pDamagedPed->IsLocalPlayer () && bIsBeingShotWhilstAiming ) return false;
 
             ///////////////////////////////////////////////////////////////////////////
             // Pass 2 end
@@ -4638,27 +4517,6 @@ void CClientGame::GameModelRemoveHandler ( ushort usModelId )
     m_pGameEntityXRefManager->OnGameModelRemove ( usModelId );
 }
 
-void CClientGame::TaskSimpleBeHitHandler ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId )
-{
-    bool bOldBehaviour = !IsGlitchEnabled( GLITCH_HITANIM );
-    if ( bOldBehaviour )
-        return;
-
-    CClientPed* pClientPedAttacker = DynamicCast < CClientPed > ( GetGameEntityXRefManager()->FindClientEntity( (CEntitySAInterface*)pPedAttacker ) );
-
-    // Make sure cause was networked ped
-    if ( pClientPedAttacker && !pClientPedAttacker->IsLocalEntity() )
-    {
-        NetBitStreamInterface* pBitStream = g_pNet->AllocateNetBitStream ();
-        pBitStream->Write( (ushort)TASK_SIMPLE_BE_HIT );
-        pBitStream->Write( pClientPedAttacker->GetID() );
-        pBitStream->Write( (uchar)hitBodyPart );
-        pBitStream->Write( (uchar)hitBodySide );
-        pBitStream->Write( (uchar)weaponId );
-        g_pNet->SendPacket( PACKET_ID_PED_TASK, pBitStream, PACKET_PRIORITY_HIGH, PACKET_RELIABILITY_RELIABLE_ORDERED );
-        g_pNet->DeallocateNetBitStream( pBitStream );
-    }
-}
 
 bool CClientGame::StaticProcessMessage ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 {
@@ -4798,7 +4656,7 @@ void CClientGame::ProcessVehicleInOutKey ( bool bPassenger )
                                                     bool bIsOnWater = pVehicle->IsOnWater ();
                                                     unsigned char ucDoor = static_cast < unsigned char > ( uiDoor );
                                                     pBitStream->WriteBits ( &ucAction, 4 );
-                                                    pBitStream->WriteBits ( &ucSeat, 4 );
+                                                    pBitStream->WriteBits ( &ucSeat, 3 );
                                                     pBitStream->WriteBit ( bIsOnWater );
                                                     pBitStream->WriteBits ( &ucDoor, 3 );
 
@@ -5348,13 +5206,6 @@ void CClientGame::ResetMapInfo ( void )
         m_pLocalPlayer->SetVoice ( sVoiceType, sVoiceID );
 
         m_pLocalPlayer->DestroySatchelCharges( false, true );
-        // Tell the server we want to destroy our satchels
-        NetBitStreamInterface* pBitStream = g_pNet->AllocateNetBitStream ();
-        if ( pBitStream )
-        {
-            g_pNet->SendPacket ( PACKET_ID_DESTROY_SATCHELS, pBitStream, PACKET_PRIORITY_HIGH, PACKET_RELIABILITY_RELIABLE_ORDERED );
-            g_pNet->DeallocateNetBitStream ( pBitStream );
-        }
     }
 }
 
@@ -5638,12 +5489,6 @@ bool CClientGame::OnMouseEnter ( CGUIMouseEventArgs Args )
     CLuaArguments Arguments;
     Arguments.PushNumber ( Args.position.fX );
     Arguments.PushNumber ( Args.position.fY );
-    if ( Args.pSwitchedWindow )
-    {
-        CClientGUIElement * pGUISwitchedElement = CGUI_GET_CCLIENTGUIELEMENT ( Args.pSwitchedWindow );
-        if ( pGUISwitchedElement )
-            Arguments.PushElement( pGUISwitchedElement );
-    }
 
     CClientGUIElement * pGUIElement = CGUI_GET_CCLIENTGUIELEMENT ( Args.pWindow );
     if ( GetGUIManager ()->Exists ( pGUIElement ) ) pGUIElement->CallEvent ( "onClientMouseEnter", Arguments, true );
@@ -5659,12 +5504,6 @@ bool CClientGame::OnMouseLeave ( CGUIMouseEventArgs Args )
     CLuaArguments Arguments;
     Arguments.PushNumber ( Args.position.fX );
     Arguments.PushNumber ( Args.position.fY );
-    if ( Args.pSwitchedWindow )
-    {
-        CClientGUIElement * pGUISwitchedElement = CGUI_GET_CCLIENTGUIELEMENT ( Args.pSwitchedWindow );
-        if ( pGUISwitchedElement )
-            Arguments.PushElement( pGUISwitchedElement );
-    }
 
     CClientGUIElement * pGUIElement = CGUI_GET_CCLIENTGUIELEMENT ( Args.pWindow );
     if ( GetGUIManager ()->Exists ( pGUIElement ) ) pGUIElement->CallEvent ( "onClientMouseLeave", Arguments, true );

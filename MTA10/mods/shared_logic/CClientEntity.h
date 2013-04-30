@@ -23,7 +23,6 @@ class CClientEntity;
 #include "CElementArray.h"
 #include "CClientCommon.h"
 #include <core/CClientEntityBase.h>
-#include "logic/CClientEntityRefManager.h"
 class CLuaFunctionRef;
 
 // Used to check fast version of getElementsByType

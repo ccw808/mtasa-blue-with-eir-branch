@@ -178,10 +178,6 @@ bool CPacketHandler::ProcessPacket ( unsigned char ucPacketID, NetBitStreamInter
             Packet_DetonateSatchels ( bitStream );
             return true;
 
-        case PACKET_ID_DESTROY_SATCHELS:
-            Packet_DestroySatchels ( bitStream );
-            return true;
-
         case PACKET_ID_VOICE_DATA:
             Packet_VoiceData ( bitStream );
             return true;
@@ -196,10 +192,6 @@ bool CPacketHandler::ProcessPacket ( unsigned char ucPacketID, NetBitStreamInter
 
         case PACKET_ID_SYNC_SETTINGS:
             Packet_SyncSettings ( bitStream );
-            return true;
-
-        case PACKET_ID_PED_TASK:
-            Packet_PedTask ( bitStream );
             return true;
 
         default:             break;
@@ -272,8 +264,9 @@ void CPacketHandler::Packet_ServerConnected ( NetBitStreamInterface& bitStream )
     }
 
     // Get the long server version
-    SString strServerVersionSortable;
-    bitStream.ReadString ( strServerVersionSortable );
+    SString strServerVersionSortable = SStringX ( szVersionString ).SplitRight ( " ", NULL, 2 ).SplitLeft ( " " );
+    if ( bitStream.Version () >= 0x29 )
+        bitStream.ReadString ( strServerVersionSortable );
     g_pClientGame->SetServerVersionSortable ( strServerVersionSortable );
 
     //m_Status = CClientGame::STATUS_TRANSFER;
@@ -1473,7 +1466,7 @@ void CPacketHandler::Packet_Vehicle_InOut ( NetBitStreamInterface& bitStream )
             {
                 // Read out the seat id
                 unsigned char ucSeat = 0xFF;
-                bitStream.ReadBits ( &ucSeat, 4 );
+                bitStream.ReadBits ( &ucSeat, 3 );
                 if ( ucSeat == 0xFF )
                 {
                     RaiseProtocolError ( 28 );
@@ -2119,7 +2112,6 @@ void CPacketHandler::Packet_MapInfo ( NetBitStreamInterface& bitStream )
     g_pClientGame->SetGlitchEnabled ( CClientGame::GLITCH_FASTMOVE, funBugs.data.bFastMove );
     g_pClientGame->SetGlitchEnabled ( CClientGame::GLITCH_CROUCHBUG, funBugs.data.bCrouchBug );
     g_pClientGame->SetGlitchEnabled ( CClientGame::GLITCH_CLOSEDAMAGE, funBugs.data.bCloseRangeDamage );
-    g_pClientGame->SetGlitchEnabled ( CClientGame::GLITCH_HITANIM, funBugs.data2.bHitAnim );
 
     float fJetpackMaxHeight = 100;
     if ( !bitStream.Read ( fJetpackMaxHeight ) )
@@ -2180,10 +2172,11 @@ void CPacketHandler::Packet_MapInfo ( NetBitStreamInterface& bitStream )
             if ( !bitStream.Read ( iMoonSize ) )
                 return;
 
+
             g_pMultiplayer->SetMoonSize ( iMoonSize );
         }
     }
-
+	
     // Sun size
     bool bOverrideSunSize = false;
     float fSunSize;
@@ -2256,14 +2249,14 @@ void CPacketHandler::Packet_MapInfo ( NetBitStreamInterface& bitStream )
         return;
     
     g_pGame->GetWorld ()->SetAircraftMaxHeight ( fAircraftMaxHeight );
-
+	
     // Aircraft max velocity
     float fAircraftMaxVelocity = 1.5f;
     if ( bitStream.Version () >= 0x3E )
     {
         if ( !bitStream.Read ( fAircraftMaxVelocity ) )
             return;
-
+    
         g_pGame->GetWorld ()->SetAircraftMaxVelocity ( fAircraftMaxVelocity );
     }
 
@@ -2684,7 +2677,6 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     break;
                 }
                 case CClientGame::OBJECT:
-                case CClientGame::WEAPON:
                 {
                     unsigned short usObjectID;
                     SEntityAlphaSync alpha;
@@ -2706,20 +2698,13 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                         bool bIsLowLod;
                         bitStream.ReadBit ( bIsLowLod );
                         bitStream.Read ( LowLodObjectID );
-                        CClientObject * pObject = NULL;
-                        if ( ucEntityTypeID == CClientGame::OBJECT )
-                        {
-                            // Create the object and put it at its position
+
+                        // Create the object and put it at its position
 #ifdef WITH_OBJECT_SYNC
-                            pObject = new CDeathmatchObject ( g_pClientGame->m_pManager, g_pClientGame->m_pMovingObjectsManager, g_pClientGame->m_pObjectSync, EntityID, usObjectID );
+                        CDeathmatchObject* pObject = new CDeathmatchObject ( g_pClientGame->m_pManager, g_pClientGame->m_pMovingObjectsManager, g_pClientGame->m_pObjectSync, EntityID, usObjectID );
 #else
-                            pObject = new CDeathmatchObject ( g_pClientGame->m_pManager, g_pClientGame->m_pMovingObjectsManager, EntityID, usObjectID, bIsLowLod );
+                        CDeathmatchObject* pObject = new CDeathmatchObject ( g_pClientGame->m_pManager, g_pClientGame->m_pMovingObjectsManager, EntityID, usObjectID, bIsLowLod );
 #endif
-                        }
-                        else if ( ucEntityTypeID == CClientGame::WEAPON )
-                        {
-                            pObject = new CClientWeapon ( g_pClientGame->m_pManager, EntityID, eWeaponType::WEAPONTYPE_AK47 );
-                        }
                         pEntity = pObject;
                         if ( pObject )
                         {
@@ -2741,11 +2726,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                             CPositionRotationAnimation* pAnimation = CPositionRotationAnimation::FromBitStream ( bitStream );
                             if ( pAnimation != NULL )
                             {
-                                CDeathmatchObject * pDeathmatchObject = ((CDeathmatchObject *) pObject);
-                                if ( pDeathmatchObject ) 
-                                {
-                                    pDeathmatchObject->StartMovement ( *pAnimation );
-                                }
+                                pObject->StartMovement ( *pAnimation );
                                 delete pAnimation;
                             }
                         }
@@ -2790,100 +2771,6 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                             pObject->SetHealth ( health.data.fValue );
 
                         pObject->SetCollisionEnabled ( bCollisonsEnabled );
-                        if ( ucEntityTypeID == CClientGame::WEAPON )
-                        {
-                            CClientWeapon* pWeapon = (CClientWeapon *) pObject;
-                            unsigned char ucTargetType = eTargetType::TARGET_TYPE_FIXED;
-                            bitStream.ReadBits ( &ucTargetType, 3 ); // 3 bits = 4 possible values.
-                            switch ( ucTargetType )
-                            {
-                                case TARGET_TYPE_FIXED:
-                                {
-                                    break;
-                                }
-                                case TARGET_TYPE_ENTITY:
-                                {
-                                    CClientEntity * pTarget = NULL;
-                                    ElementID targetID = 0;
-                                    unsigned char ucSubTarget = 0;
-
-                                    bitStream.Read ( targetID );
-                                    pTarget = CElementIDs::GetElement ( targetID );
-                                    if ( pTarget )
-                                    {
-                                        if ( IS_PED ( pTarget ) )
-                                        {
-                                            bitStream.Read ( ucSubTarget ); // Send the entire unsigned char as there are a lot of bones.
-                                        }
-                                        else if ( IS_VEHICLE ( pTarget ) )
-                                        {
-                                            bitStream.ReadBits ( &ucSubTarget, 4 );
-                                        }
-                                        pWeapon->SetWeaponTarget ( pTarget, ucSubTarget ); // 4 bits = 8 possible values.
-                                    }
-                                    break;
-                                }
-                                case TARGET_TYPE_VECTOR:
-                                {
-                                    CVector vecTarget;
-                                    bitStream.ReadVector ( vecTarget.fX, vecTarget.fY, vecTarget.fZ );
-                                    pWeapon->SetWeaponTarget ( vecTarget );
-                                    break;
-                                }
-                            }
-                            bool bChanged = false;
-                            bitStream.ReadBit ( bChanged );
-                            if ( bChanged )
-                            {
-                                float fAccuracy, fTargetRange, fWeaponRange;
-                                unsigned short usDamagePerHit;
-                                bitStream.ReadBits ( &usDamagePerHit, 12 ); // 12 bits = 2048 values... plenty.
-                                bitStream.Read ( fAccuracy );
-                                bitStream.Read ( fTargetRange );
-                                bitStream.Read ( fWeaponRange );
-                                pWeapon->GetWeaponStat ( )->SetDamagePerHit ( usDamagePerHit );
-                                pWeapon->GetWeaponStat ( )->SetAccuracy ( fAccuracy );
-                                pWeapon->GetWeaponStat ( )->SetTargetRange ( fTargetRange );
-                                pWeapon->GetWeaponStat ( )->SetWeaponRange ( fWeaponRange );
-                            }
-                            SWeaponConfiguration weaponConfig;
-
-                            bitStream.ReadBit ( weaponConfig.bDisableWeaponModel );
-                            bitStream.ReadBit ( weaponConfig.bInstantReload );
-                            bitStream.ReadBit ( weaponConfig.bShootIfTargetBlocked );
-                            bitStream.ReadBit ( weaponConfig.bShootIfTargetOutOfRange );
-                            bitStream.ReadBit ( weaponConfig.flags.bCheckBuildings );
-                            bitStream.ReadBit ( weaponConfig.flags.bCheckCarTires );
-                            bitStream.ReadBit ( weaponConfig.flags.bCheckDummies );
-                            bitStream.ReadBit ( weaponConfig.flags.bCheckObjects );
-                            bitStream.ReadBit ( weaponConfig.flags.bCheckPeds );
-                            bitStream.ReadBit ( weaponConfig.flags.bCheckVehicles );
-                            bitStream.ReadBit ( weaponConfig.flags.bIgnoreSomeObjectsForCamera );
-                            bitStream.ReadBit ( weaponConfig.flags.bSeeThroughStuff );
-                            bitStream.ReadBit ( weaponConfig.flags.bShootThroughStuff );
-
-                            
-                            unsigned short usAmmo, usClipAmmo;
-                            unsigned char ucWeaponState;
-                            bitStream.ReadBits ( &ucWeaponState, 4 ); // 4 bits = 8 possible values for weapon state
-                            bitStream.Read ( usAmmo );
-                            bitStream.Read ( usClipAmmo );
-                            pWeapon->SetClipAmmo ( usClipAmmo );
-                            pWeapon->SetAmmo ( usAmmo );
-                            pWeapon->SetWeaponState ( (eWeaponState) ucWeaponState );
-
-                            ElementID PlayerID;
-                            bitStream.Read ( PlayerID );
-                            if ( PlayerID != INVALID_ELEMENT_ID )
-                            {
-                                CClientPlayer * pOwner = static_cast < CClientPlayer * > ( CElementIDs::GetElement ( PlayerID ) );
-                                pWeapon->SetOwner ( pOwner );
-                            }
-                            else
-                            {
-                                pWeapon->SetOwner ( NULL );
-                            }
-                        }
                     }
 
                     break;
@@ -3224,7 +3111,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                         //pEntry->SetTailLight ( (CHandlingEntry::eLightType)handling.data.ucTailLight );
                         //pEntry->SetAnimGroup ( handling.data.ucAnimGroup );
                     }
-                    if ( bitStream.Version ( ) >= 0x02A )
+                    if ( bitStream.Version ( ) >= 0x02B )
                     {
                         unsigned char ucSirenCount = 0;
                         unsigned char ucSirenType = 0;
@@ -3454,15 +3341,6 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     bool bFriendlyFire;
                     bitStream.ReadBit ( bFriendlyFire );
                     pTeam->SetFriendlyFire ( bFriendlyFire );
-
-                    unsigned int uiPlayersCount;
-                    bitStream.Read ( uiPlayersCount );
-                    for ( unsigned int i = 0; i < uiPlayersCount; i++ )
-                    {
-                        ElementID PlayerId;
-                        if ( bitStream.Read ( PlayerId ) )
-                            g_pClientGame->m_pManager->GetPlayerManager ()->Get ( PlayerId )->SetTeam ( pTeam );
-                    }
 
                     delete [] szTeamName;
                     break;
@@ -4562,19 +4440,13 @@ void CPacketHandler::Packet_ResourceStart ( NetBitStreamInterface& bitStream )
         bitStream.ReadString ( strMinClientReq );
     }
 
-    bool bEnableOOP = false;
-    if ( bitStream.Version () >= 0x45 )
-    {
-        bitStream.ReadBit ( bEnableOOP );
-    }
-
     // Get the resource entity
     CClientEntity* pResourceEntity = CElementIDs::GetElement ( ResourceEntityID );
 
     // Get the resource dynamic entity
     CClientEntity* pResourceDynamicEntity = CElementIDs::GetElement ( ResourceDynamicEntityID );
 
-    CResource* pResource = g_pClientGame->m_pResourceManager->Add ( usResourceID, szResourceName, pResourceEntity, pResourceDynamicEntity, strMinServerReq, strMinClientReq, bEnableOOP );
+    CResource* pResource = g_pClientGame->m_pResourceManager->Add ( usResourceID, szResourceName, pResourceEntity, pResourceDynamicEntity, strMinServerReq, strMinClientReq );
     if ( pResource )
     {
         pResource->SetRemainingProtectedScripts ( usProtectedScriptCount );
@@ -4633,12 +4505,9 @@ void CPacketHandler::Packet_ResourceStart ( NetBitStreamInterface& bitStream )
                         switch ( ucChunkSubType )
                         {
                             case CDownloadableResource::RESOURCE_FILE_TYPE_CLIENT_FILE:
-                                {
-                                    bool bDownload = bitStream.ReadBit ();
-                                    pDownloadableResource = pResource->QueueFile ( CDownloadableResource::RESOURCE_FILE_TYPE_CLIENT_FILE, szChunkData, chunkChecksum, bDownload );
+                                pDownloadableResource = pResource->QueueFile ( CDownloadableResource::RESOURCE_FILE_TYPE_CLIENT_FILE, szChunkData, chunkChecksum );
 
-                                    break;
-                                }
+                                break;
                             case CDownloadableResource::RESOURCE_FILE_TYPE_CLIENT_SCRIPT:
                                 pDownloadableResource = pResource->QueueFile ( CDownloadableResource::RESOURCE_FILE_TYPE_CLIENT_SCRIPT, szChunkData, chunkChecksum );
 
@@ -4653,7 +4522,7 @@ void CPacketHandler::Packet_ResourceStart ( NetBitStreamInterface& bitStream )
                         }
 
                         // Is it a valid downloadable resource?
-                        if ( pDownloadableResource && pDownloadableResource->IsAutoDownload() )
+                        if ( pDownloadableResource )
                         {
                             // Does the Client and Server checksum Match?
                             if ( !pDownloadableResource->DoesClientAndServerChecksumMatch () )
@@ -4802,24 +4671,6 @@ void CPacketHandler::Packet_DetonateSatchels ( NetBitStreamInterface& bitStream 
     }
 }
 
-void CPacketHandler::Packet_DestroySatchels ( NetBitStreamInterface& bitStream )
-{
-    ElementID Player;
-
-    if ( bitStream.Read ( Player ) )
-    {
-        // Grab the player
-        CClientPlayer* pPlayer = g_pClientGame->m_pPlayerManager->Get ( Player );
-        if ( pPlayer )
-        {
-            if ( !pPlayer->IsLocalPlayer () )
-            {
-                pPlayer->DestroySatchelCharges ( false, true );
-            }
-        }
-    }
-}
-
 void CPacketHandler::Packet_VoiceData ( NetBitStreamInterface& bitStream )
 {
     unsigned short usPacketSize;
@@ -4899,48 +4750,4 @@ void CPacketHandler::Packet_SyncSettings ( NetBitStreamInterface& bitStream )
             g_pClientGame->SetVehExtrapolateSettings ( vehExtrapolateSettings );
         }
     }
-}
-
-
-void CPacketHandler::Packet_PedTask ( NetBitStreamInterface& bitStream )
-{
-    ElementID sourceID;
-    ushort usTaskType;
-
-    // Read header
-    bitStream.Read( sourceID );
-    if ( !bitStream.Read( usTaskType ) )
-        return;
-
-    // Resolve source
-    CClientPed* pSourcePlayer = g_pClientGame->m_pPlayerManager->Get( sourceID );
-    if ( !pSourcePlayer )
-        return;
-
-    // Read packet body
-    switch( usTaskType )
-    {
-        case TASK_SIMPLE_BE_HIT:
-        {
-            ElementID attackerID;
-            uchar hitBodyPart;
-            uchar hitBodySide;
-            uchar weaponId;
-            bitStream.Read( attackerID );
-            bitStream.Read( hitBodyPart );
-            bitStream.Read( hitBodySide );
-            if ( !bitStream.Read( weaponId ) )
-                return;
-
-            CClientPed* pClientPedAttacker = g_pClientGame->m_pPlayerManager->Get( attackerID );
-            if ( !pSourcePlayer )
-                return;
-
-            pSourcePlayer->BeHit( pClientPedAttacker, (ePedPieceTypes)hitBodyPart, hitBodySide, weaponId );
-        }
-        break;
-
-        default:
-            break;
-    };
 }

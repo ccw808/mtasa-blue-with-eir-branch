@@ -194,6 +194,8 @@ public:
     void                    DoPostFramePulse                ( void );
 
     // Events
+    bool                    OnMouseClick                    ( CGUIMouseEventArgs Args );
+    bool                    OnMouseDoubleClick              ( CGUIMouseEventArgs Args );
     void                    OnModUnload                     ( void );
 
     // Misc
@@ -205,10 +207,9 @@ public:
     void                    InitiateDataFilesFix            ( void )                                        { m_pLocalGUI->InitiateDataFilesFix (); }
 
     uint                    GetFrameRateLimit               ( void )                                        { return m_uiFrameRateLimit; }
-    void                    RecalculateFrameRateLimit       ( uint uiServerFrameRateLimit = -1, bool bLogToConsole = true );
+    void                    RecalculateFrameRateLimit       ( uint uiServerFrameRateLimit = -1 );
     void                    ApplyFrameRateLimit             ( uint uiOverrideRate = -1 );
     void                    EnsureFrameRateLimitApplied     ( void );
-    void                    SetClientScriptFrameRateLimit   ( uint uiClientScriptFrameRateLimit );
     void                    DoReliablePulse                 ( void );
 
     bool                    IsTimingCheckpoints             ( void );
@@ -322,7 +323,6 @@ private:
 
     bool                        m_bDoneFrameRateLimit;
     uint                        m_uiServerFrameRateLimit;
-    uint                        m_uiClientScriptFrameRateLimit;
     uint                        m_uiFrameRateLimit;
     double                      m_dLastTimeMs;
     double                      m_dPrevOverrun;

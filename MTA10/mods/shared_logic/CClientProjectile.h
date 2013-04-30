@@ -105,8 +105,8 @@ protected:
     CProjectile *                       m_pProjectile;
     CProjectileInfo *                   m_pProjectileInfo;
 
-    CClientEntityPtr                    m_pCreator;
-    CClientEntityPtr                    m_pTarget;
+    CClientEntity *                     m_pCreator;
+    CClientEntity *                     m_pTarget;
     eWeaponType                         m_weaponType;
     CVector *                           m_pvecOrigin;
     CVector *                           m_pvecTarget;

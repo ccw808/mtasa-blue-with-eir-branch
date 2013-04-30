@@ -104,12 +104,12 @@ void CClientCamera::DoPulse ( void )
                     if ( eType == CCLIENTVEHICLE )
                     {
                         CVector vecVehicleRotation;
-                        static_cast < CClientVehicle* > ( (CClientEntity*)m_pFocusedEntity )->GetRotationRadians ( vecVehicleRotation );
+                        static_cast < CClientVehicle* > ( m_pFocusedEntity )->GetRotationRadians ( vecVehicleRotation );
                         fRotation = vecVehicleRotation.fZ * 3.14159f / 180;
                     }
                     else if ( eType == CCLIENTPED || eType == CCLIENTPLAYER )
                     {
-                        fRotation = static_cast < CClientPed* > ( (CClientEntity*)m_pFocusedEntity )->GetCurrentRotation ();
+                        fRotation = static_cast < CClientPed* > ( m_pFocusedEntity )->GetCurrentRotation ();
                     }
                 }
 
@@ -174,8 +174,19 @@ void CClientCamera::GetRotationDegrees ( CVector& vecRotation ) const
 
 void CClientCamera::SetRotationRadians ( const CVector& vecRotation )
 {
-    m_vecFixedRotation = vecRotation + CVector ( 0, 0, PI );
-    m_bPreferFixedRotation = true;
+    // Rotate a 1000,0,0 vector with the given rotation vector
+    CVector vecRotationCopy = vecRotation;
+    vecRotationCopy.fX = 0.0f;
+    CVector vecNormal = CVector ( 1000.0f, 0.0f, 0.0f );
+    RotateVector ( vecNormal, vecRotationCopy );
+
+    // Add it with our current position
+    CVector vecPosition;
+    GetPosition ( vecPosition );
+    vecPosition += vecNormal;
+
+    // Set the calculated vector as the target
+    SetFixedTarget ( vecPosition );
 }
 
 
@@ -197,14 +208,6 @@ void CClientCamera::SetFixedTarget ( const CVector& vecPosition )
 {
     // Store the target so it can be updated from our hook
     m_vecFixedTarget = vecPosition;
-    m_bPreferFixedRotation = false;
-}
-
-
-void CClientCamera::SetRoll ( float fRoll )
-{
-    m_fRoll = fRoll;
-    m_bPreferFixedRotation = false;
 }
 
 
@@ -221,7 +224,6 @@ void CClientCamera::SetTarget ( const CVector& vecPosition )
 
         CCam* pCam = m_pCamera->GetCam ( m_pCamera->GetActiveCam () );
         pCam->SetDirection ( fAngleHorz, fAngleVert );
-        m_bPreferFixedRotation = false;
     }
 }
 
@@ -248,7 +250,7 @@ void CClientCamera::SetFocus ( CClientEntity* pEntity, eCamMode eMode, bool bSmo
 
         // Remove stream reference from the previous target
         if ( m_pFocusedEntity && m_pFocusedEntity->IsStreamingCompatibleClass () )
-            static_cast < CClientStreamElement* > ( (CClientEntity*)m_pFocusedEntity )->RemoveStreamReference ();
+            static_cast < CClientStreamElement* > ( m_pFocusedEntity )->RemoveStreamReference ();
 
         // Add stream reference for our new target
         if ( pEntity && pEntity->IsStreamingCompatibleClass () )
@@ -345,7 +347,7 @@ void CClientCamera::SetFocusToLocalPlayer ( void )
 
     // Remove stream reference from the previous target
     if ( m_pFocusedEntity && m_pFocusedEntity->IsStreamingCompatibleClass () )
-        static_cast < CClientStreamElement* > ( (CClientEntity*)m_pFocusedEntity )->RemoveStreamReference ();
+        static_cast < CClientStreamElement* > ( m_pFocusedEntity )->RemoveStreamReference ();
 
     // Reset
     m_pFocusedPlayer = NULL;
@@ -373,7 +375,7 @@ void CClientCamera::UnreferenceEntity ( CClientEntity* pEntity )
 
         // Remove stream reference from the previous target
         if ( m_pFocusedEntity && m_pFocusedEntity->IsStreamingCompatibleClass () )
-            static_cast < CClientStreamElement* > ( (CClientEntity*)m_pFocusedEntity )->RemoveStreamReference ();
+            static_cast < CClientStreamElement* > ( m_pFocusedEntity )->RemoveStreamReference ();
 
         m_pFocusedEntity = NULL;
         m_pFocusedGameEntity = NULL;
@@ -531,15 +533,6 @@ bool CClientCamera::ProcessFixedCamera ( CCam* pCam )
     }
 
     *pCam->GetUp () = vecUp;
-
-    if ( pThis->m_bPreferFixedRotation )
-    {
-        const CVector& vecRotation = pThis->m_vecFixedRotation;
-        CMatrix newMatrix;
-        g_pMultiplayer->ConvertEulerAnglesToMatrix( newMatrix, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
-        *pCam->GetUp() = newMatrix.vUp;
-        *pCam->GetFront() = newMatrix.vFront;
-    }
 
     // Set the zoom
     pCam->SetFOV ( pThis->m_fFOV );

@@ -6221,6 +6221,11 @@ void CClientGame::OutputServerInfo( void )
         strTotalOutput += SString( "Tick rates: %s\n", *strTickRates );
     }
 
+    if ( g_pGame->GetTrainTrackManager ( ) )
+    {
+        g_pGame->GetTrainTrackManager ( )->ResetTracks ( );
+    }
+
     {
         SString strSyncerDists;
         strSyncerDists += SString( "Ped:%d  UnoccupiedVehicle:%d "

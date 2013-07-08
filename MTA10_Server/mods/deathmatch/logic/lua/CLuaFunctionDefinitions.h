@@ -595,6 +595,16 @@ public:
     static int      GetVersion                          ( lua_State* luaVM );
     static int      GetModules                          ( lua_State* luaVM );
     static int      GetModuleInfo                       ( lua_State* luaVM );
+
+    // Train functions
+    static int      SetTrainTrackPosition               ( lua_State* luaVM );
+    static int      GetTrainTrackPosition               ( lua_State* luaVM );
+    static int      CreateTrainTrack                    ( lua_State* luaVM );
+    static int      SetTrainTrackLength                 ( lua_State* luaVM );
+    static int      GetTrainTrackLength                 ( lua_State* luaVM );
+    static int      SetTrainTrackNumberOfNodes          ( lua_State* luaVM );
+    static int      GetTrainTrackNumberOfNodes          ( lua_State* luaVM );
+    static int      GetTrainTrackID                     ( lua_State* luaVM );
 };
 
 #endif

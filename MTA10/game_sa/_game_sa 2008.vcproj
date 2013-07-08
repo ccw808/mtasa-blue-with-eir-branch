@@ -729,6 +729,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CTrainTrackManagerSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CTrainTrackSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CVehicleSA.cpp"
 				>
 			</File>
@@ -1283,6 +1291,14 @@
 			</File>
 			<File
 				RelativePath="CTrailerSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CTrainTrackManagerSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CTrainTrackSA.h"
 				>
 			</File>
 			<File

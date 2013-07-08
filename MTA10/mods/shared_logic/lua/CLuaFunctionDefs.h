@@ -342,6 +342,7 @@ public:
     LUA_DECLARE ( IsVehicleNitroActivated );
     LUA_DECLARE ( GetVehicleNitroCount );
     LUA_DECLARE ( GetVehicleNitroLevel );
+    LUA_DECLARE ( GetVehicleTrainTrack );
 
     // Vehicle set functions
     LUA_DECLARE ( FixVehicle );
@@ -395,6 +396,7 @@ public:
     LUA_DECLARE ( SetVehicleNitroCount );
     LUA_DECLARE ( SetVehicleNitroLevel );
     LUA_DECLARE ( SetVehiclePlateText );
+    LUA_DECLARE ( SetVehicleTrainTrack );
 
     // Object create funcs
     LUA_DECLARE ( CreateObject );
@@ -822,6 +824,13 @@ public:
     LUA_DECLARE ( SetFPSLimit );
     LUA_DECLARE ( GetFPSLimit );
     LUA_DECLARE ( FetchRemote );
+
+
+    // Train functions
+    LUA_DECLARE ( GetTrainTrackLength );
+    LUA_DECLARE ( GetTrainTrackNumberOfNodes );
+    LUA_DECLARE ( GetTrainTrackID );
+    LUA_DECLARE ( GetTrainTrackPosition );
 
     // Input functions
     LUA_DECLARE ( BindKey );

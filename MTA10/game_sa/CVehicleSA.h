@@ -166,17 +166,6 @@ class CVehicleSA;
 #define VAR_CVehicle_Variation1                 0x8A6458
 #define VAR_CVehicle_Variation2                 0x8A6459
 
-
-
-typedef struct
-{
-    short sX;               // x coordinate times 8
-    short sY;               // y coordinate times 8
-    short sZ;               // z coordinate times 8
-    WORD  sRailDistance;    // on-rail distance times 3
-    WORD  padding;
-} SRailNodeSA;
-
 class CVehicleSAInterfaceVTBL : public CEntitySAInterfaceVTBL
 {
 public:

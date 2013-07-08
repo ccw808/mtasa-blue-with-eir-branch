@@ -47,6 +47,9 @@ void CElementRPCs::LoadFunctions ( void )
     AddHandler ( RESET_CUSTOM_WEAPON_FIRING_RATE,ResetCustomWeaponFiringRate, "resetWeaponFiringRate" );
     AddHandler ( SET_WEAPON_OWNER,               SetWeaponOwner,              "setWeaponOwner" );
     AddHandler ( SET_CUSTOM_WEAPON_FLAGS,        SetWeaponConfig,             "setWeaponFlags" );
+    AddHandler ( SET_TRAIN_TRACK_POSITION,       SetTrainTrackPosition,       "setTrainTrackPosition" );
+    AddHandler ( SET_TRAIN_TRACK_LENGTH,         SetTrainTrackLength,         "setTrainTrackLength" );
+    AddHandler ( SET_TRAIN_TRACK_NUMBER_OF_NODES,SetTrainTrackNumberOfNodes,  "setTrainTrackNumberOfNodes" );
 }
 
 #define RUN_CHILDREN_SERVER \
@@ -702,6 +705,47 @@ void CElementRPCs::SetWeaponConfig ( CClientEntity * pSource, NetBitStreamInterf
             bitStream.ReadBit ( weaponConfig.flags.bShootThroughStuff ) )
         {
             pWeapon->SetFlags ( weaponConfig );
+        }
+    }
+}
+
+void CElementRPCs::SetTrainTrackPosition ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
+{
+    if ( pSource->GetType() == CCLIENTTRAINTRACK )
+    {
+        unsigned int uiNode = 0;
+        CVector vecPosition;
+        CClientTrainTrack * pTrack = static_cast < CClientTrainTrack * > ( pSource );
+        if ( bitStream.Read ( uiNode ) && 
+            bitStream.Read ( vecPosition.fX ) &&
+            bitStream.Read ( vecPosition.fY ) &&
+            bitStream.Read ( vecPosition.fZ ) )
+        {
+            pTrack->SetNodePosition ( uiNode, vecPosition );
+        }
+    }
+}
+void CElementRPCs::SetTrainTrackLength ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
+{
+    if ( pSource->GetType() == CCLIENTTRAINTRACK )
+    {
+        float fLength = 0.0f;
+        CClientTrainTrack * pTrack = static_cast < CClientTrainTrack * > ( pSource );
+        if ( bitStream.Read ( fLength ) )
+        {
+            pTrack->SetTrackLength ( fLength );
+        }
+    }
+}
+void CElementRPCs::SetTrainTrackNumberOfNodes ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
+{
+    if ( pSource->GetType() == CCLIENTTRAINTRACK )
+    {
+        unsigned int uiNumberOfNodes = 0;
+        CClientTrainTrack * pTrack = static_cast < CClientTrainTrack * > ( pSource );
+        if ( bitStream.Read ( uiNumberOfNodes ) )
+        {
+            pTrack->SetNumberOfNodes ( uiNumberOfNodes );
         }
     }
 }

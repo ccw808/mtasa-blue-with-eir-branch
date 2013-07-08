@@ -945,6 +945,10 @@
 					>
 				</File>
 				<File
+					RelativePath="..\shared_logic\CClientTrainTrack.cpp"
+					>
+				</File>
+				<File
 					RelativePath="..\shared_logic\CClientTXD.cpp"
 					>
 				</File>
@@ -2532,6 +2536,10 @@
 				</File>
 				<File
 					RelativePath="..\shared_logic\CClientTexture.h"
+					>
+				</File>
+				<File
+					RelativePath="..\shared_logic\CClientTrainTrack.h"
 					>
 				</File>
 				<File

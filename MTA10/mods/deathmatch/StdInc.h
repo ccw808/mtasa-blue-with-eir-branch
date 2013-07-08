@@ -84,6 +84,7 @@
 #include <CClientMaterial.h>
 #include <CClientTexture.h>
 #include <CClientShader.h>
+#include <CClientTrainTrack.h>
 #include <CCustomData.h>
 #include <CElementArray.h>
 #include <CLogger.h>

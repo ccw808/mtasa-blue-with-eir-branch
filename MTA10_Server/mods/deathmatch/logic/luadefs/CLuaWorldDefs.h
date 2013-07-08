@@ -98,6 +98,18 @@ public:
     static int      RestoreWorldModel                   ( lua_State* luaVM );
     static int      RestoreAllWorldModels               ( lua_State* luaVM );
     static int      resetMoonSize                       ( lua_State* luaVM );
+
+
+    static int      GetTrainTrackID                     ( lua_State* luaVM );
+    static int      GetTrainTrackNumberOfNodes          ( lua_State* luaVM );
+    static int      GetTrainTrackLength                 ( lua_State* luaVM );
+    static int      GetTrainTrackPosition               ( lua_State* luaVM );
+
+    static int      CreateTrainTrack                    ( lua_State* luaVM );
+    static int      SetTrainTrackNumberOfNodes          ( lua_State* luaVM );
+    static int      SetTrainTrackLength                 ( lua_State* luaVM );
+    static int      SetTrainTrackPosition               ( lua_State* luaVM );
+
 };
 
 #endif

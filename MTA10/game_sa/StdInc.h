@@ -109,3 +109,4 @@
 #include "CWeaponStatManagerSA.h"
 #include "CShadowDataSA.h"
 #include "CBuoyancySA.h"
+#include "CTrainTrackManagerSA.h"

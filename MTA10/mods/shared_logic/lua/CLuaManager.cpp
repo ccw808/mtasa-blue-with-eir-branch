@@ -543,6 +543,7 @@ void CLuaManager::LoadCFunctions ( void )
     CLuaCFunctions::AddFunction ( "isVehicleNitroActivated", CLuaFunctionDefs::IsVehicleNitroActivated );
     CLuaCFunctions::AddFunction ( "getVehicleNitroCount", CLuaFunctionDefs::GetVehicleNitroCount );
     CLuaCFunctions::AddFunction ( "getVehicleNitroLevel", CLuaFunctionDefs::GetVehicleNitroLevel );
+    CLuaCFunctions::AddFunction ( "getVehicleTrainTrack", CLuaFunctionDefs::GetVehicleTrainTrack );
 
     // Vehicle set funcs
     CLuaCFunctions::AddFunction ( "createVehicle", CLuaFunctionDefs::CreateVehicle );
@@ -594,6 +595,7 @@ void CLuaManager::LoadCFunctions ( void )
     CLuaCFunctions::AddFunction ( "setVehicleNitroCount", CLuaFunctionDefs::SetVehicleNitroCount );
     CLuaCFunctions::AddFunction ( "setVehicleNitroLevel", CLuaFunctionDefs::SetVehicleNitroLevel );
     CLuaCFunctions::AddFunction ( "setVehiclePlateText", CLuaFunctionDefs::SetVehiclePlateText );
+    CLuaCFunctions::AddFunction ( "setVehicleTrainTrack", CLuaFunctionDefs::SetVehicleTrainTrack );
 
     // Object create/destroy funcs
     CLuaCFunctions::AddFunction ( "createObject", CLuaFunctionDefs::CreateObject );
@@ -1028,6 +1030,12 @@ void CLuaManager::LoadCFunctions ( void )
     CLuaCFunctions::AddFunction ( "getBirdsEnabled", CLuaFunctionDefs::GetBirdsEnabled );
     CLuaCFunctions::AddFunction ( "setPedTargetingMarkerEnabled", CLuaFunctionDefs::SetPedTargetingMarkerEnabled );
     CLuaCFunctions::AddFunction ( "isPedTargetingMarkerEnabled", CLuaFunctionDefs::IsPedTargetingMarkerEnabled );
+
+    // Train functions
+    CLuaCFunctions::AddFunction ( "getTrainTrackNumberOfNodes", CLuaFunctionDefs::GetTrainTrackNumberOfNodes );
+    CLuaCFunctions::AddFunction ( "getTrainTrackID", CLuaFunctionDefs::GetTrainTrackID );
+    CLuaCFunctions::AddFunction ( "getTrainTrackLength", CLuaFunctionDefs::GetTrainTrackLength );
+    CLuaCFunctions::AddFunction ( "getTrainTrackPosition", CLuaFunctionDefs::GetTrainTrackPosition );
 
     // Input functions
     CLuaCFunctions::AddFunction ( "bindKey", CLuaFunctionDefs::BindKey );

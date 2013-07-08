@@ -877,6 +877,14 @@
 					>
 				</File>
 				<File
+					RelativePath=".\logic\CTrainTrack.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\logic\CTrainTrackManager.cpp"
+					>
+				</File>
+				<File
 					RelativePath=".\logic\CUnoccupiedVehicleSync.cpp"
 					>
 				</File>
@@ -2139,6 +2147,14 @@
 				</File>
 				<File
 					RelativePath=".\logic\CTextItem.h"
+					>
+				</File>
+				<File
+					RelativePath=".\logic\CTrainTrack.h"
+					>
+				</File>
+				<File
+					RelativePath=".\logic\CTrainTrackManager.h"
 					>
 				</File>
 				<File

@@ -152,6 +152,7 @@ public:
     inline CWaterManager            * GetWaterManager ()         { return m_pWaterManager; }
     inline CWeaponStatManager       * GetWeaponStatManager()     { return m_pWeaponStatsManager; }
     inline CPointLights             * GetPointLights ()          { return m_pPointLights; }
+    inline CTrainTrackManager       * GetTrainTrackManager ()    { return m_pTrainTrackManager; }
     CRenderWareSA*                  GetRenderWareSA()            { return m_pRenderWare; }
 
     CWeaponInfo             * GetWeaponInfo(eWeaponType weapon,eWeaponSkill skill=WEAPONSKILL_STD);
@@ -272,6 +273,7 @@ private:
     CWaterManager           * m_pWaterManager;
     CWeaponStatManager      * m_pWeaponStatsManager;
     CPointLights            * m_pPointLights;
+    CTrainTrackManager      * m_pTrainTrackManager;
 
     CPad                        * m_pPad;
     CTheCarGenerators           * m_pTheCarGenerators;

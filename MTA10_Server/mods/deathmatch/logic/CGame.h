@@ -119,6 +119,8 @@ class CBuildingRemovalManager;
 
 class CCustomWeaponManager;
 
+class CTrainTrackManager;
+
 // Packet forward declarations
 class CCommandPacket;
 class CCustomDataPacket;
@@ -253,6 +255,7 @@ public:
     inline CWeaponStatManager*      GetWeaponStatManager        ( void )        { return m_pWeaponStatsManager; }
     inline CBuildingRemovalManager* GetBuildingRemovalManager   ( void )        { return m_pBuildingRemovalManager; }
     inline CCustomWeaponManager*    GetCustomWeaponManager      ( void )        { return m_pCustomWeaponManager; }
+    inline CTrainTrackManager*      GetTrainTrackManager        ( void )        { return m_pTrainTrackManager; }
 
     void                        JoinPlayer                  ( CPlayer& Player );
     void                        InitialDataStream           ( CPlayer& Player );
@@ -485,6 +488,8 @@ private:
     CBuildingRemovalManager*        m_pBuildingRemovalManager;
 
     CCustomWeaponManager*           m_pCustomWeaponManager;
+
+    CTrainTrackManager*             m_pTrainTrackManager;
 
     char*                       m_szCurrentFileName;
 

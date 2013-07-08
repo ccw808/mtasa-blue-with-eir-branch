@@ -212,6 +212,7 @@ public:
     static bool                         IsVehicleNitroActivated             ( CClientVehicle& Vehicle, bool& bActivated );
     static bool                         GetVehicleNitroCount                ( CClientVehicle& Vehicle, char& cCount );
     static bool                         GetVehicleNitroLevel                ( CClientVehicle& Vehicle, float& fLevel );
+    static bool                         GetVehicleTrainTrack                ( CClientVehicle& Vehicle, unsigned char& ucTrack );
 
     // Vehicle set functions
     static bool                         FixVehicle                          ( CClientEntity& Entity );
@@ -252,6 +253,7 @@ public:
     static bool                         SetVehicleNitroCount                ( CClientEntity& Entity, char cCount );
     static bool                         SetVehicleNitroLevel                ( CClientEntity& Entity, float fLevel );
     static bool                         SetVehiclePlateText                 ( CClientEntity& Entity, const SString& strText );
+    static bool                         SetVehicleTrainTrack                ( CClientVehicle& Vehicle, unsigned char ucTrack );
 
     // Object get funcs
     static CClientObject*               CreateObject                        ( CResource& Resource, unsigned short usModelID, const CVector& vecPosition, const CVector& vecRotation, bool bLowLod );
@@ -680,5 +682,11 @@ public:
     static const char*                  GetOperatingSystemName              ( );
     static const char*                  GetVersionBuildTag                  ( );
     static SString                      GetVersionSortable                  ( );
+
+    // Train track funcs
+    static bool                         GetTrainTrackPosition               ( unsigned char ucTrackID, unsigned int uiTrackNode, CVector& vecPosition );
+    static bool                         GetTrainTrackLength                 ( CClientTrainTrack& TrainTrack, float &fLength );
+    static bool                         GetTrainTrackNumberOfNodes          ( CClientTrainTrack& TrainTrack, unsigned int &uiNodes );
+    static bool                         GetTrainTrackID                     ( CClientTrainTrack& TrainTrack, unsigned char &ucTrack );
 };
 #endif

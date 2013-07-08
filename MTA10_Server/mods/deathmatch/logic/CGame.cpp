@@ -141,6 +141,7 @@ CGame::CGame ( void )
     m_pWeaponStatsManager = NULL;
     m_pBuildingRemovalManager = NULL;
     m_pCustomWeaponManager = NULL;
+    m_pTrainTrackManager = NULL;
 #ifdef WITH_OBJECT_SYNC
     m_pObjectSync = NULL;
 #endif
@@ -308,6 +309,7 @@ CGame::~CGame ( void )
     SAFE_DELETE ( m_pWeaponStatsManager );
     SAFE_DELETE ( m_pBuildingRemovalManager );
     SAFE_DELETE ( m_pCustomWeaponManager );
+    SAFE_DELETE ( m_pTrainTrackManager );
     SAFE_DELETE ( m_pOpenPortsTester );
     CSimControl::Shutdown ();
 
@@ -505,6 +507,8 @@ bool CGame::Start ( int iArgumentCount, char* szArguments [] )
     m_pBuildingRemovalManager = new CBuildingRemovalManager;
 
     m_pCustomWeaponManager = new CCustomWeaponManager ( );
+
+    m_pTrainTrackManager = new CTrainTrackManager ( );
 
     // Parse the commandline
     if ( !m_CommandLineParser.Parse ( iArgumentCount, szArguments ) )

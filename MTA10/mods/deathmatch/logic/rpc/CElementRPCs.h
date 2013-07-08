@@ -49,6 +49,9 @@ public:
     DECLARE_ELEMENT_RPC ( ResetCustomWeaponFiringRate );
     DECLARE_ELEMENT_RPC ( SetWeaponOwner );
     DECLARE_ELEMENT_RPC ( SetWeaponConfig );
+    DECLARE_ELEMENT_RPC ( SetTrainTrackPosition );
+    DECLARE_ELEMENT_RPC ( SetTrainTrackLength );
+    DECLARE_ELEMENT_RPC ( SetTrainTrackNumberOfNodes );
 };
 
 #endif

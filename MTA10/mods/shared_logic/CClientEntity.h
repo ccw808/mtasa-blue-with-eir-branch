@@ -77,6 +77,7 @@ enum eClientEntityType
     CCLIENTTEXTURE,
     CCLIENTSHADER,
     CCLIENTWEAPON,
+    CCLIENTTRAINTRACK,
     CCLIENTUNKNOWN,
 };
 
@@ -133,6 +134,7 @@ enum eCClientEntityClassTypes
     CLASS_CClientRenderTarget,
     CLASS_CClientScreenSource,
     CLASS_CClientWeapon,
+    CLASS_CClientTrainTrack,
 };
 
 

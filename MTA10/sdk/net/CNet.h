@@ -25,7 +25,6 @@ namespace EDownloadMode
         CORE_ASE_LIST,
         CORE_UPDATER,
         RESOURCE_INITIAL_FILES,
-        RESOURCE_SINGULAR_FILES,
         CALL_REMOTE,
     };
 }
@@ -126,7 +125,6 @@ public:
     virtual bool                        ValidateBinaryFileName      ( const char* szFilename ) = 0;
     virtual CBinaryFileInterface*       AllocateBinaryFile          ( void ) = 0;
     virtual bool                        EncryptDumpfile             ( const char* szClearPathFilename, const char* szEncryptedPathFilename ) = 0;
-    virtual bool                        DecryptScript               ( const char* cpInBuffer, uint uiInSize, const char** pcpOutBuffer, uint* puiOutSize ) = 0;
 };
 
 #endif

@@ -412,7 +412,8 @@ CResource * CResourceManager::Load ( bool bIsZipped, const char * szAbsPath, con
             m_resourcesToStartAfterRefresh.push_back ( loadedResource );
         if ( s_bNotFirstTime )
             CLogger::LogPrintf("New resource '%s' loaded\n", loadedResource->GetName().c_str () );
-        loadedResource->SetNetID ( GenerateID () );
+        unsigned short usID = GenerateID ();
+        loadedResource->SetNetID ( usID );
         AddResourceToLists ( loadedResource );
         m_bResourceListChanged = true;
     }
@@ -480,21 +481,11 @@ unsigned short CResourceManager::GenerateID ( void )
 
 CResource* CResourceManager::GetResourceFromNetID ( unsigned short usNetID )
 {
-    CResource* pResource = MapFindRef( m_NetIdResourceMap, usNetID );
-    if ( pResource )
-    {
-        assert( pResource->GetNetID() == usNetID );
-        return pResource;
-    }
-
     list < CResource* > ::const_iterator iter = m_resources.begin ();
     for ( ; iter != m_resources.end (); iter++ )
     {
         if ( ( *iter )->GetNetID() == usNetID )
-        {
-            assert( 0 );    // Should be in map
             return ( *iter );
-        }
     }
     return NULL;
 }
@@ -546,14 +537,12 @@ void CResourceManager::AddResourceToLists ( CResource* pResource )
     assert ( !m_resources.Contains ( pResource ) );
     assert ( !MapContains ( m_NameResourceMap, strResourceNameKey ) );
     assert ( !MapContains ( m_ResourceLuaStateMap, pResource ) );
-    assert ( !MapContains ( m_NetIdResourceMap, pResource->GetNetID() ) );
 
     m_resources.push_back ( pResource );
 
     CLuaMain* pLuaMain = pResource->GetVirtualMachine ();
     assert ( !pLuaMain );
     MapSet ( m_NameResourceMap, strResourceNameKey, pResource );
-    MapSet ( m_NetIdResourceMap, pResource->GetNetID(), pResource );
 }
 
 //
@@ -565,10 +554,8 @@ void CResourceManager::RemoveResourceFromLists ( CResource* pResource )
 
     assert ( m_resources.Contains ( pResource ) );
     assert ( MapContains ( m_NameResourceMap, strResourceNameKey ) );
-    assert ( MapContains ( m_NetIdResourceMap, pResource->GetNetID() ) );
     m_resources.remove ( pResource );
     MapRemove ( m_NameResourceMap, strResourceNameKey );
-    MapRemove ( m_NetIdResourceMap, pResource->GetNetID() );
 }
 
 
@@ -670,10 +657,7 @@ bool CResourceManager::Reload ( CResource* pResource )
         m_bResourceListChanged = true;
 
         // Generate a new ID for it
-        assert ( MapContains ( m_NetIdResourceMap, pResource->GetNetID() ) );
-        MapRemove( m_NetIdResourceMap, pResource->GetNetID() );
         pResource->SetNetID ( GenerateID () );
-        MapSet( m_NetIdResourceMap, pResource->GetNetID(), pResource );
     }
     else
     {
@@ -941,7 +925,6 @@ CResource* CResourceManager::CreateResource ( const SString& strNewResourceName,
 
     // Add the resource and load it
     CResource* pResource = new CResource ( this, false, strDstAbsPath, strNewResourceName );
-    pResource->SetNetID ( GenerateID () );
     AddResourceToLists ( pResource );
     return pResource;
 }

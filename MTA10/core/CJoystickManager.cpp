@@ -1006,6 +1006,7 @@ bool CJoystickManager::IsXInputDeviceAttached ( void )
         m_DevInfo.axis[5].lMax = 255;
 
         m_DevInfo.axis[6].bEnabled = 0;
+        m_DevInfo.axis[7].bEnabled = 0;
 
         // Compose a guid for saving config
         m_DevInfo.guidProduct.Data1 = 0x12345678;
@@ -1597,8 +1598,8 @@ static string ToString( eStick value )
     if ( value == eLeftStickY )   return "LeftStickY";
     if ( value == eRightStickX )  return "RightStickX";
     if ( value == eRightStickY )  return "RightStickY";
-    if ( value == eAccelerate )   return _("Accelerate Axis");
-    if ( value == eBrake )        return _("Brake Axis");
+    if ( value == eAccelerate )   return "Accelerate Axis";
+    if ( value == eBrake )        return "Brake Axis";
     return "unknown";
 }
 

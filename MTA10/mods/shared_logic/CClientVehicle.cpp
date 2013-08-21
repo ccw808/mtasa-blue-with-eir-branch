@@ -130,8 +130,6 @@ CClientVehicle::CClientVehicle ( CClientManager* pManager, ElementID ID, unsigne
     m_bIsDerailable = true;
     m_bTrainDirection = false;
     m_fTrainSpeed = 0.0f;
-    m_fTrainPosition = -1.0f;
-    m_ucTrackID = -1;
     m_bTaxiLightOn = false;
     m_vecGravity = CVector ( 0.0f, 0.0f, -1.0f );
     m_HeadLightColor = SColorRGBA ( 255, 255, 255, 255 );
@@ -332,26 +330,6 @@ void CClientVehicle::SetPosition ( const CVector& vecPosition, bool bResetInterp
     // Reset interpolation
     if ( bResetInterpolation )
         RemoveTargetPosition ();
-}
-
-void CClientVehicle::UpdatePedPositions ( const CVector& vecPosition )
-{
-    // Have we moved to a different position?
-    if ( m_Matrix.vPos != vecPosition )
-    {
-        // Store our new position
-        m_Matrix.vPos = vecPosition;
-        m_matFrozen.vPos = vecPosition;
-
-        // Update our streaming position
-        UpdateStreamPosition ( vecPosition );
-    }
-
-    // If we have any occupants, update their positions
-    for ( int i = 0; i <= NUMELMS ( m_pPassengers ) ; i++ )
-        if ( CClientPed* pOccupant = GetOccupant ( i ) )
-            pOccupant->SetPosition ( vecPosition );
-
 }
 
 
@@ -722,17 +700,12 @@ bool CClientVehicle::AreSwingingDoorsAllowed () const
     return m_bSwingingDoorsAllowed;
 }
 
-void CClientVehicle::AllowDoorRatioSetting ( unsigned char ucDoor, bool bAllow, bool bAutoReallowAfterDelay )
+void CClientVehicle::AllowDoorRatioSetting ( unsigned char ucDoor, bool bAllow )
 {
     if ( ucDoor < NUMELMS(m_bAllowDoorRatioSetting) )
     {
         m_bAllowDoorRatioSetting [ucDoor] = bAllow;
         CancelDoorInterpolation ( ucDoor );
-        MapRemove( m_AutoReallowDoorRatioMap, (eDoors)ucDoor );
-        if ( !bAllow && bAutoReallowAfterDelay )
-        {
-            MapSet( m_AutoReallowDoorRatioMap, (eDoors)ucDoor, CTickCount::Now() );
-        }
     }
 }
 
@@ -2005,42 +1978,6 @@ void CClientVehicle::SetTrainSpeed ( float fSpeed )
     m_fTrainSpeed = fSpeed;
 }
 
-float CClientVehicle::GetTrainPosition ( void )
-{
-    if ( m_pVehicle )
-    {
-        return m_pVehicle->GetTrainPosition ();
-    }
-    return m_fTrainPosition;
-}
-
-void CClientVehicle::SetTrainPosition ( float fSpeed )
-{
-    if ( m_pVehicle && GetVehicleType() == CLIENTVEHICLE_TRAIN  )
-    {
-        m_pVehicle->SetTrainPosition ( fSpeed );
-    }
-    m_fTrainPosition = fSpeed;
-}
-
-uchar CClientVehicle::GetTrainTrack ( void )
-{
-    if ( m_pVehicle )
-    {
-        return m_pVehicle->GetRailTrack ();
-    }
-    return m_ucTrackID;
-}
-
-void CClientVehicle::SetTrainTrack ( uchar ucTrack )
-{
-    if ( m_pVehicle && GetVehicleType() == CLIENTVEHICLE_TRAIN )
-    {
-        m_pVehicle->SetRailTrack ( ucTrack );
-    }
-    m_ucTrackID = ucTrack;
-}
-
 
 void CClientVehicle::SetOverrideLights ( unsigned char ucOverrideLights )
 {
@@ -2067,23 +2004,6 @@ void CClientVehicle::StreamedInPulse ( void )
         {
             Blow ( false );
             m_bBlowNextFrame = false;
-        }
-
-        // Handle door ratio auto reallowment
-        if ( !m_AutoReallowDoorRatioMap.empty() )
-        {
-            for ( std::map < eDoors, CTickCount >::iterator iter = m_AutoReallowDoorRatioMap.begin() ; iter != m_AutoReallowDoorRatioMap.end() ; )
-            {
-                if ( ( CTickCount::Now() - iter->second ).ToInt() > 4000 )
-                {
-                    uchar ucDoor = iter->first;
-                    m_AutoReallowDoorRatioMap.erase( iter++ );
-                    if ( !m_bAllowDoorRatioSetting[ ucDoor ] )
-                        AllowDoorRatioSetting( ucDoor, true );
-                }
-                else
-                    ++iter;
-            }
         }
  
         // Are we an unmanned, invisible, blown-up plane?
@@ -2419,14 +2339,6 @@ void CClientVehicle::Create ( void )
             m_pVehicle->SetDerailable ( m_bIsDerailable );
             m_pVehicle->SetTrainDirection ( m_bTrainDirection );
             m_pVehicle->SetTrainSpeed ( m_fTrainSpeed );
-            if ( m_fTrainPosition >= 0 )
-            {
-                m_pVehicle->SetTrainPosition ( m_fTrainPosition );
-            }
-            if ( m_ucTrackID >= 0 )
-            {
-                m_pVehicle->SetRailTrack ( m_ucTrackID );
-            }
         }
 
         m_pVehicle->SetOverrideLights ( m_ucOverrideLights );
@@ -2584,7 +2496,7 @@ void CClientVehicle::Create ( void )
                 // Grab our start position
                 GetComponentPosition ( (*iter).first, vehicleComponentData.m_vecComponentPosition );
                 GetComponentRotation ( (*iter).first, vehicleComponentData.m_vecComponentRotation );
-                
+
                 // copy it into our original positions
                 vehicleComponentData.m_vecOriginalComponentPosition = vehicleComponentData.m_vecComponentPosition;
                 vehicleComponentData.m_vecOriginalComponentRotation = vehicleComponentData.m_vecComponentRotation;
@@ -3779,8 +3691,6 @@ void CClientVehicle::SetPedOccupiedVehicle ( CClientPed* pClientPed, CClientVehi
 
     if ( ucDoor != 0xFF )
         pVehicle->AllowDoorRatioSetting ( ucDoor, true );
-    else if ( uiSeat < 4 )
-        pVehicle->AllowDoorRatioSetting ( uiSeat + 2, true );
 
     // Checks
     ValidatePedAndVehiclePair ( pClientPed, pVehicle );

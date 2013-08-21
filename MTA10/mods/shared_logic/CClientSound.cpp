@@ -29,17 +29,12 @@ CClientSound::CClientSound ( CClientManager* pManager, ElementID ID ) : ClassIni
     m_fPlaybackSpeed = 1.0f;
     m_bPan = true;
     m_fPan = 0.0f;
-
-    m_pBuffer = NULL;
 }
 
 CClientSound::~CClientSound ( void )
 {
     Destroy ();
     m_pSoundManager->RemoveFromList ( this );
-
-    delete m_pBuffer;
-    m_pBuffer = NULL;
 }
 
 
@@ -111,11 +106,7 @@ bool CClientSound::Create ( void )
         return false;
 
     // Initial state
-    if ( !m_pBuffer )
-        m_pAudio = new CBassAudio ( m_bStream, m_strPath, m_bLoop, m_b3D );
-    else
-        m_pAudio = new CBassAudio ( m_pBuffer, m_uiBufferLength, m_bLoop, m_b3D );
-        
+    m_pAudio = new CBassAudio ( m_bStream, m_strPath, m_bLoop, m_b3D );
     m_bDoneCreate = true;
 
     // Load file/start connect
@@ -240,22 +231,6 @@ bool CClientSound::Play ( const SString& strPath, bool bLoop )
 }
 
 
-bool CClientSound::Play ( void* pMemory, unsigned int uiLength, bool bLoop )
-{
-    assert ( pMemory );
-
-    m_bStream = false;
-    m_b3D = false;
-    m_pBuffer = pMemory;
-    m_uiBufferLength = uiLength;
-    m_bLoop = bLoop;
-    m_bPan = false;
-
-    // Instant distance-stream in
-    return Create ();
-}
-
-
 bool CClientSound::Play3D ( const SString& strPath, bool bLoop )
 {
     assert ( m_strPath.empty () );
@@ -263,20 +238,6 @@ bool CClientSound::Play3D ( const SString& strPath, bool bLoop )
     m_bStream = false;
     m_b3D = true;
     m_strPath = strPath;
-    m_bLoop = bLoop;
-
-    BeginSimulationOfPlayPosition ();
-
-    return true;
-}
-
-
-bool CClientSound::Play3D ( void* pMemory, unsigned int uiLength, bool bLoop )
-{
-    m_bStream = false;
-    m_b3D = true;
-    m_pBuffer = pMemory;
-    m_uiBufferLength = uiLength;
     m_bLoop = bLoop;
 
     BeginSimulationOfPlayPosition ();

@@ -41,7 +41,7 @@ CLuaManager::CLuaManager ( CObjectManager* pObjectManager,
 
     // Create our lua dynamic module manager
     m_pLuaModuleManager = new CLuaModuleManager ( this );
-    m_pLuaModuleManager->SetScriptDebugging ( g_pGame->GetScriptDebugging() );
+    m_pLuaModuleManager->_SetScriptDebugging ( g_pGame->GetScriptDebugging() );
 
     // Load our C Functions into LUA and hook callback
     LoadCFunctions ();
@@ -61,50 +61,62 @@ CLuaManager::~CLuaManager ( void )
     delete m_pLuaModuleManager;
 }
 
+void CLuaManager::StopScriptsOwnedBy ( int iOwner )
+{
+    // Delete all the scripts by the given owner
+    CLuaMain* pLuaMain = NULL;
+    list < CLuaMain* > ::iterator iter = m_virtualMachines.begin ();
+    for ( ; iter != m_virtualMachines.end (); iter++ )
+    {
+        pLuaMain = *iter;
+        if ( pLuaMain->GetOwner () == iOwner )
+        {
+            // Delete the object
+            delete pLuaMain;
+
+            // Remove from list
+            m_virtualMachines.erase ( iter );
+
+            // Continue from the beginning, unless the list is empty
+            if ( m_virtualMachines.empty () ) break;
+            iter = m_virtualMachines.begin ();
+        }
+    }
+}
+
 CLuaMain * CLuaManager::CreateVirtualMachine ( CResource* pResourceOwner )
 {
     // Create it and add it to the list over VM's
-    CLuaMain * pLuaMain = new CLuaMain ( this, m_pObjectManager, m_pPlayerManager, m_pVehicleManager, m_pBlipManager, m_pRadarAreaManager, m_pMapManager, pResourceOwner );
-    m_virtualMachines.push_back ( pLuaMain );
-    pLuaMain->InitVM ();
+    CLuaMain * vm = new CLuaMain ( this, m_pObjectManager, m_pPlayerManager, m_pVehicleManager, m_pBlipManager, m_pRadarAreaManager, m_pMapManager, pResourceOwner );
+    m_virtualMachines.push_back ( vm );
+    vm->InitVM ();
 
-    m_pLuaModuleManager->RegisterFunctions ( pLuaMain->GetVirtualMachine() );
+    m_pLuaModuleManager->_RegisterFunctions ( vm->GetVirtualMachine() );
 
-    return pLuaMain;
+    return vm;
 }
 
-bool CLuaManager::RemoveVirtualMachine ( CLuaMain * pLuaMain )
+bool CLuaManager::RemoveVirtualMachine ( CLuaMain * vm )
 {
-    if ( pLuaMain )
+    if ( vm )
     {
         // Remove all events registered by it and all commands added
-        m_pEvents->RemoveAllEvents ( pLuaMain );
-        m_pRegisteredCommands->CleanUpForVM ( pLuaMain );
+        m_pEvents->RemoveAllEvents ( vm );
+        m_pRegisteredCommands->CleanUpForVM ( vm );
 
         // Delete it unless it is already
-        if ( !pLuaMain->BeingDeleted () )
+        if ( !vm->BeingDeleted () )
         {
-            delete pLuaMain;
+            delete vm;
         }
 
         // Remove it from our list
-        m_virtualMachines.remove ( pLuaMain );
+        m_virtualMachines.remove ( vm );
+
         return true;
     }
 
     return false;
-}
-
-
-void CLuaManager::OnLuaMainOpenVM( CLuaMain* pLuaMain, lua_State* luaVM )
-{
-    MapSet( m_VirtualMachineMap, pLuaMain->GetVirtualMachine(), pLuaMain );
-}
-
-
-void CLuaManager::OnLuaMainCloseVM( CLuaMain* pLuaMain, lua_State* luaVM )
-{
-    MapRemove( m_VirtualMachineMap, pLuaMain->GetVirtualMachine() );
 }
 
 
@@ -115,14 +127,11 @@ void CLuaManager::DoPulse ( void )
     {
         (*iter)->DoPulse();
     }
-    m_pLuaModuleManager->DoPulse ();
+    m_pLuaModuleManager->_DoPulse ();
 }
 
 CLuaMain* CLuaManager::GetVirtualMachine ( lua_State* luaVM )
 {
-    if ( !luaVM )
-        return NULL;
-
     // Grab the main virtual state because the one we've got passed might be a coroutine state
     // and only the main state is in our list.
     lua_State* main = lua_getmainstate ( luaVM );
@@ -131,18 +140,12 @@ CLuaMain* CLuaManager::GetVirtualMachine ( lua_State* luaVM )
         luaVM = main;
     }
 
-    // Find a matching VM in our map
-    CLuaMain* pLuaMain = MapFindRef( m_VirtualMachineMap, luaVM );
-    if ( pLuaMain )
-        return pLuaMain;
-
     // Find a matching VM in our list
     list < CLuaMain* >::const_iterator iter = m_virtualMachines.begin ();
     for ( ; iter != m_virtualMachines.end (); iter++ )
     {
         if ( luaVM == (*iter)->GetVirtualMachine () )
         {
-            dassert( 0 );   // Why not in map?
             return *iter;
         }
     }
@@ -157,7 +160,6 @@ void CLuaManager::LoadCFunctions ( void )
     CLuaCFunctions::AddFunction ( "addEvent", CLuaFunctionDefinitions::AddEvent );
     CLuaCFunctions::AddFunction ( "addEventHandler", CLuaFunctionDefinitions::AddEventHandler );
     CLuaCFunctions::AddFunction ( "removeEventHandler", CLuaFunctionDefinitions::RemoveEventHandler );
-    CLuaCFunctions::AddFunction ( "getEventHandlers", CLuaFunctionDefinitions::GetEventHandlers );
     CLuaCFunctions::AddFunction ( "triggerEvent", CLuaFunctionDefinitions::TriggerEvent );
     CLuaCFunctions::AddFunction ( "triggerClientEvent", CLuaFunctionDefinitions::TriggerClientEvent );
     CLuaCFunctions::AddFunction ( "cancelEvent", CLuaFunctionDefinitions::CancelEvent );
@@ -514,24 +516,6 @@ void CLuaManager::LoadCFunctions ( void )
     // Weapon funcs
     CLuaCFunctions::AddFunction ( "getWeaponNameFromID", CLuaFunctionDefinitions::GetWeaponNameFromID );
     CLuaCFunctions::AddFunction ( "getWeaponIDFromName", CLuaFunctionDefinitions::GetWeaponIDFromName );
-    CLuaCFunctions::AddFunction ( "createWeapon", CLuaFunctionDefinitions::CreateWeapon );
-    CLuaCFunctions::AddFunction ( "setWeaponProperty", CLuaFunctionDefinitions::SetWeaponProperty );
-    CLuaCFunctions::AddFunction ( "fireWeapon", CLuaFunctionDefinitions::FireWeapon );
-    CLuaCFunctions::AddFunction ( "setWeaponState", CLuaFunctionDefinitions::SetWeaponState );
-    CLuaCFunctions::AddFunction ( "getWeaponState", CLuaFunctionDefinitions::GetWeaponState );
-    CLuaCFunctions::AddFunction ( "setWeaponTarget", CLuaFunctionDefinitions::SetWeaponTarget );
-    CLuaCFunctions::AddFunction ( "getWeaponTarget", CLuaFunctionDefinitions::GetWeaponTarget );
-    CLuaCFunctions::AddFunction ( "setWeaponOwner", CLuaFunctionDefinitions::SetWeaponOwner );
-    CLuaCFunctions::AddFunction ( "getWeaponOwner", CLuaFunctionDefinitions::GetWeaponOwner );
-    CLuaCFunctions::AddFunction ( "setWeaponFlags", CLuaFunctionDefinitions::SetWeaponFlags );
-    CLuaCFunctions::AddFunction ( "getWeaponFlags", CLuaFunctionDefinitions::GetWeaponFlags );
-    CLuaCFunctions::AddFunction ( "setWeaponFiringRate", CLuaFunctionDefinitions::SetWeaponFiringRate );
-    CLuaCFunctions::AddFunction ( "getWeaponFiringRate", CLuaFunctionDefinitions::GetWeaponFiringRate );
-    CLuaCFunctions::AddFunction ( "resetWeaponFiringRate", CLuaFunctionDefinitions::ResetWeaponFiringRate );
-    CLuaCFunctions::AddFunction ( "getWeaponAmmo", CLuaFunctionDefinitions::GetWeaponAmmo );
-    CLuaCFunctions::AddFunction ( "getWeaponClipAmmo", CLuaFunctionDefinitions::GetWeaponClipAmmo );
-    CLuaCFunctions::AddFunction ( "setWeaponAmmo", CLuaFunctionDefinitions::SetWeaponAmmo );
-    CLuaCFunctions::AddFunction ( "setWeaponClipAmmo", CLuaFunctionDefinitions::SetWeaponClipAmmo );
 
     // Console funcs
     CLuaCFunctions::AddFunction ( "addCommandHandler", CLuaFunctionDefinitions::AddCommandHandler );
@@ -586,11 +570,6 @@ void CLuaManager::LoadCFunctions ( void )
     CLuaCFunctions::AddFunction ( "utfCode", CLuaFunctionDefinitions::UtfCode );
 
     CLuaCFunctions::AddFunction ( "getValidPedModels", CLuaFunctionDefinitions::GetValidPedModels );
-
-    // PCRE functions
-    CLuaCFunctions::AddFunction ( "pregFind", CLuaFunctionDefinitions::PregFind );
-    CLuaCFunctions::AddFunction ( "pregReplace", CLuaFunctionDefinitions::PregReplace );
-    CLuaCFunctions::AddFunction ( "pregMatch", CLuaFunctionDefinitions::PregMatch );
 
     // Loaded map funcs
     CLuaCFunctions::AddFunction ( "getRootElement", CLuaFunctionDefinitions::GetRootElement );
@@ -715,10 +694,6 @@ void CLuaManager::LoadCFunctions ( void )
     // Utility
     CLuaCFunctions::AddFunction ( "md5", CLuaFunctionDefinitions::Md5 );
     CLuaCFunctions::AddFunction ( "sha256", CLuaFunctionDefinitions::Sha256 );
-    CLuaCFunctions::AddFunction ( "teaEncode", CLuaFunctionDefinitions::TeaEncode );
-    CLuaCFunctions::AddFunction ( "teaDecode", CLuaFunctionDefinitions::TeaDecode );
-    CLuaCFunctions::AddFunction ( "base64encode", CLuaFunctionDefinitions::Base64encode );
-    CLuaCFunctions::AddFunction ( "base64decode", CLuaFunctionDefinitions::Base64decode );
     CLuaCFunctions::AddFunction ( "getVersion", CLuaFunctionDefinitions::GetVersion );
     CLuaCFunctions::AddFunction ( "getNetworkUsageData", CLuaFunctionDefinitions::GetNetworkUsageData );
     CLuaCFunctions::AddFunction ( "getNetworkStats", CLuaFunctionDefinitions::GetNetworkStats );

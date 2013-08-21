@@ -51,14 +51,11 @@ public:
     LUA_DECLARE ( GetResourceGUIElement );
     LUA_DECLARE ( GetResourceDynamicElementRoot );
     LUA_DECLARE ( GetResourceExportedFunctions );
-    LUA_DECLARE ( LoadString );
-    LUA_DECLARE ( Load );
 
     // Event functions
     LUA_DECLARE ( AddEvent );
     LUA_DECLARE ( AddEventHandler );
     LUA_DECLARE ( RemoveEventHandler );
-    LUA_DECLARE ( GetEventHandlers );
     LUA_DECLARE ( TriggerEvent );
     LUA_DECLARE ( TriggerServerEvent );
     LUA_DECLARE ( CancelEvent );
@@ -67,9 +64,6 @@ public:
     LUA_DECLARE ( GetLatentEventHandles );
     LUA_DECLARE ( GetLatentEventStatus );
     LUA_DECLARE ( CancelLatentEvent );
-
-    // Misc functions
-    LUA_DECLARE ( DownloadFile );
 
     // Sound effects and synth functions
     LUA_DECLARE ( PlaySound );
@@ -426,15 +420,15 @@ public:
     LUA_DECLARE ( CreateFire );
 
     // Audio funcs
+    LUA_DECLARE ( PlayMissionAudio );
     LUA_DECLARE ( PlaySoundFrontEnd );
+    LUA_DECLARE ( PreloadMissionAudio );
     LUA_DECLARE ( SetAmbientSoundEnabled );
     LUA_DECLARE ( IsAmbientSoundEnabled );
     LUA_DECLARE ( ResetAmbientSounds );
     LUA_DECLARE ( SetWorldSoundEnabled );
     LUA_DECLARE ( IsWorldSoundEnabled );
     LUA_DECLARE ( ResetWorldSounds );
-    LUA_DECLARE ( PlaySFX );
-    LUA_DECLARE ( PlaySFX3D );
 
     // Blip funcs
     LUA_DECLARE ( CreateBlip );
@@ -933,10 +927,6 @@ public:
     // Utility
     LUA_DECLARE ( Md5 );
     LUA_DECLARE ( Sha256 );
-    LUA_DECLARE ( TeaEncode );
-    LUA_DECLARE ( TeaDecode );
-    LUA_DECLARE ( Base64encode );
-    LUA_DECLARE ( Base64decode );
     LUA_DECLARE ( GetNetworkUsageData );
     LUA_DECLARE ( GetNetworkStats );
     LUA_DECLARE ( GetPerformanceStats );
@@ -953,12 +943,6 @@ public:
     LUA_DECLARE ( UtfSub );
     LUA_DECLARE ( UtfChar );
     LUA_DECLARE ( UtfCode );
-
-    // PCRE functions
-
-    LUA_DECLARE ( PregFind );
-    LUA_DECLARE ( PregReplace );
-    LUA_DECLARE ( PregMatch );
 
     // Voice functions
     LUA_DECLARE ( IsVoiceEnabled );

@@ -200,7 +200,7 @@ public:
         std::list < CNetJobData* >                  m_OutResultQueue;
         std::list < SProcessPacketArgs* >           m_InResultQueue;
         std::set < CNetJobData* >                   m_FinishedList;         // Result has been used, will be deleted next pulse (shared access with watchdog thread)
-        CComboMutex                                 m_Mutex;
+        CDebugComboMutex                            m_Mutex;
         CNetBufferWatchDog*                         m_pWatchDog;
         int                                         m_iThreadFrameCount;
         uint                                        m_iuGamePlayerCount;

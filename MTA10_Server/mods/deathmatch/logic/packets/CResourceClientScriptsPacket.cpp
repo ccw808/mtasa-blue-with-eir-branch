@@ -35,7 +35,7 @@ bool CResourceClientScriptsPacket::Write ( NetBitStreamInterface& BitStream ) co
           iter != m_vecItems.end();
           ++iter )
     {
-        const SString& data = (*iter)->GetSourceCode ();
+        const SString& data = (*iter)->GetChunkCode ();
         unsigned int len = data.length ();
         BitStream.Write ( len );
         BitStream.Write ( data.c_str(), len );

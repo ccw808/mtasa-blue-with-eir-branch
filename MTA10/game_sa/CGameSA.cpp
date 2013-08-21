@@ -66,7 +66,6 @@ CGameSA::CGameSA()
 
     DEBUG_TRACE("CGameSA::CGameSA()");
     this->m_pAudioEngine            = new CAudioEngineSA((CAudioEngineSAInterface*)CLASS_CAudioEngine);
-    this->m_pAudioContainer         = new CAudioContainerSA();
     this->m_pWorld                  = new CWorldSA();
     this->m_pPools                  = new CPoolsSA();
     this->m_pClock                  = new CClockSA();
@@ -230,7 +229,6 @@ CGameSA::~CGameSA ( void )
     delete reinterpret_cast < CPoolsSA* > ( m_pPools );
     delete reinterpret_cast < CWorldSA* > ( m_pWorld );
     delete reinterpret_cast < CAudioEngineSA* > ( m_pAudioEngine );
-    delete reinterpret_cast < CAudioContainerSA* > ( m_pAudioContainer );
     delete reinterpret_cast < CPointLightsSA * > ( m_pPointLights );
 }
 

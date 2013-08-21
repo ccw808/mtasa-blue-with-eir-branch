@@ -212,7 +212,7 @@ private:
     bool                    m_bProtected;
     bool                    m_bStartedManually;
 
-    bool                    m_bOOPEnabledInMetaXml;
+
     uint                    m_uiFunctionRightCacheRevision;
     CFastHashMap < lua_CFunction, bool > m_FunctionRightCacheMap;
 
@@ -350,7 +350,7 @@ public:
     unsigned short          GetNetID ( void ) { return m_usNetID; }
     uint                    GetScriptID ( void ) const { return m_uiScriptID; }
     void                    OnPlayerJoin ( CPlayer& Player );
-    void                    SendNoClientCacheScripts ( CPlayer* pPlayer = NULL );
+    void                    SendProtectedScripts ( CPlayer* player = 0 );
     CDummy*                 GetResourceRootElement ( void ) { return m_pResourceElement; };
     CDummy*                 GetDynamicElementRoot ( void ) { return m_pResourceDynamicElementRoot; };
 
@@ -376,7 +376,6 @@ public:
     bool                HandleAclRequestChange          ( const CAclRightName& strRightName, bool bAccess, const SString& strWho );
     const SString&      GetMinServerReqFromMetaXml      ( void )                                { return m_strMinServerReqFromMetaXml; }
     const SString&      GetMinClientReqFromMetaXml      ( void )                                { return m_strMinClientReqFromMetaXml; }
-    bool                IsOOPEnabledInMetaXml           ( void )                                { return m_bOOPEnabledInMetaXml; }
     bool                CheckFunctionRightCache         ( lua_CFunction f, bool* pbOutAllowed );
     void                UpdateFunctionRightCache        ( lua_CFunction f, bool bAllowed );
 

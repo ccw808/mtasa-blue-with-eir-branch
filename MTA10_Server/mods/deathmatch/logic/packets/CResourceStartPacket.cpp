@@ -43,21 +43,21 @@ bool CResourceStartPacket::Write ( NetBitStreamInterface& BitStream ) const
         // Write the resource dynamic element id
         BitStream.Write ( m_pResource->GetDynamicElementRoot ()->GetID () );
         
-        // Count the amount of 'no client cache' scripts
-        unsigned short usNoClientCacheScriptCount = 0;
+        // Count the amount of protected scripts
+        unsigned short usProtectedScriptCount = 0;
         if ( m_pResource->IsClientScriptsOn () == true )
         {
             list < CResourceFile* > ::iterator iter = m_pResource->IterBegin();
             for ( ; iter != m_pResource->IterEnd (); iter++ )
             {
                 if ( ( *iter )->GetType () == CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_SCRIPT &&
-                     static_cast<CResourceClientScriptItem*>(*iter)->IsNoClientCache() == true )
+                     static_cast<CResourceClientScriptItem*>(*iter)->IsProtected() == true )
                 {
-                    ++usNoClientCacheScriptCount;
+                    ++usProtectedScriptCount;
                 }
             }
         }
-        BitStream.Write ( usNoClientCacheScriptCount );
+        BitStream.Write ( usProtectedScriptCount );
 
         // Write the declared min client version for this resource
         if ( BitStream.Version () >= 0x32 )
@@ -65,17 +65,13 @@ bool CResourceStartPacket::Write ( NetBitStreamInterface& BitStream ) const
             BitStream.WriteString ( m_pResource->GetMinServerReqFromMetaXml () );
             BitStream.WriteString ( m_pResource->GetMinClientReqFromMetaXml () );
         }
-        if ( BitStream.Version () >= 0x45 )
-        {
-            BitStream.WriteBit ( m_pResource->IsOOPEnabledInMetaXml ( ) );
-        }
 
         // Send the resource files info
         list < CResourceFile* > ::iterator iter = m_pResource->IterBegin();
         for ( ; iter != m_pResource->IterEnd (); iter++ )
         {
             if ( ( ( *iter )->GetType () == CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_CONFIG && m_pResource->IsClientConfigsOn () ) ||
-                 ( ( *iter )->GetType () == CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_SCRIPT && m_pResource->IsClientScriptsOn () && static_cast<CResourceClientScriptItem*>(*iter)->IsNoClientCache() == false ) ||
+                 ( ( *iter )->GetType () == CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_SCRIPT && m_pResource->IsClientScriptsOn () && static_cast<CResourceClientScriptItem*>(*iter)->IsProtected() == false ) ||
                  ( ( *iter )->GetType () == CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_FILE && m_pResource->IsClientFilesOn () ) )
             {
                 // Write the Type of chunk to read (F - File, E - Exported Function)
@@ -108,12 +104,6 @@ bool CResourceStartPacket::Write ( NetBitStreamInterface& BitStream ) const
                 BitStream.Write ( checksum.ulCRC );
                 BitStream.Write ( (const char*)checksum.mD5, sizeof ( checksum.mD5 ) );
                 BitStream.Write ( ( *iter )->GetApproxSize () );
-                if ( ( *iter )->GetType () == CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_FILE )
-                {
-                    CResourceClientFileItem* pRCFItem = reinterpret_cast < CResourceClientFileItem* > ( *iter );
-                    // write bool whether to download or not
-                    BitStream.WriteBit ( pRCFItem->IsAutoDownload() );
-                }
             }
         }
 

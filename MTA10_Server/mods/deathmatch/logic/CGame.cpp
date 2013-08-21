@@ -28,7 +28,7 @@
 #define MAX_EXPLOSION_SYNC_DISTANCE 400.0f
 #define MAX_PROJECTILE_SYNC_DISTANCE 400.0f
 
-#define RELEASE_MIN_CLIENT_VERSION              "1.4.0-0.00000"
+#define RELEASE_MIN_CLIENT_VERSION              "1.3.0-9.03724"
 #define BULLET_SYNC_MIN_CLIENT_VERSION          "1.3.0-9.04311"
 #define VEH_EXTRAPOLATION_MIN_CLIENT_VERSION    "1.3.0-9.04460"
 #define ALT_PULSE_ORDER_MIN_CLIENT_VERSION      "1.3.1-9.04913"
@@ -140,7 +140,6 @@ CGame::CGame ( void )
     m_pWaterManager = NULL;
     m_pWeaponStatsManager = NULL;
     m_pBuildingRemovalManager = NULL;
-    m_pCustomWeaponManager = NULL;
 #ifdef WITH_OBJECT_SYNC
     m_pObjectSync = NULL;
 #endif
@@ -249,7 +248,7 @@ CGame::~CGame ( void )
     // Disconnect all players
     std::list < CPlayer* > ::const_iterator iter = m_pPlayerManager->IterBegin ();
     for ( ; iter != m_pPlayerManager->IterEnd (); iter++ )
-        DisconnectPlayer ( this, **iter, CPlayerDisconnectedPacket::NO_REASON );
+        DisconnectPlayer ( this, **iter, "Server shutdown/restarting" );
 
     // Stop networking
     Stop ();
@@ -307,7 +306,6 @@ CGame::~CGame ( void )
     SAFE_DELETE ( m_pWaterManager );
     SAFE_DELETE ( m_pWeaponStatsManager );
     SAFE_DELETE ( m_pBuildingRemovalManager );
-    SAFE_DELETE ( m_pCustomWeaponManager );
     SAFE_DELETE ( m_pOpenPortsTester );
     CSimControl::Shutdown ();
 
@@ -504,7 +502,6 @@ bool CGame::Start ( int iArgumentCount, char* szArguments [] )
 
     m_pBuildingRemovalManager = new CBuildingRemovalManager;
 
-    m_pCustomWeaponManager = new CCustomWeaponManager ( );
 
     // Parse the commandline
     if ( !m_CommandLineParser.Parse ( iArgumentCount, szArguments ) )
@@ -649,12 +646,12 @@ bool CGame::Start ( int iArgumentCount, char* szArguments [] )
         SString strResourceCachePath ( "%s/resource-cache", g_pServerInterface->GetServerModPath () );
         SString strResourceCacheUnzippedPath ( "%s/unzipped", strResourceCachePath.c_str () );
         SString strResourceCacheHttpClientFilesPath ( "%s/http-client-files", strResourceCachePath.c_str () );
-        SString strResourceCacheHttpClientFilesNoClientCachePath ( "%s/http-client-files-no-client-cache", strResourceCachePath.c_str () );
+        SString strResourceCacheHttpClientFilesProtectedPath ( "%s/http-client-files-no-client-cache", strResourceCachePath.c_str () );
 
         // Make sure the resource-cache directories exists
         MakeSureDirExists ( ( strResourceCacheUnzippedPath + "/" ).c_str () );
         MakeSureDirExists ( ( strResourceCacheHttpClientFilesPath + "/" ).c_str () );
-        MakeSureDirExists ( ( strResourceCacheHttpClientFilesNoClientCachePath + "/" ).c_str () );
+        MakeSureDirExists ( ( strResourceCacheHttpClientFilesProtectedPath + "/" ).c_str () );
 
         // Rename old dirs to show that they are no longer used
         FileRename( PathJoin( g_pServerInterface->GetServerModPath(), "resourcecache" ), strResourceCachePath + "/_old_resourcecache.delete-me" );
@@ -1101,12 +1098,6 @@ bool CGame::ProcessPacket ( CPacket& Packet )
             return true;
         }
 
-        case PACKET_ID_WEAPON_BULLETSYNC:
-        {
-            Packet_WeaponBulletsync ( static_cast < CCustomWeaponBulletSyncPacket& > ( Packet ) );
-            return true;
-        }
-
         case PACKET_ID_PED_TASK:
         {
             Packet_PedTask ( static_cast < CPedTaskPacket& > ( Packet ) );
@@ -1116,12 +1107,6 @@ bool CGame::ProcessPacket ( CPacket& Packet )
         case PACKET_ID_DETONATE_SATCHELS:
         {
             Packet_DetonateSatchels ( static_cast < CDetonateSatchelsPacket& > ( Packet ) );
-            return true;
-        }
-
-        case PACKET_ID_DESTROY_SATCHELS:
-        {
-            Packet_DestroySatchels ( static_cast < CDestroySatchelsPacket& > ( Packet ) );
             return true;
         }
 
@@ -1572,9 +1557,6 @@ void CGame::AddBuiltInEvents ( void )
     // Other events
     m_Events.AddEvent ( "onSettingChange", "setting, oldValue, newValue", NULL, false );
     m_Events.AddEvent ( "onChatMessage", "message, element", NULL, false );
-
-    // Weapon events
-    m_Events.AddEvent ( "onWeaponFire", "", NULL, false );
 }
 
 void CGame::ProcessTrafficLights ( unsigned long ulCurrentTime )
@@ -1678,10 +1660,10 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
             if ( !CheckNickProvided ( szNick ) ) // check the nick is valid
             {
                 // Tell the console
-                CLogger::LogPrintf ( "CONNECT: %s failed to connect (Invalid nickname) (%s)\n", szNick, strIPAndSerial.c_str () );
+                CLogger::LogPrintf ( "CONNECT: %s failed to connect (Invalid Nick) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                 // Tell the player the problem
-                DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::INVALID_NICKNAME );
+                DisconnectPlayer ( this, *pPlayer, "Disconnected: Invalid Nick" );
                 return;
             }
 
@@ -1735,7 +1717,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
 
                                     // Tell the player
                                     pPlayer->Send ( CUpdateInfoPacket ( "Mandatory", CalculateMinClientRequirement () ) );
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::NO_REASON );
+                                    DisconnectPlayer ( this, *pPlayer, "" );
                                     return;
                                 }
 
@@ -1754,7 +1736,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                 // Check the serial for validity
                                 if ( CBan* pBan = m_pBanManager->GetBanFromSerial ( pPlayer->GetSerial ().c_str () ) )
                                 {
-                                    time_t Duration = pBan->GetTimeOfUnban() - time ( NULL );
+                                    // Make a message including the ban duration
                                     SString strBanMessage = "Serial is banned";
                                     SString strDurationDesc = pBan->GetDurationDesc ();
                                     if ( strDurationDesc.length () )
@@ -1763,15 +1745,18 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                     // Tell the console
                                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (%s) (%s)\n", szNick, strBanMessage.c_str (), strIPAndSerial.c_str () );
 
+                                    // Make a message for the player
+                                    strBanMessage = std::string ( "Disconnected: " ) + strBanMessage;
+
                                     // Tell the player he's banned
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::BANNED_SERIAL, Duration, pBan->GetReason().c_str() );
+                                    DisconnectPlayer ( this, *pPlayer, strBanMessage );
                                     return;
                                 }
 
                                 // Check the ip for banness
                                 if ( CBan* pBan = m_pBanManager->GetBanFromIP ( strIP ) )
                                 {
-                                    time_t Duration = pBan->GetTimeOfUnban() - time ( NULL );
+                                    // Make a message including the ban duration
                                     SString strBanMessage;// = "Serial is banned";
                                     SString strDurationDesc = pBan->GetDurationDesc ();
                                     if ( strDurationDesc.length () )
@@ -1780,8 +1765,11 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                     // Tell the console
                                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (IP is banned%s) (%s)\n", szNick, strBanMessage.c_str (), strIPAndSerial.c_str () );
 
+                                    // Make a message for the player
+                                    strBanMessage = std::string ( "Disconnected: You are banned " ) + strBanMessage;
+
                                     // Tell the player he's banned
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::BANNED_IP, Duration, pBan->GetReason().c_str() );
+                                    DisconnectPlayer ( this, *pPlayer, strBanMessage );
                                     return;
                                 }
 
@@ -1791,17 +1779,8 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                     // Tell the console
                                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (Account is banned) (%s)\n", szNick, strIPAndSerial.c_str () );
 
-                                    CBan* pBan = m_pBanManager->GetBanFromAccount( pPlayer->GetSerialUser ().c_str () );
-                                    time_t Duration = 0;
-                                    SString strReason;
-                                    if ( pBan )
-                                    {
-                                        strReason = pBan->GetReason();
-                                        Duration = pBan->GetTimeOfUnban() - time ( NULL );
-                                    }
-
                                     // Tell the player he's banned
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::BANNED_ACCOUNT, Duration, strReason.c_str() );
+                                    DisconnectPlayer ( this, *pPlayer, "Disconnected: Account is banned" );
                                     return;
                                 }
 
@@ -1813,7 +1792,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (Version mismatch) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                                     // Tell the player
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::VERSION_MISMATCH );
+                                    DisconnectPlayer ( this, *pPlayer, "Disconnected: Version mismatch" );
                                     return;
                                 }
                             #endif
@@ -1829,7 +1808,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                 CLogger::LogPrintf ( "CONNECT: %s failed to connect (Join flood) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                                 // Tell the player the problem
-                                DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::JOIN_FLOOD );
+                                DisconnectPlayer ( this, *pPlayer, "Disconnected: Join flood. Please wait a minute, then reconnect." );
                             }
                         }
                         else
@@ -1838,7 +1817,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                             CLogger::LogPrintf ( "CONNECT: %s failed to connect (Wrong password) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                             // Tell the player the password was wrong
-                            DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::INVALID_PASSWORD );
+                            DisconnectPlayer ( this, *pPlayer, "Disconnected: Incorrect password" );
                         }
                     }
                     else
@@ -1853,33 +1832,23 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                         ushort usClientBranchId = usClientNetVersion >> 12;
                         ushort usServerBranchId = usServerNetVersion >> 12;
 
-                        CPlayerDisconnectedPacket::ePlayerDisconnectType eType;
-
                         if ( usClientBranchId != usServerBranchId )
                         {
-                            eType = CPlayerDisconnectedPacket::DIFFERENT_BRANCH;
-                            strMessage = SString ( "(client: %X, server: %X)\n", usClientBranchId, usServerBranchId );
+                            strMessage = SString ( "Disconnected: Server from different branch (client: %X, server: %X)\n", usClientBranchId, usServerBranchId );
                         }
                         else
                         if ( MTASA_VERSION_BUILD == 0 )
                         {
-                            eType = CPlayerDisconnectedPacket::BAD_VERSION;
-                            strMessage = SString ( "(client: %X, server: %X)\n", usClientNetVersion, usServerNetVersion );
+                            strMessage = SString ( "Disconnected: Bad version (client: %X, server: %X)\n", usClientNetVersion, usServerNetVersion );
                         }
                         else
                         {
                             if ( usClientNetVersion < usServerNetVersion )
-                            {
-                                eType = CPlayerDisconnectedPacket::SERVER_NEWER;
-                                strMessage = SString ( "(%d)\n", MTASA_VERSION_BUILD );
-                            }
+                                strMessage = SString ( "Disconnected: Server is running a newer build (%d)\n", MTASA_VERSION_BUILD );
                             else
-                            {
-                                eType = CPlayerDisconnectedPacket::SERVER_OLDER;
-                                strMessage = SString ( "(%d)\n", MTASA_VERSION_BUILD );
-                            }
+                                strMessage = SString ( "Disconnected: Server is running an older build (%d)\n", MTASA_VERSION_BUILD );
                         }
-                        DisconnectPlayer ( this, *pPlayer, eType, strMessage );
+                        DisconnectPlayer ( this, *pPlayer, strMessage );
                     }
                 }
                 else
@@ -1888,7 +1857,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (Nick already in use) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                     // Tell the player the problem
-                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::NICK_CLASH );
+                    DisconnectPlayer ( this, *pPlayer, "Disconnected: Nick already in use" );
                 }
             }
             else
@@ -1897,13 +1866,19 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                 CLogger::LogPrintf ( "CONNECT: %s failed to connect (Invalid nickname)\n", pPlayer->GetSourceIP () );
 
                 // Tell the player the problem
-                DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::INVALID_NICKNAME );
+                DisconnectPlayer ( this, *pPlayer, "Disconnected: Invalid nickname" );
             }
         }
         else
         {
             // Tell the console
-            CLogger::LogPrintf ( "CONNECT: %s failed to connect (Player Element Could not be created.)\n", szNick );
+            CLogger::LogPrintf ( "CONNECT: %s failed to connect (Player Element Could not be created.)\n", pPlayer->GetSourceIP () );
+
+            // Tell the console
+            CLogger::LogPrint ( "URGENT: Report this error on bugs.mtasa.com error code: 6930-2\n" );
+
+            // Tell the player the problem
+            DisconnectPlayer ( this, *pPlayer, "Disconnected: Player Element Could not be created." );
         }
     }
 }
@@ -2277,17 +2252,11 @@ void CGame::Packet_VehiclePuresync ( CVehiclePuresyncPacket& Packet )
             RelayPlayerPuresync ( Packet );
             UNCLOCK( "VehiclePuresync", "RelayPlayerPuresync" );
 
-            CVehicle * pTrailer = pVehicle->GetTowedVehicle();
 
             // Run colpoint checks
             CLOCK( "VehiclePuresync", "DoHitDetection" );
             m_pColManager->DoHitDetection ( pPlayer->GetPosition (), pPlayer );
             m_pColManager->DoHitDetection ( pVehicle->GetPosition (), pVehicle );
-            while ( pTrailer )
-            {
-                m_pColManager->DoHitDetection ( pTrailer->GetPosition (), pTrailer );
-                pTrailer = pTrailer->GetTowedVehicle();
-            }
             UNCLOCK( "VehiclePuresync", "DoHitDetection" );
         }
     }
@@ -2316,24 +2285,6 @@ void CGame::Packet_Bulletsync ( CBulletsyncPacket& Packet )
     }
 }
 
-void CGame::Packet_WeaponBulletsync ( CCustomWeaponBulletSyncPacket& Packet )
-{
-    // Grab the source player
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-    CCustomWeapon * pWeapon = Packet.GetWeapon ( );
-    if ( pPlayer && pPlayer->IsJoined () && pPlayer == Packet.GetWeaponOwner ( ) )
-    {
-        // Tell our scripts the player has fired
-        CLuaArguments Arguments;
-        Arguments.PushElement ( pPlayer );
-
-        if ( pWeapon->CallEvent ( "onWeaponFire", Arguments ) )
-        {
-            // Relay to other players
-            m_pPlayerManager->BroadcastOnlyJoined ( Packet, pPlayer );
-        }
-    }
-}
 
 void CGame::Packet_PedTask ( CPedTaskPacket& Packet )
 {
@@ -2465,20 +2416,6 @@ void CGame::Packet_DetonateSatchels ( CDetonateSatchelsPacket& Packet )
     if ( pPlayer && pPlayer->IsJoined () )
     {
         // Tell everyone to blow up this guy's satchels
-        m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-        //Take away their detonator
-        CStaticFunctionDefinitions::TakeWeapon( pPlayer, 40 );
-    }
-}
-
-
-void CGame::Packet_DestroySatchels ( CDestroySatchelsPacket& Packet )
-{
-    // Grab the source player
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-    if ( pPlayer && pPlayer->IsJoined () )
-    {
-        // Tell everyone to destroy up this player's satchels
         m_pPlayerManager->BroadcastOnlyJoined ( Packet );
         //Take away their detonator
         CStaticFunctionDefinitions::TakeWeapon( pPlayer, 40 );
@@ -2720,7 +2657,6 @@ void CGame::Packet_Vehicle_InOut ( CVehicleInOutPacket& Packet )
                                                     // Mark him as entering the vehicle
                                                     pPlayer->SetOccupiedVehicle ( pVehicle, 0 );
                                                     pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_ENTERING );
-                                                    pVehicle->m_bOccupantChanged = false;
 
                                                     // Call the entering vehicle event
                                                     CLuaArguments Arguments;
@@ -2755,12 +2691,9 @@ void CGame::Packet_Vehicle_InOut ( CVehicleInOutPacket& Packet )
                                                     }
                                                     else
                                                     {
-                                                        if ( !pVehicle->m_bOccupantChanged )
-                                                        {
-                                                            pPlayer->SetOccupiedVehicle ( NULL, 0 );
-                                                            pVehicle->SetOccupant ( NULL, 0 );
-                                                        }
+                                                        pPlayer->SetOccupiedVehicle ( NULL, 0 );
                                                         pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
+                                                        pVehicle->SetOccupant ( NULL, 0 );
                                                         failReason = FAIL_SCRIPT;
                                                     }
                                                 }
@@ -2836,7 +2769,6 @@ void CGame::Packet_Vehicle_InOut ( CVehicleInOutPacket& Packet )
                                                     // Mark him as entering the vehicle
                                                     pPlayer->SetOccupiedVehicle ( pVehicle, ucSeat );
                                                     pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_ENTERING );
-                                                    pVehicle->m_bOccupantChanged = false;
 
                                                     // Call the entering vehicle event
                                                     CLuaArguments Arguments;
@@ -2865,12 +2797,9 @@ void CGame::Packet_Vehicle_InOut ( CVehicleInOutPacket& Packet )
                                                     }
                                                     else
                                                     {
-                                                        if ( !pVehicle->m_bOccupantChanged )
-                                                        {
-                                                            pPlayer->SetOccupiedVehicle ( NULL, 0 );
-                                                            pVehicle->SetOccupant ( NULL, ucSeat );
-                                                        }
-                                                        pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );                                                        
+                                                        pPlayer->SetOccupiedVehicle ( NULL, 0 );
+                                                        pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
+                                                        pVehicle->SetOccupant ( NULL, ucSeat );
                                                         failReason = FAIL_SCRIPT;
                                                     }
                                                 }
@@ -3719,7 +3648,7 @@ void CGame::Packet_PlayerNoSocket ( CPlayerNoSocketPacket & Packet )
         if ( pPlayer->GetTimeSinceReceivedSync() > 20000 )
         {
             CLogger::LogPrintf ( "INFO: Dead connection detected for %s\n", pPlayer->GetNick() );
-            pPlayer->Send ( CPlayerDisconnectedPacket ( CPlayerDisconnectedPacket::KICK, "Worrying message" ) );
+            pPlayer->Send ( CPlayerDisconnectedPacket ( "Worrying message" ) );
             g_pGame->QuitPlayer ( *pPlayer, CClient::QUIT_TIMEOUT );
         }
     }
@@ -3805,7 +3734,7 @@ void CGame::PlayerCompleteConnect ( CPlayer* pPlayer, bool bSuccess, const char*
                 DisconnectPlayer ( g_pGame, *pPlayer, szError );
                 return;
             }
-            DisconnectPlayer ( g_pGame, *pPlayer, CPlayerDisconnectedPacket::GENERAL_REFUSED );
+            DisconnectPlayer ( g_pGame, *pPlayer, "Disconnected: server refused the connection" );
             return;
         }
 
@@ -3824,7 +3753,7 @@ void CGame::PlayerCompleteConnect ( CPlayer* pPlayer, bool bSuccess, const char*
         if ( szError && strlen ( szError ) > 0 )
             DisconnectPlayer ( g_pGame, *pPlayer, szError );
         else
-            DisconnectPlayer ( g_pGame, *pPlayer, CPlayerDisconnectedPacket::SERIAL_VERIFICATION );
+            DisconnectPlayer ( g_pGame, *pPlayer, "Disconnected: Serial verification failed" );
         return;
     }
 }
@@ -4230,9 +4159,11 @@ SString CGame::CalculateMinClientRequirement ( void )
     // Also seems a good place to keep this setting synchronized
     g_pBandwidthSettings->NotifyBulletSyncEnabled( g_pGame->IsBulletSyncActive() );
 
-#ifndef MTA_DEBUG
-    if ( strNewMin < RELEASE_MIN_CLIENT_VERSION )
-        strNewMin = RELEASE_MIN_CLIENT_VERSION;
+#if MTASA_VERSION_TYPE == VERSION_TYPE_RELEASE
+    #ifndef MTA_DEBUG
+        if ( strNewMin < RELEASE_MIN_CLIENT_VERSION )
+            strNewMin = RELEASE_MIN_CLIENT_VERSION;
+    #endif
 #endif
 
     return strNewMin;

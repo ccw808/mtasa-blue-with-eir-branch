@@ -42,7 +42,13 @@ struct CRefInfo
 class CLuaMain //: public CClient
 {
 public:
-    ZERO_ON_NEW
+    enum
+    {
+        OWNER_SERVER,
+        OWNER_MAP,
+    };
+
+public:
                                     CLuaMain                ( class CLuaManager* pLuaManager,
                                                               CObjectManager* pObjectManager,
                                                               CPlayerManager* pPlayerManager,
@@ -53,9 +59,15 @@ public:
                                                               CResource* pResourceOwner );
                                     ~CLuaMain               ( void );
 
-    bool                            LoadScriptFromBuffer    ( const char* cpBuffer, unsigned int uiSize, const char* szFileName );
+    inline int                      GetOwner                ( void )                        { return m_iOwner; };
+    inline void                     SetOwner                ( int iOwner )                  { m_iOwner = iOwner; };
+
+    bool                            LoadScriptFromFile      ( const char* szLUAScript );
+    bool                            LoadScriptFromBuffer    ( const char* cpBuffer, unsigned int uiSize, const char* szFileName, bool bUTF8 );
     bool                            LoadScript              ( const char* szLUAScript );
     void                            UnloadScript            ( void );
+    bool                            CompileScriptFromBuffer ( const char* cpBuffer, unsigned int uiSize, const char* szFileName, bool bUTF8, SString* pDest );
+    bool                            CompileScriptFromFile   ( const char* szFile, SString* pDest );
 
     void                            Start                   ( void );
 
@@ -112,11 +124,11 @@ public:
 
 private:
     void                            InitSecurity            ( void );
-    void                            InitClasses             ( lua_State* luaVM );
 
     static void                     InstructionCountHook    ( lua_State* luaVM, lua_Debug* pDebug );
 
     SString                         m_strScriptName;
+    int                             m_iOwner;
 
     lua_State*                      m_luaVM;
     CLuaTimerManager*               m_pLuaTimerManager;

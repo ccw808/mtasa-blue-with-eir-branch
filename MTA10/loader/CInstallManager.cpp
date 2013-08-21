@@ -352,7 +352,7 @@ SString CInstallManager::_ChangeToAdmin ( void )
 {
     if ( !IsUserAdmin () )
     {
-        MessageBoxUTF8( NULL, SString ( _("MTA:SA needs Administrator access for the following task:\n\n  '%s'\n\nPlease confirm in the next window."), *m_strAdminReason ), "Multi Theft Auto: San Andreas", MB_OK | MB_TOPMOST  );
+        MessageBox( NULL, SString ( "MTA:SA needs Administrator access for the following task:\n\n  '%s'\n\nPlease confirm in the next window.", *m_strAdminReason ), "Multi Theft Auto: San Andreas", MB_OK | MB_TOPMOST  );
         SetIsBlockingUserProcess ();
         ReleaseSingleInstanceMutex ();
         if ( ShellExecuteBlocking ( "runas", GetLauncherPathFilename (), GetSequencerSnapshot () ) )
@@ -366,7 +366,7 @@ SString CInstallManager::_ChangeToAdmin ( void )
         }
         CreateSingleInstanceMutex ();
         ClearIsBlockingUserProcess ();
-        MessageBoxUTF8( NULL, SString ( _("MTA:SA could not complete the following task:\n\n  '%s'\n"), *m_strAdminReason ), "Multi Theft Auto: San Andreas"+_E("CL01"), MB_OK | MB_TOPMOST  );
+        MessageBox( NULL, SString ( "MTA:SA could not complete the following task:\n\n  '%s'\n", *m_strAdminReason ), "Multi Theft Auto: San Andreas", MB_OK | MB_TOPMOST  );
     }
     return "fail";
 }
@@ -417,7 +417,7 @@ SString CInstallManager::_ShowCrashFailDialog ( void )
     SetApplicationSetting ( "diagnostics", "last-crash-reason", "" );
     if ( strReason == "direct3ddevice-reset" )
     {
-        strMessage += _("** The crash was caused by a graphics driver error **\n\n** Please update your graphics drivers **");
+        strMessage += "** The crash was caused by a graphics driver error **\n\n** Please update your graphics drivers **";
     }
     else
     {
@@ -528,7 +528,7 @@ SString CInstallManager::_InstallFiles ( void )
         else
             AddReportLog ( 5049, SString ( "_InstallFiles: Couldn't install files %s", "" ) );
 
-        m_strAdminReason = _("Install updated MTA:SA files");
+        m_strAdminReason = "Install updated MTA:SA files";
         return "fail";
     }
     else
@@ -549,7 +549,7 @@ SString CInstallManager::_InstallFiles ( void )
 //////////////////////////////////////////////////////////
 SString CInstallManager::_ShowCopyFailDialog ( void )
 {
-    int iResponse = MessageBoxUTF8 ( NULL, _("Could not update due to file conflicts. Please close other applications and retry"), _("Error")+_E("CL02"), MB_RETRYCANCEL | MB_ICONERROR | MB_TOPMOST  );
+    int iResponse = MessageBox ( NULL, "Could not update due to file conflicts. Please close other applications and retry", "Error", MB_RETRYCANCEL | MB_ICONERROR | MB_TOPMOST  );
     if ( iResponse == IDRETRY )
         return "retry";
     return "ok";
@@ -558,7 +558,7 @@ SString CInstallManager::_ShowCopyFailDialog ( void )
 
 void ShowLayoutError ( const SString& strExtraInfo )
 {
-    MessageBoxUTF8 ( 0, SString ( _("Multi Theft Auto has not been installed properly, please reinstall. %s"), *strExtraInfo ), _("Error")+_E("CL03"), MB_OK | MB_TOPMOST  );
+    MessageBox ( 0, SString ( "Multi Theft Auto has not been installed properly, please reinstall. %s", *strExtraInfo ), "Error", MB_OK | MB_TOPMOST  );
     TerminateProcess ( GetCurrentProcess (), 9 );
 }
 
@@ -707,7 +707,7 @@ SString CInstallManager::_ProcessAeroChecks ( void )
                 FILE* fh = fopen ( strGTAEXEPath, "r+b" );
                 if ( !fh )
                 {
-                    m_strAdminReason = _("Update Aero setting");
+                    m_strAdminReason = "Update Aero setting";
                     return "fail";
                 }
                 if ( !fseek ( fh, 0x8B, SEEK_SET ) )
@@ -766,7 +766,7 @@ SString CInstallManager::_ProcessLargeMemChecks ( void )
                 FILE* fh = fopen ( strGTAEXEPath, "r+b" );
                 if ( !fh )
                 {
-                    m_strAdminReason = _("Update Large Memory setting");
+                    m_strAdminReason = "Update Large Memory setting";
                     return "fail";
                 }
                 if ( !fseek ( fh, 0x96, SEEK_SET ) )
@@ -825,7 +825,7 @@ SString CInstallManager::_ProcessDepChecks ( void )
                 FILE* fh = fopen ( strGTAEXEPath, "r+b" );
                 if ( !fh )
                 {
-                    m_strAdminReason = _("Update DEP setting");
+                    m_strAdminReason = "Update DEP setting";
                     return "fail";
                 }
                 if ( !fseek ( fh, 0xDC, SEEK_SET ) )
@@ -951,7 +951,7 @@ SString CInstallManager::_ProcessNvightmareChecks ( void )
                 FILE* fh = fopen( strGTAEXEPath, "r+b" );
                 if ( !fh )
                 {
-                    m_strAdminReason = _("Update graphics driver compliance");
+                m_strAdminReason = "Update graphics driver compliance";
                     return "fail";
                 }
 
@@ -1023,7 +1023,7 @@ SString CInstallManager::_ProcessExeCopyChecks ( void )
         MaybeRenameExe( strGTAPath, &bCopyFailed );
         if ( bCopyFailed )
         {
-            m_strAdminReason = _("Copy main executable to avoid graphic driver issues");
+            m_strAdminReason = "Copy main executable to avoid graphic driver issues";
             return "fail";
         }
     }
@@ -1044,7 +1044,7 @@ SString CInstallManager::_ProcessServiceChecks ( void )
     {
         if ( !IsUserAdmin() )
         {
-            m_strAdminReason = _("Update install settings");
+            m_strAdminReason = "Update install settings";
             return "fail";
         }
     }

@@ -372,25 +372,6 @@ IMPLEMENT_ENUM_BEGIN( eFontType )
     ADD_ENUM( FONT_BECKETT,         "beckett" )
 IMPLEMENT_ENUM_END_DEFAULTS( "font-type", FONT_DEFAULT, "" )
 
-IMPLEMENT_ENUM_BEGIN ( eAudioLookupIndex )
-    ADD_ENUM ( AUDIO_LOOKUP_FEET, "feet" )
-    ADD_ENUM ( AUDIO_LOOKUP_GENRL, "genrl" )
-    ADD_ENUM ( AUDIO_LOOKUP_PAIN_A, "pain_a" )
-    ADD_ENUM ( AUDIO_LOOKUP_SCRIPT, "script" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_EA, "spc_ea" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_FA, "spc_fa" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_GA, "spc_ga" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_NA, "spc_na" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_PA, "spc_pa" )
-IMPLEMENT_ENUM_END ( "audio-lookup-index" )
-
-IMPLEMENT_ENUM_BEGIN ( eAspectRatio )
-    ADD_ENUM ( ASPECT_RATIO_AUTO, "auto" )
-    ADD_ENUM ( ASPECT_RATIO_4_3, "4:3" )
-    ADD_ENUM ( ASPECT_RATIO_16_10, "16:10" )
-    ADD_ENUM ( ASPECT_RATIO_16_9, "16:9" )
-IMPLEMENT_ENUM_END ( "aspectratio" )
-
 
 //
 // Get best guess at name of userdata type

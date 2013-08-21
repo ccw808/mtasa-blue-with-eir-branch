@@ -23,15 +23,15 @@ extern CClientGame* g_pClientGame;
 
 int CResource::m_iShowingCursor = 0;
 
-CResource::CResource ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq, bool bEnableOOP )
+CResource::CResource ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq )
 {
     m_uiScriptID = CIdArray::PopUniqueId ( this, EIdClass::RESOURCE );
     m_usNetID = usNetID;
     m_bActive = false;
     m_bInDownloadQueue = false;
     m_bShowingCursor = false;
-    m_usRemainingNoClientCacheScripts = 0;
-    m_bLoadAfterReceivingNoClientCacheScripts = false;
+    m_usRemainingProtectedScripts = 0;
+    m_bLoadAfterReceivingProtectedScripts = false;
     m_strMinServerReq = strMinServerReq;
     m_strMinClientReq = strMinClientReq;
 
@@ -65,16 +65,13 @@ CResource::CResource ( unsigned short usNetID, const char* szResourceName, CClie
     m_pResourceTXDRoot->MakeSystemEntity ();
 
     m_strResourceDirectoryPath = SString ( "%s/resources/%s", g_pClientGame->GetModRoot (), *m_strResourceName );
-    m_strResourcePrivateDirectoryPath = PathJoin ( CServerIdManager::GetSingleton ( )->GetConnectionPrivateDirectory (), m_strResourceName );
+    m_strResourcePrivateDirectoryPath = PathJoin ( CServerIdManager::GetSingleton ()->GetConnectionPrivateDirectory (), m_strResourceName );
 
     m_strResourcePrivateDirectoryPathOld = CServerIdManager::GetSingleton ()->GetConnectionPrivateDirectory ( true );
     if ( !m_strResourcePrivateDirectoryPathOld.empty () )
         m_strResourcePrivateDirectoryPathOld = PathJoin ( m_strResourcePrivateDirectoryPathOld, m_strResourceName );
 
-    // Move this after the CreateVirtualMachine line and heads will roll
-    m_bOOPEnabled = bEnableOOP;
-
-    m_pLuaVM = m_pLuaManager->CreateVirtualMachine ( this, bEnableOOP );
+    m_pLuaVM = m_pLuaManager->CreateVirtualMachine ( this );
     if ( m_pLuaVM )
     {
         m_pLuaVM->SetScriptName ( szResourceName );
@@ -129,14 +126,14 @@ CResource::~CResource ( void )
     {
         delete ( *iter );
     }
-    m_ResourceFiles.clear ();
+    m_ResourceFiles.empty ();
 
     list < CResourceConfigItem* >::iterator iterc = m_ConfigFiles.begin ();
     for ( ; iterc != m_ConfigFiles.end (); iterc++ )
     {
         delete ( *iterc );
     }
-    m_ConfigFiles.clear ();
+    m_ConfigFiles.empty ();
 
     // Delete the exported functions
     list < CExportedFunction* >::iterator iterExportedFunction = m_exportedFunctions.begin();
@@ -144,15 +141,15 @@ CResource::~CResource ( void )
     {
         delete ( *iterExportedFunction );
     }
-    m_exportedFunctions.clear();
+    m_exportedFunctions.empty();
 }
 
-CDownloadableResource* CResource::QueueFile ( CDownloadableResource::eResourceType resourceType, const char *szFileName, CChecksum serverChecksum, bool bAutoDownload )
+CDownloadableResource* CResource::QueueFile ( CDownloadableResource::eResourceType resourceType, const char *szFileName, CChecksum serverChecksum )
 {
     // Create the resource file and add it to the list
     SString strBuffer ( "%s\\resources\\%s\\%s", g_pClientGame->GetModRoot (), *m_strResourceName, szFileName );
 
-    CResourceFile* pResourceFile = new CResourceFile ( resourceType, szFileName, strBuffer, serverChecksum, bAutoDownload );
+    CResourceFile* pResourceFile = new CResourceFile ( resourceType, szFileName, strBuffer, serverChecksum );
     if ( pResourceFile )
     {
         m_ResourceFiles.push_back ( pResourceFile );
@@ -269,9 +266,9 @@ void CResource::Load ( CClientEntity *pRootEntity )
 {
     m_pRootEntity = pRootEntity;
 
-    if ( m_usRemainingNoClientCacheScripts > 0 )
+    if ( m_usRemainingProtectedScripts > 0 )
     {
-        m_bLoadAfterReceivingNoClientCacheScripts = true;
+        m_bLoadAfterReceivingProtectedScripts = true;
         return;
     }
 
@@ -312,7 +309,12 @@ void CResource::Load ( CClientEntity *pRootEntity )
             // Check the contents
             if ( iSize > 0 && CChecksum::GenerateChecksumFromBuffer ( &buffer.at ( 0 ), iSize ).CompareWithLegacy ( pResourceFile->GetServerChecksum () ) )
             {
-                m_pLuaVM->LoadScriptFromBuffer ( &buffer.at ( 0 ), iSize, pResourceFile->GetName () );
+                //UTF-8 BOM?  Compare by checking the standard UTF-8 BOM of 3 characters (in signed format, hence negative)
+                if ( iSize < 3 || buffer[0] != -0x11 || buffer[1] != -0x45 || buffer[2] != -0x41 ) 
+                    //Maybe not UTF-8, if we have a >80% heuristic detection confidence, assume it is
+                    m_pLuaVM->LoadScriptFromBuffer ( &buffer.at ( 0 ), iSize, pResourceFile->GetName (), GetUTF8Confidence ( (const unsigned char*)&buffer.at ( 0 ), iSize ) >= 80 );
+                else if ( iSize != 3 )  //If there's a BOM, but the script is not empty, load ignoring the first 3 bytes
+                    m_pLuaVM->LoadScriptFromBuffer ( &buffer.at ( 3 ), iSize-3, pResourceFile->GetName (), true );
             }
             else
             {
@@ -413,16 +415,16 @@ SString CResource::GetResourceDirectoryPath ( eAccessType accessType, const SStr
 }
 
 
-void CResource::LoadNoClientCacheScript ( const char* chunk, unsigned int len )
+void CResource::LoadProtectedScript ( const char* chunk, unsigned int len )
 {
-    if ( m_usRemainingNoClientCacheScripts > 0 )
+    if ( m_usRemainingProtectedScripts > 0 )
     {
-        --m_usRemainingNoClientCacheScripts;
-        GetVM()->LoadScriptFromBuffer ( chunk, len, "(unknown)" );
+        --m_usRemainingProtectedScripts;
+        GetVM()->LoadScriptFromBuffer ( chunk, len, "(unknown)", false );
 
-        if ( m_usRemainingNoClientCacheScripts == 0 && m_bLoadAfterReceivingNoClientCacheScripts )
+        if ( m_usRemainingProtectedScripts == 0 && m_bLoadAfterReceivingProtectedScripts )
         {
-            m_bLoadAfterReceivingNoClientCacheScripts = false;
+            m_bLoadAfterReceivingProtectedScripts = false;
             Load ( m_pRootEntity );
         }
     }

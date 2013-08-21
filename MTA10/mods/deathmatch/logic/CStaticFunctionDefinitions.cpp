@@ -230,16 +230,6 @@ bool CStaticFunctionDefinitions::WasEventCancelled ( void )
 }
 
 
-bool CStaticFunctionDefinitions::DownloadFile ( CResource* pResource, const char* szFile, CChecksum checksum )
-{
-    SString strHTTPDownloadURLFull ( "%s/%s/%s", g_pClientGame->GetHTTPURL().c_str(), pResource->GetName(), szFile );
-    SString strPath ( "%s\\resources\\%s\\%s", g_pClientGame->GetModRoot (),pResource->GetName(), szFile ); 
-    // Call SingularFileDownloadManager
-    g_pClientGame->GetSingularFileDownloadManager()->AddFile ( pResource, strPath.c_str(), szFile, strHTTPDownloadURLFull, checksum );
-    return true;
-}
-
-
 bool CStaticFunctionDefinitions::OutputConsole ( const char* szText )
 {
     m_pCore->GetConsole ()->Print ( szText );
@@ -3894,10 +3884,32 @@ bool CStaticFunctionDefinitions::CreateFire ( CVector& vecPosition, float fSize 
     return g_pGame->GetFireManager ()->StartFire ( vecPosition, fSize ) != NULL;
 }
 
+bool CStaticFunctionDefinitions::PlayMissionAudio ( const CVector& vecPosition, unsigned short usSlot )
+{
+    // TODO: Position of the sound
+
+    // Play the sound if it's loaded
+    if ( g_pGame->GetAudioEngine ()->GetMissionAudioLoadingStatus ( usSlot ) == 1 )
+    {
+        g_pGame->GetAudioEngine ()->PlayLoadedMissionAudio ( usSlot );
+        return true;
+    }
+
+    return false;
+}
+
 
 bool CStaticFunctionDefinitions::PlaySoundFrontEnd ( unsigned char ucSound )
 {
     g_pGame->GetAudioEngine ()->PlayFrontEndSound ( ucSound );
+    return true;
+}
+
+
+bool CStaticFunctionDefinitions::PreloadMissionAudio ( unsigned short usSound, unsigned short usSlot )
+{
+    g_pCore->ChatPrintf ( "Preload %u into slot %u", false, usSound, usSlot );
+    g_pGame->GetAudioEngine ()->PreloadMissionAudio ( usSound, usSlot );
     return true;
 }
 
@@ -3941,34 +3953,6 @@ bool CStaticFunctionDefinitions::ResetWorldSounds ( void )
 {
     g_pGame->GetAudio ()->ResetWorldSounds ();
     return true;
-}
-
-
-bool CStaticFunctionDefinitions::PlaySFX ( CResource* pResource, eAudioLookupIndex containerIndex, int iBankIndex, int iAudioIndex, bool bLoop, CClientSound*& outSound )
-{
-    CClientSound* pSound = m_pSoundManager->PlayGTASFX ( containerIndex, iBankIndex, iAudioIndex, bLoop );
-    if ( pSound )
-    {
-        pSound->SetParent ( pResource->GetResourceDynamicEntity() );
-
-        outSound = pSound;
-        return true;
-    }
-    return false;
-}
-
-
-bool CStaticFunctionDefinitions::PlaySFX3D ( CResource* pResource, eAudioLookupIndex containerIndex, int iBankIndex, int iAudioIndex, const CVector& vecPosition, bool bLoop, CClientSound*& outSound )
-{
-    CClientSound* pSound = m_pSoundManager->PlayGTASFX3D ( containerIndex, iBankIndex, iAudioIndex, vecPosition, bLoop );
-    if ( pSound )
-    {
-        pSound->SetParent ( pResource->GetResourceDynamicEntity() );
-
-        outSound = pSound;
-        return true;
-    }
-    return false;
 }
 
 
@@ -6882,7 +6866,7 @@ bool CStaticFunctionDefinitions::GetWeaponAmmo ( CClientWeapon * pWeapon, int &i
 {
     if ( pWeapon )
     {
-        iAmmo = pWeapon->GetAmmo( );
+        pWeapon->GetAmmo( iAmmo );
         return true;
     }
     return false;
@@ -6892,7 +6876,7 @@ bool CStaticFunctionDefinitions::GetWeaponClipAmmo ( CClientWeapon * pWeapon, in
 {
     if ( pWeapon )
     {
-        iAmmo = pWeapon->GetClipAmmo( );
+        pWeapon->GetClipAmmo( iAmmo );
         return true;
     }
     return false;

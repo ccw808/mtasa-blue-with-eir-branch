@@ -139,7 +139,7 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
 
         if ( uMsg == WM_TIMER && wParam == IDT_TIMER1 )
             g_pCore->WindowsTimerHandler();     // Used for 'minimized before first game' pulses
-
+    
         // Handle IME if input is not for the GUI
         if ( !g_pCore->GetLocalGUI ()->InputGoesToGUI () )
         {
@@ -203,17 +203,14 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
                         // The mainmenu makes sure it isn't hidden if UseIngameButtons == false
                         if ( !CCore::GetSingleton().IsOfflineMod () )
                         {
-                            if ( g_pCore->GetKeyBinds()->TriggerKeyStrokeHandler ( "escape", uMsg == WM_KEYDOWN ) )
+                            // Stop chat input
+                            if ( CLocalGUI::GetSingleton ().IsChatBoxInputEnabled () )
                             {
-                                // Stop chat input
-                                if ( CLocalGUI::GetSingleton ().IsChatBoxInputEnabled () )
-                                {
-                                    CLocalGUI::GetSingleton ().SetChatBoxInputEnabled ( false );
-                                    return true;
-                                }
-
-                                CLocalGUI::GetSingleton ().SetMainMenuVisible ( !CLocalGUI::GetSingleton ().IsMainMenuVisible () );
+                                CLocalGUI::GetSingleton ().SetChatBoxInputEnabled ( false );
+                                return true;
                             }
+
+                            CLocalGUI::GetSingleton ().SetMainMenuVisible ( !CLocalGUI::GetSingleton ().IsMainMenuVisible () );
                             return true;
                         }
                     }

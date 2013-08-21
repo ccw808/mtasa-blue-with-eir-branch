@@ -665,25 +665,6 @@ CGUIFont* CGUI_Impl::GetSansFont ( void )
     return m_pSansFont;
 }
 
-float CGUI_Impl::GetTextExtent ( const char* szText, const char* szFont )
-{
-    return m_pFontManager->getFont(szFont)->getTextExtent ( CGUI_Impl::GetUTFString( szText ) );
-}
-
-float CGUI_Impl::GetMaxTextExtent ( SString strFont, SString arg, ... )
-{
-    float fMaxTextExtent = NULL;
-    va_list arguments;
-    for (va_start(arguments, arg); arg != ""; arg = va_arg(arguments, SString)) 
-    {
-        float fExtent = m_pFontManager->getFont(strFont)->getTextExtent ( CGUI_Impl::GetUTFString( arg ) );
-        if ( fExtent > fMaxTextExtent )
-            fMaxTextExtent = fExtent;
-    }
-    va_end(arguments);
-    return fMaxTextExtent;
-}
-
 bool CGUI_Impl::Event_KeyDown ( const CEGUI::EventArgs& Args )
 {
     // Cast it to a set of keyboard arguments
@@ -1028,24 +1009,18 @@ const SString& CGUI_Impl::GetGuiWorkingDirectory ( void ) const
 
 bool CGUI_Impl::Event_MouseClick ( const CEGUI::EventArgs& Args )
 {
-    const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
-
-    // get the approriate cegui window
-    CEGUI::Window * wnd = e.window;
-
-    // if its a title- or scrollbar, get the appropriate parent
-    wnd = GetMasterWindow ( wnd );
-
-    // get the CGUIElement
-    CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
-
-    // Call global and object handlers
-    if ( pElement )
-        pElement->Event_OnClick();
-
     if ( m_MouseClickHandlers[ m_Channel ] )
     {
+        const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
         CGUIMouseEventArgs NewArgs;
+
+        // get the approriate cegui window
+        CEGUI::Window * wnd = e.window;
+
+        // if its a title- or scrollbar, get the appropriate parent
+        if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) ||
+             wnd->testClassName ( CEGUI::Scrollbar::EventNamespace ) )
+             wnd = wnd->getParent ();
 
         // copy the variables
         NewArgs.button = static_cast < CGUIMouse::MouseButton > ( e.button );
@@ -1053,9 +1028,23 @@ bool CGUI_Impl::Event_MouseClick ( const CEGUI::EventArgs& Args )
         NewArgs.position = CGUIPosition ( e.position.d_x, e.position.d_y );
         NewArgs.sysKeys = e.sysKeys;
         NewArgs.wheelChange = e.wheelChange;
-        NewArgs.pWindow = pElement;
 
-        m_MouseClickHandlers[ m_Channel ] ( NewArgs );
+        // get the CGUIElement
+        CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
+        NewArgs.pWindow = pElement;
+        
+        // If called for client.dll, hack in call to core handler (Note: client.dll could unload if click causes reconnect)
+        if ( m_Channel == INPUT_MOD )
+        {
+            if ( m_MouseClickHandlers[ INPUT_CORE ] )
+            {
+                if ( m_MouseClickHandlers[ INPUT_CORE ] ( NewArgs ) )
+                    return true;    // Return if click was handled
+            }
+        }
+
+        if ( m_MouseClickHandlers[ m_Channel ] )
+            m_MouseClickHandlers[ m_Channel ] ( NewArgs );
     }
     return true;
 }
@@ -1063,24 +1052,18 @@ bool CGUI_Impl::Event_MouseClick ( const CEGUI::EventArgs& Args )
 
 bool CGUI_Impl::Event_MouseDoubleClick ( const CEGUI::EventArgs& Args )
 {
-    const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
-
-    // get the approriate cegui window
-    CEGUI::Window * wnd = e.window;
-
-    // if its a title- or scrollbar, get the appropriate parent
-    wnd = GetMasterWindow ( wnd );
-
-    // get the CGUIElement
-    CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
-
-    // Call global and object handlers
-    if ( pElement )
-        pElement->Event_OnDoubleClick();
-
     if ( m_MouseDoubleClickHandlers[ m_Channel ] )
     {
+        const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
         CGUIMouseEventArgs NewArgs;
+
+        // get the approriate cegui window
+        CEGUI::Window * wnd = e.window;
+
+        // if its a title- or scrollbar, get the appropriate parent
+        if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) ||
+             wnd->testClassName ( CEGUI::Scrollbar::EventNamespace ) )
+             wnd = wnd->getParent ();
 
         // copy the variables
         NewArgs.button = static_cast < CGUIMouse::MouseButton > ( e.button );
@@ -1088,33 +1071,41 @@ bool CGUI_Impl::Event_MouseDoubleClick ( const CEGUI::EventArgs& Args )
         NewArgs.position = CGUIPosition ( e.position.d_x, e.position.d_y );
         NewArgs.sysKeys = e.sysKeys;
         NewArgs.wheelChange = e.wheelChange;
-        NewArgs.pWindow = pElement;
 
-        m_MouseDoubleClickHandlers[ m_Channel ] ( NewArgs );
+        // get the CGUIElement
+        CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
+        NewArgs.pWindow = pElement;
+        
+        // If called for client.dll, hack in call to core handler (Note: client.dll could unload if click causes reconnect)
+        if ( m_Channel == INPUT_MOD )
+        {
+            if ( m_MouseDoubleClickHandlers[ INPUT_CORE ] )
+            {
+                if ( m_MouseDoubleClickHandlers[ INPUT_CORE ] ( NewArgs ) )
+                    return true;    // Return if click was handled
+            }
+        }
+
+        if ( m_MouseDoubleClickHandlers[ m_Channel ] )
+            m_MouseDoubleClickHandlers[ m_Channel ] ( NewArgs );
     }
     return true;
 }
 
 bool CGUI_Impl::Event_MouseButtonDown ( const CEGUI::EventArgs& Args )
 {
-    const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
-
-    // get the approriate cegui window
-    CEGUI::Window * wnd = e.window;
-
-    // if its a title- or scrollbar, get the appropriate parent
-    wnd = GetMasterWindow ( wnd );
-
-    // get the CGUIElement
-    CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
-
-    // Call global and object handlers
-    if ( pElement )
-        pElement->Event_OnMouseButtonDown();
-
     if ( m_MouseButtonDownHandlers[ m_Channel ] )
     {
+        const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
         CGUIMouseEventArgs NewArgs;
+
+        // get the approriate cegui window
+        CEGUI::Window * wnd = e.window;
+
+        // if its a title- or scrollbar, get the appropriate parent
+        if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) ||
+             wnd->testClassName ( CEGUI::Scrollbar::EventNamespace ) )
+             wnd = wnd->getParent ();
 
         // copy the variables
         NewArgs.button = static_cast < CGUIMouse::MouseButton > ( e.button );
@@ -1122,11 +1113,13 @@ bool CGUI_Impl::Event_MouseButtonDown ( const CEGUI::EventArgs& Args )
         NewArgs.position = CGUIPosition ( e.position.d_x, e.position.d_y );
         NewArgs.sysKeys = e.sysKeys;
         NewArgs.wheelChange = e.wheelChange;
-        NewArgs.pWindow = pElement;
 
+        // get the CGUIElement
+        CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
+        NewArgs.pWindow = pElement;
+        
         m_MouseButtonDownHandlers[ m_Channel ] ( NewArgs );
     }
-
     return true;
 }
 
@@ -1141,7 +1134,9 @@ bool CGUI_Impl::Event_MouseButtonUp ( const CEGUI::EventArgs& Args )
         CEGUI::Window * wnd = e.window;
 
         // if its a title- or scrollbar, get the appropriate parent
-        wnd = GetMasterWindow ( wnd );
+        if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) ||
+             wnd->testClassName ( CEGUI::Scrollbar::EventNamespace ) )
+             wnd = wnd->getParent ();
 
         // copy the variables
         NewArgs.button = static_cast < CGUIMouse::MouseButton > ( e.button );
@@ -1170,7 +1165,9 @@ bool CGUI_Impl::Event_MouseWheel ( const CEGUI::EventArgs& Args )
         CEGUI::Window * wnd = e.window;
 
         // if its a title- or scrollbar, get the appropriate parent
-        wnd = GetMasterWindow ( wnd );
+        if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) ||
+             wnd->testClassName ( CEGUI::Scrollbar::EventNamespace ) )
+             wnd = wnd->getParent ();
 
         // copy the variables
         NewArgs.button = static_cast < CGUIMouse::MouseButton > ( e.button );
@@ -1200,7 +1197,9 @@ bool CGUI_Impl::Event_MouseMove ( const CEGUI::EventArgs& Args )
         CEGUI::Window * wnd = e.window;
 
         // if its a title- or scrollbar, get the appropriate parent
-        wnd = GetMasterWindow ( wnd );
+        if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) ||
+             wnd->testClassName ( CEGUI::Scrollbar::EventNamespace ) )
+             wnd = wnd->getParent ();
 
         // copy the variables
         NewArgs.button = static_cast < CGUIMouse::MouseButton > ( e.button );
@@ -1221,98 +1220,72 @@ bool CGUI_Impl::Event_MouseMove ( const CEGUI::EventArgs& Args )
 
 bool CGUI_Impl::Event_MouseEnter ( const CEGUI::EventArgs& Args )
 {
-    const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
-
-    // get the approriate cegui window
-    CEGUI::Window * wnd = e.window;
-
-    // if its a title- or scrollbar, get the appropriate parent
-    wnd = GetMasterWindow ( wnd );
-
-    // get the CGUIElement
-    CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
-   
-    // Call global and object handlers
-    if ( pElement )
-        pElement->Event_OnMouseEnter();
-
     if ( m_MouseEnterHandlers[ m_Channel ] )
     {
+        const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
         CGUIMouseEventArgs NewArgs;
 
+        // get the approriate cegui window
+        CEGUI::Window * wnd = e.window;
+
+        // if its a title- or scrollbar, get the appropriate parent
+        if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) ||
+             wnd->testClassName ( CEGUI::Scrollbar::EventNamespace ) )
+             wnd = wnd->getParent ();
+
         // copy the variables
-        NewArgs.pWindow = pElement;
         NewArgs.button = static_cast < CGUIMouse::MouseButton > ( e.button );
         NewArgs.moveDelta = CVector2D ( e.moveDelta.d_x, e.moveDelta.d_y );
         NewArgs.position = CGUIPosition ( e.position.d_x, e.position.d_y );
         NewArgs.sysKeys = e.sysKeys;
         NewArgs.wheelChange = e.wheelChange;
-        NewArgs.clickCount = e.clickCount;
-        if ( e.switchedWindow )
-        {
-            CEGUI::Window* Master = GetMasterWindow ( e.switchedWindow );
-            // If the source and target windows are the same, don't bother triggering this
-            if ( Master == wnd )
-                return true;
-            NewArgs.pSwitchedWindow = reinterpret_cast<CGUIElement*>(Master->getUserData());
-        }
-        else
-            NewArgs.pSwitchedWindow = NULL;
 
+        // get the CGUIElement
+        CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
+        NewArgs.pWindow = pElement;
+        
         m_MouseEnterHandlers[ m_Channel ] ( NewArgs );
     }
-
     return true;
 }
 
 
 bool CGUI_Impl::Event_MouseLeave ( const CEGUI::EventArgs& Args )
 {
-    const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
-
-    // get the approriate cegui window
-    CEGUI::Window * wnd = e.window;
-
-    // if its a title- or scrollbar, get the appropriate parent
-    wnd = GetMasterWindow ( wnd );
-
-    // get the CGUIElement
-    // ChrML: Need to nullcheck wnd again or it crashes if the window is destroyed
-    //        while it is dragged.
-    CGUIElement * pElement = NULL;
-    if ( wnd )
-    {
-        pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
-        if ( pElement )
-            pElement->Event_OnMouseLeave();
-    }
-   
     if ( m_MouseLeaveHandlers[ m_Channel ] )
     {
+        const CEGUI::MouseEventArgs& e = reinterpret_cast < const CEGUI::MouseEventArgs& > ( Args );
         CGUIMouseEventArgs NewArgs;
 
+        // get the approriate cegui window
+        CEGUI::Window * wnd = e.window;
+
+        // if its a title- or scrollbar, get the appropriate parent
+        if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) ||
+             wnd->testClassName ( CEGUI::Scrollbar::EventNamespace ) )
+             wnd = wnd->getParent ();
+
         // copy the variables
-        NewArgs.pWindow = pElement;
         NewArgs.button = static_cast < CGUIMouse::MouseButton > ( e.button );
         NewArgs.moveDelta = CVector2D ( e.moveDelta.d_x, e.moveDelta.d_y );
         NewArgs.position = CGUIPosition ( e.position.d_x, e.position.d_y );
         NewArgs.sysKeys = e.sysKeys;
         NewArgs.wheelChange = e.wheelChange;
-        NewArgs.clickCount = e.clickCount;
-        if ( e.switchedWindow )
-        {
-            CEGUI::Window* Master = GetMasterWindow ( e.switchedWindow );
-            // If the source and target windows are the same, don't bother triggering this
-            if ( Master == wnd )
-                return true;
-            NewArgs.pSwitchedWindow = reinterpret_cast<CGUIElement*>(Master->getUserData());
-        }
-        else
-            NewArgs.pSwitchedWindow = NULL;
 
+        // get the CGUIElement
+        // ChrML: Need to nullcheck wnd again or it crashes if the window is destroyed
+        //        while it is dragged.
+        CGUIElement * pElement = NULL;
+        if ( wnd )
+        {
+            pElement = reinterpret_cast < CGUIElement* > ( wnd->getUserData () );
+        }
+
+        
+        NewArgs.pWindow = pElement;
+        
         m_MouseLeaveHandlers[ m_Channel ] ( NewArgs );
     }
-
     return true;
 }
 
@@ -1685,26 +1658,4 @@ void CGUI_Impl::ClearSystemKeys ( void )
         ProcessKeyboardInput ( CGUIKeys::LeftShift, false );
     if ( uiSysKeys & CEGUI::Alt )
         ProcessKeyboardInput ( CGUIKeys::LeftAlt, false );
-}
-
-CEGUI::Window* CGUI_Impl::GetMasterWindow ( CEGUI::Window* wnd )
-{
-    // A titlebar should always return the parent (i.e. the frame window)
-    if ( wnd->testClassName ( CEGUI::Titlebar::EventNamespace ) )
-         return wnd->getParent ();
-
-    // if there's no CEGUI userdata, we deduce that it's not an MTA gui element
-    if ( !wnd->getUserData() )
-    {
-        CEGUI::Window* parent = wnd->getParent();
-        // It was created by CEGUI, probably as a child widget.  
-        // So keep propogating upwards until we find an MTA element
-        while ( parent )
-        {
-            if ( parent->getUserData() )
-                return parent;
-            parent = parent->getParent();
-        }
-    }
-    return wnd;
 }

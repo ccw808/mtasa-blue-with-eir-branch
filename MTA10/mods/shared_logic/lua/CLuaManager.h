@@ -33,11 +33,13 @@ public:
                                     CLuaManager             ( class CClientGame* pClientGame );
                                     ~CLuaManager            ( void );
 
-    CLuaMain*                       CreateVirtualMachine    ( CResource* pResourceOwner, bool bEnableOOP );
+    void                            StopScriptsOwnedBy      ( int iOwner );
+
+    CLuaMain*                       CreateVirtualMachine    ( CResource* pResourceOwner );
     bool                            RemoveVirtualMachine    ( CLuaMain* vm );
     CLuaMain*                       GetVirtualMachine       ( lua_State* luaVM );
-    void                            OnLuaMainOpenVM         ( CLuaMain* pLuaMain, lua_State* luaVM );
-    void                            OnLuaMainCloseVM        ( CLuaMain* pLuaMain, lua_State* luaVM );
+    CLuaMain*                       GetVirtualMachine       ( const char* szFilename );
+    bool                            DoesVirtualMachineExist ( CLuaMain* vm );
 
     inline std::list < CLuaMain* > ::const_iterator
                                     IterBegin               ( void )                    { return m_virtualMachines.begin (); };
@@ -45,6 +47,8 @@ public:
                                     IterEnd                 ( void )                    { return m_virtualMachines.end (); };
 
     void                            DoPulse                 ( void );
+
+    void                            SetScriptDebugging      ( CScriptDebugging* pScriptDebugging );
 
     void                            AddToPendingDeleteList   ( lua_State* m_luaVM )     { m_PendingDeleteList.push_back ( m_luaVM ); }
     void                            ProcessPendingDeleteList ( void );
@@ -57,7 +61,6 @@ private:
     CEvents*                        m_pEvents;
     CRegisteredCommands*            m_pRegisteredCommands;
 
-    CFastHashMap < lua_State*, CLuaMain* > m_VirtualMachineMap;
     std::list < CLuaMain* >         m_virtualMachines;
     std::list < lua_State* >        m_PendingDeleteList;
 };

@@ -102,9 +102,7 @@ void ResetShotInfoArray( void )
         memcpy ( pInfo + i, pInfo, sizeof ( CFlameShotInfo ) );
 }
 
-#pragma warning( push )
-#pragma warning( disable : 4731 )   // warning C4731: 'Call_CShotInfo_Update' : frame pointer register 'ebp' modified by inline assembly code
-
+// Do call to original function
 void Call_CShotInfo_Update( void )
 {
     _asm
@@ -119,8 +117,6 @@ void Call_CShotInfo_Update( void )
     done:
     }
 }
-
-#pragma warning( pop )
 
 // Our code for when CShotInfo_Update is called
 void OnMY_CShotInfo_Update( void )

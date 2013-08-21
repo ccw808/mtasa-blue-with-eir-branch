@@ -25,7 +25,6 @@ static CLuaManager* m_pLuaManager;
 #define HOOK_MAXIMUM_TIME 5000
 
 extern CGame* g_pGame;
-extern CNetServer* g_pRealNetServer;
 
 // This script is loaded into all VM's created.
 const char szPreloadedScript [] = ""\
@@ -80,6 +79,9 @@ CLuaMain::CLuaMain ( CLuaManager* pLuaManager,
     m_bBeingDeleted = false;
     m_pLuaTimerManager = new CLuaTimerManager;
     m_FunctionEnterTimer.SetMaxIncrement ( 500 );
+
+    // Set up the name of our script
+    m_iOwner = OWNER_SERVER;
 
     m_pObjectManager = pObjectManager;
     m_pPlayerManager = pPlayerManager;
@@ -156,110 +158,10 @@ void CLuaMain::InitSecurity ( void )
 }
 
 
-void CLuaMain::InitClasses ( lua_State* luaVM )
-{
-    lua_pushstring ( luaVM, "mt" );
-    lua_newtable ( luaVM );
-    lua_rawset ( luaVM, LUA_REGISTRYINDEX );
-
-    lua_pushstring ( luaVM, "ud" );
-    lua_newtable ( luaVM );
-    lua_rawset ( luaVM, LUA_REGISTRYINDEX );
-
-    // Element
-    lua_newclass ( luaVM );
-
-    lua_classfunction ( luaVM, "create", "createElement" );
-    lua_classfunction ( luaVM, "destroy", "destroyElement" );
-    lua_classfunction ( luaVM, "clone", "cloneElement" );
-
-    lua_classfunction ( luaVM, "isWithinColShape", "isElementWithinColShape" );
-    lua_classfunction ( luaVM, "isWithinMarker", "isElementWithinMarker" );
-    lua_classfunction ( luaVM, "isInWater", "isElementInWater" );
-    lua_classfunction ( luaVM, "isFrozen", "isElementFrozen" );
-    lua_classfunction ( luaVM, "isLowLOD", "isElementLowLOD" );
-
-    lua_classfunction ( luaVM, "getByID", "getElementByID" );
-    lua_classfunction ( luaVM, "getByIndex", "getElementByIndex" );
-    lua_classfunction ( luaVM, "getChildren", "getElementChildren" );
-    lua_classfunction ( luaVM, "getChild", "getElementChild" );
-    lua_classfunction ( luaVM, "getChildrenCount", "getElementChildrenCount" );
-    lua_classfunction ( luaVM, "getAllData", "getAllElementData" );
-    lua_classfunction ( luaVM, "getID", "getElementID" );
-    lua_classfunction ( luaVM, "getParent", "getElementParent" );
-    lua_classfunction ( luaVM, "getPosition", "getElementPosition" );
-    lua_classfunction ( luaVM, "getRotation", "getElementRotation" );
-    lua_classfunction ( luaVM, "getVelocity", "getElementVelocity" );
-    lua_classfunction ( luaVM, "getByType", "getElementsByType" );
-    lua_classfunction ( luaVM, "getType", "getElementType" );
-    lua_classfunction ( luaVM, "getInterior", "getElementInterior" );
-    lua_classfunction ( luaVM, "getWithinColShape", "getElementsWithinColShape" );
-    lua_classfunction ( luaVM, "getDimension", "getElementDimension" );
-    lua_classfunction ( luaVM, "getZoneName", "getElementZoneName" );
-    lua_classfunction ( luaVM, "getColShape", "getElementColShape" );
-    lua_classfunction ( luaVM, "getAlpha", "getElementAlpha" );
-    lua_classfunction ( luaVM, "isDoubleSided", "isElementDoubleSided" );
-    lua_classfunction ( luaVM, "getHealth", "getElementHealth" );
-    lua_classfunction ( luaVM, "getModel", "getElementModel" );
-    lua_classfunction ( luaVM, "getSyncer", "getElementSyncer" );
-    lua_classfunction ( luaVM, "getCollisionsEnabled", "getElementCollisionsEnabled" );
-    lua_classfunction ( luaVM, "getLowLOD", "getLowLODElement" );
-
-    lua_classfunction ( luaVM, "attach", "attachElements" );
-    lua_classfunction ( luaVM, "detach", "detachElements" );
-    lua_classfunction ( luaVM, "isElement", "isElementAttached" );
-    lua_classfunction ( luaVM, "getAttachedElements", "getAttachedElements" );
-    lua_classfunction ( luaVM, "getAttachedTo", "getElementAttachedTo" );
-    lua_classfunction ( luaVM, "setAttachedOffsets", "setElementAttachedOffsets" );
-    lua_classfunction ( luaVM, "getAttachedOffsets", "getElementAttachedOffsets" );
-
-    lua_classfunction ( luaVM, "getData", "getElementData" );
-    lua_classfunction ( luaVM, "setData", "setElementData" );
-    lua_classfunction ( luaVM, "removeData", "removeElementData" );
-
-    lua_classfunction ( luaVM, "setID", "setElementID" );
-    lua_classfunction ( luaVM, "setParent", "setElementParent" );
-    lua_classfunction ( luaVM, "setPosition", "setElementPosition" );
-    lua_classfunction ( luaVM, "setRotation", "setElementRotation" );
-    lua_classfunction ( luaVM, "setVelocity", "setElementVelocity" );
-    lua_classfunction ( luaVM, "setVisibleTo", "setElementVisibleTo" );
-    lua_classfunction ( luaVM, "clearVisibleTo", "clearElementVisibleTo" );
-    lua_classfunction ( luaVM, "isVisibleTo", "isElementVisibleTo" );
-    lua_classfunction ( luaVM, "setInterior", "setElementInterior" );
-    lua_classfunction ( luaVM, "setDimension", "setElementDimension" );
-    lua_classfunction ( luaVM, "setAlpha", "setElementAlpha" );
-    lua_classfunction ( luaVM, "setDoubleSided", "setElementDoubleSided" );
-    lua_classfunction ( luaVM, "setHealth", "setElementHealth" );
-    lua_classfunction ( luaVM, "setModel", "setElementModel" );
-    lua_classfunction ( luaVM, "setSyncer", "setElementSyncer" );
-    lua_classfunction ( luaVM, "setCollisionsEnabled", "setElementCollisionsEnabled" );
-    lua_classfunction ( luaVM, "setFrozen", "setElementFrozen" );
-    lua_classfunction ( luaVM, "setLowLOD", "setLowLOD" );
-
-    lua_classvariable ( luaVM, "id", "setElementID", "getElementID" );
-    lua_classvariable ( luaVM, "type", NULL, "getElementType" );
-    lua_classvariable ( luaVM, "parent", "setElementParent", "getElementParent" );
-    lua_classvariable ( luaVM, "health", "setElementHealth", "getElementHealth" );
-    lua_classvariable ( luaVM, "alpha", "setElementAlpha", "getElementAlpha" );
-    lua_classvariable ( luaVM, "doubleSided", "setElementDoubleSided", "isElementDoubleSided" );
-    lua_classvariable ( luaVM, "model", "setElementModel", "getElementModel" );
-    lua_classvariable ( luaVM, "syncer", "setElementSyncer", "getElementSyncer" );
-    lua_classvariable ( luaVM, "collisions", "setElementCollisionsEnabled", "getElementCollisionsEnabled" );
-    lua_classvariable ( luaVM, "frozen", "setElementFrozen", "isElementFrozen" );
-    lua_classvariable ( luaVM, "inWater", NULL, "isElementInWater" );
-    lua_classvariable ( luaVM, "dimension", "setElementDimension", "getElementDimension" );
-    lua_classvariable ( luaVM, "interior", "setElementInterior", "getElementInterior" );
-
-    lua_registerclass ( luaVM, "Element" );
-}
-
 void CLuaMain::InitVM ( void )
 {
-    assert( !m_luaVM );
-
     // Create a new VM
     m_luaVM = lua_open ();
-    m_pLuaManager->OnLuaMainOpenVM( this, m_luaVM );
 
     // Set the instruction count hook
     lua_sethook ( m_luaVM, InstructionCountHook, LUA_MASKCOUNT, HOOK_INSTRUCTION_COUNT );
@@ -276,9 +178,6 @@ void CLuaMain::InitVM ( void )
 
     // Registering C functions
     CLuaCFunctions::RegisterFunctionsWithVM ( m_luaVM );
-
-    // Create class metatables
-    InitClasses ( m_luaVM );
 
     // Oli: Don't forget to add new ones to CLuaManager::LoadCFunctions. Thanks!
 
@@ -324,47 +223,63 @@ void CLuaMain::InstructionCountHook ( lua_State* luaVM, lua_Debug* pDebug )
     }
 }
 
-bool CLuaMain::LoadScriptFromBuffer ( const char* cpInBuffer, unsigned int uiInSize, const char* szFileName )
+
+bool CLuaMain::LoadScriptFromFile ( const char* szLUAScript )
 {
-    // Decrypt if required
-    const char* cpBuffer;
-    uint uiSize;
-    if ( !g_pRealNetServer->DecryptScript( cpInBuffer, uiInSize, &cpBuffer, &uiSize ) )
+    if ( m_luaVM )
     {
-        // Problems problems
-#if MTA_DM_VERSION < 0x135 
-        SString strMessage( "%s is invalid and will not work in future versions. Please re-compile at http://luac.mtasa.com/", *ConformResourcePath( szFileName ) ); 
-        g_pGame->GetScriptDebugging()->LogWarning ( m_luaVM, "Script warning: %s", *strMessage );
-        // cpBuffer is always valid after call to DecryptScript
-#else
-        SString strMessage( "%s is invalid. Please re-compile at http://luac.mtasa.com/", *ConformResourcePath( szFileName ) ); 
-        g_pGame->GetScriptDebugging()->LogError ( m_luaVM, "Loading script failed: %s", *strMessage );
-        return false;
-#endif
+        // Load the script
+        if ( luaL_loadfile ( m_luaVM, szLUAScript ) )
+        {
+            // Print the error
+            std::string strRes = ConformResourcePath ( lua_tostring( m_luaVM, -1 ) );
+            if ( strRes.length () )
+            {
+                CLogger::LogPrintf ( "SCRIPT ERROR: %s\n", strRes.c_str () );
+                g_pGame->GetScriptDebugging()->LogWarning ( m_luaVM, "Loading script failed: %s", strRes.c_str () );
+            }
+            else
+            {
+                CLogger::LogPrint ( "SCRIPT ERROR: Unknown\n" );
+                g_pGame->GetScriptDebugging()->LogInformation ( m_luaVM, "Loading script failed for unknown reason" );
+            }
+        }
+        else
+        {
+            ResetInstructionCount ();
+            int iret = this->PCall ( m_luaVM, 0, 0, 0 ) ;
+            if ( iret == LUA_ERRRUN || iret == LUA_ERRMEM )
+            {
+                SString strRes = ConformResourcePath ( lua_tostring( m_luaVM, -1 ) );
+        
+                vector <SString> vecSplit;
+                strRes.Split ( ":", vecSplit );
+                
+                if ( vecSplit.size ( ) >= 3 )
+                {
+                    SString strFile = vecSplit[0];
+                    int     iLine   = atoi ( vecSplit[1].c_str ( ) );
+                    SString strMsg  = vecSplit[2].substr ( 1 );
+                    
+                    g_pGame->GetScriptDebugging()->LogError ( strFile, iLine, strMsg );
+                }
+                else
+                    g_pGame->GetScriptDebugging()->LogError ( m_luaVM, "%s", strRes.c_str () );
+            }
+            return true;
+        }
     }
 
-    bool bUTF8;
+    return false;
+}
 
-    // UTF-8 BOM?  Compare by checking the standard UTF-8 BOM
-    if ( IsUTF8BOM( cpBuffer, uiSize ) == false )
-    {
-        // Maybe not UTF-8, if we have a >80% heuristic detection confidence, assume it is
-        bUTF8 = ( GetUTF8Confidence ( (const unsigned char*)cpBuffer, uiSize ) >= 80 );
-    }
-    else
-    {
-        // If there's a BOM, load ignoring the first 3 bytes
-        bUTF8 = true;
-        cpBuffer += 3;
-        uiSize -= 3;
-    }
-
-
+bool CLuaMain::LoadScriptFromBuffer ( const char* cpBuffer, unsigned int uiSize, const char* szFileName, bool bUTF8 )
+{
     if ( m_luaVM )
     {
         // Are we not marked as UTF-8 already, and not precompiled?
         std::string strUTFScript;
-        if ( !bUTF8 && !IsLuaCompiledScript( cpBuffer, uiSize ) )
+        if ( !bUTF8 && ( uiSize < 5 || cpBuffer[0] != 27 || cpBuffer[1] != 'L' || cpBuffer[2] != 'u' || cpBuffer[3] != 'a' || cpBuffer[4] != 'Q' ) )
         {
             std::string strBuffer = std::string(cpBuffer, uiSize);
 #ifdef WIN32
@@ -392,12 +307,12 @@ bool CLuaMain::LoadScriptFromBuffer ( const char* cpInBuffer, unsigned int uiInS
             if ( strRes.length () )
             {
                 CLogger::LogPrintf ( "SCRIPT ERROR: %s\n", strRes.c_str () );
-                g_pGame->GetScriptDebugging()->LogError ( m_luaVM, "Loading script failed: %s", strRes.c_str () );
+                g_pGame->GetScriptDebugging()->LogWarning ( m_luaVM, "Loading script failed: %s", strRes.c_str () );
             }
             else
             {
                 CLogger::LogPrint ( "SCRIPT ERROR: Unknown\n" );
-                g_pGame->GetScriptDebugging()->LogError ( m_luaVM, "Loading script failed for unknown reason" );
+                g_pGame->GetScriptDebugging()->LogInformation ( m_luaVM, "Loading script failed for unknown reason" );
             }
         }
         else
@@ -486,10 +401,100 @@ void CLuaMain::UnloadScript ( void )
     // End the lua vm
     if ( m_luaVM )
     {
-        m_pLuaManager->OnLuaMainCloseVM( this, m_luaVM );
         lua_close( m_luaVM );
         m_luaVM = NULL;
     }
+}
+
+static int lua_dump_writer ( lua_State* luaVM, const void* data, size_t size, void* myUserData )
+{
+    (void)luaVM;
+    SString* pDest = (SString *)myUserData;
+    pDest->append ( (const char *)data, size );
+    return 0;
+}
+
+bool CLuaMain::CompileScriptFromFile ( const char* szFile, SString* pDest )
+{
+    if ( m_luaVM )
+    {
+        // Load the file
+        std::vector < char > buffer;
+        FileLoad ( szFile, buffer );
+        unsigned int iSize = buffer.size();
+
+        //UTF-8 BOM?  Compare by checking the standard UTF-8 BOM of 3 characters (in signed format, hence negative)
+        if ( iSize > 0 ) 
+        {
+            if ( iSize < 3 || buffer[0] != -0x11 || buffer[1] != -0x45 || buffer[2] != -0x41 )
+            {
+                //Maybe not UTF-8, if we have a >80% heuristic detection confidence, assume it is
+                return CompileScriptFromBuffer ( &buffer.at ( 0 ), iSize, szFile, GetUTF8Confidence ( (const unsigned char*)&buffer.at ( 0 ), iSize ) >= 80, pDest );
+            }
+            else if ( iSize != 3 ) //If there's a BOM, but the script is not empty, load ignoring the first 3 bytes
+            {
+                return CompileScriptFromBuffer ( &buffer.at ( 3 ), iSize-3, szFile, true, pDest );
+            }
+        }
+    }
+    return false;
+}
+
+
+bool CLuaMain::CompileScriptFromBuffer ( const char* cpBuffer, unsigned int uiSize, const char* szFileName, bool bUTF8, SString* pDest )
+{
+    if ( m_luaVM )
+    {
+        // Are we not marked as UTF-8 already, and not precompiled?
+        std::string strUTFScript;
+        if ( !bUTF8 && ( uiSize < 5 || cpBuffer[0] != 27 || cpBuffer[1] != 'L' || cpBuffer[2] != 'u' || cpBuffer[3] != 'a' || cpBuffer[4] != 'Q' ) )
+        {
+            std::string strBuffer = std::string(cpBuffer, uiSize);
+#ifdef WIN32
+            std::setlocale(LC_CTYPE,""); // Temporarilly use locales to read the script
+            strUTFScript = UTF16ToMbUTF8(ANSIToUTF16( strBuffer ));
+            std::setlocale(LC_CTYPE,"C");
+#else
+            strUTFScript = UTF16ToMbUTF8(ANSIToUTF16( strBuffer ));
+#endif
+
+            if ( uiSize != strUTFScript.size() )
+            {
+                uiSize = strUTFScript.size();
+                g_pGame->GetScriptDebugging()->LogWarning ( m_luaVM, "Script '%s' is not encoded in UTF-8.  Loading as ANSI...", ConformResourcePath(szFileName).c_str() );
+            }
+        }
+        else
+            strUTFScript = std::string(cpBuffer, uiSize);
+
+        // Load the script
+        if ( luaL_loadbuffer ( m_luaVM, bUTF8 ? cpBuffer : strUTFScript.c_str(), uiSize, SString ( "@%s", szFileName ) ) )
+        {
+            // Print the error
+            std::string strRes = ConformResourcePath ( lua_tostring( m_luaVM, -1 ) );
+            if ( strRes.length () )
+            {
+                CLogger::LogPrintf ( "SCRIPT ERROR: %s\n", strRes.c_str () );
+                g_pGame->GetScriptDebugging()->LogWarning ( m_luaVM, "Loading script failed: %s", strRes.c_str () );
+            }
+            else
+            {
+                CLogger::LogPrint ( "SCRIPT ERROR: Unknown\n" );
+                g_pGame->GetScriptDebugging()->LogInformation ( m_luaVM, "Loading script failed for unknown reason" );
+            }
+        }
+        else
+        {
+            pDest->assign ( "" );
+            if ( lua_dump(m_luaVM, lua_dump_writer, pDest) != 0 )
+                return false;
+            lua_pop ( m_luaVM, 1 );
+
+            return true;
+        }
+    }
+
+    return false;
 }
 
 

@@ -33,22 +33,18 @@ CResourceManager::~CResourceManager ( void )
         CLuaArguments Arguments;
         Arguments.PushResource ( pResource );
         pResource->GetResourceEntity ()->CallEvent ( "onClientResourceStop", Arguments, true );
-        assert( MapContains( m_NetIdResourceMap, pResource->GetNetID() ) );
-        MapRemove( m_NetIdResourceMap, pResource->GetNetID() );
         delete pResource;
 
         m_resources.pop_back ();
     }
 }
 
-CResource* CResourceManager::Add ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq, bool bEnableOOP )
+CResource* CResourceManager::Add ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq )
 {
-    CResource* pResource = new CResource ( usNetID, szResourceName, pResourceEntity, pResourceDynamicEntity, strMinServerReq, strMinClientReq, bEnableOOP );
+    CResource* pResource = new CResource ( usNetID, szResourceName, pResourceEntity, pResourceDynamicEntity, strMinServerReq, strMinClientReq );
     if ( pResource )
     {
         m_resources.push_back ( pResource );
-        assert( !MapContains( m_NetIdResourceMap, pResource->GetNetID() ) );
-        MapSet( m_NetIdResourceMap, usNetID, pResource );
         return pResource;
     }
     return NULL;
@@ -57,21 +53,11 @@ CResource* CResourceManager::Add ( unsigned short usNetID, const char* szResourc
 
 CResource* CResourceManager::GetResourceFromNetID ( unsigned short usNetID )
 {
-    CResource* pResource = MapFindRef( m_NetIdResourceMap, usNetID );
-    if ( pResource )
-    {
-        assert( pResource->GetNetID() == usNetID );
-        return pResource;
-    }
-
     list < CResource* > ::const_iterator iter = m_resources.begin ();
     for ( ; iter != m_resources.end (); iter++ )
     {
         if ( ( *iter )->GetNetID() == usNetID )
-        {
-            assert( 0 );    // Should be in map
             return ( *iter );
-        }
     }
     return NULL;
 }
@@ -84,12 +70,6 @@ CResource* CResourceManager::GetResourceFromScriptID ( uint uiScriptID )
     return pResource;
 }
 
-CResource* CResourceManager::GetResourceFromLuaState ( lua_State* luaVM )
-{
-    CLuaMain* pLuaMain = g_pClientGame->GetLuaManager()->GetVirtualMachine ( luaVM );
-    CResource* pResource = pLuaMain ? pLuaMain->GetResource() : NULL;
-    return pResource;
-}
 
 CResource* CResourceManager::GetResource ( const char* szResourceName )
 {
@@ -131,9 +111,7 @@ void CResourceManager::Remove ( CResource* pResource )
     pResource->DeleteClientChildren ();
 
     // Delete the resource
-    m_resources.remove ( pResource );
-    assert( MapContains( m_NetIdResourceMap, pResource->GetNetID() ) );
-    MapRemove( m_NetIdResourceMap, pResource->GetNetID() );
+    if ( !m_resources.empty() ) m_resources.remove ( pResource );
     delete pResource;
 }
 

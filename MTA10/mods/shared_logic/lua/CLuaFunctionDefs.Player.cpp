@@ -505,7 +505,13 @@ int CLuaFunctionDefs::GetPlayerSerial ( lua_State* luaVM )
     char szSerial [ 64 ];
     g_pCore->GetNetwork ()->GetSerial ( szSerial, sizeof ( szSerial ) );
 
-    lua_pushstring ( luaVM, szSerial );
+    if ( szSerial )
+    {
+        lua_pushstring ( luaVM, szSerial );
+        return 1;
+    }
+
+    lua_pushboolean ( luaVM, false );
     return 1;
 }
 

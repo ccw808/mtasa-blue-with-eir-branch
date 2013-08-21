@@ -44,7 +44,6 @@ static CAccountManager*                             m_pAccountManager;
 static CBanManager*                                 m_pBanManager;
 static CPedManager*                                 m_pPedManager;
 static CWaterManager*                               m_pWaterManager;
-static CCustomWeaponManager *                       m_pCustomWeaponManager;
 
 // Used to run a function on all the children of the elements too
 #define RUN_CHILDREN \
@@ -73,7 +72,6 @@ CStaticFunctionDefinitions::CStaticFunctionDefinitions ( CGame * pGame )
     m_pBanManager = pGame->GetBanManager ();
     m_pPedManager = pGame->GetPedManager ();
     m_pWaterManager = pGame->GetWaterManager ();
-    m_pCustomWeaponManager = pGame->GetCustomWeaponManager ();
 }
 
 
@@ -1218,7 +1216,7 @@ bool CStaticFunctionDefinitions::GetElementVelocity ( CElement* pElement, CVecto
 bool CStaticFunctionDefinitions::SetElementPosition ( CElement* pElement, const CVector& vecPosition, bool bWarp )
 {
     assert ( pElement );
-    RUN_CHILDREN SetElementPosition ( *iter, vecPosition, bWarp );
+    RUN_CHILDREN SetElementPosition ( *iter, vecPosition );
 
     // Update our position for that entity.
     pElement->SetPosition ( vecPosition );
@@ -1393,7 +1391,7 @@ bool CStaticFunctionDefinitions::SetElementInterior ( CElement* pElement, unsign
 bool CStaticFunctionDefinitions::SetElementDimension ( CElement* pElement, unsigned short usDimension )
 {
     assert ( pElement );
-    RUN_CHILDREN SetElementDimension ( *iter, usDimension );
+    RUN_CHILDREN ( *iter, usDimension );
 
     if ( pElement->GetType () == CElement::TEAM )
     {
@@ -1462,6 +1460,7 @@ bool CStaticFunctionDefinitions::AttachElements ( CElement* pElement, CElement* 
 {
     assert ( pElement );
     assert ( pAttachedToElement );
+    RUN_CHILDREN AttachElements ( *iter, pAttachedToElement, vecPosition, vecRotation );
 
     // Check the elements we are attaching are not already connected
     std::set < CElement* > history;
@@ -1500,6 +1499,7 @@ bool CStaticFunctionDefinitions::AttachElements ( CElement* pElement, CElement* 
 bool CStaticFunctionDefinitions::DetachElements ( CElement* pElement, CElement* pAttachedToElement )
 {
     assert ( pElement );
+    RUN_CHILDREN DetachElements ( *iter, pAttachedToElement );
 
     CElement* pActualAttachedToElement = pElement->GetAttachedToElement ();
     if ( pActualAttachedToElement )
@@ -2040,13 +2040,9 @@ CPed* CStaticFunctionDefinitions::CreatePed ( CResource* pResource, unsigned sho
 
             pPed->SetRotation ( fRotationRadians );
 
-            // Only sync if the resource has fully started
-            if ( pResource->HasStarted() )
-            {
-                CEntityAddPacket Packet;
-                Packet.Add ( pPed );
-                m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-            }
+            CEntityAddPacket Packet;
+            Packet.Add ( pPed );
+            m_pPlayerManager->BroadcastOnlyJoined ( Packet );
             return pPed;
         }
     }
@@ -4071,9 +4067,6 @@ bool CStaticFunctionDefinitions::WarpPedIntoVehicle ( CPed* pPed, CVehicle* pVeh
                 else
                     VehiclePlayerArguments.PushBoolean ( false );
                 pVehicle->CallEvent ( "onVehicleEnter", VehiclePlayerArguments );
-
-                // Used to check if f.e. lua changed the player's vehicle (fix for #7570)
-                pVehicle->m_bOccupantChanged = true;
 
                 return true;
             }
@@ -9247,18 +9240,9 @@ CColRectangle* CStaticFunctionDefinitions::CreateColRectangle ( CResource* pReso
 }
 
 
-CColPolygon* CStaticFunctionDefinitions::CreateColPolygon ( CResource* pResource, const std::vector < CVector2D >& vecPointList )
+CColPolygon* CStaticFunctionDefinitions::CreateColPolygon ( CResource* pResource, const CVector& vecPosition )
 {
-    if ( vecPointList.size() < 4 )
-        return NULL;
-
-    CVector vecPosition( vecPointList[0].fX, vecPointList[0].fY, 0 );
     CColPolygon * pColShape = new CColPolygon ( m_pColManager, pResource->GetDynamicElementRoot(), vecPosition );
-
-    for( uint i = 1 ; i < vecPointList.size() ; i++ )
-    {
-        pColShape->AddPoint( vecPointList[i] );
-    }
 
     // Run collision detection
     CElement* pRoot = m_pMapManager->GetRootElement ();
@@ -9327,361 +9311,6 @@ bool CStaticFunctionDefinitions::GetWeaponIDFromName ( const char* szName, unsig
     return ucID != 0xFF;
 }
 
-CCustomWeapon* CStaticFunctionDefinitions::CreateWeapon ( CResource* pResource, eWeaponType weaponType, CVector vecPosition )
-{
-    CCustomWeapon * pWeapon = new CCustomWeapon ( pResource->GetDynamicElementRoot(), NULL, m_pObjectManager, m_pCustomWeaponManager, weaponType );
-    pWeapon->SetPosition ( vecPosition );
-    
-    if ( pResource->HasStarted() )
-    {
-        CEntityAddPacket Packet;
-        Packet.Add ( pWeapon );
-        m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-    }
-    return pWeapon;
-}
-
-bool CStaticFunctionDefinitions::FireWeapon ( CCustomWeapon * pWeapon )
-{
-    if ( pWeapon )
-    {
-        // Tell our scripts the server has fired
-        CLuaArguments Arguments;
-        Arguments.PushElement ( NULL );
-
-        if ( pWeapon->CallEvent ( "onWeaponFire", Arguments ) )
-        {
-            CBitStream BitStream;
-
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, FIRE_CUSTOM_WEAPON, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
-
-
-bool CStaticFunctionDefinitions::GetWeaponProperty ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, short &sData )
-{
-    if ( pWeapon )
-    {
-        if ( eProperty == WEAPON_DAMAGE )
-        {
-            sData = pWeapon->GetWeaponStat ( )->GetDamagePerHit ( );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponProperty ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, float &fData )
-{
-    if ( pWeapon )
-    {
-        if ( eProperty == WEAPON_ACCURACY )
-        {
-            fData = pWeapon->GetWeaponStat ( )->GetAccuracy ( );
-            return true;
-        }
-        if ( eProperty == WEAPON_TARGET_RANGE )
-        {
-            fData = pWeapon->GetWeaponStat ( )->GetTargetRange ( );
-            return true;
-        }
-        if ( eProperty == WEAPON_WEAPON_RANGE )
-        {
-            fData = pWeapon->GetWeaponStat ( )->GetWeaponRange ( );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponProperty ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, short sData )
-{
-    if ( pWeapon )
-    {
-        if ( eProperty == WEAPON_DAMAGE )
-        {
-            pWeapon->GetWeaponStat ( )->SetDamagePerHit ( sData );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponProperty ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, float fData )
-{
-    if ( pWeapon )
-    {
-        if ( eProperty == WEAPON_ACCURACY )
-        {
-            pWeapon->GetWeaponStat ( )->SetAccuracy ( fData );
-            return true;
-        }
-        if ( eProperty == WEAPON_TARGET_RANGE )
-        {
-            pWeapon->GetWeaponStat ( )->SetTargetRange ( fData );
-            return true;
-        }
-        if ( eProperty == WEAPON_WEAPON_RANGE )
-        {
-            pWeapon->GetWeaponStat ( )->SetWeaponRange ( fData );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponState ( CCustomWeapon * pWeapon, eWeaponState weaponState )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetWeaponState ( weaponState );
-
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( (char) weaponState );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_STATE, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponTarget ( CCustomWeapon * pWeapon, CElement * pTarget, int targetBone )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetWeaponTarget ( pTarget, targetBone );
-        CBitStream BitStream;
-
-        BitStream.pBitStream->WriteBit ( false );
-        BitStream.pBitStream->Write ( pTarget->GetID ( ) );
-        BitStream.pBitStream->Write ( (char) targetBone );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_TARGET, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponTarget ( CCustomWeapon * pWeapon, CVector vecTarget )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetWeaponTarget ( vecTarget );
-        CBitStream BitStream;
-
-        BitStream.pBitStream->WriteBit ( true );
-        BitStream.pBitStream->WriteVector ( vecTarget.fX, vecTarget.fY, vecTarget.fZ );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_TARGET, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::ClearWeaponTarget ( CCustomWeapon * pWeapon )
-{
-    if ( pWeapon )
-    {
-        pWeapon->ResetWeaponTarget ( );
-        CBitStream BitStream;
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, RESET_CUSTOM_WEAPON_TARGET, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponFlags ( CCustomWeapon * pWeapon, eWeaponFlags flags, bool bData )
-{
-    if ( pWeapon )
-    {
-        if ( pWeapon->SetFlags ( flags, bData ) )
-        {
-            CBitStream BitStream;
-            SWeaponConfiguration weaponConfig = pWeapon->GetFlags ( );
-
-            BitStream.pBitStream->WriteBit ( weaponConfig.bDisableWeaponModel );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bInstantReload );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bShootIfTargetBlocked );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bShootIfTargetOutOfRange );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckBuildings );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckCarTires );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckDummies );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckObjects );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckPeds );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckVehicles );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bIgnoreSomeObjectsForCamera );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bSeeThroughStuff );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bShootThroughStuff );
-
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_FLAGS, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponFlags ( CCustomWeapon * pWeapon, const SLineOfSightFlags& flags )
-{
-    if ( pWeapon )
-    {
-        if ( pWeapon->SetFlags ( flags ) )
-        {
-            CBitStream BitStream;
-            SWeaponConfiguration weaponConfig = pWeapon->GetFlags ( );
-
-            BitStream.pBitStream->WriteBit ( weaponConfig.bDisableWeaponModel );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bInstantReload );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bShootIfTargetBlocked );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bShootIfTargetOutOfRange );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckBuildings );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckCarTires );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckDummies );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckObjects );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckPeds );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckVehicles );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bIgnoreSomeObjectsForCamera );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bSeeThroughStuff );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bShootThroughStuff );
-
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_FIRING_RATE, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponFlags ( CCustomWeapon * pWeapon, eWeaponFlags flags, bool &bData )
-{
-    if ( pWeapon )
-    {
-        return pWeapon->GetFlags ( flags, bData );
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponFlags ( CCustomWeapon * pWeapon, SLineOfSightFlags& flags )
-{
-    if ( pWeapon )
-    {
-        return pWeapon->GetFlags ( flags );
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponFiringRate ( CCustomWeapon * pWeapon, int iFiringRate )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetWeaponFireTime( iFiringRate );
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( iFiringRate );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_FIRING_RATE, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::ResetWeaponFiringRate ( CCustomWeapon * pWeapon )
-{
-    if ( pWeapon )
-    {
-        pWeapon->ResetWeaponFireTime( );
-        CBitStream BitStream;
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, RESET_CUSTOM_WEAPON_FIRING_RATE, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponFiringRate ( CCustomWeapon * pWeapon, int &iFiringRate )
-{
-    if ( pWeapon )
-    {
-        iFiringRate = pWeapon->GetWeaponFireTime( );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponAmmo ( CCustomWeapon * pWeapon, int &iAmmo )
-{
-    if ( pWeapon )
-    {
-        iAmmo = pWeapon->GetAmmo( );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponClipAmmo ( CCustomWeapon * pWeapon, int &iAmmo )
-{
-    if ( pWeapon )
-    {
-        iAmmo = pWeapon->GetClipAmmo( );
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( iAmmo );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_CLIP_AMMO, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponAmmo ( CCustomWeapon * pWeapon, int iAmmo )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetAmmo( iAmmo );
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( iAmmo );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_AMMO, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponClipAmmo ( CCustomWeapon * pWeapon, int iAmmo )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetClipAmmo( iAmmo );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponOwner ( CCustomWeapon * pWeapon, CPlayer * pPlayer )
-{
-    if ( pWeapon )
-    {
-        
-        pWeapon->SetOwner ( pPlayer );
-        if ( pPlayer )
-        {
-            CBitStream BitStream;
-
-            BitStream.pBitStream->Write ( pPlayer->GetID ( ) );
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_WEAPON_OWNER, *BitStream.pBitStream ) );
-            return true;
-        }
-        else
-        {
-            CBitStream BitStream;
-
-            BitStream.pBitStream->Write ( INVALID_ELEMENT_ID );
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_WEAPON_OWNER, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
 
 bool CStaticFunctionDefinitions::GetBodyPartName ( unsigned char ucID, char* szName )
 {
@@ -11061,18 +10690,18 @@ bool CStaticFunctionDefinitions::KickPlayer ( CPlayer* pPlayer, SString strRespo
             strReason = strReason.substr ( 0, MAX_KICK_REASON_LENGTH - 3 ) + "...";
 
         // Now create the messages which will be displayed to both the kicked player and the console
-        strMessage.Format ( "%s (%s)", strResponsible.c_str( ), strReason.c_str( ) );
+        strMessage.Format ( "You were kicked by %s (%s)", strResponsible.c_str( ), strReason.c_str( ) );
         strInfoMessage.Format ( "%s was kicked from the game by %s (%s)", pPlayer->GetNick( ), strResponsible.c_str( ), strReason.c_str( ) );
     }
     else
     {
         // Now create the messages which will be displayed to both the kicked player and the console
-        strMessage.Format ( "%s", strResponsible.c_str( ) );
+        strMessage.Format ( "You were kicked by %s", strResponsible.c_str( ) );
         strInfoMessage.Format ( "%s was kicked from the game by %s", pPlayer->GetNick( ), strResponsible.c_str( ) );
     }
 
     // Tell the player that was kicked why. QuitPlayer will delete the player.
-    pPlayer->Send ( CPlayerDisconnectedPacket ( CPlayerDisconnectedPacket::KICK, strMessage.c_str ( ) ) );
+    pPlayer->Send ( CPlayerDisconnectedPacket ( strMessage.c_str ( ) ) );
     g_pGame->QuitPlayer ( *pPlayer, CClient::QUIT_KICK, false, strReason.c_str( ), strResponsible.c_str( ) );
 
     // Tell everyone else that he was kicked from the game including console
@@ -11107,13 +10736,13 @@ CBan* CStaticFunctionDefinitions::BanPlayer ( CPlayer* pPlayer, bool bIP, bool b
             strReason = strReason.substr ( 0, MAX_BAN_REASON_LENGTH - 3 ) + "...";
 
         // Format the messages for both the banned player and the console
-        strMessage.Format     ( "%s (%s)", strResponsible.c_str(), strReason.c_str() );
+        strMessage.Format     ( "You were banned by %s (%s)", strResponsible.c_str(), strReason.c_str() );
         strInfoMessage.Format ( "%s was banned from the game by %s (%s)", pPlayer->GetNick(), strResponsible.c_str(), strReason.c_str() );
     }
     else
     {
         // Format the messages for both the banned player and the console
-        strMessage.Format     ( "%s", strResponsible.c_str() );
+        strMessage.Format     ( "You were banned by %s", strResponsible.c_str() );
         strInfoMessage.Format ( "%s was banned from the game by %s", pPlayer->GetNick(), strResponsible.c_str() );
     }
 
@@ -11157,9 +10786,7 @@ CBan* CStaticFunctionDefinitions::BanPlayer ( CPlayer* pPlayer, bool bIP, bool b
         pPlayer->CallEvent ( "onPlayerBan", Arguments );
 
         // Tell the player that was banned why. QuitPlayer will delete the player.
-        time_t Duration = pBan->GetTimeOfUnban() - time ( NULL );
-        CPlayerDisconnectedPacket Packet ( CPlayerDisconnectedPacket::BAN, Duration, strMessage.c_str ( ) );
-        pPlayer->Send ( Packet );
+        pPlayer->Send ( CPlayerDisconnectedPacket ( strMessage.c_str() ) );
         g_pGame->QuitPlayer ( *pPlayer, CClient::QUIT_BAN, false, strReason.c_str(), strResponsible.c_str() );
 
         // Tell everyone else that he was banned from the game including console
@@ -11228,7 +10855,7 @@ CBan* CStaticFunctionDefinitions::AddBan ( SString strIP, SString strUsername, S
 
 
         // Format the responsible element and the reason/duration into the message string
-        SString strMessage ( "%s%s", strResponsible.c_str(), strDetails.c_str () );
+        SString strMessage ( "You were banned by %s%s", strResponsible.c_str(), strDetails.c_str () );
 
         // Limit overall length of message
         if ( strMessage.length () > 255 )
@@ -11311,9 +10938,7 @@ CBan* CStaticFunctionDefinitions::AddBan ( SString strIP, SString strUsername, S
                 (*iter)->CallEvent ( "onPlayerBan", Arguments );
 
                 // Tell the player that was banned why. QuitPlayer will delete the player.
-                time_t Duration = pBan->GetTimeOfUnban() - time ( NULL );
-                CPlayerDisconnectedPacket Packet ( CPlayerDisconnectedPacket::BAN, Duration, strMessage.c_str ( ) );
-                (*iter)->Send ( Packet );
+                (*iter)->Send ( CPlayerDisconnectedPacket ( strMessage.c_str() ) );
                 g_pGame->QuitPlayer ( **iter, CClient::QUIT_BAN, false, strReason.c_str (), strResponsible.c_str () );
             }
         }

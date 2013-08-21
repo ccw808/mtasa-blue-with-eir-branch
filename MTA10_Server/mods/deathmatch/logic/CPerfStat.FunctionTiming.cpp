@@ -194,7 +194,7 @@ void CPerfStatFunctionTimingImpl::DoPulse ( void )
     // Do nothing if not active
     if ( !m_bIsActive )
     {
-        m_TimingMap.clear ();
+        m_TimingMap.empty ();
         return;
     }
 

@@ -230,16 +230,6 @@ bool CStaticFunctionDefinitions::WasEventCancelled ( void )
 }
 
 
-bool CStaticFunctionDefinitions::DownloadFile ( CResource* pResource, const char* szFile, CChecksum checksum )
-{
-    SString strHTTPDownloadURLFull ( "%s/%s/%s", g_pClientGame->GetHTTPURL().c_str(), pResource->GetName(), szFile );
-    SString strPath ( "%s\\resources\\%s\\%s", g_pClientGame->GetModRoot (),pResource->GetName(), szFile ); 
-    // Call SingularFileDownloadManager
-    g_pClientGame->GetSingularFileDownloadManager()->AddFile ( pResource, strPath.c_str(), szFile, strHTTPDownloadURLFull, checksum );
-    return true;
-}
-
-
 bool CStaticFunctionDefinitions::OutputConsole ( const char* szText )
 {
     m_pCore->GetConsole ()->Print ( szText );
@@ -429,11 +419,6 @@ bool CStaticFunctionDefinitions::GetElementRotation ( CClientEntity& Entity, CVe
             Projectile.GetRotationDegrees ( vecRotation );
             break;
         }
-        case CCLIENTCAMERA:
-        {
-            Entity.GetRotationDegrees( vecRotation );
-            break;
-        }
         default: return false;
     }
 
@@ -587,8 +572,10 @@ CClientEntity* CStaticFunctionDefinitions::GetElementAttachedTo ( CClientEntity&
     CClientEntity* pEntityAttachedTo = Entity.GetAttachedTo();
     if ( pEntityAttachedTo )
     {        
-        assert( pEntityAttachedTo->IsEntityAttached ( &Entity ) );
-        return pEntityAttachedTo;
+        if ( pEntityAttachedTo->IsEntityAttached ( &Entity ) )
+        {
+            return pEntityAttachedTo;
+        }
     }
 
     return NULL;
@@ -1086,11 +1073,7 @@ bool CStaticFunctionDefinitions::SetElementRotation ( CClientEntity& Entity, con
             Projectile.SetRotationDegrees ( const_cast < CVector& > ( vecRotation ) );
             break;
         }
-        case CCLIENTCAMERA:
-        {
-            Entity.SetRotationDegrees( vecRotation );
-            break;
-        }
+
         default: return false;
     }
 
@@ -1149,11 +1132,6 @@ bool CStaticFunctionDefinitions::SetElementParent ( CClientEntity& Entity, CClie
 {
     if ( &Entity != &Parent && !Entity.IsMyChild ( &Parent, true ) )
     {
-        if ( Entity.GetType () == CCLIENTCAMERA || Parent.GetType () == CCLIENTCAMERA )
-        {
-            return false;
-        }
-        else
         if ( Entity.GetType () == CCLIENTGUI )
         {
             if ( Parent.GetType () == CCLIENTGUI ||
@@ -2444,16 +2422,6 @@ bool CStaticFunctionDefinitions::GetTrainSpeed ( CClientVehicle& Vehicle, float&
 }
 
 
-bool CStaticFunctionDefinitions::IsTrainChainEngine ( CClientVehicle& Vehicle, bool& bChainEngine )
-{
-    if ( Vehicle.GetVehicleType () != CLIENTVEHICLE_TRAIN )
-        return false;
-
-    bChainEngine = Vehicle.IsChainEngine ();
-    return true;
-}
-
-
 CClientVehicle* CStaticFunctionDefinitions::CreateVehicle ( CResource& Resource, unsigned short usModel, const CVector& vecPosition, const CVector& vecRotation, const char* szRegPlate, unsigned char ucVariant, unsigned char ucVariant2 )
 {
     if ( CClientVehicleManager::IsValidModel ( usModel ) && ( ucVariant <= 5 || ucVariant == 255 ) && ( ucVariant2 <= 5 || ucVariant2 == 255 ) )
@@ -2904,25 +2872,14 @@ bool CStaticFunctionDefinitions::AttachTrailerToVehicle ( CClientVehicle& Vehicl
 
 bool CStaticFunctionDefinitions::DetachTrailerFromVehicle ( CClientVehicle& Vehicle, CClientVehicle* pTrailer )
 {
-    if ( Vehicle.GetVehicleType () != CLIENTVEHICLE_TRAIN )
+    // Is there a trailer attached, and does it match this one
+    CClientVehicle* pTempTrailer = Vehicle.GetTowedVehicle ();
+    if ( pTempTrailer && ( !pTrailer || pTempTrailer == pTrailer ) )
     {
-        // Is there a trailer attached, and does it match this one
-        CClientVehicle* pTempTrailer = Vehicle.GetTowedVehicle ();
-        if ( pTempTrailer && ( !pTrailer || pTempTrailer == pTrailer ) )
-        {
-            // Detach them
-            Vehicle.SetTowedVehicle ( NULL );
-            return true;
-        }
-    }
-    else
-    {
-        CClientVehicle* pTempCarriage = Vehicle.GetNextTrainCarriage ();
-        if ( pTempCarriage && ( !pTrailer || pTempCarriage == pTrailer ) )
-        {
-            Vehicle.SetTowedVehicle ( NULL );
-            return true;
-        }
+        // Detach them
+        Vehicle.SetTowedVehicle ( NULL );
+
+        return true;
     }
 
     return false;
@@ -4298,7 +4255,8 @@ bool CStaticFunctionDefinitions::SetMarkerIcon ( CClientEntity& Entity, const ch
 bool CStaticFunctionDefinitions::GetCameraMatrix ( CVector& vecPosition, CVector& vecLookAt, float& fRoll, float& fFOV )
 {
     m_pCamera->GetPosition ( vecPosition );
-    m_pCamera->GetFixedTarget ( vecLookAt, &fRoll );
+    m_pCamera->GetFixedTarget ( vecLookAt );
+    fRoll = m_pCamera->GetRoll ();
     fFOV = m_pCamera->GetFOV ();
     return true;
 }
@@ -4319,7 +4277,7 @@ bool CStaticFunctionDefinitions::GetCameraInterior ( unsigned char & ucInterior 
 }
 
 
-bool CStaticFunctionDefinitions::SetCameraMatrix ( const CVector& vecPosition, const CVector& vecLookAt, float fRoll, float fFOV )
+bool CStaticFunctionDefinitions::SetCameraMatrix ( CVector& vecPosition, CVector* pvecLookAt, float fRoll, float fFOV )
 {
     if ( !m_pCamera->IsInFixedMode () )        
     {
@@ -4328,7 +4286,9 @@ bool CStaticFunctionDefinitions::SetCameraMatrix ( const CVector& vecPosition, c
 
     // Put the camera there
     m_pCamera->SetPosition ( vecPosition );
-    m_pCamera->SetFixedTarget ( vecLookAt, fRoll );
+    if ( pvecLookAt )
+        m_pCamera->SetFixedTarget ( *pvecLookAt );
+    m_pCamera->SetRoll ( fRoll );
     m_pCamera->SetFOV ( fFOV );
     return true;
 }
@@ -4370,7 +4330,7 @@ bool CStaticFunctionDefinitions::SetCameraTarget ( CClientEntity * pEntity )
 
 bool CStaticFunctionDefinitions::SetCameraTarget ( const CVector& vecTarget )
 {
-    m_pCamera->SetOrbitTarget ( vecTarget );
+    m_pCamera->SetTarget ( vecTarget );
     return true;
 }
 
@@ -4459,12 +4419,9 @@ void CStaticFunctionDefinitions::DrawText ( float fLeft, float fTop,
                                  ID3DXFont* pDXFont,
                                  bool bPostGUI,
                                  bool bColorCoded,
-                                 bool bSubPixelPositioning,
-                                 float fRotation,
-                                 float fRotationCenterX,
-                                 float fRotationCenterY )
+                                 bool bSubPixelPositioning )
 {
-    g_pCore->GetGraphics ()->DrawTextQueued ( fLeft, fTop, fRight, fBottom, dwColor, szText, fScaleX, fScaleY, ulFormat, pDXFont, bPostGUI, bColorCoded, bSubPixelPositioning, fRotation, fRotationCenterX, fRotationCenterY );
+    g_pCore->GetGraphics ()->DrawTextQueued ( fLeft, fTop, fRight, fBottom, dwColor, szText, fScaleX, fScaleY, ulFormat, pDXFont, bPostGUI, bColorCoded, bSubPixelPositioning );
 }
 
 
@@ -5382,9 +5339,9 @@ void CStaticFunctionDefinitions::GUIEditSetMaxLength ( CClientEntity& Entity, un
 }
 
 
-void CStaticFunctionDefinitions::GUIEditSetCaretIndex ( CClientEntity& Entity, unsigned int iCaret )
+void CStaticFunctionDefinitions::GUIEditSetCaratIndex ( CClientEntity& Entity, unsigned int iCarat )
 {
-    RUN_CHILDREN GUIEditSetCaretIndex ( **iter, iCaret );
+    RUN_CHILDREN GUIEditSetCaratIndex ( **iter, iCarat );
 
     // Are we a CGUI element?
     if ( IS_GUI ( &Entity ) )
@@ -5395,15 +5352,15 @@ void CStaticFunctionDefinitions::GUIEditSetCaretIndex ( CClientEntity& Entity, u
         if ( IS_CGUIELEMENT_EDIT ( &GUIElement ) )
         {
             // Set its carat index
-            static_cast < CGUIEdit* > ( GUIElement.GetCGUIElement () ) -> SetCaretIndex ( iCaret );
+            static_cast < CGUIEdit* > ( GUIElement.GetCGUIElement () ) -> SetCaratIndex ( iCarat );
         }
     }
 }
 
 
-void CStaticFunctionDefinitions::GUIMemoSetCaretIndex ( CClientEntity& Entity, unsigned int iCaret )
+void CStaticFunctionDefinitions::GUIMemoSetCaratIndex ( CClientEntity& Entity, unsigned int iCarat )
 {
-    RUN_CHILDREN GUIMemoSetCaretIndex ( **iter, iCaret );
+    RUN_CHILDREN GUIMemoSetCaratIndex ( **iter, iCarat );
 
     // Are we a CGUI element?
     if ( IS_GUI ( &Entity ) )
@@ -5414,7 +5371,7 @@ void CStaticFunctionDefinitions::GUIMemoSetCaretIndex ( CClientEntity& Entity, u
         if ( IS_CGUIELEMENT_MEMO ( &GUIElement ) )
         {
             // Set its carat index
-            static_cast < CGUIMemo* > ( GUIElement.GetCGUIElement () ) -> SetCaretIndex ( iCaret );
+            static_cast < CGUIMemo* > ( GUIElement.GetCGUIElement () ) -> SetCaratIndex ( iCarat );
         }
     }
 }
@@ -6485,7 +6442,7 @@ bool CStaticFunctionDefinitions::GetControlState ( const char* szControl, bool& 
         CClientPlayer* pLocalPlayer = m_pPlayerManager->GetLocalPlayer ();
         pLocalPlayer->GetControllerState( cs );
         bool bOnFoot = ( !pLocalPlayer->GetRealOccupiedVehicle () );
-        bState = CClientPad::GetControlState ( szControl, cs, bOnFoot );
+        bState = ( CClientPad::GetControlState ( szControl, cs, bOnFoot ) == true ? 1.0f : 0.0f ) > 0;
         return true;
     }
 
@@ -6948,7 +6905,7 @@ bool CStaticFunctionDefinitions::GetWeaponAmmo ( CClientWeapon * pWeapon, int &i
 {
     if ( pWeapon )
     {
-        iAmmo = pWeapon->GetAmmo( );
+        pWeapon->GetAmmo( iAmmo );
         return true;
     }
     return false;
@@ -6958,7 +6915,7 @@ bool CStaticFunctionDefinitions::GetWeaponClipAmmo ( CClientWeapon * pWeapon, in
 {
     if ( pWeapon )
     {
-        iAmmo = pWeapon->GetClipAmmo( );
+        pWeapon->GetClipAmmo( iAmmo );
         return true;
     }
     return false;

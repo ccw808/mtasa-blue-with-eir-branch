@@ -168,10 +168,10 @@ namespace SharedUtil
 
     SString         ExpandEnvString                 ( const SString& strInput );
 
-    // Version string things
-    bool        IsValidVersionString                ( const SString& strVersion );
-    SString     ExtractVersionStringBuildNumber     ( const SString& strVersion );
-    SString     ConformVersionStringToBaseVersion   ( const SString& strVersion, const SString& strBaseVersion );
+    //
+    // Return true if supplied string adheres to the new version format
+    //
+    bool IsValidVersionString ( const SString& strVersion );
 
     //
     // Try to make a path relative to the 'resources/' directory

@@ -371,12 +371,12 @@ VOID CVehicleSA::SetMoveSpeed ( CVector* vecMoveSpeed )
 #endif
 }
 
-CVehicleSAInterface* CVehicleSA::GetNextCarriageInTrain ( void )
+CVehicleSAInterface * CVehicleSA::GetNextCarriageInTrain ( void )
 {
     return (CVehicleSAInterface *)*(DWORD *)((DWORD)this->GetInterface() + 1492);
 }
 
-CVehicle* CVehicleSA::GetNextTrainCarriage ( void )
+CVehicle * CVehicleSA::GetNextTrainCarriage ( void )
 {
     CVehicleSAInterface * pVehicle = GetNextCarriageInTrain();
     if ( pVehicle )
@@ -390,11 +390,11 @@ bool CVehicleSA::AddProjectile ( eWeaponType eWeapon, CVector vecOrigin, float f
     return ((CProjectileInfoSA*)pGame->GetProjectileInfo())->AddProjectile ( (CEntitySA*)this, eWeapon, vecOrigin, fForce, target, targetEntity );
 }
 
-void CVehicleSA::SetNextTrainCarriage ( CVehicle* pNext )
+void CVehicleSA::SetNextTrainCarriage ( CVehicle * next )
 {
-    if ( pNext )
+    if ( next )
     {
-        CVehicleSA * pNextVehicle = dynamic_cast < CVehicleSA* > ( pNext );
+        CVehicleSA * pNextVehicle = dynamic_cast < CVehicleSA* > ( next );
         if ( pNextVehicle )
         {
             MemPutFast < DWORD > ( (DWORD)this->GetInterface () + 1492, (DWORD)pNextVehicle->GetInterface() );
@@ -414,11 +414,11 @@ CVehicleSAInterface * CVehicleSA::GetPreviousCarriageInTrain ( void )
     return (CVehicleSAInterface *)*(DWORD *)((DWORD)this->GetInterface() + 1488);
 }
 
-void CVehicleSA::SetPreviousTrainCarriage ( CVehicle* pPrevious )
+void CVehicleSA::SetPreviousTrainCarriage ( CVehicle * previous )
 {
-    if ( pPrevious )
+    if ( previous )
     {
-        CVehicleSA * pPreviousVehicle = dynamic_cast < CVehicleSA* > ( pPrevious );
+        CVehicleSA * pPreviousVehicle = dynamic_cast < CVehicleSA* > ( previous );
         if ( pPreviousVehicle )
         {
             MemPutFast < DWORD > ( (DWORD)this->GetInterface () + 1488, (DWORD)pPreviousVehicle->GetInterface() );
@@ -433,83 +433,13 @@ void CVehicleSA::SetPreviousTrainCarriage ( CVehicle* pPrevious )
 }
 
 
-CVehicle* CVehicleSA::GetPreviousTrainCarriage ( void )
+CVehicle * CVehicleSA::GetPreviousTrainCarriage ( void )
 {
     CVehicleSAInterface * pVehicle = GetPreviousCarriageInTrain();
     if ( pVehicle )
         return pGame->GetPools()->GetVehicle ( (DWORD *)pVehicle );
     else
         return NULL;
-}
-
-
-float CVehicleSA::GetDistanceToCarriage ( CVehicle* pCarriage )
-{
-    CVehicleSAInterface* pCarriageInterface = pCarriage->GetVehicleInterface ();
-    if ( pCarriageInterface->trainFlags.bDirection )
-    {
-        CBoundingBox* pBoundingBox = pGame->GetModelInfo ( pCarriage->GetModelIndex() )->GetBoundingBox ();
-        return -( pBoundingBox->vecBoundMax.fY - pBoundingBox->vecBoundMin.fY );
-    }
-    else
-    {
-        CBoundingBox* pBoundingBox = pGame->GetModelInfo ( this->GetModelIndex() )->GetBoundingBox ();
-        return pBoundingBox->vecBoundMax.fY - pBoundingBox->vecBoundMin.fY;
-    }
-}
-
-
-void CVehicleSA::AttachTrainCarriage ( CVehicle* pCarriage )
-{
-    if ( !pCarriage )
-        return;
-
-    CVehicleSA* pCarriageSA = dynamic_cast < CVehicleSA* > ( pCarriage );
-    if ( !pCarriageSA )
-        return;
-
-    // Link both vehicles
-    SetNextTrainCarriage ( pCarriage );
-
-    // Mark the carriage as non chain engine
-    CVehicleSAInterface* pCarriageInterface = pCarriage->GetVehicleInterface ();
-    pCarriageInterface->trainFlags.bIsTheChainEngine = false;
-    //pNextInterface->trainFlags.bIsDrivenByBrownSteak = true;
-    
-    if ( pCarriageInterface->trainFlags.bDirection )
-    {
-        CBoundingBox* pBoundingBox = pGame->GetModelInfo ( pCarriage->GetModelIndex() )->GetBoundingBox ();
-        pCarriageInterface->m_fDistanceToNextCarriage = -( pBoundingBox->vecBoundMax.fY - pBoundingBox->vecBoundMin.fY );
-    }
-    else
-    {
-        CBoundingBox* pBoundingBox = pGame->GetModelInfo ( this->GetModelIndex() )->GetBoundingBox ();
-        pCarriageInterface->m_fDistanceToNextCarriage = pBoundingBox->vecBoundMax.fY - pBoundingBox->vecBoundMin.fY;
-    }
-}
-
-
-void CVehicleSA::DetachTrainCarriage ( CVehicle* pCarriage )
-{
-    SetNextTrainCarriage ( NULL );
-    
-    if ( pCarriage )
-    {
-        pCarriage->SetPreviousTrainCarriage ( NULL );
-        pCarriage->SetIsChainEngine ( true );
-    }
-}
-
-
-bool CVehicleSA::IsChainEngine ( void )
-{
-    return GetVehicleInterface ()->trainFlags.bIsTheChainEngine;
-}
-
-
-void CVehicleSA::SetIsChainEngine ( bool bChainEngine )
-{
-    GetVehicleInterface ()->trainFlags.bIsTheChainEngine = bChainEngine;
 }
 
 
@@ -527,32 +457,29 @@ void CVehicleSA::SetDerailed ( bool bDerailed )
     {
         CVehicleSAInterface* pInterface = GetVehicleInterface ();
         DWORD dwThis = (DWORD)pInterface;
-        if ( bDerailed != pInterface->trainFlags.bIsDerailed )
+
+        if ( bDerailed )
         {
-
-            if ( bDerailed )
-            {
-                pInterface->trainFlags.bIsDerailed = true;
-                MemAndFast < DWORD > ( dwThis + 64, ( DWORD ) 0xFFFDFFFB );
-            }
-            else
-            {
-                pInterface->trainFlags.bIsDerailed = false;
-                MemOrFast < DWORD > ( dwThis + 64, ( DWORD ) 0x20004 );
-
-                // Recalculate the on-rail distance from the start node (train position parameter, m_fTrainRailDistance)
-                DWORD dwFunc = FUNC_CVehicle_RecalcOnRailDistance;
-                _asm
-                {
-                    mov     ecx, dwThis
-                        call    dwFunc
-                }
-
-                // Reset the speed
-                GetVehicleInterface ()->m_fTrainSpeed = 0.0f;
-            }
+            pInterface->trainFlags.bIsDerailed = true;
+            MemAndFast < DWORD > ( dwThis + 64, ( DWORD ) 0xFFFDFFFB );
         }
-    }
+        else
+        {
+            pInterface->trainFlags.bIsDerailed = false;
+            MemOrFast < DWORD > ( dwThis + 64, ( DWORD ) 0x20004 );
+
+            // Recalculate the on-rail distance from the start node (train position parameter, m_fTrainRailDistance)
+            DWORD dwFunc = FUNC_CVehicle_RecalcOnRailDistance;
+            _asm
+            {
+                mov     ecx, dwThis
+                call    dwFunc
+            }
+
+            // Reset the speed
+            GetVehicleInterface ()->m_fTrainSpeed = 0.0f;
+        }
+    }   
 }
 
 float CVehicleSA::GetTrainSpeed ()
@@ -596,41 +523,14 @@ void CVehicleSA::SetRailTrack ( BYTE ucTrackID )
         return;
 
     CVehicleSAInterface* pInterf = GetVehicleInterface ();
-    if ( pInterf->m_ucRailTrackID != ucTrackID )
+    pInterf->m_ucRailTrackID = ucTrackID;
+    if ( !IsDerailed () )
     {
-        pInterf->m_ucRailTrackID = ucTrackID;
-        if ( !IsDerailed () )
+        DWORD dwFunc = FUNC_CVehicle_RecalcOnRailDistance;
+        _asm
         {
-            DWORD dwFunc = FUNC_CVehicle_RecalcOnRailDistance;
-            _asm
-            {
-                mov ecx, pInterf
-                call dwFunc
-            }
-        }
-    }
-}
-
-float CVehicleSA::GetTrainPosition ()
-{
-    return GetVehicleInterface ()->m_fTrainRailDistance;
-}
-
-
-void CVehicleSA::SetTrainPosition ( float fPosition, bool bRecalcOnRailDistance )
-{
-    CVehicleSAInterface* pInterface = GetVehicleInterface ();
-    if ( pInterface->m_fTrainRailDistance <= fPosition - 0.1 || pInterface->m_fTrainRailDistance >= fPosition + 0.1 )
-    {
-        pInterface->m_fTrainRailDistance = fPosition;
-        if ( bRecalcOnRailDistance && !IsDerailed () )
-        {
-            DWORD dwFunc = FUNC_CVehicle_RecalcOnRailDistance;
-            _asm
-            {
-                mov ecx, pInterface
-                call dwFunc
-            }
+            mov ecx, pInterf
+            call dwFunc
         }
     }
 }
@@ -2380,14 +2280,6 @@ bool CVehicleSA::SetComponentPosition ( SString vehicleComponent, CVector vecPos
     if ( GetVehicleComponent ( vehicleComponent, Component ) && Component.pFrame != NULL && Component.bReadOnly == false )
     {
         RwFrame * pComponent = Component.pFrame;
-
-        // Remove offsets of parent frames
-        RwFrame* pParent = (RwFrame*)pComponent->object.parent;
-        for( ; pParent && pParent != pParent->root ; pParent = (RwFrame*)pParent->object.parent )
-        {
-            vecPosition -= CVector ( pParent->modelling.pos.x, pParent->modelling.pos.y, pParent->modelling.pos.z );
-        }
-
         // set our position (modelling is relative positions and ltm is world pos)
         pComponent->modelling.pos.x = vecPosition.fX;
         pComponent->modelling.pos.y = vecPosition.fY;
@@ -2406,14 +2298,6 @@ bool CVehicleSA::GetComponentPosition ( SString vehicleComponent, CVector &vecPo
         RwFrame * pComponent = Component.pFrame;
         // get our position (modelling is relative positions and ltm is world pos)
         vecPositionModelling = CVector ( pComponent->modelling.pos.x, pComponent->modelling.pos.y, pComponent->modelling.pos.z );
-
-        // Add offsets of parent frames
-        RwFrame* pParent = (RwFrame*)pComponent->object.parent;
-        for( ; pParent && pParent != pParent->root ; pParent = (RwFrame*)pParent->object.parent )
-        {
-            vecPositionModelling += CVector ( pParent->modelling.pos.x, pParent->modelling.pos.y, pParent->modelling.pos.z );
-        }
-
         return true;
     }
     return false;

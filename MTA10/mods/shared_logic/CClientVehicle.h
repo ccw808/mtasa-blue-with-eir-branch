@@ -135,8 +135,6 @@ public:
     void                        SetPosition             ( const CVector& vecPosition )      { SetPosition ( vecPosition, true ); }
     void                        SetPosition             ( const CVector& vecPosition, bool bResetInterpolation );
 
-    void                        UpdatePedPositions      ( const CVector& vecPosition );
-
     void                        GetRotationDegrees      ( CVector& vecRotation ) const;
     void                        GetRotationRadians      ( CVector& vecRotation ) const;
     void                        SetRotationDegrees      ( const CVector& vecRotation )      { SetRotationDegrees ( vecRotation, true ); }
@@ -247,7 +245,6 @@ public:
     void                        SetWheelStatus          ( unsigned char ucWheel, unsigned char ucStatus, bool bSilent = true );
     void                        SetPanelStatus          ( unsigned char ucPanel, unsigned char ucStatus );
     void                        SetLightStatus          ( unsigned char ucLight, unsigned char ucStatus );
-    bool                        GetWheelMissing         ( unsigned char ucWheel, const SString& strWheelName = "" );
 
     // TODO: Make the class remember on virtualization
     float                       GetHeliRotorSpeed       ( void );
@@ -297,9 +294,6 @@ public:
     CClientVehicle*             GetNextTrainCarriage    ( void );
     void                        SetPreviousTrainCarriage( CClientVehicle* pPrevious );
     void                        SetNextTrainCarriage    ( CClientVehicle* pNext );
-    inline bool                 IsChainEngine           ( void )                            { return m_bChainEngine; };
-    void                        SetIsChainEngine        ( bool bChainEngine = true, bool bTemporary = false );
-    CClientVehicle*             GetChainEngine          ( void );
 
     bool                        IsDerailed              ( void );
     void                        SetDerailed             ( bool bDerailed );
@@ -311,13 +305,6 @@ public:
 
     float                       GetTrainSpeed           ( void );
     void                        SetTrainSpeed           ( float fSpeed );
-
-    float                       GetTrainPosition        ( void );
-    void                        SetTrainPosition        ( float fPosition, bool bRecalcOnRailDistance = true );
-
-    uchar                       GetTrainTrack           ( void );
-    void                        SetTrainTrack           ( uchar ucTrack );
-
 
     inline unsigned char        GetOverrideLights       ( void )                            { return m_ucOverrideLights; }
     void                        SetOverrideLights       ( unsigned char ucOverrideLights );
@@ -351,10 +338,10 @@ public:
     float                       GetDirtLevel            ( void );
     void                        SetDirtLevel            ( float fDirtLevel );
 	
-    inline char                 GetNitroCount           ( void )                            { return m_pVehicle->GetNitroCount (); }
-    inline float                GetNitroLevel           ( void )                            { return m_pVehicle->GetNitroLevel (); }
-    inline void                 SetNitroCount           ( char cCount )                     { m_pVehicle->SetNitroCount ( cCount ); }
-    inline void                 SetNitroLevel           ( float fLevel )                    { m_pVehicle->SetNitroLevel ( fLevel ); }
+    inline char                 GetNitroCount           ( void )                            { return m_pVehicle ? m_pVehicle->GetNitroCount () : 0; }
+    inline float                GetNitroLevel           ( void )                            { return m_pVehicle ? m_pVehicle->GetNitroLevel () : 0; }
+    inline void                 SetNitroCount           ( char cCount )                     { if ( m_pVehicle ) m_pVehicle->SetNitroCount ( cCount ); }
+    inline void                 SetNitroLevel           ( float fLevel )                    { if ( m_pVehicle ) m_pVehicle->SetNitroLevel ( fLevel ); }
 
     bool                        IsNitroInstalled        ( void );
 
@@ -570,13 +557,10 @@ protected:
     const CHandlingEntry*       m_pOriginalHandlingEntry;
     CHandlingEntry*             m_pHandlingEntry;
 
-    bool                        m_bChainEngine;
     bool                        m_bIsDerailed;
     bool                        m_bIsDerailable;
     bool                        m_bTrainDirection;
     float                       m_fTrainSpeed;
-    float                       m_fTrainPosition;
-    uchar                       m_ucTrackID;
 
     // Time dependent error compensation interpolation
     struct

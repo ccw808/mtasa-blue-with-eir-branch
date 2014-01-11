@@ -16,9 +16,6 @@
 #include <Psapi.h>
 #include <time.h>
 
-#include "..\sdk\core\CLocalizationInterface.h"
-extern CLocalizationInterface* g_pLocalization;
-
 #include "Main.h"
 #include "MainFunctions.h"
 #include "Install.h"

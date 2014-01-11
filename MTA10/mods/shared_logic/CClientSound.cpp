@@ -706,12 +706,7 @@ void CClientSound::Process3D ( const CVector& vecPlayerPosition, const CVector& 
 bool CClientSound::IsFinished ( void )
 {
     if ( m_pAudio )
-    {
-        if ( !m_bLoop && !m_bStream )
-            if ( m_pAudio->GetReachedEndCount() )
-                return true;
-        return m_pAudio->IsFreed();
-    }
+        return m_pAudio->IsFinished ();
 
     // For 3D non-streamed non-looped sounds, check if simulated position has reached the end
     if ( m_b3D && !m_bStream && !m_bLoop )

@@ -59,10 +59,10 @@ typedef float               FLOAT;      //  32
 #include <string>
 #include <stdarg.h>
 
-// Vendor
-#ifndef _
-#define _ //Use a dummy localisation define for modules that don't need it
-#endif
+// Things to make source easier to backport
+#define _ SStringX
+#define _td(x) x
+#define _tn(s,p,c) ( ( (c) == 1 ) ? s : p )
 
 #include "SString.h"
 #include "WString.h"

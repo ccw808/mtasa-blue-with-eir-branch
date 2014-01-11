@@ -93,8 +93,6 @@ CResource::CResource ( CResourceManager * resourceManager, bool bIsZipped, const
     m_bDoneUpgradeWarnings = false;
     m_uiFunctionRightCacheRevision = 0;
 
-    m_bOOPEnabledInMetaXml = true;
-
     Load ();
 }
 
@@ -125,8 +123,6 @@ bool CResource::Load ( void )
         m_bClientScripts = true;
         m_bClientFiles = true;
         m_bHasStarted = false;
-
-        m_bOOPEnabledInMetaXml = false;
 
         m_pVM = NULL;
         // @@@@@ Set some type of HTTP access here
@@ -247,13 +243,6 @@ bool CResource::Load ( void )
                 {
                     m_bSyncMapElementData = StringToBool ( pNodeSyncMapElementData->GetTagContent ().c_str () );
                     m_bSyncMapElementDataDefined = true;
-                }
-
-                m_bOOPEnabledInMetaXml = true;
-                CXMLNode * pNodeClientOOP = root->FindSubNode ( "oop", 0 );
-                if ( pNodeClientOOP )
-                {
-                    m_bOOPEnabledInMetaXml = StringToBool ( pNodeClientOOP->GetTagContent ().c_str () );
                 }
 
                 // disabled for now
@@ -417,15 +406,6 @@ CResource::~CResource ( )
     CIdArray::PushUniqueId ( this, EIdClass::RESOURCE, m_uiScriptID );
     Unload ();
 
-    // Overkill, but easiest way to stop crashes:
-    // Go through all other resources and make sure we are not in m_includedResources, m_dependents and m_temporaryIncludes
-    std::list < CResource* > ::const_iterator iter = m_resourceManager->IterBegin ();
-    for ( ; iter != m_resourceManager->IterEnd (); iter++ )
-    {
-        if ( *iter != this )
-            (*iter)->InvalidateIncludedResourceReference ( this );
-    }
-
     m_strResourceName = "";
 
     m_bDestroyed = true;
@@ -465,6 +445,15 @@ void CResource::TidyUp ( void )
         (*iterc)->InvalidateIncludedResourceReference ( this );
     }
 
+    // Overkill, but easiest way to stop crashes:
+    // Go through all other resources and make sure we are not in m_includedResources, m_dependents and m_temporaryIncludes
+    std::list < CResource* > ::const_iterator iter = m_resourceManager->IterBegin ();
+    for ( ; iter != m_resourceManager->IterEnd (); iter++ )
+    {
+        if ( *iter != this )
+            (*iter)->InvalidateIncludedResourceReference ( this );
+    }
+    
     this->UnregisterEHS("call");
     g_pGame->GetHTTPD()->UnregisterEHS ( m_strResourceName.c_str () );
 
@@ -891,14 +880,14 @@ bool CResource::Start ( list<CResource *> * dependents, bool bStartedManually, b
                     if ( m_pResourceElement )
                     {
                         removePacket.Add ( m_pResourceElement );
-                        g_pGame->GetElementDeleter()->Delete ( m_pResourceElement );
+                        g_pGame->GetElementDeleter()->Delete ( m_pResourceElement, true, true, NULL, SString( "%s:Start:ResourceElement", GetName().c_str() ) );
                         m_pResourceElement = NULL;
                     }
 
                     if ( m_pResourceDynamicElementRoot )
                     {
                         removePacket.Add ( m_pResourceDynamicElementRoot );
-                        g_pGame->GetElementDeleter()->Delete ( m_pResourceDynamicElementRoot );
+                        g_pGame->GetElementDeleter()->Delete ( m_pResourceDynamicElementRoot, true, true, NULL, SString( "%s:Start:ResourceDynamicElementRoot", GetName().c_str() ) );
                         m_pResourceDynamicElementRoot = NULL;
                     }
                     g_pGame->GetPlayerManager()->BroadcastOnlyJoined ( removePacket );
@@ -1022,7 +1011,7 @@ bool CResource::Stop ( bool bStopManually )
         CLogger::LogPrintf ( LOGLEVEL_LOW, "Stopping %s\n", m_strResourceName.c_str () );
 
         // Tell the modules we are stopping
-        g_pGame->GetLuaManager ()->GetLuaModuleManager ()->ResourceStopping ( m_pVM->GetVirtualMachine () );
+        g_pGame->GetLuaManager ()->GetLuaModuleManager ()->_ResourceStopping ( m_pVM->GetVirtualMachine () );
 
         // Remove us from the running resources list
         m_StartedResources.remove ( this );
@@ -1070,7 +1059,7 @@ bool CResource::Stop ( bool bStopManually )
         }
 
         // Tell the module manager we have stopped
-        g_pGame->GetLuaManager ()->GetLuaModuleManager ()->ResourceStopped ( m_pVM->GetVirtualMachine () );
+        g_pGame->GetLuaManager ()->GetLuaModuleManager ()->_ResourceStopped ( m_pVM->GetVirtualMachine () );
 
         // Remove the temporary XML storage node
         if ( m_pNodeStorage )
@@ -1096,7 +1085,7 @@ bool CResource::Stop ( bool bStopManually )
         if ( m_pResourceElement )
         {
             removePacket.Add ( m_pResourceElement );
-            g_pGame->GetElementDeleter()->Delete ( m_pResourceElement );
+            g_pGame->GetElementDeleter()->Delete ( m_pResourceElement, true, true, NULL, SString( "%s:Stop:pResourceElement", GetName().c_str() ) );
             m_pResourceElement = NULL;
         }
 
@@ -1104,7 +1093,7 @@ bool CResource::Stop ( bool bStopManually )
         if ( m_pResourceDynamicElementRoot )
         {
             removePacket.Add ( m_pResourceDynamicElementRoot );
-            g_pGame->GetElementDeleter()->Delete ( m_pResourceDynamicElementRoot );
+            g_pGame->GetElementDeleter()->Delete ( m_pResourceDynamicElementRoot, true, true, NULL, SString( "%s:Stop:pResourceDynamicElementRoot", GetName().c_str() ) );
             m_pResourceDynamicElementRoot = NULL;
         }
 
@@ -1661,18 +1650,9 @@ bool CResource::ReadIncludedFiles ( CXMLNode * root )
                 string strFullFilename;
                 ReplaceSlashes ( strFilename );
 
-                bool bDownload = true;
-                CXMLAttribute * download = attributes->Find("download");
-                if ( download )
-                {
-                    const char *szDownload = download->GetValue ().c_str ();
-                    if ( stricmp ( szDownload, "no" ) == 0 || stricmp ( szDownload, "false" ) == 0 )
-                        bDownload = false;
-                }
-
                 // Create a new resourcefile item
                 if ( IsValidFilePath ( strFilename.c_str () ) && GetFilePath ( strFilename.c_str (), strFullFilename ) )
-                    m_resourceFiles.push_back ( new CResourceClientFileItem ( this, strFilename.c_str (), strFullFilename.c_str (), attributes, bDownload ) );
+                    m_resourceFiles.push_back ( new CResourceClientFileItem ( this, strFilename.c_str (), strFullFilename.c_str (), attributes ) );
                 else
                 {
                     m_strFailureReason = SString ( "Couldn't find file %s for resource %s\n", strFilename.c_str (), m_strResourceName.c_str () );

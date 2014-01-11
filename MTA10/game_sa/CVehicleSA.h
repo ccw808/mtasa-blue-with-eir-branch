@@ -457,7 +457,7 @@ public:
     CTrainFlags trainFlags;
 
     //1468
-    unsigned int m_uiLastTimeUpdated;
+    DWORD padding250[1];
 
     //1472
     BYTE m_ucRailTrackID;
@@ -493,15 +493,13 @@ public:
 
     // Hacked in from jb-contribs branch
     RwFrame * pSpecialParts[5]; // 1688
-    RwFrame * pExtraParts[5]; // 1708
-    RwFrame * pExtraParts2[5]; // 1728
-    uint32 pad1[20]; // 1708
+    uint32 pad1[30]; // 1708
     CColPointSAInterface WheelFrontLeftColPoint; // 1828
     CColPointSAInterface WheelRearLeftColPoint;
     CColPointSAInterface WheelFrontRightColPoint;
     CColPointSAInterface WheelRearRightColPoint;
 
-    BYTE padding280[260];
+    BYTE padding280[576-316];
     // 2276
     float m_fBurningTime;
 };
@@ -542,17 +540,12 @@ public:
 
     bool                        AddProjectile                   ( eWeaponType eWeapon, CVector vecOrigin, float fForce, CVector * target, CEntity * targetEntity );
 
-    CVehicleSAInterface*        GetNextCarriageInTrain          ();
-    CVehicle*                   GetNextTrainCarriage            ();
-    void                        SetNextTrainCarriage            ( CVehicle* pNext );
-    CVehicleSAInterface*        GetPreviousCarriageInTrain      ();
-    CVehicle*                   GetPreviousTrainCarriage        ();
-    void                        SetPreviousTrainCarriage        ( CVehicle* pPrevious );
-    float                       GetDistanceToCarriage           ( CVehicle* pCarriage );
-    void                        AttachTrainCarriage             ( CVehicle* pCarriage );
-    void                        DetachTrainCarriage             ( CVehicle* pCarriage );
-    bool                        IsChainEngine                   ( void );
-    void                        SetIsChainEngine                ( bool bChainEngine = true );
+    CVehicleSAInterface *       GetNextCarriageInTrain          ();
+    CVehicle *                  GetNextTrainCarriage            ();
+    void                        SetNextTrainCarriage            ( CVehicle * next );
+    CVehicleSAInterface *       GetPreviousCarriageInTrain      ();
+    CVehicle *                  GetPreviousTrainCarriage        ();
+    void                        SetPreviousTrainCarriage        ( CVehicle * pPrevious );
 
     bool                        IsDerailed                      ();
     void                        SetDerailed                     ( bool bDerailed );
@@ -564,8 +557,6 @@ public:
     void                        SetTrainDirection               ( bool bDirection );
     BYTE                        GetRailTrack                    ();
     void                        SetRailTrack                    ( BYTE ucTrackID );
-    float                       GetTrainPosition                ( void );
-    void                        SetTrainPosition                ( float fPosition, bool bRecalcOnRailDistance = true );
 
     bool                        CanPedEnterCar                  ();
     bool                        CanPedJumpOutCar                ( CPed* pPed );

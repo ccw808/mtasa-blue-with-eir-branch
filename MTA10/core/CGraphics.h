@@ -173,10 +173,7 @@ public:
                                                   ID3DXFont * pDXFont = NULL,
                                                   bool bPostGUI = false,
                                                   bool bColorCoded = false,
-                                                  bool bSubPixelPositioning = false,
-                                                  float fRotation = 0,
-                                                  float fRotationCenterX = 0,
-                                                  float fRotationCenterY = 0 );
+                                                  bool bSubPixelPositioning = false );
 
     void                OnChangingRenderTarget  ( uint uiNewViewportSizeX, uint uiNewViewportSizeY );
 
@@ -211,8 +208,7 @@ private:
     ID3DXFont*          MaybeGetBigFont         ( ID3DXFont* pDXFont, float& fScaleX, float& fScaleY );
     void                CheckModes              ( EDrawModeType newDrawMode, EBlendModeType newBlendMode = EBlendMode::NONE );
     void                DrawColorCodedTextLine  ( float fLeft, float fRight, float fY, SColor& currentColor, const wchar_t* wszText,
-                                                  float fScaleX, float fScaleY, unsigned long ulFormat, ID3DXFont* pDXFont, bool bPostGUI, bool bSubPixelPositioning,
-                                                  float fRotation, float fRotationCenterX, float fRotationCenterY );
+                                                  float fScaleX, float fScaleY, unsigned long ulFormat, ID3DXFont* pDXFont, bool bPostGUI, bool bSubPixelPositioning );
 
     CLocalGUI*          m_pGUI;
 
@@ -276,9 +272,6 @@ private:
         float           fScaleY;
         unsigned long   ulFormat;
         ID3DXFont*      pDXFont;
-        float           fRotation;
-        float           fRotationCenterX;
-        float           fRotationCenterY;
     };
 
     struct sDrawQueueRect

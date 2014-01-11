@@ -108,14 +108,6 @@ CCredits::CCredits ( void )
                               "\n"
                               "\n";
 
-    if ( g_pLocalization->IsLocalized() && !g_pLocalization->GetTranslators().empty() ) 
-    {
-        m_strCredits +=           _("Language Localization");
-        m_strCredits +=           "\n\n";
-        m_strCredits +=           g_pLocalization->GetTranslators();
-        m_strCredits +=           "\n\n\n";
-    }
-
     m_strCredits +=           _("Special Thanks");
     m_strCredits +=           "\n\n"
 

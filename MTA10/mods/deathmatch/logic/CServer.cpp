@@ -15,7 +15,6 @@
 
 static volatile bool g_bIsStarted = false;
 extern CCoreInterface* g_pCore;
-extern CLocalizationInterface* g_pLocalization;
 CCriticalSection CServer::m_OutputCC;
 std::list < std::string > CServer::m_OutputQueue;
 

@@ -56,8 +56,12 @@ int CLuaFunctionDefs::dxDrawLine3D ( lua_State* luaVM )
     CVector vecBegin; CVector vecEnd; uint ulColor; float fWidth; bool bPostGUI;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecBegin );
-    argStream.ReadVector3D ( vecEnd );
+    argStream.ReadNumber ( vecBegin.fX );
+    argStream.ReadNumber ( vecBegin.fY );
+    argStream.ReadNumber ( vecBegin.fZ );
+    argStream.ReadNumber ( vecEnd.fX );
+    argStream.ReadNumber ( vecEnd.fY );
+    argStream.ReadNumber ( vecEnd.fZ );
     argStream.ReadNumber ( ulColor, 0xFFFFFFFF );
     argStream.ReadNumber ( fWidth, 1 );
     argStream.ReadBool ( bPostGUI, false );
@@ -85,14 +89,20 @@ int CLuaFunctionDefs::dxDrawMaterialLine3D ( lua_State* luaVM )
     CVector vecFaceToward; bool bUseFaceToward = false;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecBegin );
-    argStream.ReadVector3D ( vecEnd );
+    argStream.ReadNumber ( vecBegin.fX );
+    argStream.ReadNumber ( vecBegin.fY );
+    argStream.ReadNumber ( vecBegin.fZ );
+    argStream.ReadNumber ( vecEnd.fX );
+    argStream.ReadNumber ( vecEnd.fY );
+    argStream.ReadNumber ( vecEnd.fZ );
     argStream.ReadUserData ( pMaterial );
     argStream.ReadNumber ( fWidth );
     argStream.ReadNumber ( ulColor, 0xFFFFFFFF );
     if ( argStream.NextCouldBeNumber () )
     {
-        argStream.ReadVector3D ( vecFaceToward );
+        argStream.ReadNumber ( vecFaceToward.fX );
+        argStream.ReadNumber ( vecFaceToward.fY );
+        argStream.ReadNumber ( vecFaceToward.fZ );
         bUseFaceToward = true;
     }
 
@@ -119,8 +129,12 @@ int CLuaFunctionDefs::dxDrawMaterialSectionLine3D ( lua_State* luaVM )
     CClientMaterial* pMaterial; float fWidth; uint ulColor; CVector vecFaceToward; bool bUseFaceToward = false;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecBegin );
-    argStream.ReadVector3D ( vecEnd );
+    argStream.ReadNumber ( vecBegin.fX );
+    argStream.ReadNumber ( vecBegin.fY );
+    argStream.ReadNumber ( vecBegin.fZ );
+    argStream.ReadNumber ( vecEnd.fX );
+    argStream.ReadNumber ( vecEnd.fY );
+    argStream.ReadNumber ( vecEnd.fZ );
     argStream.ReadNumber ( fU );
     argStream.ReadNumber ( fV );
     argStream.ReadNumber ( fSizeU );
@@ -130,7 +144,9 @@ int CLuaFunctionDefs::dxDrawMaterialSectionLine3D ( lua_State* luaVM )
     argStream.ReadNumber ( ulColor, 0xFFFFFFFF );
     if ( argStream.NextCouldBeNumber () )
     {
-        argStream.ReadVector3D ( vecFaceToward );
+        argStream.ReadNumber ( vecFaceToward.fX );
+        argStream.ReadNumber ( vecFaceToward.fY );
+        argStream.ReadNumber ( vecFaceToward.fZ );
         bUseFaceToward = true;
     }
 
@@ -152,11 +168,9 @@ int CLuaFunctionDefs::dxDrawMaterialSectionLine3D ( lua_State* luaVM )
 int CLuaFunctionDefs::dxDrawText ( lua_State* luaVM )
 {
 //  bool dxDrawText ( string text, float left, float top [, float right=left, float bottom=top, int color=white, float scale=1, mixed font="default", 
-//      string alignX="left", string alignY="top", bool clip=false, bool wordBreak=false, bool postGUI=false, bool colorCoded=false, bool subPixelPositioning=false,
-//      float rotation=0, float rotationCenterX=(left+right)/2, float rotationCenterY=(top+bottom)/2] )
+//      string alignX="left", string alignY="top", bool clip=false, bool wordBreak=false, bool postGUI=false, bool colorCoded=false, bool subPixelPositioning=false] )
     SString strText; float fLeft; float fTop; float fRight; float fBottom; ulong ulColor; float fScaleX; float fScaleY; eFontType fontType; CClientDxFont* pDxFontElement;
     eDXHorizontalAlign alignX; eDXVerticalAlign alignY; bool bClip; bool bWordBreak; bool bPostGUI; bool bColorCoded; bool bSubPixelPositioning;
-    float fRotation; float fRotationCenterX; float fRotationCenterY;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadString ( strText );
@@ -178,9 +192,6 @@ int CLuaFunctionDefs::dxDrawText ( lua_State* luaVM )
     argStream.ReadBool ( bPostGUI, false );
     argStream.ReadBool ( bColorCoded, false );
     argStream.ReadBool ( bSubPixelPositioning, false );
-    argStream.ReadNumber ( fRotation, 0 );
-    argStream.ReadNumber ( fRotationCenterX, ( fLeft + fRight ) * 0.5f );
-    argStream.ReadNumber ( fRotationCenterY, ( fTop + fBottom ) * 0.5f );
 
     if ( !argStream.HasErrors () )
     {
@@ -193,7 +204,7 @@ int CLuaFunctionDefs::dxDrawText ( lua_State* luaVM )
         if ( bWordBreak )           ulFormat |= DT_WORDBREAK;
         if ( !bClip )               ulFormat |= DT_NOCLIP;
 
-        CStaticFunctionDefinitions::DrawText ( fLeft, fTop, fRight, fBottom, ulColor, strText, fScaleX, fScaleY, ulFormat, pD3DXFont, bPostGUI, bColorCoded, bSubPixelPositioning, fRotation, fRotationCenterX, fRotationCenterY );
+        CStaticFunctionDefinitions::DrawText ( fLeft, fTop, fRight, fBottom, ulColor, strText, fScaleX, fScaleY, ulFormat, pD3DXFont, bPostGUI, bColorCoded, bSubPixelPositioning );
 
         lua_pushboolean ( luaVM, true );
         return 1;
@@ -263,6 +274,14 @@ int CLuaFunctionDefs::dxDrawImage ( lua_State* luaVM )
             lua_pushboolean ( luaVM, true );
             return 1;
         }
+        else
+        {
+            SString strFilename;
+            argStream.m_iIndex = 4;
+            if ( argStream.NextIsString () )
+                argStream.ReadString ( strFilename );
+            argStream.SetCustomError( SString( "Can't load file %s", *strFilename ) );
+        }
     }
     if ( argStream.HasErrors () )
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
@@ -304,6 +323,8 @@ int CLuaFunctionDefs::dxDrawImageSection ( lua_State* luaVM )
             lua_pushboolean ( luaVM, true );
             return 1;
         }
+        else
+            argStream.SetCustomError( "Can't load file" );
     }
     if ( argStream.HasErrors () )
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
@@ -417,7 +438,14 @@ int CLuaFunctionDefs::dxCreateTexture ( lua_State* luaVM )
         argStream.ReadNumber ( width );
         argStream.ReadNumber ( height );
         argStream.ReadEnumString ( renderFormat, RFORMAT_UNKNOWN );
-        argStream.ReadEnumString ( textureAddress, TADDRESS_WRAP );
+        if ( argStream.NextIsEnumString ( textureType ) )
+        {
+           // r4019 to r4037 had incorrect argument order
+            m_pScriptDebugging->LogCustom ( luaVM, SString ( "Bad argument @ '%s' [%s]", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ), "invalid texture-edge type at argument 4" ) );
+            textureAddress = TADDRESS_WRAP;
+        }
+        else
+            argStream.ReadEnumString ( textureAddress, TADDRESS_WRAP );
         argStream.ReadEnumString ( textureType, TTYPE_TEXTURE );
         if ( textureType == TTYPE_VOLUMETEXTURE )
             argStream.ReadNumber ( depth );
@@ -449,10 +477,10 @@ int CLuaFunctionDefs::dxCreateTexture ( lua_State* luaVM )
                         return 1;
                     }
                     else
-                        argStream.SetCustomError( strFilePath, "File not found" );
+                        m_pScriptDebugging->LogBadPointer ( luaVM, "file-path", 1 );
                 }
                 else
-                    argStream.SetCustomError( strFilePath, "Bad file path" );
+                    m_pScriptDebugging->LogBadPointer ( luaVM, "file-path", 1 );
             }
             else
             if ( pixels.GetSize () )
@@ -479,7 +507,7 @@ int CLuaFunctionDefs::dxCreateTexture ( lua_State* luaVM )
             }
         }
     }
-    if ( argStream.HasErrors () )
+    else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
@@ -532,17 +560,17 @@ int CLuaFunctionDefs::dxCreateShader ( lua_State* luaVM )
                         // Replace any path in the error message with our own one
                         SString strRootPathWithoutResource = strRootPath.Left ( strRootPath.TrimEnd ( "\\" ).length () - SStringX ( pFileResource->GetName () ).length () ) ;
                         strStatus = strStatus.ReplaceI ( strRootPathWithoutResource, "" );
-                        argStream.SetCustomError( strFilePath, strStatus );
+                        m_pScriptDebugging->LogCustom ( luaVM, SString ( "Problem @ '%s' [%s]", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ), *strStatus ) );
                     }
                 }
                 else
-                    argStream.SetCustomError( strFilePath, "File not found" );
+                    m_pScriptDebugging->LogCustom ( luaVM, SString ( "Missing file @ '%s' [%s]", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ), *ConformResourcePath ( strPath, true ) ) );
             }
             else
-                argStream.SetCustomError( strFilePath, "Bad file path" );
+                m_pScriptDebugging->LogCustom ( luaVM, SString ( "Bad file-path @ '%s' [%s]", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ), *strFilePath ) );
         }
     }
-    if ( argStream.HasErrors () )
+    else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
@@ -872,19 +900,18 @@ int CLuaFunctionDefs::dxCreateFont ( lua_State* luaVM )
                     {
                         // Make it a child of the resource's file root ** CHECK  Should parent be pFileResource, and element added to pParentResource's ElementGroup? **
                         pDxFont->SetParent ( pParentResource->GetResourceDynamicEntity () );
-                        lua_pushelement ( luaVM, pDxFont );
-                        return 1;
                     }
-                    argStream.SetCustomError( strFilePath, "Error creating font" );
+                    lua_pushelement ( luaVM, pDxFont );
+                    return 1;
                 }
                 else
-                    argStream.SetCustomError( strFilePath, "File not found" );
+                    m_pScriptDebugging->LogBadPointer ( luaVM, "file-path", 1 );
             }
             else
-                argStream.SetCustomError( strFilePath, "Bad file path" );
+                m_pScriptDebugging->LogBadPointer ( luaVM, "file-path", 1 );
         }
     }
-    if ( argStream.HasErrors () )
+    else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
@@ -927,7 +954,7 @@ int CLuaFunctionDefs::dxGetStatus ( lua_State* luaVM )
         SDxStatus dxStatus;
         g_pCore->GetGraphics ()->GetRenderItemManager ()->GetDxStatus ( dxStatus );
 
-        lua_createtable ( luaVM, 0, 23 );
+        lua_createtable ( luaVM, 0, 21 );
 
         lua_pushstring ( luaVM, "TestMode" );
         lua_pushstring ( luaVM, EnumToString ( dxStatus.testMode ) );
@@ -1011,14 +1038,6 @@ int CLuaFunctionDefs::dxGetStatus ( lua_State* luaVM )
 
         lua_pushstring ( luaVM, "SettingAntiAliasing" );
         lua_pushnumber ( luaVM, dxStatus.settings.iAntiAliasing );
-        lua_settable   ( luaVM, -3 );
-
-        lua_pushstring ( luaVM, "SettingAspectRatio" );
-        lua_pushstring ( luaVM, EnumToString ( dxStatus.settings.aspectRatio ) );
-        lua_settable   ( luaVM, -3 );
-
-        lua_pushstring ( luaVM, "SettingHUDMatchAspectRatio" );
-        lua_pushboolean( luaVM, dxStatus.settings.bHUDMatchAspectRatio );
         lua_settable   ( luaVM, -3 );
 
         return 1;
@@ -1311,29 +1330,4 @@ int CLuaFunctionDefs::dxIsAspectRatioAdjustmentEnabled ( lua_State* luaVM )
     lua_pushboolean ( luaVM, bEnabled );
     lua_pushnumber ( luaVM, fSourceRatio );
     return 2;
-}
-
-
-int CLuaFunctionDefs::dxSetTextureEdge ( lua_State* luaVM )
-{
-//  bool dxSetTextureEdge ( texture theTexture, string textureEdge [, int border-color )
-    CClientTexture* pTexture; ETextureAddress textureAddress; unsigned int uiBorderColor;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pTexture );
-    argStream.ReadEnumString ( textureAddress );
-    argStream.ReadNumber ( uiBorderColor, 0 );
-
-    if ( !argStream.HasErrors () )
-    {
-        pTexture->GetMaterialItem ()->m_TextureAddress = textureAddress;
-        pTexture->GetMaterialItem ()->m_uiBorderColor = uiBorderColor;
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
 }

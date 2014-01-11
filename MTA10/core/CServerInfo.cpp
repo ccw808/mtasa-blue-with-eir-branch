@@ -40,19 +40,10 @@ CServerInfo::CServerInfo ( void )
     m_pWindow->SetAlwaysOnTop ( true );
     m_pWindow->SetMinimumSize ( CVector2D ( INFO_WINDOW_DEFAULTWIDTH, INFO_WINDOW_DEFAULTHEIGHT ) );
 
-    // Determine our label draw position for L10n
-    unsigned int LabelTitleSizeX = pManager->CGUI_GetMaxTextExtent( "default-bold-small",
-        _("Name:"),
-        _("Server Address:"),
-        _("Gamemode:"),
-        _("Map:"),
-        _("Players:"),
-        _("Passworded:"),
-        _("Latency:")
-    ) + 10;
-    unsigned int LabelTitlePosX = 9;
-    unsigned int LabelPosX = LabelTitlePosX + LabelTitleSizeX + 2;
-    unsigned int LabelSizeX = INFO_WINDOW_DEFAULTWIDTH;
+    unsigned int LabelTitlePosX = 0;
+    unsigned int LabelTitleSizeX = 0.3f*INFO_WINDOW_DEFAULTWIDTH;
+    unsigned int LabelPosX = 0.325f*INFO_WINDOW_DEFAULTWIDTH;
+    unsigned int LabelSizeX = 0.55f*INFO_WINDOW_DEFAULTWIDTH;
     unsigned int LabelSizeY = 15;
     unsigned int DrawPosY = 10; //Start position
     // Server Name
@@ -163,25 +154,22 @@ CServerInfo::CServerInfo ( void )
 
     // Password entry editbox
     m_pEnterPasswordEdit = reinterpret_cast < CGUIEdit* > ( pManager->CreateEdit ( m_pWindow, "" ) );
-    m_pEnterPasswordEdit->SetPosition ( CVector2D ( INFO_WINDOW_HSPACING*2, DrawPosY - INFO_WINDOW_VSPACING - INFO_BUTTON_HEIGHT ), false );
+    m_pEnterPasswordEdit->SetPosition ( CVector2D ( INFO_WINDOW_HSPACING*2, DrawPosY - 4 ), false );
     m_pEnterPasswordEdit->SetSize ( CVector2D ( INFO_BUTTON_WIDTH*2, INFO_BUTTON_HEIGHT ), false );
     m_pEnterPasswordEdit->SetMasked ( true );
     m_pEnterPasswordEdit->SetTextAcceptedHandler ( GUI_CALLBACK ( &CServerInfo::OnJoinGameClicked, this ) );
 
     // Please enter password label
     m_pEnterPasswordLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( m_pWindow, _("Please enter the password to the server:") ) );
-    m_pEnterPasswordLabel->SetPosition ( CVector2D ( 0, DrawPosY - INFO_WINDOW_VSPACING - INFO_BUTTON_HEIGHT - INFO_WINDOW_VSPACING - LabelSizeY*2 ), false );
+    m_pEnterPasswordLabel->SetPosition ( CVector2D ( INFO_WINDOW_HSPACING*2, DrawPosY ), false );
+    m_pEnterPasswordLabel->SetSize(CVector2D(INFO_WINDOW_DEFAULTWIDTH, LabelSizeY), false);
     m_pEnterPasswordLabel->SetFont("default-bold-small");
-    m_pEnterPasswordLabel->SetSize(CVector2D(INFO_WINDOW_DEFAULTWIDTH, LabelSizeY*2 ), false);
-    m_pEnterPasswordLabel->SetHorizontalAlign(CGUI_ALIGN_HORIZONTALCENTER_WORDWRAP);
-    m_pEnterPasswordLabel->SetVerticalAlign(CGUI_ALIGN_VERTICALCENTER);
     m_pEnterPasswordLabel->SetTextColor(255,0,0);
 
     // Autojoin checkbox
-    // TRANSLATORS:  If you need more room, there is space for one extra line using a newline (\n).
     m_pCheckboxAutojoin = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( m_pWindow, _("Join the server as soon as a player slot is available."), true ) );
-    m_pCheckboxAutojoin->AutoSize ( m_pCheckboxAutojoin->GetText().c_str(), 20.0f, LabelSizeY );
-    m_pCheckboxAutojoin->SetPosition ( CVector2D ( (INFO_WINDOW_DEFAULTWIDTH - m_pCheckboxAutojoin->GetSize().fX)/2, DrawPosY - INFO_WINDOW_VSPACING - LabelSizeY*2  ), false ); // Horizontally center align
+    m_pCheckboxAutojoin->SetPosition ( CVector2D ( INFO_WINDOW_HSPACING*2, DrawPosY-=INFO_WINDOW_VSPACING+LabelSizeY ), false );
+    m_pCheckboxAutojoin->SetSize( CVector2D ( INFO_WINDOW_DEFAULTWIDTH, LabelSizeY ), false );
 }
 
 CServerInfo::~CServerInfo ( void )
@@ -289,16 +277,12 @@ void CServerInfo::Show( eWindowType WindowType, const char* szHost, unsigned sho
     m_pEnterPasswordEdit->SetText ( "" );
 
     // Adjust our window according to what type of window we are displaying
-    float PlayerListHeight;
-
-    float DrawPosY = INFO_WINDOW_DEFAULTHEIGHT - INFO_WINDOW_VSPACING - INFO_BUTTON_HEIGHT;
-
-    m_pButtonJoinGame->SetPosition ( CVector2D ( INFO_WINDOW_DEFAULTWIDTH-INFO_BUTTON_WIDTH-INFO_WINDOW_HSPACING, DrawPosY ), false );        
-    m_pButtonClose->SetPosition ( CVector2D ( INFO_WINDOW_DEFAULTWIDTH-(INFO_BUTTON_WIDTH*2)-(1.5f*INFO_WINDOW_HSPACING), DrawPosY ), false );
- 
+    float fHeight;
+    unsigned int LabelSizeY = 15;
+    float PlayerListHeight = (INFO_WINDOW_DEFAULTHEIGHT - INFO_WINDOW_VSPACING - INFO_BUTTON_HEIGHT - INFO_WINDOW_VSPACING - LabelSizeY - INFO_WINDOW_VSPACING) - m_pServerPlayerList->GetPosition().fY;
     if ( WindowType == eWindowTypes::SERVER_INFO_QUEUE )
     {
-        PlayerListHeight = m_pCheckboxAutojoin->GetPosition().fY - INFO_WINDOW_VSPACING - m_pServerPlayerList->GetPosition().fY;
+        fHeight = INFO_WINDOW_DEFAULTHEIGHT;
         m_pCheckboxAutojoin->SetVisible( true );
         m_pEnterPasswordEdit->SetVisible( false );
         m_pEnterPasswordLabel->SetVisible( false );
@@ -306,7 +290,7 @@ void CServerInfo::Show( eWindowType WindowType, const char* szHost, unsigned sho
     }
     else if ( WindowType == eWindowTypes::SERVER_INFO_PASSWORD )
     {
-        PlayerListHeight = m_pEnterPasswordLabel->GetPosition().fY - INFO_WINDOW_VSPACING - m_pServerPlayerList->GetPosition().fY;
+        fHeight = PASSWORD_WINDOW_DEFAULTHEIGHT;
         m_pCheckboxAutojoin->SetVisible( false );
         m_pEnterPasswordEdit->SetVisible( true );
         m_pEnterPasswordLabel->SetVisible( true );
@@ -315,16 +299,23 @@ void CServerInfo::Show( eWindowType WindowType, const char* szHost, unsigned sho
     }
     else
     {
-        PlayerListHeight = m_pButtonJoinGame->GetPosition().fY - INFO_WINDOW_VSPACING - m_pServerPlayerList->GetPosition().fY;
+        PlayerListHeight += LabelSizeY;
+        fHeight = INFO_WINDOW_DEFAULTHEIGHT;
         m_pCheckboxAutojoin->SetVisible( false );
         m_pEnterPasswordEdit->SetVisible( false );
         m_pEnterPasswordLabel->SetVisible( false );
         m_pWindow->SetText ( _("Information") );
     }
+    float DrawPosY = fHeight - INFO_WINDOW_VSPACING - INFO_BUTTON_HEIGHT;
 
     m_pCurrentWindowType = WindowType;
    
     m_pServerPlayerList->SetSize ( CVector2D ( INFO_WINDOW_DEFAULTWIDTH-INFO_WINDOW_HSPACING*4, PlayerListHeight	), false );
+
+    m_pWindow->SetSize ( CVector2D ( INFO_WINDOW_DEFAULTWIDTH, fHeight ), false );
+
+    m_pButtonJoinGame->SetPosition ( CVector2D ( INFO_WINDOW_DEFAULTWIDTH-INFO_BUTTON_WIDTH-INFO_WINDOW_HSPACING, DrawPosY ), false );        
+    m_pButtonClose->SetPosition ( CVector2D ( INFO_WINDOW_DEFAULTWIDTH-(INFO_BUTTON_WIDTH*2)-(1.5f*INFO_WINDOW_HSPACING), DrawPosY ), false );
 
     m_pWindow->SetZOrderingEnabled(false);
 

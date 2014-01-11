@@ -58,7 +58,7 @@ struct SFloatSync : public ISyncStructure
         dValue = Clamp < double > ( limitsMin, dValue, limitsMax );
 
         SFixedPointNumber num;
-        num.iValue = Round( dValue * scale );
+        num.iValue = static_cast < int > ( dValue * scale );
         bitStream.WriteBits ( (const char* )&num, integerBits + fractionalBits );
     }
 
@@ -94,6 +94,7 @@ struct SIntegerSync : public ISyncStructure
     }
     SIntegerSync ( type value )
     {
+        SIntegerSync ();
         data.value = value;
     }
 
@@ -121,19 +122,7 @@ struct SFloatAsBitsSyncBase : public ISyncStructure
         : m_uiBits ( uiBits )
         , ulValueMax ( ( 1 << uiBits ) - 1 )
         , m_fMin ( fMin )
-        , m_fMaxOldVer ( fMax )
-        , m_fMaxNewVer ( fMax )
-        , m_bPreserveGreaterThanMin ( bPreserveGreaterThanMin )
-        , m_bWrapInsteadOfClamp ( bWrapInsteadOfClamp )
-    {
-    }
-
-    SFloatAsBitsSyncBase ( uint uiBits, float fMin, float fMaxOldVer, float fMaxNewVer, bool bPreserveGreaterThanMin, bool bWrapInsteadOfClamp )
-        : m_uiBits ( uiBits )
-        , ulValueMax ( ( 1 << uiBits ) - 1 )
-        , m_fMin ( fMin )
-        , m_fMaxOldVer ( fMaxOldVer )
-        , m_fMaxNewVer ( fMaxNewVer )
+        , m_fMax ( fMax )
         , m_bPreserveGreaterThanMin ( bPreserveGreaterThanMin )
         , m_bWrapInsteadOfClamp ( bWrapInsteadOfClamp )
     {
@@ -141,15 +130,13 @@ struct SFloatAsBitsSyncBase : public ISyncStructure
 
     bool Read ( NetBitStreamInterface& bitStream )
     {
-        const float fMax = bitStream.Version() < 0x54 ? m_fMaxOldVer : m_fMaxNewVer;
-
         unsigned long ulValue = 0;
         if ( bitStream.ReadBits ( &ulValue, m_uiBits ) )
         {
             // Convert bits to position in range
             float fAlpha = ulValue / (float)ulValueMax;
             // Find value in range
-            data.fValue = Lerp ( m_fMin, fAlpha, fMax );
+            data.fValue = Lerp ( m_fMin, fAlpha, m_fMax );
             return true;
         }
         return false;
@@ -157,13 +144,11 @@ struct SFloatAsBitsSyncBase : public ISyncStructure
 
     void Write ( NetBitStreamInterface& bitStream ) const
     {
-        const float fMax = bitStream.Version() < 0x54 ? m_fMaxOldVer : m_fMaxNewVer;
-
         float fValue = data.fValue;
         if ( m_bWrapInsteadOfClamp )
-            fValue = WrapAround ( m_fMin, data.fValue, fMax );
+            fValue = WrapAround ( m_fMin, data.fValue, m_fMax );
         // Find position in range
-        float fAlpha = UnlerpClamped ( m_fMin, fValue, fMax );
+        float fAlpha = UnlerpClamped ( m_fMin, fValue, m_fMax );
         // Convert to bits
         unsigned long ulValue = Round ( ulValueMax * fAlpha );
 
@@ -183,8 +168,7 @@ private:
     const uint m_uiBits;
     const ulong ulValueMax;
     const float m_fMin;
-    const float m_fMaxOldVer;
-    const float m_fMaxNewVer;
+    const float m_fMax;
     const bool  m_bPreserveGreaterThanMin;
     const bool  m_bWrapInsteadOfClamp;
 };
@@ -194,46 +178,37 @@ template < unsigned int bits >
 struct SFloatAsBitsSync : public SFloatAsBitsSyncBase
 {
     SFloatAsBitsSync ( float fMin, float fMax, bool bPreserveGreaterThanMin, bool bWrapInsteadOfClamp = false )
-        : SFloatAsBitsSyncBase ( bits, fMin, fMax, fMax, bPreserveGreaterThanMin, bWrapInsteadOfClamp )
-    {
-    }
-
-    SFloatAsBitsSync ( float fMin, float fMaxOldVer, float fMaxNewVer, bool bPreserveGreaterThanMin, bool bWrapInsteadOfClamp )
-        : SFloatAsBitsSyncBase ( bits, fMin, fMaxOldVer, fMaxNewVer, bPreserveGreaterThanMin, bWrapInsteadOfClamp )
+        : SFloatAsBitsSyncBase ( bits, fMin, fMax, bPreserveGreaterThanMin, bWrapInsteadOfClamp )
     {
     }
 };
+
 
 
 // Declare specific health and armor sync structures
 struct SPlayerHealthSync : public SFloatAsBitsSync < 8 >
 {
-    // 0 - 200 step 1                                      255 = ( 2^8 - 1 ) * 1
-    SPlayerHealthSync () : SFloatAsBitsSync<8> ( 0.f, 200, 255.0f, true, false ) {}
+    SPlayerHealthSync () : SFloatAsBitsSync<8> ( 0.f, 200.0f, true ) {}
 };
 
 struct SPlayerArmorSync : public SFloatAsBitsSync < 8 >
 {
-    // 0 - 100 step 0.5                                   127.5 = ( 2^8 - 1 ) * 0.5
-    SPlayerArmorSync () : SFloatAsBitsSync<8> ( 0.f, 100, 127.5f, true, false ) {}
+    SPlayerArmorSync () : SFloatAsBitsSync<8> ( 0.f, 100.0f, true ) {}
 };
 
 struct SVehicleHealthSync : public SFloatAsBitsSync < 12 >
 {
-    // 0 - 2000 step 0.5                                      2047.5 = ( 2^12 - 1 ) * 0.5
-    SVehicleHealthSync () : SFloatAsBitsSync<12> ( 0.f, 2000, 2047.5f, true, false ) {}
+    SVehicleHealthSync () : SFloatAsBitsSync<12> ( 0.f, 2000.0f, true ) {}
 };
 
 struct SLowPrecisionVehicleHealthSync : public SFloatAsBitsSync < 8 >
 {
-    // 0 - 2000 step 8                                                    2040 = ( 2^8 - 1 ) * 8
-    SLowPrecisionVehicleHealthSync () : SFloatAsBitsSync<8> ( 0.0f, 2000, 2040.0f, true, false ) {}
+    SLowPrecisionVehicleHealthSync () : SFloatAsBitsSync<8> ( 0.0f, 2000.0f, true ) {}
 };
 
 struct SObjectHealthSync : public SFloatAsBitsSync < 11 >
 {
-    // 0 - 1000 step 0.5                                     1023.5 = ( 2^11 - 1 ) * 0.5
-    SObjectHealthSync () : SFloatAsBitsSync<11> ( 0.f, 1000, 1023.5f, true, false ) {}
+    SObjectHealthSync () : SFloatAsBitsSync<11> ( 0.f, 1000.0f, true ) {}
 };
 
 
@@ -740,6 +715,19 @@ struct SVehiclePuresyncFlags : public ISyncStructure
         bool bHasAWeapon : 1;
         bool bIsHeliSearchLightVisible : 1;
     } data;
+
+    void FixDerailedState ( const unsigned short uiModel )
+    {
+        if ( uiModel == 449 ||
+            uiModel == 537 ||
+            uiModel == 538 ||
+            uiModel == 570 ||
+            uiModel == 569 ||
+            uiModel == 590 )
+        {
+            data.bIsLandingGearDown = data.bIsDerailed;
+        }
+    }
 };
 
 
@@ -2051,7 +2039,7 @@ struct SColorSync : public ISyncStructure
 //////////////////////////////////////////
 struct SOccupiedSeatSync : public ISyncStructure
 {
-    enum { BITCOUNT = 4 };
+    enum { BITCOUNT = 3 };
 
     bool Read ( NetBitStreamInterface& bitStream )
     {
@@ -2064,7 +2052,7 @@ struct SOccupiedSeatSync : public ISyncStructure
 
     struct
     {
-        unsigned char ucSeat : 4;
+        unsigned char ucSeat : 3;
     } data;
 };
 

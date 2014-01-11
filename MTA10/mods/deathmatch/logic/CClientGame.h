@@ -54,13 +54,11 @@
 #include "../../shared_logic/CClientGUIElement.h"
 #include "CLocalServer.h"
 #include "CVoiceRecorder.h"
-#include "CSingularFileDownloadManager.h"
 #include "CObjectRespawner.h"
 #define HeliKill_List_Clear_Rate 500
 #define MIN_PUSH_ANTISPAM_RATE 1500
 class CGameEntityXRefManager;
 class CClientModelCacheManager;
-class CDebugHookManager;
 
 struct SVehExtrapolateSettings
 {
@@ -117,7 +115,6 @@ public:
         COLSHAPE,
         SCRIPTFILE,
         WATER,
-        WEAPON,
         UNKNOWN,
     };
 
@@ -268,7 +265,6 @@ public:
     inline CNametags*                   GetNametags                     ( void )        { return m_pNametags; }
     inline CSyncDebug*                  GetSyncDebug                    ( void )        { return m_pSyncDebug; };
     inline CRPCFunctions*               GetRPCFunctions                 ( void )        { return m_pRPCFunctions; }
-    inline CSingularFileDownloadManager* GetSingularFileDownloadManager ( void )        { return m_pSingularFileDownloadManager; };
 
     inline CClientEntity*               GetRootEntity                   ( void )        { return m_pRootEntity; }
     inline CEvents*                     GetEvents                       ( void )        { return &m_Events; }
@@ -287,7 +283,6 @@ public:
     inline CLatentTransferManager*      GetLatentTransferManager        ( void )        { return m_pLatentTransferManager; }
     inline CGameEntityXRefManager*      GetGameEntityXRefManager        ( void )        { return m_pGameEntityXRefManager; }
     inline CClientModelCacheManager*    GetModelCacheManager            ( void )        { return m_pModelCacheManager; }
-    inline CDebugHookManager*           GetDebugHookManager             ( void )        { return m_pDebugHookManager; }
 
     inline CElementDeleter*             GetElementDeleter               ( void )        { return &m_ElementDeleter; }
     inline CObjectRespawner*            GetObjectRespawner              ( void )        { return &m_ObjectRespawner; }
@@ -416,14 +411,11 @@ public:
     void                                SetWeaponTypesUsingBulletSync   ( const std::set < eWeaponType >& weaponTypesUsingBulletSync );
     bool                                GetWeaponTypeUsesBulletSync     ( eWeaponType weaponType );
 
-    SString                             GetHTTPURL                      ( void ) { return m_strHTTPDownloadURL; };
     void                                ProjectileInitiateHandler       ( CClientProjectile * pProjectile );
     void                                IdleHandler                     ( void );
     void                                OutputServerInfo                ( void );
     bool                                IsUsingExternalHTTPServer       ( void )                        { return m_ucHTTPDownloadType == HTTP_DOWNLOAD_ENABLED_URL; }
     void                                TellServerSomethingImportant    ( uint uiId, const SString& strMessage, bool bOnlyOnceForThisId );
-    void                                ChangeFloatPrecision            ( bool bHigh );
-    bool                                IsHighFloatPrecision            ( void ) const;
 
 private:
 
@@ -470,7 +462,6 @@ private:
     #endif
 
     void                                DownloadInitialResourceFiles    ( void );
-    void                                DownloadSingularResourceFiles   ( void );
 
     void                                QuitPlayer                      ( CClientPlayer* pPlayer, eQuitReason Reason );
 
@@ -494,7 +485,6 @@ private:
     static void                         StaticBlendAnimationHandler     ( RpClump * pClump, AssocGroupId animGroup, AnimationId animID, float fBlendDelta );
     static bool                         StaticProcessCollisionHandler   ( CEntitySAInterface* pThisInterface, CEntitySAInterface* pOtherInterface );
     static bool                         StaticVehicleCollisionHandler   ( CVehicleSAInterface* pThisInterface, CEntitySAInterface* pOtherInterface, int iModelIndex, float fDamageImpulseMag, float fCollidingDamageImpulseMag, uint16 usPieceType, CVector vecCollisionPos, CVector vecCollisionVelocity  );
-    static bool                         StaticVehicleDamageHandler      ( CEntitySAInterface* pVehicleInterface, float fLoss, CEntitySAInterface* pAttackerInterface, eWeaponType weaponType, const CVector& vecDamagePos, uchar ucTyre );
     static bool                         StaticHeliKillHandler           ( CVehicleSAInterface* pHeli, CEntitySAInterface* pHitInterface );
     static bool                         StaticObjectDamageHandler       ( CObjectSAInterface* pObjectInterface, float fLoss, CEntitySAInterface* pAttackerInterface );
     static bool                         StaticObjectBreakHandler        ( CObjectSAInterface* pObjectInterface, CEntitySAInterface* pAttackerInterface );
@@ -522,7 +512,6 @@ private:
     void                                BlendAnimationHandler           ( RpClump * pClump, AssocGroupId animGroup, AnimationId animID, float fBlendDelta );
     bool                                ProcessCollisionHandler         ( CEntitySAInterface* pThisInterface, CEntitySAInterface* pOtherInterface );
     bool                                VehicleCollisionHandler         ( CVehicleSAInterface* pCollidingVehicle, CEntitySAInterface* pCollidedVehicle, int iModelIndex, float fDamageImpulseMag, float fCollidingDamageImpulseMag, uint16 usPieceType, CVector vecCollisionPos, CVector vecCollisionVelocity  );
-    bool                                VehicleDamageHandler            ( CEntitySAInterface* pVehicleInterface, float fLoss, CEntitySAInterface* pAttackerInterface, eWeaponType weaponType, const CVector& vecDamagePos, uchar ucTyre );
     bool                                HeliKillHandler                 ( CVehicleSAInterface* pHeli, CEntitySAInterface* pHitInterface );
     bool                                ObjectDamageHandler             ( CObjectSAInterface* pObjectInterface, float fLoss, CEntitySAInterface* pAttackerInterface );
     bool                                ObjectBreakHandler              ( CObjectSAInterface* pObjectInterface, CEntitySAInterface* pAttackerInterface );
@@ -557,8 +546,6 @@ public:
 
     void                                SetTransferringInitialFiles     ( bool bTransfer );
     bool                                IsTransferringInitialFiles      ( void )            { return m_bTransferringInitialFiles; }
-    void                                SetTransferringSingularFiles    ( bool bTransfer )  { m_bTransferringSingularFiles = bTransfer; }
-    bool                                IsTransferringSingularFiles     ( void )            { return m_bTransferringSingularFiles; }
 
     void                                SetVehExtrapolateSettings       ( const SVehExtrapolateSettings& settings ) { m_VehExtrapolateSettings = settings; }
     const SVehExtrapolateSettings&      GetVehExtrapolateSettings       ( void )                                    { return m_VehExtrapolateSettings; }
@@ -617,10 +604,8 @@ private:
     CLatentTransferManager*             m_pLatentTransferManager;
     bool                                m_bInitiallyFadedOut;
     bool                                m_bHudAreaNameDisabled;
-    CSingularFileDownloadManager*       m_pSingularFileDownloadManager;
     CGameEntityXRefManager*             m_pGameEntityXRefManager;
     CClientModelCacheManager*           m_pModelCacheManager;
-    CDebugHookManager*                  m_pDebugHookManager;
     CRemoteCalls*                       m_pRemoteCalls;
 
     // Revised facilities
@@ -684,7 +669,6 @@ private:
     bool                                m_bShowFPS;
 
     bool                                m_bTransferringInitialFiles;
-    bool                                m_bTransferringSingularFiles;
 
     float                               m_fGameSpeed;
     long                                m_lMoney;
@@ -772,7 +756,6 @@ private:
 
     bool                                m_bLastKeyWasEscapeCancelled;
     std::set < SString >                m_AllowKeyUpMap;
-    uint                                m_uiPrecisionCallDepth;
 };
 
 extern CClientGame* g_pClientGame;

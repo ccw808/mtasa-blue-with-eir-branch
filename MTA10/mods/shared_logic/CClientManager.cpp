@@ -65,7 +65,6 @@ CClientManager::CClientManager ( void )
     m_bGameUnloadedFlag = false;
 
     g_pCore->GetMultiplayer ()->SetLODSystemEnabled ( false );
-    m_pCamera->MakeSystemEntity();
 }
 
 

@@ -31,14 +31,11 @@ CClientCamera::CClientCamera ( CClientManager* pManager ) : ClassInit ( this ), 
     m_bFixed = false;
     m_fRoll = 0.0f;
     m_fFOV = 70.0f;
-    SetTypeName( "camera" );
 
     m_pCamera = g_pGame->GetCamera ();
 
     // Hook handler for the fixed camera
-    g_pMultiplayer->SetProcessCamHandler ( CClientCamera::StaticProcessFixedCamera );
-
-    m_FixedCameraMode = EFixedCameraMode::ROTATION;
+    g_pMultiplayer->SetProcessCamHandler ( CClientCamera::ProcessFixedCamera );
 }
 
 
@@ -64,7 +61,7 @@ void CClientCamera::DoPulse ( void )
         CMatrix matTemp;
         GetMatrix ( matTemp );
         g_pMultiplayer->ConvertMatrixToEulerAngles ( matTemp, vecRotation.fX, vecRotation.fY, vecRotation.fZ );    
-        g_pMultiplayer->SetCenterOfWorld ( NULL, &m_matFixedMatrix.vPos, 3.1415926535897932384626433832795f - vecRotation.fZ );
+        g_pMultiplayer->SetCenterOfWorld ( NULL, &m_vecFixedPosition, 3.1415926535897932384626433832795f - vecRotation.fZ );
     }
     else
     {
@@ -120,166 +117,101 @@ void CClientCamera::DoPulse ( void )
                 g_pMultiplayer->SetCenterOfWorld ( NULL, m_pFocusedGameEntity->GetPosition (), fRotation );
             }
         }
-
-        // Save this so position or rotation is preserved when changing to fixed mode
-        m_matFixedMatrix = GetGtaMatrix();
     }
 }
 
 
 bool CClientCamera::GetMatrix ( CMatrix& Matrix ) const
 {
-    if ( m_bFixed )
-        Matrix = m_matFixedMatrix;
-    else
-        Matrix = GetGtaMatrix();
-    return true;
-}
-
-
-bool CClientCamera::SetMatrix ( const CMatrix& Matrix )
-{
-    // Switch to fixed mode if required
-    if ( !IsInFixedMode () )        
-        ToggleCameraFixedMode ( true );
-
-    m_matFixedMatrix = Matrix;
-    m_matFixedMatrix.OrthoNormalize( CMatrix::AXIS_FRONT, CMatrix::AXIS_UP );
-    m_FixedCameraMode = EFixedCameraMode::MATRIX;
-    SetPosition( m_matFixedMatrix.vPos );   // To update center of world
+    m_pCamera->GetMatrix ( &Matrix );
     return true;
 }
 
 
 void CClientCamera::GetPosition ( CVector& vecPosition ) const
 {
-    CMatrix matTemp;
-    GetMatrix( matTemp );
-    vecPosition = matTemp.vPos;
+    if ( m_bFixed )
+    {
+        vecPosition = m_vecFixedPosition;
+    }
+    else
+    {
+        CMatrix matTemp;
+        m_pCamera->GetMatrix ( &matTemp );
+        vecPosition = matTemp.vPos;
+    }
 }
 
 
 void CClientCamera::SetPosition ( const CVector& vecPosition )
 {
-    // Switch to fixed mode if required
-    if ( !IsInFixedMode () )        
-        ToggleCameraFixedMode ( true );
-
     // Make sure that's where the world center is
     CVector vecRotation;
     CMatrix matTemp;
     GetMatrix ( matTemp );
     g_pMultiplayer->ConvertMatrixToEulerAngles ( matTemp, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
-    g_pMultiplayer->SetCenterOfWorld ( NULL, (CVector*)&vecPosition, 3.1415926535897932384626433832795f - vecRotation.fZ );
+    CVector * v = & ( const_cast < CVector& > ( vecPosition ) );
+    g_pMultiplayer->SetCenterOfWorld ( NULL, v, 3.1415926535897932384626433832795f - vecRotation.fZ );
 
     // Store the position so it can be updated from our hook
-    m_matFixedMatrix.vPos = vecPosition;
+    m_vecFixedPosition = vecPosition;
 }
 
 
 void CClientCamera::GetRotationDegrees ( CVector& vecRotation ) const
 {
+    CCam* pCam = m_pCamera->GetCam ( m_pCamera->GetActiveCam () );
     CMatrix matrix;
-    GetMatrix( matrix );
-
-    matrix.OrthoNormalize( CMatrix::AXIS_FRONT, CMatrix::AXIS_UP );
+    m_pCamera->GetMatrix ( &matrix );
     g_pMultiplayer->ConvertMatrixToEulerAngles ( matrix, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
-    vecRotation = CVector ( 2*PI, 2*PI, 2*PI ) - vecRotation;
     ConvertRadiansToDegrees ( vecRotation );
-    // srsly, f knows, just pretend you never saw this line
-    // vecRotation.fY = 360.0f - vecRotation.fY;    // Removed as caused problems with: Camera.rotation = Camera.rotation
+    vecRotation += CVector ( 180.0f, 180.0f, 180.0f );
+    if ( vecRotation.fX > 360.0f ) vecRotation.fX -= 360.0f;
+    if ( vecRotation.fY > 360.0f ) vecRotation.fY -= 360.0f;
+    if ( vecRotation.fZ > 360.0f ) vecRotation.fZ -= 360.0f;
 }
 
 
 void CClientCamera::SetRotationRadians ( const CVector& vecRotation )
 {
-    // Switch to fixed mode if required
-    if ( !IsInFixedMode () )        
-        ToggleCameraFixedMode ( true );
+    // Rotate a 1000,0,0 vector with the given rotation vector
+    CVector vecRotationCopy = vecRotation;
+    vecRotationCopy.fX = 0.0f;
+    CVector vecNormal = CVector ( 1000.0f, 0.0f, 0.0f );
+    RotateVector ( vecNormal, vecRotationCopy );
 
-    CVector vecUseRotation = CVector ( 2*PI, 2*PI, 2*PI ) - vecRotation;
-    m_FixedCameraMode = EFixedCameraMode::ROTATION;
+    // Add it with our current position
+    CVector vecPosition;
+    GetPosition ( vecPosition );
+    vecPosition += vecNormal;
 
-    // Set rotational part of fixed matrix
-    CMatrix newMatrix;
-    g_pMultiplayer->ConvertEulerAnglesToMatrix( newMatrix, vecUseRotation.fX, vecUseRotation.fY, vecUseRotation.fZ );
-    m_matFixedMatrix.vUp = newMatrix.vUp;
-    m_matFixedMatrix.vFront = newMatrix.vFront;
-    m_matFixedMatrix.vRight = newMatrix.vRight;
-    m_matFixedMatrix.OrthoNormalize( CMatrix::AXIS_FRONT, CMatrix::AXIS_UP );
+    // Set the calculated vector as the target
+    SetFixedTarget ( vecPosition );
 }
 
 
-void CClientCamera::GetFixedTarget ( CVector & vecTarget, float* pfRoll ) const
+void CClientCamera::GetFixedTarget ( CVector & vecTarget ) const
 {
-    if ( m_bFixed && m_FixedCameraMode == EFixedCameraMode::TARGET )
-    {
-        // Use supplied target vector and roll if was set
-        if ( pfRoll )
-            *pfRoll = m_fRoll;
-        vecTarget = m_vecFixedTarget;
-    }
+    if ( m_bFixed ) vecTarget = m_vecFixedTarget;
     else
     {
-        if ( pfRoll )
-            *pfRoll = 0;
         CMatrix matTemp;
-        GetMatrix( matTemp );
-        vecTarget = matTemp.vPos + matTemp.vFront;
+        m_pCamera->GetMatrix ( &matTemp );
+
+        CCam* pCam = m_pCamera->GetCam ( m_pCamera->GetActiveCam () );
+        vecTarget = matTemp.vPos + *pCam->GetFront ();
     }
 }
 
 
-void CClientCamera::SetFixedTarget ( const CVector& vecPosition, float fRoll )
+void CClientCamera::SetFixedTarget ( const CVector& vecPosition )
 {
-    // Switch to fixed mode if required
-    if ( !IsInFixedMode () )        
-        ToggleCameraFixedMode ( true );
-
     // Store the target so it can be updated from our hook
     m_vecFixedTarget = vecPosition;
-    m_fRoll = fRoll;
-    m_FixedCameraMode = EFixedCameraMode::TARGET;
-
-    // Update fixed matrix
-    // Calculate the front vector, target - position. If its length is 0 we'll get problems
-    // (i.e. if position and target are the same), so make a new vector then looking horizontally
-    CVector vecFront = m_vecFixedTarget - m_matFixedMatrix.vPos;
-    if ( vecFront.Length () < FLOAT_EPSILON )
-        vecFront = CVector ( 0.0, 1.0f, 0.0f );
-    else
-        vecFront.Normalize ();
-
-    // Grab the right vector
-    CVector vecRight = CVector ( vecFront.fY, -vecFront.fX, 0 );
-    if ( vecRight.Length () < FLOAT_EPSILON )
-        vecRight = CVector ( 1.0f, 0.0f, 0.0f );
-    else
-        vecRight.Normalize ();
-
-    // Calculate the up vector from this
-    CVector vecUp = vecRight;
-    vecUp.CrossProduct ( &vecFront );
-    vecUp.Normalize ();
-
-    // Apply roll if needed
-    if ( m_fRoll != 0.0f )
-    {
-        float fRoll = ConvertDegreesToRadiansNoWrap ( m_fRoll );
-        vecUp = vecUp*cos(fRoll) - vecRight*sin(fRoll);
-    }
-
-    // Set rotational part of fixed matrix
-    m_matFixedMatrix.vFront = vecFront;
-    m_matFixedMatrix.vUp = vecUp;
-    m_matFixedMatrix.OrthoNormalize( CMatrix::AXIS_FRONT, CMatrix::AXIS_UP );
 }
 
 
-//
-// Make player 'orbit camera' rotate to face this point
-//
-void CClientCamera::SetOrbitTarget ( const CVector& vecPosition )
+void CClientCamera::SetTarget ( const CVector& vecPosition )
 {
     if ( m_pCamera )
     {
@@ -523,7 +455,7 @@ void CClientCamera::ToggleCameraFixedMode ( bool bEnabled )
             SetFocus ( pLocalPlayer, MODE_FIXED, false );
 
         // Set the target position
-        SetFocus ( &m_matFixedMatrix.vPos, false );
+        SetFocus ( &m_vecFixedPosition, false );
     }
     else
     {
@@ -552,63 +484,58 @@ CClientEntity * CClientCamera::GetTargetEntity ( void )
 }
 
 
-bool CClientCamera::StaticProcessFixedCamera ( CCam* pCam )
-{
-    return g_pClientGame->GetManager ()->GetCamera ()->ProcessFixedCamera( pCam );
-}
-
 bool CClientCamera::ProcessFixedCamera ( CCam* pCam )
 {
     assert ( pCam );
     // The purpose of this handler function is changing the Source, Front and Up vectors in CCam
     // when called by GTA. This is called when we are in fixed camera mode.
+
+    CClientCamera* pThis = g_pClientGame->GetManager ()->GetCamera ();
+
     // Make sure we actually want to apply our custom camera position/lookat
     // (this handler could also be called from cinematic mode)
-    if ( !m_bFixed )
+    if ( !pThis->m_bFixed )
         return false;
 
-    // Update our position/rotation if we're attached
-    DoAttaching ();
+    const CVector& vecPosition = pThis->m_vecFixedPosition;
+    const CVector& vecTarget = pThis->m_vecFixedTarget;
 
-    SetGtaMatrix( m_matFixedMatrix, pCam );
+    // Set the position in the CCam interface
+    *pCam->GetSource () = vecPosition;
+
+    // Calculate the front vector, target - position. If its length is 0 we'll get problems
+    // (i.e. if position and target are the same), so make a new vector then looking horizontally
+    CVector vecFront = vecTarget - vecPosition;
+    if ( vecFront.Length () < FLOAT_EPSILON )
+        vecFront = CVector ( 0.0, 1.0f, 0.0f );
+    else
+        vecFront.Normalize ();
+
+    *pCam->GetFront () = vecFront;
+
+    // Grab the right vector
+    CVector vecRight = CVector ( vecFront.fY, -vecFront.fX, 0 );
+    if ( vecRight.Length () < FLOAT_EPSILON )
+        vecRight = CVector ( 1.0f, 0.0f, 0.0f );
+    else
+        vecRight.Normalize ();
+
+    // Calculate the up vector from this
+    CVector vecUp = vecRight;
+    vecUp.CrossProduct ( &vecFront );
+    vecUp.Normalize ();
+
+    // Apply roll if needed
+    if ( pThis->m_fRoll != 0.0f )
+    {
+        float fRoll = ConvertDegreesToRadiansNoWrap ( pThis->m_fRoll );
+        vecUp = vecUp*cos(fRoll) - vecRight*sin(fRoll);
+    }
+
+    *pCam->GetUp () = vecUp;
 
     // Set the zoom
-    pCam->SetFOV ( m_fFOV );
+    pCam->SetFOV ( pThis->m_fFOV );
 
     return true;
 }
-
-//
-// Return matrix being used by GTA right now
-//
-CMatrix CClientCamera::GetGtaMatrix ( void ) const
-{
-    CCam* pCam = m_pCamera->GetCam ( m_pCamera->GetActiveCam () );
-
-    CMatrix matResult;
-    m_pCamera->GetMatrix ( &matResult );
-    matResult.vFront = *pCam->GetFront ();
-    matResult.vUp = *pCam->GetUp ();
-    matResult.vPos = *pCam->GetSource ();
-    matResult.vRight = -matResult.vRight;   // Camera has this the other way
-    matResult.OrthoNormalize( CMatrix::AXIS_FRONT, CMatrix::AXIS_UP );
-    return matResult;
-}
-
-//
-// Set matrix to be used by GTA right now
-//
-void CClientCamera::SetGtaMatrix ( const CMatrix& matInNew, CCam* pCam ) const
-{
-    if ( !pCam )
-        pCam = m_pCamera->GetCam ( m_pCamera->GetActiveCam () );
-
-    CMatrix matNew = matInNew;
-    matNew.OrthoNormalize( CMatrix::AXIS_FRONT, CMatrix::AXIS_UP );
-    matNew.vRight = -matNew.vRight;   // Camera has this the other way
-    m_pCamera->SetMatrix( &matNew );
-    *pCam->GetUp() = matNew.vUp;
-    *pCam->GetFront() = matNew.vFront;
-    *pCam->GetSource() = matNew.vPos;
-}
-

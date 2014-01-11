@@ -111,10 +111,6 @@ CCore::CCore ( void )
     };
     ParseCommandLine ( m_CommandLineOptions, m_szCommandLineArgs, pszNoValOptions );
 
-    // Load our settings and localization as early as possible
-    CreateXML ( );
-    g_pLocalization = new CLocalization;
-
     // Create a logger instance.
     m_pConsoleLogger            = new CConsoleLogger ( );
 
@@ -764,24 +760,6 @@ void CCore::ErrorMessageBoxCallBack( void* pData, uint uiButton )
 }
 
 
-//
-// Check for disk space problems
-// Returns false if low disk space, and dialog is being shown
-//
-bool CCore::CheckDiskSpace( uint uiResourcesPathMinMB, uint uiDataPathMinMB )
-{
-    SString strDriveWithNoSpace = GetDriveNameWithNotEnoughSpace( uiResourcesPathMinMB, uiDataPathMinMB );
-    if ( !strDriveWithNoSpace.empty() )
-    {
-        SString strMessage( _("MTA:SA cannot continue because drive %s does not have enough space."), *strDriveWithNoSpace );
-        SString strTroubleLink( SString( "low-disk-space&drive=%s", *strDriveWithNoSpace.Left( 1 ) ) );
-        g_pCore->ShowErrorMessageBox ( _("Fatal error")+_E("CC43"), strMessage, strTroubleLink );
-        return false;
-    }
-    return true;
-}
-
-
 HWND CCore::GetHookedWindow ( void )
 {
     return CMessageLoopHook::GetSingleton ().GetHookedWindowHandle ();
@@ -1047,27 +1025,21 @@ void CCore::CreateNetwork ( )
 
 void CCore::CreateXML ( )
 {
-    if ( !m_pXML )
-        m_pXML = CreateModule < CXML > ( m_XMLModule, "XML", "xmll", "InitXMLInterface", this );
-
-    if ( !m_pConfigFile )
-    {
-        // Load config XML file
-        m_pConfigFile = m_pXML->CreateXML ( CalcMTASAPath ( MTA_CONFIG_PATH ) );
-        if ( !m_pConfigFile ) {
-            assert ( false );
-            return;
-        }
-
-        m_pConfigFile->Parse ();
+    m_pXML = CreateModule < CXML > ( m_XMLModule, "XML", "xmll", "InitXMLInterface", this );
+   
+    // Load config XML file
+    m_pConfigFile = m_pXML->CreateXML ( CalcMTASAPath ( MTA_CONFIG_PATH ) );
+    if ( !m_pConfigFile ) {
+        assert ( false );
+        return;
     }
+    m_pConfigFile->Parse ();
 
     // Load the keybinds (loads defaults if the subnode doesn't exist)
-    if ( m_pKeyBinds )
-    {
-        m_pKeyBinds->LoadFromXML ( GetConfig ()->FindSubNode ( CONFIG_NODE_KEYBINDS ) );
-        m_pKeyBinds->LoadDefaultCommands( false );
-    }
+    GetKeyBinds ()->LoadFromXML ( GetConfig ()->FindSubNode ( CONFIG_NODE_KEYBINDS ) );
+
+    // Load the default commandbinds if not exist
+    GetKeyBinds ()->LoadDefaultCommands( false );
 
     // Load XML-dependant subsystems
     m_ClientVariables.Load ( );

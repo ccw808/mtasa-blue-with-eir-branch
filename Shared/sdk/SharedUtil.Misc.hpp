@@ -37,6 +37,8 @@ std::map < uint, uint > ms_ReportAmountMap;
 #ifdef MTA_CLIENT
 #ifdef WIN32
 
+extern "C" {   _declspec(dllexport) DWORD NvOptimusEnablement = 0x00000001; }
+
 #define TROUBLE_URL1 "http://updatesa.multitheftauto.com/sa/trouble/?v=_VERSION_&id=_ID_&tr=_TROUBLE_"
 
 
@@ -672,9 +674,13 @@ void WriteEvent( const char* szType, const SString& strText )
             WriteEvent( szType, lineList[i] );
         return;
     }
-    SString strPathFilename = CalcMTASAPath( PathJoin( "mta", "logfile.txt" ) );
     SString strMessage( "%s - %s %s", *GetLocalTimeString(), szType, *strText );
-    FileAppend( strPathFilename, strMessage + "\n" );
+    SString strPathFilename1 = CalcMTASAPath( PathJoin( "mta", "logfile.txt" ) );
+    FileAppend( strPathFilename1, strMessage + "\n" );
+
+    SString strPathFilename2 = PathJoin( GetMTADataPath (), "logfile.txt" );
+    MakeSureDirExists( strPathFilename2 );
+    FileAppend( strPathFilename2, strMessage + "\n" );
 #ifdef MTA_DEBUG
     OutputDebugLine ( strMessage );
 #endif
@@ -1068,7 +1074,7 @@ void SharedUtil::RemoveColorCodesInPlaceW( WString& strText )
     uint uiSearchPos = 0;
     while( true )
     {
-        std::wstring::size_type uiFoundPos = strText.find( L'#', uiSearchPos );
+        uint uiFoundPos = strText.find( L'#', uiSearchPos );
         if ( uiFoundPos == std::wstring::npos )
             break;
 
@@ -1150,7 +1156,7 @@ std::wstring SharedUtil::ANSIToUTF16 ( const std::string& input )
         return L"?";
     wchar_t* wcsOutput = new wchar_t[len+1];
     mbstowcs ( wcsOutput, input.c_str(), input.length() );
-    wcsOutput[len] = 0; //Null terminate the string
+    wcsOutput[len] = NULL; //Null terminate the string
     std::wstring strOutput(wcsOutput);
     delete [] wcsOutput;
     return strOutput;
@@ -1199,23 +1205,6 @@ bool SharedUtil::IsValidVersionString ( const SString& strVersion )
                 return false;
     }
     return true;
-}
-
-// Return build number as a 5 character sortable string
-SString SharedUtil::ExtractVersionStringBuildNumber( const SString& strVersion )
-{
-    return strVersion.SubStr( 8, 5 );
-}
-
-
-// Replace major/minor/type to match current configuration
-SString SharedUtil::ConformVersionStringToBaseVersion( const SString& strVersion, const SString& strBaseVersion )
-{
-    SString strResult = strVersion;
-    strResult[0] = strBaseVersion[0];  // Major
-    strResult[2] = strBaseVersion[2];  // Minor
-    strResult[6] = strBaseVersion[6];  // Type
-    return strResult;
 }
 
 

@@ -229,9 +229,11 @@ public:
     virtual void                                AttachTo                ( CClientEntity * pEntity );
     virtual void                                GetAttachedOffsets      ( CVector & vecPosition, CVector & vecRotation );
     virtual void                                SetAttachedOffsets      ( CVector & vecPosition, CVector & vecRotation );
+    inline void                                 AddAttachedEntity       ( CClientEntity* pEntity )      { m_AttachedEntities.push_back ( pEntity ); }
+    inline void                                 RemoveAttachedEntity    ( CClientEntity* pEntity )      { if ( !m_AttachedEntities.empty() ) m_AttachedEntities.remove ( pEntity ); }
     bool                                        IsEntityAttached        ( CClientEntity* pEntity );
-    uint                                        GetAttachedEntityCount  ( void )                        { return m_AttachedEntities.size(); }
-    CClientEntity*                              GetAttachedEntity       ( uint uiIndex )                { return m_AttachedEntities[ uiIndex ]; }
+    std::list < CClientEntity* > ::const_iterator AttachedEntitiesBegin ( void )                        { return m_AttachedEntities.begin (); }
+    std::list < CClientEntity* > ::const_iterator AttachedEntitiesEnd   ( void )                        { return m_AttachedEntities.end (); }
     void                                        ReattachEntities        ( void );
     virtual bool                                IsAttachable            ( void );
     virtual bool                                IsAttachToable          ( void );
@@ -339,8 +341,7 @@ protected:
     CClientEntity*                              m_pAttachedToEntity;
     CVector                                     m_vecAttachedPosition;
     CVector                                     m_vecAttachedRotation;
-    std::vector < CClientEntity* >              m_AttachedEntities;
-    bool                                        m_bDisallowAttaching;  // Protect against attaching in destructor
+    std::list < CClientEntity* >                m_AttachedEntities;
 
     bool                                        m_bBeingDeleted;
     bool                                        m_bSystemEntity;

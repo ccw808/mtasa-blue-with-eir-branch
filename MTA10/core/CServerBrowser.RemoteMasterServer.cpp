@@ -127,7 +127,6 @@ void CRemoteMasterServer::Refresh ( void )
     // Send new request
     m_strStage = "waitingreply";
     m_llLastRefreshTime = GetTickCount64_ ();
-    AddRef();   // Keep alive
     GetHTTP()->QueueFile( m_strURL, NULL, 0, NULL, 0, false, this, &CRemoteMasterServer::StaticDownloadProgress, false, 1 );
 }
 
@@ -141,10 +140,7 @@ void CRemoteMasterServer::Refresh ( void )
 ///////////////////////////////////////////////////////////////
 bool CRemoteMasterServer::StaticDownloadProgress( double dDownloadNow, double dDownloadTotal, char* pCompletedData, size_t completedLength, void *pObj, bool bComplete, int iError )
 {
-    CRemoteMasterServer* pRemoteMasterServer = (CRemoteMasterServer*)pObj;
-    pRemoteMasterServer->DownloadProgress( dDownloadNow, dDownloadTotal, pCompletedData, completedLength, bComplete, iError );
-    if ( bComplete || iError )
-        pRemoteMasterServer->Release(); // Unkeep alive
+    ((CRemoteMasterServer*)pObj)->DownloadProgress( dDownloadNow, dDownloadTotal, pCompletedData, completedLength, bComplete, iError );
     return true;
 }
 

@@ -333,20 +333,9 @@ void CPlayerManager::RemoveFromList ( CPlayer* pPlayer )
     assert( !m_Players.Contains( pPlayer ) );
     assert ( m_Players.size () == m_SocketPlayerMap.size () );
 
-    m_strLowestConnectedPlayerVersion.clear();
+    // Remove from other players near/far lists
     for ( std::list < CPlayer* > ::const_iterator iter = m_Players.begin () ; iter != m_Players.end (); iter++ )
     {
-        // Remove from other players near/far lists
         (*iter)->RemovePlayerFromDistLists ( pPlayer );
-
-        // Update lowest player version
-        if ( (*iter)->GetPlayerVersion() < m_strLowestConnectedPlayerVersion || m_strLowestConnectedPlayerVersion.empty() )
-            m_strLowestConnectedPlayerVersion = (*iter)->GetPlayerVersion();
     }
-}
-
-void CPlayerManager::OnPlayerSetVersion ( CPlayer* pPlayer )
-{
-    if ( pPlayer->GetPlayerVersion() < m_strLowestConnectedPlayerVersion || m_strLowestConnectedPlayerVersion.empty() )
-        m_strLowestConnectedPlayerVersion = pPlayer->GetPlayerVersion();
 }

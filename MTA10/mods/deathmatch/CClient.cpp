@@ -20,7 +20,6 @@
 #include "SharedUtil.hpp"
 
 CCoreInterface* g_pCore = NULL;
-CLocalizationInterface* g_pLocalization = NULL;
 CGame* g_pGame = NULL;
 CMultiplayer* g_pMultiplayer = NULL;
 CNet* g_pNet = NULL;
@@ -46,7 +45,6 @@ int CClient::ClientInitialize ( const char* szArguments, CCoreInterface* pCore )
 
     // Init the global pointers to the interfaces
     g_pCore = pCore;
-    g_pLocalization = pCore->GetLocalization ();
     g_pGame = pCore->GetGame ();
     g_pMultiplayer = pCore->GetMultiplayer ();
     g_pNet = pCore->GetNetwork ();

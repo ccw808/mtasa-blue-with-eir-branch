@@ -162,8 +162,6 @@ CClientGame::CClientGame ( bool bLocalPlay )
     m_pRootEntity = new CClientDummy ( NULL, INVALID_ELEMENT_ID, "root" );
     m_pRootEntity->MakeSystemEntity ();
 
-    m_pDebugHookManager = new CDebugHookManager ();
-
     // Movings objects manager
     m_pMovingObjectsManager = new CMovingObjectsManager ();
 
@@ -230,9 +228,6 @@ CClientGame::CClientGame ( bool bLocalPlay )
     // MTA Voice
     m_pVoiceRecorder = new CVoiceRecorder();
 
-    // Singular file download manager
-    m_pSingularFileDownloadManager = new CSingularFileDownloadManager();
-
     // Register the message and the net packet handler
     g_pMultiplayer->SetPreWeaponFireHandler ( CClientGame::PreWeaponFire );
     g_pMultiplayer->SetPostWeaponFireHandler ( CClientGame::PostWeaponFire );
@@ -257,7 +252,6 @@ CClientGame::CClientGame ( bool bLocalPlay )
     g_pMultiplayer->SetBlendAnimationHandler ( CClientGame::StaticBlendAnimationHandler );
     g_pMultiplayer->SetProcessCollisionHandler ( CClientGame::StaticProcessCollisionHandler );
     g_pMultiplayer->SetVehicleCollisionHandler( CClientGame::StaticVehicleCollisionHandler );
-    g_pMultiplayer->SetVehicleDamageHandler ( CClientGame::StaticVehicleDamageHandler );
     g_pMultiplayer->SetHeliKillHandler ( CClientGame::StaticHeliKillHandler );
     g_pMultiplayer->SetObjectDamageHandler ( CClientGame::StaticObjectDamageHandler );
     g_pMultiplayer->SetObjectBreakHandler ( CClientGame::StaticObjectBreakHandler );
@@ -282,7 +276,6 @@ CClientGame::CClientGame ( bool bLocalPlay )
 
     CStaticFunctionDefinitions ( m_pLuaManager, &m_Events, g_pCore, g_pGame, this, m_pManager );
     CLuaFunctionDefs::Initialize ( m_pLuaManager, m_pScriptDebugging, this );
-    CLuaOOPDefs::Initialize ( this, m_pLuaManager, m_pScriptDebugging );
     CLuaDefs::Initialize ( this, m_pLuaManager, m_pScriptDebugging );
 
     // Disable the enter/exit vehicle key button (we want to handle this button ourselves)
@@ -378,9 +371,6 @@ CClientGame::~CClientGame ( void )
 
     SAFE_DELETE( m_pVoiceRecorder );
 
-    // Singular file download manager
-    SAFE_DELETE( m_pSingularFileDownloadManager );
-
     // NULL the message/net stuff
     g_pMultiplayer->SetPreContextSwitchHandler ( NULL );
     g_pMultiplayer->SetPostContextSwitchHandler ( NULL );
@@ -406,10 +396,7 @@ CClientGame::~CClientGame ( void )
     g_pMultiplayer->SetBlendAnimationHandler ( NULL );
     g_pMultiplayer->SetProcessCollisionHandler ( NULL );
     g_pMultiplayer->SetVehicleCollisionHandler( NULL );
-    g_pMultiplayer->SetVehicleDamageHandler( NULL );
     g_pMultiplayer->SetHeliKillHandler( NULL );
-    g_pMultiplayer->SetObjectDamageHandler ( NULL );
-    g_pMultiplayer->SetObjectBreakHandler ( NULL );
     g_pMultiplayer->SetWaterCannonHitHandler( NULL );
     g_pMultiplayer->SetGameObjectDestructHandler( NULL );
     g_pMultiplayer->SetGameVehicleDestructHandler( NULL );
@@ -470,7 +457,6 @@ CClientGame::~CClientGame ( void )
     SAFE_DELETE( m_pBigPacketTransferBox );
 
     SAFE_DELETE( m_pLocalServer );
-    SAFE_DELETE( m_pDebugHookManager );
 
     // Packet handler
     SAFE_DELETE( m_pPacketHandler );
@@ -1157,7 +1143,7 @@ void CClientGame::DoPulses ( void )
     {
         // Pulse DownloadFiles if we're transferring stuff
         DownloadInitialResourceFiles ();
-        DownloadSingularResourceFiles ();
+
         g_pNet->GetHTTPDownloadManager ( EDownloadMode::CALL_REMOTE )->ProcessQueuedFiles ();
     }
 
@@ -1331,18 +1317,10 @@ void CClientGame::DoPulses2 ( bool bCalledFromIdle )
 
     if ( bDoStandardPulses )
     {
-        // Change to high precision so arguments in element data and events can
-        // be rounded to look more like what is expected
-        ChangeFloatPrecision( true );
-
         // Pulse the network interface
         TIMING_CHECKPOINT( "+NetPulse" );
         g_pNet->DoPulse ();
         TIMING_CHECKPOINT( "-NetPulse" );
-
-        // Change precision back, and check we are in low precision mode 4 sure
-        ChangeFloatPrecision( false );
-        assert( !IsHighFloatPrecision() );
     }
 
     m_pManager->DoPulse( bDoStandardPulses, bDoVehicleManagerPulse );
@@ -2787,7 +2765,6 @@ void CClientGame::AddBuiltInEvents ( void )
     m_Events.AddEvent ( "onClientTrailerDetach", "towedBy", NULL, false );
     m_Events.AddEvent ( "onClientVehicleExplode", "", NULL, false );
     m_Events.AddEvent ( "onClientVehicleCollision", "collidedelement, damageImpulseMag, bodypart, x, y, z, velX, velY, velZ", NULL, false );
-    m_Events.AddEvent ( "onClientVehicleDamage", "attacker, weapon, loss, x, y, z, tyre", NULL, false );
     m_Events.AddEvent ( "onClientVehicleNitroStateChange", "activated", NULL, false );
 
     // GUI events
@@ -2867,9 +2844,6 @@ void CClientGame::AddBuiltInEvents ( void )
     // Object events
     m_Events.AddEvent ( "onClientObjectDamage", "loss, attacker", NULL, false );
     m_Events.AddEvent ( "onClientObjectBreak", "attacker", NULL, false );
-
-    // Misc events
-    m_Events.AddEvent ( "onClientFileDownloadComplete", "fileName, success", NULL, false );
     
     m_Events.AddEvent ( "onClientWeaponFire", "ped, x, y, z", NULL, false );
 }
@@ -3685,11 +3659,6 @@ bool CClientGame::StaticVehicleCollisionHandler ( CVehicleSAInterface* pCollidin
     return g_pClientGame->VehicleCollisionHandler( pCollidingVehicle, pCollidedVehicle, iModelIndex, fDamageImpulseMag, fCollidingDamageImpulseMag, usPieceType, vecCollisionPos, vecCollisionVelocity );
 }
 
-bool CClientGame::StaticVehicleDamageHandler ( CEntitySAInterface* pVehicleInterface, float fLoss, CEntitySAInterface* pAttackerInterface, eWeaponType weaponType, const CVector& vecDamagePos, uchar ucTyre )
-{
-    return g_pClientGame->VehicleDamageHandler ( pVehicleInterface, fLoss, pAttackerInterface, weaponType, vecDamagePos, ucTyre );
-}
-
 bool CClientGame::StaticHeliKillHandler ( CVehicleSAInterface* pHeliInterface, CEntitySAInterface* pHitInterface )
 {
     return g_pClientGame->HeliKillHandler ( pHeliInterface, pHitInterface );
@@ -4032,34 +4001,7 @@ void CClientGame::DownloadInitialResourceFiles ( void )
             g_pCore->GetModManager ()->RequestUnload ();
             g_pCore->ShowMessageBox ( _("Error")+_E("CD20"), szHTTPError, MB_BUTTON_OK | MB_ICON_ERROR ); // HTTP Error
             g_pCore->GetConsole ()->Printf ( _("Download error: %s"), szHTTPError );
-        }
-    }
-}
 
-
-//
-// On demand files
-//
-void CClientGame::DownloadSingularResourceFiles ( void )
-{
-    if ( !IsTransferringSingularFiles () )
-        return;
-
-    if ( !g_pNet->IsConnected() )
-        return;
-
-    CNetHTTPDownloadManagerInterface* pHTTP = g_pNet->GetHTTPDownloadManager ( EDownloadMode::RESOURCE_SINGULAR_FILES );
-    if ( !pHTTP->ProcessQueuedFiles () )
-    {
-        // Downloading
-    }
-    else
-    {
-        // Can't clear list until all files have been processed
-        if ( m_pSingularFileDownloadManager->AllComplete () )
-        {
-            SetTransferringSingularFiles ( false );
-            m_pSingularFileDownloadManager->ClearList ();
         }
     }
 }
@@ -4560,43 +4502,6 @@ bool CClientGame::HeliKillHandler ( CVehicleSAInterface* pHeliInterface, CEntity
     return true;
 }
 
-bool CClientGame::VehicleDamageHandler ( CEntitySAInterface* pVehicleInterface, float fLoss, CEntitySAInterface* pAttackerInterface, eWeaponType weaponType, const CVector& vecDamagePos, uchar ucTyre )
-{
-    bool bAllowDamage = true;
-    CClientVehicle* pClientVehicle = GetGameEntityXRefManager()->FindClientVehicle( pVehicleInterface );
-    if ( pClientVehicle )
-    {
-        CClientEntity* pClientAttacker = GetGameEntityXRefManager()->FindClientEntity( pAttackerInterface );
-
-        // Compose arguments
-        // attacker, weapon, loss, damagepos, tyreIdx
-        CLuaArguments Arguments;
-        if ( pClientAttacker )
-            Arguments.PushElement( pClientAttacker );
-        else
-            Arguments.PushNil ( );
-        if ( weaponType != WEAPONTYPE_INVALID )
-            Arguments.PushNumber ( weaponType );
-        else
-            Arguments.PushNil();
-        Arguments.PushNumber( fLoss );
-        Arguments.PushNumber( vecDamagePos.fX );
-        Arguments.PushNumber( vecDamagePos.fY );
-        Arguments.PushNumber( vecDamagePos.fZ );
-        if ( ucTyre != UCHAR_INVALID_INDEX )
-            Arguments.PushNumber( ucTyre );
-        else
-            Arguments.PushNil();
-
-        if ( !pClientVehicle->CallEvent( "onClientVehicleDamage", Arguments, true ) )
-        {
-            bAllowDamage = false;
-        }
-    }
-
-    return bAllowDamage;
-}
-
 bool CClientGame::ObjectDamageHandler ( CObjectSAInterface* pObjectInterface, float fLoss, CEntitySAInterface* pAttackerInterface )
 {
     if ( pObjectInterface )
@@ -4911,7 +4816,7 @@ void CClientGame::ProcessVehicleInOutKey ( bool bPassenger )
                                                     bool bIsOnWater = pVehicle->IsOnWater ();
                                                     unsigned char ucDoor = static_cast < unsigned char > ( uiDoor );
                                                     pBitStream->WriteBits ( &ucAction, 4 );
-                                                    pBitStream->WriteBits ( &ucSeat, 4 );
+                                                    pBitStream->WriteBits ( &ucSeat, 3 );
                                                     pBitStream->WriteBit ( bIsOnWater );
                                                     pBitStream->WriteBits ( &ucDoor, 3 );
 
@@ -5467,13 +5372,6 @@ void CClientGame::ResetMapInfo ( void )
         m_pLocalPlayer->SetVoice ( sVoiceType, sVoiceID );
 
         m_pLocalPlayer->DestroySatchelCharges( false, true );
-        // Tell the server we want to destroy our satchels
-        NetBitStreamInterface* pBitStream = g_pNet->AllocateNetBitStream ();
-        if ( pBitStream )
-        {
-            g_pNet->SendPacket ( PACKET_ID_DESTROY_SATCHELS, pBitStream, PACKET_PRIORITY_HIGH, PACKET_RELIABILITY_RELIABLE_ORDERED );
-            g_pNet->DeallocateNetBitStream ( pBitStream );
-        }
     }
 }
 
@@ -5897,7 +5795,7 @@ void CClientGame::NotifyBigPacketProgress ( unsigned long ulBytesReceived, unsig
     }
 
     m_pBigPacketTransferBox->DoPulse ();
-    m_pBigPacketTransferBox->SetInfo ( Min ( ulTotalSize, ulBytesReceived ), CTransferBox::PACKET );
+    m_pBigPacketTransferBox->SetInfo ( Min ( ulTotalSize, ulBytesReceived ), "Map download progress:" );
 }
 
 bool CClientGame::SetGlitchEnabled ( unsigned char ucGlitch, bool bEnabled )
@@ -6430,34 +6328,4 @@ void CClientGame::TellServerSomethingImportant( uint uiId, const SString& strMes
     }
 
     g_pNet->DeallocateNetBitStream( pBitStream );
-}
-
-
-//////////////////////////////////////////////////////////////////
-//
-// CClientGame::ChangeFloatPrecision
-//
-// Manage the change to high floating point precision
-//
-//////////////////////////////////////////////////////////////////
-void CClientGame::ChangeFloatPrecision ( bool bHigh )
-{
-    if ( bHigh )
-    {
-        // Switch to 53 bit floating point precision on the first call
-        if ( m_uiPrecisionCallDepth++ == 0 )
-            _controlfp( _PC_53, MCW_PC );
-    }
-    else
-    {
-        assert( m_uiPrecisionCallDepth != 0 );
-        // Switch back to 24 bit floating point precision on the last call
-        if ( --m_uiPrecisionCallDepth == 0 )
-            _controlfp( _PC_24, MCW_PC );
-    }
-}
-
-bool CClientGame::IsHighFloatPrecision ( void ) const
-{
-    return m_uiPrecisionCallDepth != 0;
 }

@@ -201,11 +201,19 @@ void RotateVector ( CVector& vecLine, const CVector& vecRotation )
     vecLine.fX = cos ( vecRotation.fZ ) * fLineX  + sin ( vecRotation.fZ ) * vecLine.fY;
     vecLine.fY = -sin ( vecRotation.fZ ) * fLineX + cos ( vecRotation.fZ ) * vecLine.fY;
 }
+void AttachedMatrix ( CMatrix & matrix, CMatrix & returnMatrix, CVector vecDirection, CVector vecRotation )
+{    
+    CVector vecMatRotation;
+    g_pMultiplayer->ConvertMatrixToEulerAngles ( matrix, vecMatRotation );
 
-void AttachedMatrix ( const CMatrix& matrix, CMatrix& returnMatrix, const CVector& vecPosition, const CVector& vecRotation )
-{
-    returnMatrix = CRotationMatrix( vecRotation ) * CTranslationMatrix( vecPosition ) * matrix;
+    RotateVector ( vecDirection, vecMatRotation );
+
+    returnMatrix.vPos = matrix.vPos + vecDirection;
+   
+    vecMatRotation += vecRotation;
+    g_pMultiplayer->ConvertEulerAnglesToMatrix ( returnMatrix, vecMatRotation );
 }
+
 
 void LongToDottedIP ( unsigned long ulIP, char* szDottedIP )
 {

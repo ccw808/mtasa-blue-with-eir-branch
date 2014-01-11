@@ -42,7 +42,6 @@ struct SAclRequest;
 #include <bochs_internal/crc32.h>
 #include "CChecksum.h"
 #include "CIdArray.h"
-#include "pcrecpp.h"
 
 // Packet includes
 #include "net/Packets.h"
@@ -123,7 +122,6 @@ struct SAclRequest;
 #include "luadefs/CLuaWorldDefs.h"
 #include "luadefs/CLuaVoiceDefs.h"
 #include "luadefs/CLuaXMLDefs.h"
-#include "luadefs/CLuaClassDefs.h"
 
 // Lua includes
 #include "lua/LuaCommon.h"
@@ -183,6 +181,7 @@ struct SAclRequest;
 #include "CCommandFile.h"
 #include "CCommandLineParser.h"
 #include "CCommon.h"
+#include "CConfig.h"
 #include "CConnectHistory.h"
 #include "CConsole.h"
 #include "CConsoleClient.h"
@@ -273,8 +272,6 @@ struct SAclRequest;
 #include "TaskNames.h"
 #include "Utils.h"
 #include "logic/CWeaponStat.h"
-#include "logic/CCustomWeapon.h"
-#include "logic/CCustomWeaponManager.h"
 #include "logic/CWeaponStatManager.h"
 #include "logic/CBuildingRemoval.h"
 #include "logic/CBuildingRemovalManager.h"

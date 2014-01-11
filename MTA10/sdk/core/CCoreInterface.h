@@ -31,7 +31,6 @@ class CMultiplayer;
 class CNet;
 class CGame;
 class CModelCacheManager;
-class CLocalizationInterface;
 
 namespace ChatFonts
 {
@@ -79,7 +78,6 @@ public:
     virtual CXMLNode*                   GetConfig                       ( void ) = 0;
     virtual CCVarsInterface*            GetCVars                        ( void ) = 0;
     virtual CCommunityInterface*        GetCommunity                    ( void ) = 0;
-    virtual CLocalizationInterface*     GetLocalization                 ( void ) = 0;
     
 
     // Temporary functions for r1
@@ -114,7 +112,6 @@ public:
     virtual bool                    ShouldUseInternalHTTPServer     ( void ) = 0;
 
     virtual const char *            GetModInstallRoot               ( const char * szModName )=0;
-    virtual bool                    CheckDiskSpace                  ( uint uiResourcesPathMinMB = 10, uint uiDataPathMinMB = 10 )=0;
 
     virtual void                    ShowServerInfo                  ( unsigned int WindowType ) = 0;
 

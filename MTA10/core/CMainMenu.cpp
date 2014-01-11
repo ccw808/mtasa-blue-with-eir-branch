@@ -950,13 +950,7 @@ sMenuItem* CMainMenu::CreateItem ( unsigned char menuType, const char* szFilenam
 { 
     CGUIStaticImage* pImage = reinterpret_cast < CGUIStaticImage* > ( m_pManager->CreateStaticImage () );
 
-    if ( g_pCore->GetLocalization()->IsLocalized() )
-    {
-        if ( !pImage->LoadFromFile ( PathJoin(g_pCore->GetLocalization()->GetLanguageDirectory(),szFilename) ) )
-            pImage->LoadFromFile ( PathJoin("cgui/images",szFilename) );
-    }
-    else
-        pImage->LoadFromFile ( PathJoin("cgui/images",szFilename) );
+    pImage->LoadFromFile ( PathJoin("cgui/images",szFilename) );
         
 
     // Make our positions absolute

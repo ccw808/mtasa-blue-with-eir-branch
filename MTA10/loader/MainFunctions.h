@@ -8,7 +8,7 @@
 *
 *****************************************************************************/
 
-void    InitLocalization                ( bool bNoFail );
+void    CheckCoreLoadable               ( void );
 void    HandleSpecialLaunchOptions      ( void );
 void    HandleDuplicateLaunching        ( void );
 void    HandleCustomStartMessage        ( void );

@@ -49,9 +49,6 @@ int DoWinMain ( HINSTANCE hLauncherInstance, HINSTANCE hPrevInstance, LPSTR lpCm
     // Start logging.....now
     BeginEventLog();
 
-    // Start localization if possible
-    InitLocalization( false );
-
     // Handle commands from the installer
     HandleSpecialLaunchOptions();
 
@@ -77,9 +74,6 @@ int DoWinMain ( HINSTANCE hLauncherInstance, HINSTANCE hPrevInstance, LPSTR lpCm
     // Launch
     //
 
-    // Ensure localization is started
-    InitLocalization( true );
-
     // Setup/test various counters and flags for monitoring problems
     PreLaunchWatchDogs();
 
@@ -102,6 +96,7 @@ int DoWinMain ( HINSTANCE hLauncherInstance, HINSTANCE hPrevInstance, LPSTR lpCm
     ShowSplash( g_hInstance );
 
     // Check MTA files look good
+    CheckCoreLoadable();
     CheckDataFiles();
 
     // Go for launch

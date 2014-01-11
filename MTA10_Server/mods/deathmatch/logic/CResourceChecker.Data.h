@@ -120,6 +120,16 @@ namespace
                                          { "guiGridListGetColumnTitle",     "1.3.1-9.04945" },
                                          { "setAircraftMaxVelocity",        "1.3.1-9.04997" },
                                          { "getAircraftMaxVelocity",        "1.3.1-9.04997" },
+                                         { "setVehicleNitroActivated",      "1.3.1-9.04993" },
+                                         { "setVehicleNitroCount",          "1.3.1-9.04993" },
+                                         { "setVehicleNitroLevel",          "1.3.1-9.04993" },
+                                         { "isVehicleNitroRecharging",      "1.3.1-9.04993" },
+                                         { "isVehicleNitroActivated",       "1.3.1-9.04993" },
+                                         { "getVehicleNitroCount",          "1.3.1-9.04993" },
+                                         { "getVehicleNitroLevel",          "1.3.1-9.04993" },
+                                         { "setMoonSize",                   "1.3.1-9.05064" },
+                                         { "resetMoonSize",                 "1.3.1-9.05064" },
+                                         { "getMoonSize",                   "1.3.1-9.05064" },
                                          { "guiStaticImageGetNativeSize",   "1.3.1-9.05122" },
                                          { "toggleObjectRespawn",           "1.3.1-9.05122" },
                                          { "breakObject",                   "1.3.1-9.05122" },
@@ -148,7 +158,6 @@ namespace
                                          { "playSFX3D",                     "1.3.4" },
                                          { "getHeliBladeCollisionsEnabled",  "1.3.4-9.05764" },
                                          { "setHeliBladeCollisionsEnabled",  "1.3.4-9.05764" },
-                                         { "onClientVehicleDamage",         "1.3.5" },
                                         };
 
     SVersionItem serverFunctionInitList[] = {
@@ -199,6 +208,9 @@ namespace
                                          { "setPedWalkingStyle",        "1.3.1-9.04935" },
                                          { "setAircraftMaxVelocity",    "1.3.1-9.04997" },
                                          { "getAircraftMaxVelocity",    "1.3.1-9.04997" },
+                                         { "setMoonSize",               "1.3.1-9.05064" },
+                                         { "resetMoonSize",             "1.3.1-9.05064" },
+                                         { "getMoonSize",               "1.3.1-9.05064" },
                                          { "bitAnd",                    "1.3.2" },
                                          { "bitNot",                    "1.3.2" },
                                          { "bitOr",                     "1.3.2" },
@@ -212,6 +224,7 @@ namespace
                                          { "bitExtract",                "1.3.2" },
                                          { "bitReplace",                "1.3.2" },
                                          { "getPlayerACInfo",           "1.3.3" },
+                                         { "getEventHandlers",          "1.3.4" },
                                          { "addDebugHook",              "1.3.4-9.05939" },
                                          { "removeDebugHook",           "1.3.4-9.05939" },
                                         };
@@ -284,10 +297,8 @@ namespace
                 { false, "setPedFrozen",                   "setElementFrozen" },
                 { false, "setVehicleFrozen",               "setElementFrozen" },
                 { false, "setObjectStatic",                "setElementFrozen" },
-                { false, "isPlayerDead",                   "isPedDead" },
                 // Edit
                 { false, "guiEditSetCaratIndex",           "guiEditSetCaretIndex" },
-                { false, "guiMemoSetCaratIndex",           "guiMemoSetCaretIndex" },
                 // XML
                 { false, "xmlNodeFindChild",               "xmlFindChild" },
             };

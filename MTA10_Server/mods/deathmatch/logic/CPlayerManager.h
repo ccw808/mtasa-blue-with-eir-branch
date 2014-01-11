@@ -57,8 +57,6 @@ public:
     static bool                                 IsValidPlayerModel              ( unsigned short usPlayerModel );
 
     void                                        ResetAll                        ( void );
-    void                                        OnPlayerSetVersion              ( CPlayer* pPlayer );
-    const SString&                              GetLowestConnectedPlayerVersion ( void )                                            { return m_strLowestConnectedPlayerVersion; }
 
 private:
     void                                        AddToList                       ( CPlayer* pPlayer );
@@ -68,7 +66,6 @@ private:
 
     CMappedList < CPlayer* >                    m_Players;
     std::map < NetServerPlayerID, CPlayer* >    m_SocketPlayerMap;
-    SString                                     m_strLowestConnectedPlayerVersion;
 };
 
 #endif

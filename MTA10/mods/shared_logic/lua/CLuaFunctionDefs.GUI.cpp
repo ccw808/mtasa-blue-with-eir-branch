@@ -597,7 +597,7 @@ int CLuaFunctionDefs::GUIStaticImageLoadImage ( lua_State* luaVM )
                     return 1;
                 }
                 else
-                    argStream.SetCustomError( strPath, "Error loading image" );
+                    argStream.SetCustomError( SString( "Problem loading image '%s'", *strPath ) );
             }
             else
                 argStream.SetCustomError( strPath, "Bad file path" );
@@ -2387,9 +2387,9 @@ int CLuaFunctionDefs::GUIEditSetMaxLength ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::GUIEditSetCaretIndex ( lua_State* luaVM )
+int CLuaFunctionDefs::GUIEditSetCaratIndex ( lua_State* luaVM )
 {
-//  bool guiEditSetCaretIndex ( element theElement, int index )
+//  bool guiEditSetCaratIndex ( element theElement, int index )
     CClientGUIElement* theElement; int index;
 
     CScriptArgReader argStream ( luaVM );
@@ -2398,7 +2398,7 @@ int CLuaFunctionDefs::GUIEditSetCaretIndex ( lua_State* luaVM )
 
     if ( !argStream.HasErrors () )
     {
-        CStaticFunctionDefinitions::GUIEditSetCaretIndex ( *theElement, index );
+        CStaticFunctionDefinitions::GUIEditSetCaratIndex ( *theElement, index );
         lua_pushboolean ( luaVM, true );
         return 1;
     }
@@ -2411,31 +2411,9 @@ int CLuaFunctionDefs::GUIEditSetCaretIndex ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::GUIEditGetCaretIndex ( lua_State* luaVM )
+int CLuaFunctionDefs::GUIMemoSetCaratIndex ( lua_State* luaVM )
 {
-//  int guiEditGetCaretIndex ( element theElement )
-    CClientGUIElement* theElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIEdit > ( theElement );
-
-    if ( !argStream.HasErrors () )
-    {
-        lua_pushnumber ( luaVM, static_cast < CGUIEdit* > ( theElement->GetCGUIElement () ) -> GetCaretIndex () );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIMemoSetCaretIndex ( lua_State* luaVM )
-{
-//  bool guiMemoSetCaretIndex ( gui-memo theMemo, int index )
+//  bool guiMemoSetCaratIndex ( gui-memo theMemo, int index )
     CClientGUIElement* theMemo; int index;
 
     CScriptArgReader argStream ( luaVM );
@@ -2444,30 +2422,8 @@ int CLuaFunctionDefs::GUIMemoSetCaretIndex ( lua_State* luaVM )
 
     if ( !argStream.HasErrors () )
     {
-        CStaticFunctionDefinitions::GUIMemoSetCaretIndex ( *theMemo, index );
+        CStaticFunctionDefinitions::GUIMemoSetCaratIndex ( *theMemo, index );
         lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIMemoGetCaretIndex ( lua_State* luaVM )
-{
-//  bool guiMemoGetCaretIndex ( gui-memo theMemo )
-    CClientGUIElement* theMemo;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIMemo > ( theMemo );
-
-    if ( !argStream.HasErrors () )
-    {
-        lua_pushnumber ( luaVM, static_cast < CGUIMemo* > ( theMemo->GetCGUIElement () ) -> GetCaretIndex () );
         return 1;
     }
     else
@@ -3066,13 +3022,12 @@ int CLuaFunctionDefs::GUICreateFont ( lua_State* luaVM )
                     {
                         // Make it a child of the resource's file root ** CHECK  Should parent be pFileResource, and element added to pParentResource's ElementGroup? **
                         pGuiFont->SetParent ( pParentResource->GetResourceDynamicEntity () );
-                        lua_pushelement ( luaVM, pGuiFont );
-                        return 1;
                     }
-                    argStream.SetCustomError( strFilePath, "Error creating font" );
+                    lua_pushelement ( luaVM, pGuiFont );
+                    return 1;
                 }
                 else
-                    argStream.SetCustomError( strFilePath, "File not found" );
+                    argStream.SetCustomError( strFilePath, "Bad file path" );
             }
             else
                 argStream.SetCustomError( strFilePath, "Bad file path" );

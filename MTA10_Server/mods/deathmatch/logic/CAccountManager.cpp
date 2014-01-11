@@ -208,7 +208,7 @@ bool CAccountManager::LoadXML ( CXMLNode* pParent )
     //##Keep for backwards compatability with accounts.xml##
     #define ACCOUNT_VALUE_LENGTH 128
 
-    std::string strBuffer, strName, strPassword, strIP, strDataKey, strDataValue;
+    std::string strBuffer, strName, strPassword, strLevel, strIP, strDataKey, strDataValue;
 
     if ( pParent )
     {
@@ -838,13 +838,6 @@ bool CAccountManager::LogOut ( CClient* pClient, CClient* pEchoClient )
     {
         if ( pEchoClient )
             pEchoClient->SendEcho ( "logout: You were not logged in" );
-        return false;
-    }
-
-    if ( pClient->GetClientType () == CClient::CLIENT_CONSOLE )
-    {
-        if ( pEchoClient )
-            pEchoClient->SendEcho ( "logout: Console may not log out" );
         return false;
     }
 

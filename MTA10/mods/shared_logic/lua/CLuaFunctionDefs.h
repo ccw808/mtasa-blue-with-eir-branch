@@ -68,9 +68,6 @@ public:
     LUA_DECLARE ( GetLatentEventStatus );
     LUA_DECLARE ( CancelLatentEvent );
 
-    // Misc functions
-    LUA_DECLARE ( DownloadFile );
-
     // Sound effects and synth functions
     LUA_DECLARE ( PlaySound );
     LUA_DECLARE ( PlaySound3D );
@@ -197,6 +194,7 @@ public:
     LUA_DECLARE ( IsPlayerNametagShowing );
     LUA_DECLARE ( GetPlayerPing );
     LUA_DECLARE ( GetPlayerTeam );
+    LUA_DECLARE ( IsPlayerDead );
     LUA_DECLARE ( GetPlayerMoney );
     LUA_DECLARE ( GetPlayerWantedLevel );
     
@@ -258,7 +256,6 @@ public:
     LUA_DECLARE ( GetWeaponProperty );
     LUA_DECLARE ( GetOriginalWeaponProperty );
     LUA_DECLARE ( GetPedOxygenLevel );
-    LUA_DECLARE ( IsPedDead );
 
     LUA_DECLARE ( SetPedRotation );
     LUA_DECLARE ( SetPedCanBeKnockedOffBike );
@@ -333,7 +330,6 @@ public:
     LUA_DECLARE ( IsTrainDerailable );
     LUA_DECLARE ( GetTrainDirection );
     LUA_DECLARE ( GetTrainSpeed );
-    LUA_DECLARE ( IsTrainChainEngine );
     LUA_DECLARE ( GetVehicleGravity );
     LUA_DECLARE ( IsVehicleBlown );
     LUA_DECLARE ( GetVehicleHeadLightColor );
@@ -496,7 +492,6 @@ public:
     LUA_DECLARE ( SetPickupType );
 
     // Cam get funcs
-    LUA_DECLARE ( GetCamera );
     LUA_DECLARE ( GetCameraViewMode );
     LUA_DECLARE ( GetCameraMatrix );
     LUA_DECLARE ( GetCameraTarget );
@@ -590,7 +585,6 @@ public:
     LUA_DECLARE ( dxGetBlendMode );
     LUA_DECLARE ( dxSetAspectRatioAdjustmentEnabled );
     LUA_DECLARE ( dxIsAspectRatioAdjustmentEnabled );
-    LUA_DECLARE ( dxSetTextureEdge );
 
     // Util functions to make scripting easier for the end user
     // Some of these are based on standard mIRC script funcs as a lot of people will be used to them
@@ -709,11 +703,9 @@ public:
     LUA_DECLARE ( GUIEditSetReadOnly );
     LUA_DECLARE ( GUIEditSetMasked );
     LUA_DECLARE ( GUIEditSetMaxLength );
-    LUA_DECLARE ( GUIEditSetCaretIndex );
-    LUA_DECLARE ( GUIEditGetCaretIndex );
+    LUA_DECLARE ( GUIEditSetCaratIndex );
     LUA_DECLARE ( GUIMemoSetReadOnly );
-    LUA_DECLARE ( GUIMemoSetCaretIndex );
-    LUA_DECLARE ( GUIMemoGetCaretIndex );
+    LUA_DECLARE ( GUIMemoSetCaratIndex );
     LUA_DECLARE ( GUIWindowSetMovable );
     LUA_DECLARE ( GUIWindowSetSizable );
     LUA_DECLARE ( GUIWindowGetMovable );
@@ -941,15 +933,9 @@ public:
     // Utility
     LUA_DECLARE ( Md5 );
     LUA_DECLARE ( Sha256 );
-    LUA_DECLARE ( TeaEncode );
-    LUA_DECLARE ( TeaDecode );
-    LUA_DECLARE ( Base64encode );
-    LUA_DECLARE ( Base64decode );
     LUA_DECLARE ( GetNetworkUsageData );
     LUA_DECLARE ( GetNetworkStats );
     LUA_DECLARE ( GetPerformanceStats );
-    LUA_DECLARE ( AddDebugHook );
-    LUA_DECLARE ( RemoveDebugHook );
 
     LUA_DECLARE ( GetVersion );
 
@@ -963,12 +949,6 @@ public:
     LUA_DECLARE ( UtfSub );
     LUA_DECLARE ( UtfChar );
     LUA_DECLARE ( UtfCode );
-
-    // PCRE functions
-
-    LUA_DECLARE ( PregFind );
-    LUA_DECLARE ( PregReplace );
-    LUA_DECLARE ( PregMatch );
 
     // Voice functions
     LUA_DECLARE ( IsVoiceEnabled );

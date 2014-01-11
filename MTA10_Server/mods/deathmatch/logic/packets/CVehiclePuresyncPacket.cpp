@@ -51,23 +51,6 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                 return false;
             pSourcePlayer->SetPosition ( position.data.vecPosition );
 
-            if ( pVehicle->GetVehicleType() == VEHICLE_TRAIN )
-            {
-                // Train specific data
-                float fPosition = 0.0f;
-                uchar ucTrack = 0;
-                bool bDirection = false;
-                float fSpeed = 0.0f;
-                BitStream.Read ( fPosition );
-                BitStream.ReadBit ( bDirection );
-                BitStream.Read ( ucTrack );
-                BitStream.Read ( fSpeed );
-                pVehicle->SetTrainPosition ( fPosition );
-                pVehicle->SetTrainDirection ( bDirection );
-                pVehicle->SetTrainTrack ( ucTrack );
-                pVehicle->SetTrainSpeed ( fSpeed );
-            }
-
             // Read the camera orientation
             CVector vecCamPosition, vecCamFwd;
             ReadCameraOrientation ( position.data.vecPosition, BitStream, vecCamPosition, vecCamFwd );
@@ -178,8 +161,8 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                                 pCurrentTrailer->SetTowedByVehicle ( NULL );
 
                                 // Tell everyone to detach them
-                                CVehicleTrailerPacket DetachPacket ( pTowedByVehicle, pCurrentTrailer, false );
-                                g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( DetachPacket );
+                                CVehicleTrailerPacket AttachPacket ( pTowedByVehicle, pCurrentTrailer, false );
+                                g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( AttachPacket );
 
                                 // Execute the attach trailer script function
                                 CLuaArguments Arguments;
@@ -195,8 +178,8 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                                 pTrailer->SetTowedByVehicle ( NULL );
 
                                 // Tell everyone to detach them
-                                CVehicleTrailerPacket DetachPacket ( pCurrentVehicle, pTrailer, false );
-                                g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( DetachPacket );
+                                CVehicleTrailerPacket AttachPacket ( pCurrentVehicle, pTrailer, false );
+                                g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( AttachPacket );
 
                                 // Execute the attach trailer script function
                                 CLuaArguments Arguments;
@@ -234,13 +217,13 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                     pCurrentTrailer->SetTowedByVehicle ( NULL );
 
                     // Tell everyone else to detach them
-                    CVehicleTrailerPacket DetachPacket ( pTowedByVehicle, pCurrentTrailer, false );
-                    g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( DetachPacket );
+                    CVehicleTrailerPacket AttachPacket ( pTowedByVehicle, pCurrentTrailer, false );
+                    g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( AttachPacket );
 
                     // Execute the detach trailer script function
                     CLuaArguments Arguments;
                     Arguments.PushElement ( pTowedByVehicle );
-                    pCurrentTrailer->CallEvent ( "onTrailerDetach", Arguments );
+                    pCurrentTrailer->CallEvent ( "onTrailerDetach", Arguments );                    
                 }
             }
 
@@ -460,19 +443,6 @@ bool CVehiclePuresyncPacket::Write ( NetBitStreamInterface& BitStream ) const
                 position.data.vecPosition = pVehicle->GetPosition ();
                 BitStream.Write ( &position );
 
-                if ( pVehicle->GetVehicleType() == VEHICLE_TRAIN )
-                {
-                    // Train specific data
-                    float fPosition = pVehicle->GetTrainPosition ( );
-                    uchar ucTrack = pVehicle->GetTrainTrack ( );
-                    bool bDirection = pVehicle->GetTrainDirection ( );
-                    float fSpeed = pVehicle->GetTrainSpeed ( );
-                    BitStream.Write ( fPosition );
-                    BitStream.WriteBit ( bDirection );
-                    BitStream.Write ( ucTrack );
-                    BitStream.Write ( fSpeed );
-                }
-
                 // Vehicle rotation
                 SRotationDegreesSync rotation;
                 pVehicle->GetRotationDegrees ( rotation.data.vecRotation );
@@ -553,6 +523,11 @@ bool CVehiclePuresyncPacket::Write ( NetBitStreamInterface& BitStream ) const
             flags.data.bHasAWeapon           = ( ucWeaponType != 0 );
             flags.data.bIsHeliSearchLightVisible = pVehicle->IsHeliSearchLightVisible ();
             BitStream.Write ( &flags );
+
+            #if MTASA_VERSION_MINOR == 3
+                // till r5289 the derailed state reads the landing gear down so since it's unused for trains put the derailed flag in there too so we can fix old clients
+                flags.FixDerailedState ( pVehicle->GetModel ( ) );
+            #endif
 
             // Write the weapon stuff
             if ( flags.data.bHasAWeapon )

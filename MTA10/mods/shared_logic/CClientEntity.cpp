@@ -98,15 +98,19 @@ CClientEntity::~CClientEntity ( void )
         delete m_pCustomData;
     }
 
-    // Detach from everything
-    AttachTo( NULL );
-    while( m_AttachedEntities.size() )
+    if ( m_pAttachedToEntity )
     {
-        CClientEntity* pAttachedEntity = m_AttachedEntities.back();
-        pAttachedEntity->AttachTo( NULL );
+        m_pAttachedToEntity->RemoveAttachedEntity ( this );
     }
-    m_bDisallowAttaching = true;
-    assert( !m_pAttachedToEntity && m_AttachedEntities.empty() );
+
+    for ( list < CClientEntity* >::iterator iter = m_AttachedEntities.begin () ; iter != m_AttachedEntities.end () ; ++iter )
+    {
+        CClientEntity* pAttachedEntity = *iter;
+        if ( pAttachedEntity )
+        {
+            pAttachedEntity->m_pAttachedToEntity = NULL;
+        }
+    }
 
     RemoveAllCollisions ( true );
 
@@ -652,35 +656,13 @@ bool CClientEntity::IsOutOfBounds ( void )
 
 void CClientEntity::AttachTo ( CClientEntity* pEntity )
 {
-    // Handle attach attempt during entity destructor
-    if ( pEntity )
-    {
-        if ( m_bDisallowAttaching )
-        {
-            assert( !m_pAttachedToEntity && m_AttachedEntities.empty() );
-            return;
-        }
-
-        if ( pEntity->m_bDisallowAttaching )
-        {
-            assert( !pEntity->m_pAttachedToEntity && pEntity->m_AttachedEntities.empty() );
-            return;
-        }
-    }
-
     if ( m_pAttachedToEntity )
-    {
-        assert( ListContains( m_pAttachedToEntity->m_AttachedEntities, this ) );
-        ListRemove( m_pAttachedToEntity->m_AttachedEntities, this );
-    }    
+        m_pAttachedToEntity->RemoveAttachedEntity ( this );
 
     m_pAttachedToEntity = pEntity;
 
     if ( m_pAttachedToEntity )
-    {
-        assert( !ListContains( m_pAttachedToEntity->m_AttachedEntities, this ) );
-        m_pAttachedToEntity->m_AttachedEntities.push_back( this );
-    }
+        m_pAttachedToEntity->AddAttachedEntity ( this );
 
     InternalAttachTo ( pEntity );
 }
@@ -769,8 +751,6 @@ bool CClientEntity::AddEvent ( CLuaMain* pLuaMain, const char* szName, const CLu
 
 bool CClientEntity::CallEvent ( const char* szName, const CLuaArguments& Arguments, bool bCallOnChildren )
 {
-    g_pClientGame->GetDebugHookManager()->OnPreEvent( szName, Arguments, this, NULL );
-
     TIMEUS startTime = GetTimeUs ();
 
     CEvents* pEvents = g_pClientGame->GetEvents();
@@ -796,8 +776,6 @@ bool CClientEntity::CallEvent ( const char* szName, const CLuaArguments& Argumen
         if ( deltaTimeUs > 10000 )
             TIMING_DETAIL( SString ( "Event: %s [%d ms]", szName, deltaTimeUs / 1000 ) );
     }
-
-    g_pClientGame->GetDebugHookManager()->OnPostEvent( szName, Arguments, this, NULL );
 
     // Return whether it got cancelled or not
     return ( !pEvents->WasEventCancelled () );
@@ -1137,7 +1115,7 @@ void CClientEntity::RemoveAllCollisions ( bool bNotify )
 
 bool CClientEntity::IsEntityAttached ( CClientEntity* pEntity )
 {
-    std::vector < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
+    list < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
     for ( ; iter != m_AttachedEntities.end (); iter++ )
     {
         if ( *iter == pEntity )
@@ -1158,9 +1136,10 @@ void CClientEntity::ReattachEntities ( void )
     }
 
     // Reattach any entities attached to us
-    for ( uint i = 0 ; i < m_AttachedEntities.size () ; ++i )
+    list < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
+    for ( ; iter != m_AttachedEntities.end (); iter++ )
     {
-        m_AttachedEntities[i]->InternalAttachTo ( this );
+        (*iter)->InternalAttachTo ( this );
     }  
 }
 
@@ -1203,7 +1182,6 @@ bool CClientEntity::IsAttachToable ( void )
         case CCLIENTPICKUP:
         case CCLIENTSOUND:
         case CCLIENTCOLSHAPE:
-        case CCLIENTCAMERA:
         {
             return true;
             break;

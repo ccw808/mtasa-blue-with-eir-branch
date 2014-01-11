@@ -15,7 +15,6 @@
 using std::list;
 
 extern CCoreInterface* g_pCore;
-extern CLocalizationInterface* g_pLocalization;
 extern CClientGame* g_pClientGame;
 
 // SResInfo - Item in list of potential resources - Used in GetResourceNameList()

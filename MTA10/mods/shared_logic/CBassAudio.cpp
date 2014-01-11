@@ -381,7 +381,7 @@ void CBassAudio::CompleteStreamConnect ( HSTREAM pSound )
 void CALLBACK EndSync ( HSYNC handle, DWORD channel, DWORD data, void* user )
 {
     CBassAudio* pBassAudio = static_cast <CBassAudio*> ( user );
-    pBassAudio->uiEndSyncCount++;
+    pBassAudio->bEndSync = true;
 }
 
 void CALLBACK FreeSync ( HSYNC handle, DWORD channel, DWORD data, void* user )
@@ -399,23 +399,14 @@ void CBassAudio::SetFinishedCallbacks ( void )
 
 
 //
-// CBassAudio::GetReachedEndCount
+// CBassAudio::IsFinished
 //
-uint CBassAudio::GetReachedEndCount( void )
+bool CBassAudio::IsFinished ( void )
 {
-    // Return the number of times the sound has gotten to the end
-    return uiEndSyncCount;
-}
-
-
-//
-// CBassAudio::IsFreed
-//
-bool CBassAudio::IsFreed( void )
-{
-    // Check if BASS has freed the sound handle.
-    // This could be some time after the actual sound has stopped.
-    return bFreeSync;
+    // Sound is determined finished if BASS has freed the sound handle
+    if ( bFreeSync )
+        return true;
+    return false;
 }
 
 

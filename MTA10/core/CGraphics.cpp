@@ -771,10 +771,7 @@ void CGraphics::DrawTextQueued ( float fLeft, float fTop,
                                  ID3DXFont * pDXFont,
                                  bool bPostGUI,
                                  bool bColorCoded,
-                                 bool bSubPixelPositioning,
-                                 float fRotation,
-                                 float fRotationCenterX,
-                                 float fRotationCenterY )
+                                 bool bSubPixelPositioning )
 {
     if ( !szText || !m_pDXSprite )
         return;
@@ -827,9 +824,6 @@ void CGraphics::DrawTextQueued ( float fLeft, float fTop,
         Item.Text.fScaleY = fScaleY;
         Item.Text.ulFormat = ulFormat;
         Item.Text.pDXFont = pDXFont;
-        Item.Text.fRotation = fRotation;
-        Item.Text.fRotationCenterX = fRotationCenterX;
-        Item.Text.fRotationCenterY = fRotationCenterY;
 
         // Convert to wstring        
         Item.wstrText = MbUTF8ToUTF16 ( szText );
@@ -871,7 +865,7 @@ void CGraphics::DrawTextQueued ( float fLeft, float fTop,
         SColor currentColor = dwColor;
         for ( uint i = 0 ; i < splitLines.size () ; i++ )
         {
-            DrawColorCodedTextLine ( fLeft, fRight, fY, currentColor, splitLines[i], fScaleX, fScaleY, ulFormat, pDXFont, bPostGUI, bSubPixelPositioning, fRotation, fRotationCenterX, fRotationCenterY );
+            DrawColorCodedTextLine ( fLeft, fRight, fY, currentColor, splitLines[i], fScaleX, fScaleY, ulFormat, pDXFont, bPostGUI, bSubPixelPositioning );
             fY += fLineHeight;
         }
     }
@@ -879,8 +873,7 @@ void CGraphics::DrawTextQueued ( float fLeft, float fTop,
 
 
 void CGraphics::DrawColorCodedTextLine ( float fLeft, float fRight, float fY, SColor& currentColor, const wchar_t* wszText,
-                                         float fScaleX, float fScaleY, unsigned long ulFormat, ID3DXFont* pDXFont, bool bPostGUI, bool bSubPixelPositioning,
-                                         float fRotation, float fRotationCenterX, float fRotationCenterY )
+                                         float fScaleX, float fScaleY, unsigned long ulFormat, ID3DXFont* pDXFont, bool bPostGUI, bool bSubPixelPositioning )
 {
     struct STextSection
     {
@@ -990,9 +983,6 @@ void CGraphics::DrawColorCodedTextLine ( float fLeft, float fRight, float fY, SC
         Item.Text.fScaleY = fScaleY;
         Item.Text.ulFormat = DT_NOCLIP;
         Item.Text.pDXFont = pDXFont;
-        Item.Text.fRotation = fRotation;
-        Item.Text.fRotationCenterX = fRotationCenterX;
-        Item.Text.fRotationCenterY = fRotationCenterY;
 
         Item.wstrText = section.wstrText;
 
@@ -1168,7 +1158,7 @@ void CGraphics::DrawTexture ( CTextureItem* pTexture, float fX, float fY, float 
     D3DXVECTOR2 scaling ( fScaleX * fFileWidth / fCutWidth, fScaleY * fFileHeight / fCutHeight );
     D3DXVECTOR2 rotationCenter  ( fFileWidth * fScaleX * fCenterX, fFileHeight * fScaleX * fCenterY );
     D3DXVECTOR2 position ( fX - fFileWidth * fScaleX * fCenterX, fY - fFileHeight * fScaleY * fCenterY );
-    D3DXMatrixTransformation2D ( &matrix, NULL, NULL, &scaling, &rotationCenter, DegreesToRadians( fRotation ), &position );
+    D3DXMatrixTransformation2D ( &matrix, NULL, NULL, &scaling, &rotationCenter, fRotation * 6.2832f / 360.f, &position );
     CheckModes ( EDrawMode::DX_SPRITE, m_ActiveBlendMode );
     m_pDXSprite->SetTransform ( &matrix );
     m_pDXSprite->Draw ( (IDirect3DTexture9*)pTexture->m_pD3DTexture, &cutImagePos, NULL, NULL, /*ModifyColorForBlendMode (*/ dwColor/*, blendMode )*/ );
@@ -1357,6 +1347,7 @@ void CGraphics::DrawQueueItem ( const sDrawQueueItem& Item )
         case QUEUE_RECT:
         {
             D3DXMATRIX matrix;
+            D3DXVECTOR2 scalingCentre ( 0.5f, 0.5f );
             D3DXVECTOR2 scaling ( Item.Rect.fWidth, Item.Rect.fHeight );
             D3DXVECTOR2 position ( Item.Rect.fX, Item.Rect.fY );
             D3DXMatrixTransformation2D ( &matrix, NULL, 0.0f, &scaling, NULL, 0.0f, &position );
@@ -1372,11 +1363,10 @@ void CGraphics::DrawQueueItem ( const sDrawQueueItem& Item )
             const float fPosFracX = Item.Text.fLeft - rect.left;
             const float fPosFracY = Item.Text.fTop - rect.top;
             D3DXMATRIX matrix;
+            D3DXVECTOR2 scalingCentre ( 0.5f, 0.5f );
             D3DXVECTOR2 scaling ( Item.Text.fScaleX, Item.Text.fScaleY );
             D3DXVECTOR2 translation ( fPosFracX * Item.Text.fScaleX, fPosFracY * Item.Text.fScaleY );   // Sub-pixel positioning
-            D3DXVECTOR2 rotcenter ( Item.Text.fRotationCenterX, Item.Text.fRotationCenterY );
-            D3DXVECTOR2* pRotcenter = Item.Text.fRotation ? &rotcenter : NULL;
-            D3DXMatrixTransformation2D ( &matrix, NULL, 0.0f, &scaling, pRotcenter, DegreesToRadians( Item.Text.fRotation ), &translation );
+            D3DXMatrixTransformation2D ( &matrix, NULL, 0.0f, &scaling, NULL, 0.0f, &translation );
             CheckModes ( EDrawMode::DX_SPRITE, Item.blendMode );
             m_pDXSprite->SetTransform ( &matrix );        
             Item.Text.pDXFont->DrawTextW ( m_pDXSprite, Item.wstrText.c_str (), -1, &rect, Item.Text.ulFormat, /*ModifyColorForBlendMode (*/ Item.Text.ulColor/*, Item.blendMode )*/ );
@@ -1402,9 +1392,9 @@ void CGraphics::DrawQueueItem ( const sDrawQueueItem& Item )
                 const D3DXVECTOR2 scaling         ( Item.Texture.fWidth / fCutWidth, Item.Texture.fHeight / fCutHeight );
                 const D3DXVECTOR2 rotationCenter  ( Item.Texture.fWidth * 0.5f + Item.Texture.fRotCenOffX, Item.Texture.fHeight * 0.5f + Item.Texture.fRotCenOffY );
                 const D3DXVECTOR2 position        ( Item.Texture.fX, Item.Texture.fY );
-                const D3DXVECTOR2* pRotationCenter = Item.Texture.fRotation ? &rotationCenter : NULL;
+                const float fRotationRad  = Item.Texture.fRotation * (6.2832f/360.f);
                 D3DXMATRIX matrix;
-                D3DXMatrixTransformation2D  ( &matrix, NULL, 0.0f, &scaling, pRotationCenter, DegreesToRadians( Item.Texture.fRotation ), &position );
+                D3DXMatrixTransformation2D  ( &matrix, NULL, 0.0f, &scaling, &rotationCenter, fRotationRad, &position );
                 CheckModes ( EDrawMode::DX_SPRITE, Item.blendMode );
                 m_pDXSprite->SetTransform ( &matrix );
                 m_pDXSprite->Draw ( (IDirect3DTexture9*)pTexture->m_pD3DTexture, &cutImagePos, NULL, NULL, /*ModifyColorForBlendMode (*/ Item.Texture.ulColor/*, Item.blendMode )*/ );
@@ -1729,6 +1719,10 @@ void CGraphics::DrawProgressMessage( bool bPreserveBackbuffer )
         return;
     const bool bWasInScene = true;
     bool bInScene = true;
+
+    // Check if disabled
+    if ( g_pCore->GetDiagnosticDebug() == EDiagnosticDebug::SPINNER_0000 )
+        return;
 
     // Check if disabled
     static bool bDisabled = !GetApplicationSetting( "diagnostics", "user-confirmed-bsod-time" ).empty();

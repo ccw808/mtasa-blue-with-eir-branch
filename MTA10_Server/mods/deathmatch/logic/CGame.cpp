@@ -31,12 +31,11 @@
 #define MAX_EXPLOSION_SYNC_DISTANCE 400.0f
 #define MAX_PROJECTILE_SYNC_DISTANCE 400.0f
 
-#define RELEASE_MIN_CLIENT_VERSION              "1.4.0-0.00000"
+#define RELEASE_MIN_CLIENT_VERSION              "1.3.0-9.03724"
 #define BULLET_SYNC_MIN_CLIENT_VERSION          "1.3.0-9.04311"
 #define VEH_EXTRAPOLATION_MIN_CLIENT_VERSION    "1.3.0-9.04460"
 #define ALT_PULSE_ORDER_MIN_CLIENT_VERSION      "1.3.1-9.04913"
 #define HIT_ANIM_CLIENT_VERSION                 "1.3.2"
-#define SNIPER_BULLET_SYNC_MIN_CLIENT_VERSION   "1.3.4-9.06040"
 
 CGame* g_pGame = NULL;
 
@@ -144,7 +143,6 @@ CGame::CGame ( void )
     m_pWaterManager = NULL;
     m_pWeaponStatsManager = NULL;
     m_pBuildingRemovalManager = NULL;
-    m_pCustomWeaponManager = NULL;
     m_pFunctionUseLogger = NULL;
 #ifdef WITH_OBJECT_SYNC
     m_pObjectSync = NULL;
@@ -252,7 +250,7 @@ CGame::~CGame ( void )
     // Disconnect all players
     std::list < CPlayer* > ::const_iterator iter = m_pPlayerManager->IterBegin ();
     for ( ; iter != m_pPlayerManager->IterEnd (); iter++ )
-        DisconnectPlayer ( this, **iter, CPlayerDisconnectedPacket::NO_REASON );
+        DisconnectPlayer ( this, **iter, "Server shutdown/restarting" );
 
     // Stop networking
     Stop ();
@@ -311,7 +309,6 @@ CGame::~CGame ( void )
     SAFE_DELETE ( m_pWaterManager );
     SAFE_DELETE ( m_pWeaponStatsManager );
     SAFE_DELETE ( m_pBuildingRemovalManager );
-    SAFE_DELETE ( m_pCustomWeaponManager );
     SAFE_DELETE ( m_pFunctionUseLogger );
     SAFE_DELETE ( m_pOpenPortsTester );
     SAFE_DELETE ( m_pMasterServerAnnouncer );
@@ -514,7 +511,6 @@ bool CGame::Start ( int iArgumentCount, char* szArguments [] )
 
     m_pBuildingRemovalManager = new CBuildingRemovalManager;
 
-    m_pCustomWeaponManager = new CCustomWeaponManager ( );
 
     // Parse the commandline
     if ( !m_CommandLineParser.Parse ( iArgumentCount, szArguments ) )
@@ -1027,12 +1023,6 @@ bool CGame::ProcessPacket ( CPacket& Packet )
             return true;
         }
 
-        case PACKET_ID_WEAPON_BULLETSYNC:
-        {
-            Packet_WeaponBulletsync ( static_cast < CCustomWeaponBulletSyncPacket& > ( Packet ) );
-            return true;
-        }
-
         case PACKET_ID_PED_TASK:
         {
             Packet_PedTask ( static_cast < CPedTaskPacket& > ( Packet ) );
@@ -1042,12 +1032,6 @@ bool CGame::ProcessPacket ( CPacket& Packet )
         case PACKET_ID_DETONATE_SATCHELS:
         {
             Packet_DetonateSatchels ( static_cast < CDetonateSatchelsPacket& > ( Packet ) );
-            return true;
-        }
-
-        case PACKET_ID_DESTROY_SATCHELS:
-        {
-            Packet_DestroySatchels ( static_cast < CDestroySatchelsPacket& > ( Packet ) );
             return true;
         }
 
@@ -1389,7 +1373,7 @@ void CGame::QuitPlayer ( CPlayer& Player, CClient::eQuitReasons Reason, bool bSa
     GetLatentTransferManager ()->RemoveRemote ( Player.GetSocket () );
 
     // Delete it, don't unlink yet, we could be inside the player-manager's iteration
-    m_ElementDeleter.Delete ( &Player, false );
+    m_ElementDeleter.Delete ( &Player, false, true, NULL, "QuitPlayer" );
 
     // Unregister them from the lightweight sync manager
     m_lightsyncManager.UnregisterPlayer ( &Player );
@@ -1498,9 +1482,6 @@ void CGame::AddBuiltInEvents ( void )
     // Other events
     m_Events.AddEvent ( "onSettingChange", "setting, oldValue, newValue", NULL, false );
     m_Events.AddEvent ( "onChatMessage", "message, element", NULL, false );
-
-    // Weapon events
-    m_Events.AddEvent ( "onWeaponFire", "", NULL, false );
 }
 
 void CGame::ProcessTrafficLights ( unsigned long ulCurrentTime )
@@ -1604,10 +1585,10 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
             if ( !CheckNickProvided ( szNick ) ) // check the nick is valid
             {
                 // Tell the console
-                CLogger::LogPrintf ( "CONNECT: %s failed to connect (Invalid nickname) (%s)\n", szNick, strIPAndSerial.c_str () );
+                CLogger::LogPrintf ( "CONNECT: %s failed to connect (Invalid Nick) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                 // Tell the player the problem
-                DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::INVALID_NICKNAME );
+                DisconnectPlayer ( this, *pPlayer, "Disconnected: Invalid Nick" );
                 return;
             }
 
@@ -1661,7 +1642,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
 
                                     // Tell the player
                                     pPlayer->Send ( CUpdateInfoPacket ( "Mandatory", CalculateMinClientRequirement () ) );
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::NO_REASON );
+                                    DisconnectPlayer ( this, *pPlayer, "" );
                                     return;
                                 }
 
@@ -1680,7 +1661,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                 // Check the serial for validity
                                 if ( CBan* pBan = m_pBanManager->GetBanFromSerial ( pPlayer->GetSerial ().c_str () ) )
                                 {
-                                    time_t Duration = pBan->GetTimeOfUnban() - time ( NULL );
+                                    // Make a message including the ban duration
                                     SString strBanMessage = "Serial is banned";
                                     SString strDurationDesc = pBan->GetDurationDesc ();
                                     if ( strDurationDesc.length () )
@@ -1689,15 +1670,18 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                     // Tell the console
                                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (%s) (%s)\n", szNick, strBanMessage.c_str (), strIPAndSerial.c_str () );
 
+                                    // Make a message for the player
+                                    strBanMessage = std::string ( "Disconnected: " ) + strBanMessage;
+
                                     // Tell the player he's banned
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::BANNED_SERIAL, Duration, pBan->GetReason().c_str() );
+                                    DisconnectPlayer ( this, *pPlayer, strBanMessage );
                                     return;
                                 }
 
                                 // Check the ip for banness
                                 if ( CBan* pBan = m_pBanManager->GetBanFromIP ( strIP ) )
                                 {
-                                    time_t Duration = pBan->GetTimeOfUnban() - time ( NULL );
+                                    // Make a message including the ban duration
                                     SString strBanMessage;// = "Serial is banned";
                                     SString strDurationDesc = pBan->GetDurationDesc ();
                                     if ( strDurationDesc.length () )
@@ -1706,8 +1690,11 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                     // Tell the console
                                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (IP is banned%s) (%s)\n", szNick, strBanMessage.c_str (), strIPAndSerial.c_str () );
 
+                                    // Make a message for the player
+                                    strBanMessage = std::string ( "Disconnected: You are banned " ) + strBanMessage;
+
                                     // Tell the player he's banned
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::BANNED_IP, Duration, pBan->GetReason().c_str() );
+                                    DisconnectPlayer ( this, *pPlayer, strBanMessage );
                                     return;
                                 }
 
@@ -1717,17 +1704,8 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                     // Tell the console
                                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (Account is banned) (%s)\n", szNick, strIPAndSerial.c_str () );
 
-                                    CBan* pBan = m_pBanManager->GetBanFromAccount( pPlayer->GetSerialUser ().c_str () );
-                                    time_t Duration = 0;
-                                    SString strReason;
-                                    if ( pBan )
-                                    {
-                                        strReason = pBan->GetReason();
-                                        Duration = pBan->GetTimeOfUnban() - time ( NULL );
-                                    }
-
                                     // Tell the player he's banned
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::BANNED_ACCOUNT, Duration, strReason.c_str() );
+                                    DisconnectPlayer ( this, *pPlayer, "Disconnected: Account is banned" );
                                     return;
                                 }
 
@@ -1739,7 +1717,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (Version mismatch) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                                     // Tell the player
-                                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::VERSION_MISMATCH );
+                                    DisconnectPlayer ( this, *pPlayer, "Disconnected: Version mismatch" );
                                     return;
                                 }
                             #endif
@@ -1755,7 +1733,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                                 CLogger::LogPrintf ( "CONNECT: %s failed to connect (Join flood) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                                 // Tell the player the problem
-                                DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::JOIN_FLOOD );
+                                DisconnectPlayer ( this, *pPlayer, "Disconnected: Join flood. Please wait a minute, then reconnect." );
                             }
                         }
                         else
@@ -1764,7 +1742,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                             CLogger::LogPrintf ( "CONNECT: %s failed to connect (Wrong password) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                             // Tell the player the password was wrong
-                            DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::INVALID_PASSWORD );
+                            DisconnectPlayer ( this, *pPlayer, "Disconnected: Incorrect password" );
                         }
                     }
                     else
@@ -1779,33 +1757,23 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                         ushort usClientBranchId = usClientNetVersion >> 12;
                         ushort usServerBranchId = usServerNetVersion >> 12;
 
-                        CPlayerDisconnectedPacket::ePlayerDisconnectType eType;
-
                         if ( usClientBranchId != usServerBranchId )
                         {
-                            eType = CPlayerDisconnectedPacket::DIFFERENT_BRANCH;
-                            strMessage = SString ( "(client: %X, server: %X)\n", usClientBranchId, usServerBranchId );
+                            strMessage = SString ( "Disconnected: Server from different branch (client: %X, server: %X)\n", usClientBranchId, usServerBranchId );
                         }
                         else
                         if ( MTASA_VERSION_BUILD == 0 )
                         {
-                            eType = CPlayerDisconnectedPacket::BAD_VERSION;
-                            strMessage = SString ( "(client: %X, server: %X)\n", usClientNetVersion, usServerNetVersion );
+                            strMessage = SString ( "Disconnected: Bad version (client: %X, server: %X)\n", usClientNetVersion, usServerNetVersion );
                         }
                         else
                         {
                             if ( usClientNetVersion < usServerNetVersion )
-                            {
-                                eType = CPlayerDisconnectedPacket::SERVER_NEWER;
-                                strMessage = SString ( "(%d)\n", MTASA_VERSION_BUILD );
-                            }
+                                strMessage = SString ( "Disconnected: Server is running a newer build (%d)\n", MTASA_VERSION_BUILD );
                             else
-                            {
-                                eType = CPlayerDisconnectedPacket::SERVER_OLDER;
-                                strMessage = SString ( "(%d)\n", MTASA_VERSION_BUILD );
-                            }
+                                strMessage = SString ( "Disconnected: Server is running an older build (%d)\n", MTASA_VERSION_BUILD );
                         }
-                        DisconnectPlayer ( this, *pPlayer, eType, strMessage );
+                        DisconnectPlayer ( this, *pPlayer, strMessage );
                     }
                 }
                 else
@@ -1814,7 +1782,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                     CLogger::LogPrintf ( "CONNECT: %s failed to connect (Nick already in use) (%s)\n", szNick, strIPAndSerial.c_str () );
 
                     // Tell the player the problem
-                    DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::NICK_CLASH );
+                    DisconnectPlayer ( this, *pPlayer, "Disconnected: Nick already in use" );
                 }
             }
             else
@@ -1823,7 +1791,7 @@ void CGame::Packet_PlayerJoinData ( CPlayerJoinDataPacket& Packet )
                 CLogger::LogPrintf ( "CONNECT: %s failed to connect (Invalid nickname)\n", pPlayer->GetSourceIP () );
 
                 // Tell the player the problem
-                DisconnectPlayer ( this, *pPlayer, CPlayerDisconnectedPacket::INVALID_NICKNAME );
+                DisconnectPlayer ( this, *pPlayer, "Disconnected: Invalid nickname" );
             }
         }
         else
@@ -2241,24 +2209,6 @@ void CGame::Packet_Bulletsync ( CBulletsyncPacket& Packet )
     }
 }
 
-void CGame::Packet_WeaponBulletsync ( CCustomWeaponBulletSyncPacket& Packet )
-{
-    // Grab the source player
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-    CCustomWeapon * pWeapon = Packet.GetWeapon ( );
-    if ( pPlayer && pPlayer->IsJoined () && pPlayer == Packet.GetWeaponOwner ( ) )
-    {
-        // Tell our scripts the player has fired
-        CLuaArguments Arguments;
-        Arguments.PushElement ( pPlayer );
-
-        if ( pWeapon->CallEvent ( "onWeaponFire", Arguments ) )
-        {
-            // Relay to other players
-            m_pPlayerManager->BroadcastOnlyJoined ( Packet, pPlayer );
-        }
-    }
-}
 
 void CGame::Packet_PedTask ( CPedTaskPacket& Packet )
 {
@@ -2392,20 +2342,6 @@ void CGame::Packet_DetonateSatchels ( CDetonateSatchelsPacket& Packet )
     if ( pPlayer && pPlayer->IsJoined () )
     {
         // Tell everyone to blow up this guy's satchels
-        m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-        //Take away their detonator
-        CStaticFunctionDefinitions::TakeWeapon( pPlayer, 40 );
-    }
-}
-
-
-void CGame::Packet_DestroySatchels ( CDestroySatchelsPacket& Packet )
-{
-    // Grab the source player
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-    if ( pPlayer && pPlayer->IsJoined () )
-    {
-        // Tell everyone to destroy up this player's satchels
         m_pPlayerManager->BroadcastOnlyJoined ( Packet );
         //Take away their detonator
         CStaticFunctionDefinitions::TakeWeapon( pPlayer, 40 );
@@ -3644,7 +3580,7 @@ void CGame::Packet_PlayerNoSocket ( CPlayerNoSocketPacket & Packet )
         if ( pPlayer->GetTimeSinceReceivedSync() > 20000 )
         {
             CLogger::LogPrintf ( "INFO: Dead connection detected for %s\n", pPlayer->GetNick() );
-            pPlayer->Send ( CPlayerDisconnectedPacket ( CPlayerDisconnectedPacket::KICK, "Worrying message" ) );
+            pPlayer->Send ( CPlayerDisconnectedPacket ( "Worrying message" ) );
             g_pGame->QuitPlayer ( *pPlayer, CClient::QUIT_TIMEOUT );
         }
     }
@@ -3730,7 +3666,7 @@ void CGame::PlayerCompleteConnect ( CPlayer* pPlayer, bool bSuccess, const char*
                 DisconnectPlayer ( g_pGame, *pPlayer, szError );
                 return;
             }
-            DisconnectPlayer ( g_pGame, *pPlayer, CPlayerDisconnectedPacket::GENERAL_REFUSED );
+            DisconnectPlayer ( g_pGame, *pPlayer, "Disconnected: server refused the connection" );
             return;
         }
 
@@ -3749,7 +3685,7 @@ void CGame::PlayerCompleteConnect ( CPlayer* pPlayer, bool bSuccess, const char*
         if ( szError && strlen ( szError ) > 0 )
             DisconnectPlayer ( g_pGame, *pPlayer, szError );
         else
-            DisconnectPlayer ( g_pGame, *pPlayer, CPlayerDisconnectedPacket::SERIAL_VERIFICATION );
+            DisconnectPlayer ( g_pGame, *pPlayer, "Disconnected: Serial verification failed" );
         return;
     }
 }
@@ -4016,7 +3952,7 @@ void CGame::SendSyncSettings ( CPlayer* pPlayer )
 
     if ( IsBulletSyncActive () )
     {
-        // List of weapons to enable bullet sync for. (Minigun causes too many packets)
+        // List of weapons to enable bullet sync for. (Sniper rifle doesn't work and minigun causes too many packets)
         eWeaponType weaponList[] = {    WEAPONTYPE_PISTOL,
                                         WEAPONTYPE_PISTOL_SILENCED,
                                         WEAPONTYPE_DESERT_EAGLE,
@@ -4032,10 +3968,6 @@ void CGame::SendSyncSettings ( CPlayer* pPlayer )
 
         for ( uint i = 0 ; i < NUMELMS( weaponList ) ; i++ )
             MapInsert ( weaponTypesUsingBulletSync, weaponList[i] );
-
-        // Add sniper if all clients can handle it
-        if ( ExtractVersionStringBuildNumber( m_pPlayerManager->GetLowestConnectedPlayerVersion() ) >= ExtractVersionStringBuildNumber( SNIPER_BULLET_SYNC_MIN_CLIENT_VERSION ) )
-            MapInsert ( weaponTypesUsingBulletSync, WEAPONTYPE_SNIPERRIFLE );
     }
 
     short sVehExtrapolateBaseMs = 5;
@@ -4087,7 +4019,6 @@ bool CGame::IsBelowRecommendedClient ( const SString& strVersion )
 //////////////////////////////////////////////////////////////////
 SString CGame::CalculateMinClientRequirement ( void )
 {
-    // Calc effective min client version
     SString strMinClientRequirementFromConfig = m_pMainConfig->GetMinClientVersion ();
     SString strMinClientRequirementFromResources = m_pResourceManager->GetMinClientRequirement ();
 
@@ -4120,7 +4051,6 @@ SString CGame::CalculateMinClientRequirement ( void )
             strNewMin = HIT_ANIM_CLIENT_VERSION;
     }
 
-    // Log effective min client version
     if ( strNewMin != m_strPrevMinClientConnectRequirement )
     {
         m_strPrevMinClientConnectRequirement = strNewMin;
@@ -4130,15 +4060,7 @@ SString CGame::CalculateMinClientRequirement ( void )
             CLogger::LogPrintf ( "Server minclientversion is now cleared\n" );
     }
 
-    // Handle settings that change depending on the lowest connected player version
-    if ( m_strPrevLowestConnectedPlayerVersion != m_pPlayerManager->GetLowestConnectedPlayerVersion() )
-    {
-        m_strPrevLowestConnectedPlayerVersion = m_pPlayerManager->GetLowestConnectedPlayerVersion();
-        if ( IsBulletSyncActive () )
-            SendSyncSettings();   
-    }
-
-    // Do version based kick check as well
+    // Do kick check as well
     {
         SString strKickMin;
 
@@ -4182,9 +4104,11 @@ SString CGame::CalculateMinClientRequirement ( void )
     // Also seems a good place to keep this setting synchronized
     g_pBandwidthSettings->NotifyBulletSyncEnabled( g_pGame->IsBulletSyncActive() );
 
-#ifndef MTA_DEBUG
-    if ( strNewMin < RELEASE_MIN_CLIENT_VERSION )
-        strNewMin = RELEASE_MIN_CLIENT_VERSION;
+#if MTASA_VERSION_TYPE == VERSION_TYPE_RELEASE
+    #ifndef MTA_DEBUG
+        if ( strNewMin < RELEASE_MIN_CLIENT_VERSION )
+            strNewMin = RELEASE_MIN_CLIENT_VERSION;
+    #endif
 #endif
 
     return strNewMin;

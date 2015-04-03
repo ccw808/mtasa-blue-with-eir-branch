@@ -18,14 +18,22 @@ using SharedUtil::CalcMTASAPath;
 
 extern CClientGame* g_pClientGame;
 
+#define CGUI_ICON_NETWORK_TROUBLE       "mta\\cgui\\images\\16-message-warn.png"
+
 CClientManager::CClientManager ( void )
 {
-    m_pMarkerStreamer = new CClientStreamer ( CClientMarker::IsLimitReached, 600.0f, 300, 300 );
-    m_pObjectStreamer = new CClientStreamer ( CClientObjectManager::IsObjectLimitReached, 500.0f, 300, 300 );
-    m_pObjectLodStreamer = new CClientStreamer ( CClientObjectManager::IsObjectLimitReached, 1700.0f, 1500, 1500 );
-    m_pPickupStreamer = new CClientStreamer ( CClientPickupManager::IsPickupLimitReached, 100.0f, 300, 300 );
-    m_pPlayerStreamer = new CClientStreamer ( CClientPlayerManager::IsPlayerLimitReached, 250.0f, 300, 300 );
-    m_pVehicleStreamer = new CClientStreamer ( CClientVehicleManager::IsVehicleLimitReached, 250.0f, 300, 300 );
+    // Initialize time
+    CClientTime::InitializeTime ();
+
+    // Load the connection trouble texture
+    m_pConnectionTroubleTexture = g_pCore->GetGUI ()->CreateTexture ();
+    m_pConnectionTroubleTexture->LoadFromFile ( CalcMTASAPath( CGUI_ICON_NETWORK_TROUBLE ) );
+
+    m_pMarkerStreamer = new CClientStreamer ( CClientMarker::IsLimitReached, 600.0f );
+    m_pObjectStreamer = new CClientStreamer ( CClientObjectManager::IsObjectLimitReached, 500.0f );
+    m_pPickupStreamer = new CClientStreamer ( CClientPickupManager::IsPickupLimitReached, 100.0f );
+    m_pPlayerStreamer = new CClientStreamer ( CClientPlayerManager::IsPlayerLimitReached, 250.0f );
+    m_pVehicleStreamer = new CClientStreamer ( CClientVehicleManager::IsVehicleLimitReached, 250.0f );
     m_pModelRequestManager = new CClientModelRequestManager;
 
     m_pGUIManager = new CClientGUIManager;
@@ -37,7 +45,6 @@ CClientManager::CClientManager ( void )
     m_pRadarAreaManager = new CClientRadarAreaManager ( this );
     m_pRadarMarkerManager = new CClientRadarMarkerManager ( this );
     m_pSoundManager = new CClientSoundManager ( this );
-    m_pRenderElementManager = new CClientRenderElementManager ( this );
     m_pTeamManager = new CClientTeamManager;
     m_pDisplayManager = new CClientDisplayManager;
     m_pVehicleManager = new CClientVehicleManager ( this );
@@ -52,16 +59,11 @@ CClientManager::CClientManager ( void )
     m_pColModelManager = new CClientColModelManager ( this );
     m_pExplosionManager = new CClientExplosionManager ( this );
     m_pWaterManager = new CClientWaterManager ( this );
-    m_pWeaponManager = new CClientWeaponManager ( this );
-    m_pEffectManager = new CClientEffectManager ( this );
-    m_pPointLightsManager = new CClientPointLightsManager ( this );
+
     m_pPacketRecorder = new CClientPacketRecorder ( this );
 
     m_bBeingDeleted = false;
     m_bGameUnloadedFlag = false;
-
-    g_pCore->GetMultiplayer ()->SetLODSystemEnabled ( false );
-    m_pCamera->MakeSystemEntity();
 }
 
 
@@ -121,9 +123,6 @@ CClientManager::~CClientManager ( void )
     delete m_pSoundManager;
     m_pSoundManager = NULL;
 
-    delete m_pRenderElementManager;
-    m_pRenderElementManager = NULL;
-
     delete m_pRadarMarkerManager;
     m_pRadarMarkerManager = NULL;
 
@@ -157,9 +156,6 @@ CClientManager::~CClientManager ( void )
     delete m_pObjectStreamer;
     m_pObjectStreamer = NULL;
 
-    delete m_pObjectLodStreamer;
-    m_pObjectLodStreamer = NULL;
-
     delete m_pMarkerStreamer;
     m_pMarkerStreamer = NULL;
 
@@ -169,53 +165,34 @@ CClientManager::~CClientManager ( void )
     delete m_pWaterManager;
     m_pWaterManager = NULL;
 
-    delete m_pWeaponManager;
-    m_pWeaponManager = NULL;
-
-    delete m_pPointLightsManager;
-    m_pPointLightsManager = NULL;
+    // Delete the connection trouble texture
+    delete m_pConnectionTroubleTexture;
+    m_pConnectionTroubleTexture = NULL;
 }
 
-//
-// This function gets called twice per game loop
-//
-void CClientManager::DoPulse ( bool bDoStandardPulses, bool bDoVehicleManagerPulse )
+
+void CClientManager::DoPulse ( void )
 {
-    if ( bDoStandardPulses )
-        m_pPacketRecorder->DoPulse ();
+    m_pPacketRecorder->DoPulse ();
 
     if ( IsGameLoaded () )
     {
-        if ( bDoStandardPulses )
-        {
-            m_pModelRequestManager->DoPulse ();
-            m_pCamera->DoPulse ();
-            /* now called from CClientGame::PostWorldProcessHandler so marker positions
-            are no longer a frame behind when attached to other entities.
-            m_pMarkerManager->DoPulse (); */ 
-            m_pRadarAreaManager->DoPulse ( false ); // DoPulse, but do not render (we render them from a hook to avoid render issues - the mask not blocking the edges)
-        }
-
-        if ( bDoVehicleManagerPulse )
-            m_pVehicleManager->DoPulse ();
-
-        if ( bDoStandardPulses )
-        {
-            m_pPathManager->DoPulse ();
-            m_pRadarMarkerManager->DoPulse ();
-            m_pPedManager->DoPulse ( true );
-            m_pObjectManager->DoPulse ();
-            m_pProjectileManager->DoPulse ();
-            m_pSoundManager->DoPulse ();
-            m_pPlayerManager->DoPulse ();
-            m_pColManager->DoPulse ();
-            m_pGUIManager->DoPulse ();
-            m_pWeaponManager->DoPulse ();
-        }
-        else
-        {
-            m_pPedManager->DoPulse ( false );
-        }
+        m_pModelRequestManager->DoPulse ();
+        m_pCamera->DoPulse ();
+        /* now called from CClientGame::PostWorldProcessHandler so marker positions
+           are no longer a frame behind when attached to other entities.
+        m_pMarkerManager->DoPulse (); */ 
+        m_pRadarAreaManager->DoPulse ( false ); // DoPulse, but do not render (we render them from a hook to avoid render issues - the mask not blocking the edges)
+        m_pVehicleManager->DoPulse ();
+        m_pPathManager->DoPulse ();
+        m_pRadarMarkerManager->DoPulse ();
+        m_pPedManager->DoPulse ();
+        m_pObjectManager->DoPulse ();
+        m_pProjectileManager->DoPulse ();
+        m_pSoundManager->DoPulse ();
+        m_pPlayerManager->DoPulse ();
+        m_pColManager->DoPulse ();
+        m_pGUIManager->DoPulse ();
     }
 }
 
@@ -241,7 +218,6 @@ void CClientManager::UpdateStreamers ( void )
         // Update the streamers
         m_pMarkerStreamer->DoPulse ( vecTemp );
         m_pObjectStreamer->DoPulse ( vecTemp );
-        m_pObjectLodStreamer->DoPulse ( vecTemp );
         m_pPickupStreamer->DoPulse ( vecTemp );
         m_pPlayerStreamer->DoPulse ( vecTemp );
         m_pVehicleStreamer->DoPulse ( vecTemp );
@@ -278,13 +254,63 @@ void CClientManager::UnreferenceEntity ( CClientEntity* pEntity )
 
 CClientEntity * CClientManager::FindEntity ( CEntity * pGameEntity, bool bValidatePointer )
 {
-    return g_pClientGame->GetGameEntityXRefManager ()->FindClientEntity ( pGameEntity );
+    CClientEntity* pEntity = NULL;
+    if ( pGameEntity )
+    {
+        if ( bValidatePointer )
+        {
+            // Dont check CEntity::GetEntityType, it may be an invalid pointer
+            if ( pEntity = m_pPedManager->Get ( dynamic_cast < CPlayerPed* > ( pGameEntity ), true, true ) )
+                return pEntity;
+
+            if ( pEntity = m_pVehicleManager->Get ( dynamic_cast < CVehicle* > ( pGameEntity ), true ) )
+                return pEntity;
+
+            if ( pEntity = m_pObjectManager->Get ( dynamic_cast < CObject* > ( pGameEntity ), true ) )
+                return pEntity;
+        }
+        else
+        {
+            eEntityType entityType = pGameEntity->GetEntityType ();
+            switch ( entityType )
+            {
+                case ENTITY_TYPE_VEHICLE:
+                {
+                    pEntity = m_pVehicleManager->Get ( dynamic_cast < CVehicle* > ( pGameEntity ), false );
+                    break;
+                }
+                case ENTITY_TYPE_PED:
+                {
+                    pEntity = m_pPedManager->Get ( dynamic_cast < CPlayerPed* > ( pGameEntity ), false, true );
+                    break;
+                }
+                case ENTITY_TYPE_OBJECT:
+                {
+                    pEntity = m_pObjectManager->Get ( dynamic_cast < CObject* > ( pGameEntity ), false );
+                    break;
+                }
+            }
+        }
+    }
+    return pEntity;
 }
 
 
 CClientEntity * CClientManager::FindEntitySafe ( CEntity * pGameEntity )
 {
-    return g_pClientGame->GetGameEntityXRefManager ()->FindClientEntity ( pGameEntity );
+    CClientEntity* pEntity = NULL;
+    if ( pGameEntity )
+    {
+        if ( pEntity = m_pPedManager->GetSafe ( pGameEntity, true ) )
+            return pEntity;
+
+        if ( pEntity = m_pVehicleManager->GetSafe ( pGameEntity ) )
+            return pEntity;
+
+        if ( pEntity = m_pObjectManager->GetSafe ( pGameEntity ) )
+            return pEntity;        
+    }
+    return pEntity;
 }
 
 
@@ -294,21 +320,4 @@ void CClientManager::OnUpdateStreamPosition ( CClientStreamElement * pElement )
     {
         m_pColManager->DoHitDetection ( pElement->GetStreamPosition (), 0.0f, pElement );
     }
-}
-
-// Only enable LOD hooks when needed
-void CClientManager::OnLowLODElementCreated ( void )
-{
-    // Switch on with first low LOD element
-    if ( m_iNumLowLODElements == 0 )
-        g_pCore->GetMultiplayer ()->SetLODSystemEnabled ( true );
-    m_iNumLowLODElements++;
-}
-
-void CClientManager::OnLowLODElementDestroyed ( void )
-{
-    // Switch off with last low LOD element
-    m_iNumLowLODElements--;
-    if ( m_iNumLowLODElements == 0 )
-        g_pCore->GetMultiplayer ()->SetLODSystemEnabled ( false );
 }

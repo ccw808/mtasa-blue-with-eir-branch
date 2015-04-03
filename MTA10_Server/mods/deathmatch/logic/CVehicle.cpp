@@ -16,10 +16,8 @@
 
 extern CGame * g_pGame;
 
-CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNode* pNode, unsigned short usModel, unsigned char ucVariant, unsigned char ucVariant2 ) : CElement ( pParent, pNode )
+CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNode* pNode, unsigned short usModel ) : CElement ( pParent, pNode )
 {
-    CElementRefManager::AddElementRefs ( ELEMENT_REF_DEBUG ( this, "CVehicle" ), &m_pTowedVehicle, &m_pTowedByVehicle, &m_pSyncer, &m_pJackingPlayer, NULL );
-
     // Init
     m_pVehicleManager = pVehicleManager;
     m_usModel = usModel;
@@ -29,8 +27,9 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
     SetTypeName ( "vehicle" );
     m_eVehicleType = CVehicleManager::GetVehicleType ( m_usModel );
     m_fHealth = DEFAULT_VEHICLE_HEALTH;
-    m_fLastSyncedHealthHealth = DEFAULT_VEHICLE_HEALTH;
-    m_llIdleTime = CTickCount::Now ();
+    m_ulHealthChangeTime = 0;
+    m_ulBlowTime = 0;
+    m_ulIdleTime = GetTickCount32 ();
     m_fTurretPositionX = 0;
     m_fTurretPositionY = 0;
     m_bSirenActive = false;
@@ -40,20 +39,20 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
     m_bUnoccupiedSyncable = true;
     m_pSyncer = NULL;
     GetInitialDoorStates ( m_ucDoorStates );
-    memset ( &m_ucWheelStates[0], 0, sizeof ( m_ucWheelStates ) );
-    memset ( &m_ucPanelStates[0], 0, sizeof ( m_ucPanelStates ) );
-    memset ( &m_ucLightStates[0], 0, sizeof ( m_ucLightStates ) );
+    memset ( m_ucWheelStates, 0, sizeof ( m_ucWheelStates ) );
+    memset ( m_ucPanelStates, 0, sizeof ( m_ucPanelStates ) );
+    memset ( m_ucLightStates, 0, sizeof ( m_ucLightStates ) );
     m_ucOverrideLights = 0;
     m_pTowedVehicle = NULL;
     m_pTowedByVehicle = NULL;
     m_ucPaintjob = 3;
     m_ucMaxPassengersOverride = VEHICLE_PASSENGERS_UNDEFINED;
-    m_pHandlingEntry = NULL;
 
+    m_bRespawnInfoChanged = false;
     m_fRespawnHealth = DEFAULT_VEHICLE_HEALTH;
     m_bRespawnEnabled = false;
-    m_ulBlowRespawnInterval = 10000;
-    m_ulIdleRespawnInterval = 60000;
+    m_ulRespawnTime = 10000;
+    m_ulIdleRespawnTime = 60000;
 
     m_bEngineOn = false;
     for ( unsigned int i = 0; i < 6; ++i )
@@ -66,21 +65,16 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
     m_bOnGround = true;
     m_bSmokeTrail = false;
     m_ucAlpha = 255;
-    m_pJackingPlayer = NULL;
+    m_pEnteringPed = NULL;
     m_bInWater = false;
     m_bDerailed = false;
     m_bIsDerailable = true;
-    m_fTrainSpeed = 0.0f;
-    m_fTrainPosition = 0.0f;
-    m_ucTrackID = 0;
     m_bTaxiLightState = false;
-    m_bTrainDirection = false;
+    m_bTrainDirection = true;
     m_HeadLightColor = SColorRGBA ( 255, 255, 255, 255 );
     m_bHeliSearchLightVisible = false;
     m_bCollisionsEnabled = true;
     m_bHandlingChanged = false;
-    m_ucVariant = ucVariant;
-    m_ucVariant2 = ucVariant2;
 
     // Initialize the occupied Players
     for ( int i = 0; i < MAX_VEHICLE_SEATS; i++ )
@@ -99,51 +93,21 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
 
     // Generate the handling data
     GenerateHandlingData ();
-
-    // Prepare the sirens
-    RemoveVehicleSirens();
-    m_tSirenBeaconInfo.m_bOverrideSirens = false;
 }
 
 
 CVehicle::~CVehicle ( void )
 {
-    if ( m_pJackingPlayer && m_pJackingPlayer->GetJackingVehicle () == this )
-    {
-        if ( m_pJackingPlayer->GetVehicleAction () == CPlayer::VEHICLEACTION_JACKING )
-        {
-            m_pJackingPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
-        }
-        m_pJackingPlayer->SetJackingVehicle ( NULL );
-    }
+    CPed* pEnteringPed = GetEnteringPed ( );
 
-    // loop through players and fix their in out state
-    
-    for ( int i = 0; i < MAX_VEHICLE_SEATS; i++ )
+    if ( pEnteringPed && pEnteringPed->GetEnteringVehicle () == this )
     {
-        CPed * pPed = m_pOccupants [i];
-        if ( pPed && pPed->IsPlayer ( ) )
+        if ( pEnteringPed->GetVehicleAction () != CPlayer::VEHICLEACTION_NONE )
         {
-            CPlayer * pPlayer = static_cast < CPlayer * > ( pPed );
-            // Is he already getting out?
-            if ( pPlayer->GetVehicleAction () == CPlayer::VEHICLEACTION_EXITING )
-            {
-                // Does it have an occupant and is the occupant the requesting player?
-                unsigned char ucOccupiedSeat = pPlayer->GetOccupiedVehicleSeat ();
-                if ( pPlayer == GetOccupant ( ucOccupiedSeat ) )
-                {
-                    // Mark the player/vehicle as empty
-                    SetOccupant ( NULL, ucOccupiedSeat );
-                    pPlayer->SetOccupiedVehicle ( NULL, 0 );
-                    pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
-
-                    // Tell everyone he can start exiting the vehicle
-                    CVehicleInOutPacket Reply ( GetID ( ), ucOccupiedSeat, 4 );
-                    Reply.SetSourceElement ( pPlayer );
-                    g_pGame->GetPlayerManager ( )->BroadcastOnlyJoined ( Reply );
-                }
-            }
+            pEnteringPed->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
         }
+
+        pEnteringPed->SetEnteringVehicle ( NULL, 0 );
     }
 
     // Unset any tow links
@@ -167,12 +131,6 @@ CVehicle::~CVehicle ( void )
     }
     delete m_pUpgrades;
     delete m_pHandlingEntry;
-
-    CElementRefManager::RemoveElementRefs ( ELEMENT_REF_DEBUG ( this, "CVehicle" ), &m_pTowedVehicle, &m_pTowedByVehicle, &m_pSyncer, &m_pJackingPlayer, NULL );
-
-    // Notify the vehicle manager that we are not to be respawned anymore if neccessary
-    if ( m_bRespawnEnabled )
-        m_pVehicleManager->GetRespawnEnabledVehicles ( ).remove ( this );
 
     // Remove us from the vehicle manager
     Unlink ();
@@ -246,18 +204,6 @@ bool CVehicle::ReadSpecialData ( void )
         CLogger::ErrorPrintf ( "Bad/missing 'model' attribute in <vehicle> (line %u)\n", m_uiLine );
         return false;
     }
-
-    // Grab the variant data
-    if ( GetCustomDataInt ( "variant1", iTemp, true ) )
-    {
-        m_ucVariant = static_cast < unsigned char > ( iTemp );
-    }
-    if ( GetCustomDataInt ( "variant2", iTemp, true ) )
-    {
-        m_ucVariant2 = static_cast < unsigned char > ( iTemp );
-    }
-    if ( m_ucVariant == 254 && m_ucVariant2 == 254 )
-        CVehicleManager::GetRandomVariation ( m_usModel, m_ucVariant, m_ucVariant2 );
 
     // Grab the "turretX" data
     if ( GetCustomDataFloat ( "turretX", m_fTurretPositionX, true ) )
@@ -386,25 +332,6 @@ bool CVehicle::ReadSpecialData ( void )
 }
 
 
-void CVehicle::GetMatrix( CMatrix& matrix )
-{
-    CVector vecRotation;
-    GetRotation( vecRotation );
-    matrix.SetRotation( vecRotation );
-    matrix.vPos = GetPosition();
-}
-
-
-void CVehicle::SetMatrix( const CMatrix& matrix )
-{
-    // Set position and rotation from matrix
-    SetPosition( matrix.vPos );
-    CVector vecRotation = matrix.GetRotation();
-    ConvertRadiansToDegreesNoWrap( vecRotation );
-    SetRotationDegrees( vecRotation );
-}
-
-
 const CVector & CVehicle::GetPosition ( void )
 {
     // Are we attached to something?
@@ -422,6 +349,7 @@ void CVehicle::SetPosition ( const CVector & vecPosition )
     if ( m_vecPosition != vecPosition )
     {
         // Update our stored vectors
+        m_vecLastPosition = m_vecPosition;
         m_vecPosition = vecPosition;
         UpdateSpatialData ();
     }
@@ -441,13 +369,8 @@ void CVehicle::GetRotation ( CVector & vecRotation )
 
 void CVehicle::GetRotationDegrees ( CVector & vecRotation )
 {
-    if ( m_pAttachedTo )
-    {
-        GetAttachedRotation ( vecRotation );
-        ConvertRadiansToDegrees ( vecRotation );
-    }
-    else
-        vecRotation = m_vecRotationDegrees;
+    if ( m_pAttachedTo ) GetAttachedRotation ( vecRotation );
+    else vecRotation = m_vecRotationDegrees;
 }
 
 
@@ -463,10 +386,8 @@ void CVehicle::SetModel ( unsigned short usModel )
     if ( usModel != m_usModel )
     {
         m_usModel = usModel;
-        m_eVehicleType = CVehicleManager::GetVehicleType ( m_usModel );
         RandomizeColor ();
-        ResetDoors ();
-        CVehicleManager::GetRandomVariation ( m_usModel, m_ucVariant, m_ucVariant2 );
+        GetInitialDoorStates ( m_ucDoorStates );
 
         // Generate new handling data to fit the vehicle
         GenerateHandlingData ();
@@ -479,11 +400,6 @@ bool CVehicle::HasValidModel ( void )
     return CVehicleManager::IsValidModel ( m_usModel );
 }
 
-void CVehicle::SetVariants ( unsigned char ucVariant, unsigned char ucVariant2 )
-{
-    m_ucVariant = ucVariant;
-    m_ucVariant2 = ucVariant2;
-}
 
 CVehicleColor& CVehicle::RandomizeColor ( void )
 {
@@ -575,15 +491,7 @@ bool CVehicle::SetOccupant ( CPed* pPed, unsigned int uiSeat )
     if ( !bAlreadySetting )
     {
         // Set the Player
-        if ( m_pOccupants [uiSeat] != pPed )
-        {
-            if ( g_pBandwidthSettings->bLightSyncEnabled )
-            {
-                if ( uiSeat == 0 && m_pOccupants[0] && IS_PLAYER(m_pOccupants[0]) )
-                    g_pGame->GetPlayerManager()->BroadcastOnlyJoined ( CVehicleResyncPacket(this) );
-            }
-            m_pOccupants [uiSeat] = pPed;
-        }
+        m_pOccupants [uiSeat] = pPed;
 
         // Make sure the Player record is up to date
         if ( pPed )
@@ -592,10 +500,6 @@ bool CVehicle::SetOccupant ( CPed* pPed, unsigned int uiSeat )
             pPed->SetOccupiedVehicle ( this, uiSeat );
             bAlreadySetting = false;
         }
-
-        // Ensure idle timer is stopped when the vehicle has any occupants
-        if ( GetFirstOccupant () )
-            StopIdleTimer ();
 
         return true;
     }
@@ -666,7 +570,7 @@ void CVehicle::SetUpgrades ( CVehicleUpgrades* pUpgrades )
 
 bool CVehicle::SetTowedVehicle ( CVehicle* pVehicle )
 {
-    if ( m_pTowedVehicle )
+    if ( m_pTowedVehicle && pVehicle )
     {
         m_pTowedVehicle->m_pTowedByVehicle = NULL;
         m_pTowedVehicle = NULL;
@@ -693,7 +597,7 @@ bool CVehicle::SetTowedVehicle ( CVehicle* pVehicle )
 
 bool CVehicle::SetTowedByVehicle ( CVehicle* pVehicle )
 {
-    if ( m_pTowedByVehicle )
+    if ( m_pTowedByVehicle && pVehicle )
     {
         m_pTowedByVehicle->m_pTowedVehicle = NULL;
         m_pTowedByVehicle = NULL;
@@ -721,16 +625,21 @@ bool CVehicle::SetTowedByVehicle ( CVehicle* pVehicle )
 void CVehicle::SpawnAt ( const CVector& vecPosition, const CVector& vecRotation )
 {
     SetHealth ( GetRespawnHealth () );
-    SetIsBlown ( false );
-    StopIdleTimer ();
-    ResetDoorsWheelsPanelsLights ();
+    SetBlowTime ( 0 );
+    SetIdleTime ( 0 );
+    GetInitialDoorStates ( m_ucDoorStates );
+    memset ( m_ucWheelStates, 0, sizeof ( m_ucWheelStates ) );
+    memset ( m_ucPanelStates, 0, sizeof ( m_ucPanelStates ) );
+    memset ( m_ucLightStates, 0, sizeof ( m_ucLightStates ) );
     SetLandingGearDown ( true );
     SetAdjustableProperty ( 0 );
     SetTowedByVehicle ( NULL );
     AttachTo ( NULL );
     
-    m_vecTurnSpeed = CVector ();
-    m_vecVelocity = CVector ();
+    CVector vecNull;
+
+    m_vecTurnSpeed = vecNull;
+    m_vecVelocity = vecNull;
     m_vecPosition = vecPosition;
     m_vecRotationDegrees = vecRotation;
     UpdateSpatialData ();
@@ -739,6 +648,7 @@ void CVehicle::SpawnAt ( const CVector& vecPosition, const CVector& vecRotation 
 
 void CVehicle::Respawn ()
 {
+    m_vecLastPosition = m_vecPosition;
     SpawnAt ( m_vecRespawnPosition, m_vecRespawnRotationDegrees );
 }
 
@@ -747,7 +657,7 @@ void CVehicle::SetRegPlate ( const char* szRegPlate )
 {
     // Copy the text and make sure non-used chars are nulled.
     memset ( m_szRegPlate, 0, 9 );
-    STRNCPY ( m_szRegPlate, szRegPlate, 9 );
+    strncpy ( m_szRegPlate, szRegPlate, 9 );
 }
 
 
@@ -783,7 +693,7 @@ void CVehicle::SetPaintjob ( unsigned char ucPaintjob )
 }
 
 
-void CVehicle::GetInitialDoorStates ( SFixedArray < unsigned char, MAX_DOORS >& ucOutDoorStates )
+void CVehicle::GetInitialDoorStates ( unsigned char * pucDoorStates )
 {
     switch ( m_usModel )
     {
@@ -803,187 +713,23 @@ void CVehicle::GetInitialDoorStates ( SFixedArray < unsigned char, MAX_DOORS >& 
         case VT_RCTIGER:
         case VT_TRACTOR:
         case VT_VORTEX:
-            memset ( &ucOutDoorStates[0], DT_DOOR_MISSING, MAX_DOORS );
+            memset ( pucDoorStates, DT_DOOR_MISSING, 6 );
 
             // Keep the bonet and boot intact
-            ucOutDoorStates [ 0 ] = ucOutDoorStates [ 1 ] = DT_DOOR_INTACT;
+            pucDoorStates [ 0 ] = pucDoorStates [ 1 ] = DT_DOOR_INTACT;
             break;
         default:
-            memset ( &ucOutDoorStates[0], DT_DOOR_INTACT, MAX_DOORS );
+            memset ( pucDoorStates, DT_DOOR_INTACT, 6 );
     }
 }
 
 
-void CVehicle::GenerateHandlingData ( void )
+void CVehicle::GenerateHandlingData ()
 {
     // Make a new CHandlingEntry
-    if( m_pHandlingEntry == NULL )
-        m_pHandlingEntry = g_pGame->GetHandlingManager()->CreateHandlingData ( );
+    m_pHandlingEntry = new CHandlingEntry( );
     // Apply the model handling info
     m_pHandlingEntry->ApplyHandlingData( g_pGame->GetHandlingManager ()->GetModelHandlingData ( static_cast < eVehicleTypes > ( m_usModel ) ) );
 
     m_bHandlingChanged = false;
-}
-
-void CVehicle::SetVehicleSirenPosition ( unsigned char ucSirenID, CVector vecPos )
-{
-    m_tSirenBeaconInfo.m_tSirenInfo[ucSirenID].m_vecSirenPositions = vecPos;
-}
-
-void CVehicle::SetVehicleSirenMinimumAlpha( unsigned char ucSirenID, DWORD dwPercentage )
-{
-    m_tSirenBeaconInfo.m_tSirenInfo[ucSirenID].m_dwMinSirenAlpha = dwPercentage;
-}
-
-void CVehicle::SetVehicleSirenColour ( unsigned char ucSirenID, SColor tVehicleSirenColour )
-{
-    m_tSirenBeaconInfo.m_tSirenInfo[ucSirenID].m_RGBBeaconColour = tVehicleSirenColour;
-}
-
-void CVehicle::SetVehicleFlags ( bool bEnable360, bool bEnableRandomiser, bool bEnableLOSCheck, bool bEnableSilent )
-{
-    m_tSirenBeaconInfo.m_b360Flag = bEnable360; 
-    m_tSirenBeaconInfo.m_bDoLOSCheck = bEnableLOSCheck; 
-    m_tSirenBeaconInfo.m_bUseRandomiser = bEnableRandomiser;
-    m_tSirenBeaconInfo.m_bSirenSilent = bEnableSilent;
-}
-void CVehicle::RemoveVehicleSirens ( void )
-{
-    for ( int i = 0; i <= 7; i++ )
-    {
-        m_tSirenBeaconInfo.m_tSirenInfo [ i ] = SSirenBeaconInfo ( );
-        SetVehicleSirenPosition( i, CVector ( 0, 0, 0 ) );
-        SetVehicleSirenMinimumAlpha( i, 0 );
-        SetVehicleSirenColour( i, SColor ( ) );
-    }
-
-    m_tSirenBeaconInfo.m_ucSirenCount = 0;
-}
-
-
-void CVehicle::ResetDoors ( void )
-{
-    GetInitialDoorStates ( m_ucDoorStates );
-    for ( unsigned int i = 0; i < 6; ++i )
-        m_fDoorOpenRatio [ i ] = 0.0f;
-}
-
-
-void CVehicle::ResetDoorsWheelsPanelsLights ( void )
-{
-    ResetDoors ();
-    memset ( &m_ucWheelStates[0], 0, sizeof ( m_ucWheelStates ) );
-    memset ( &m_ucPanelStates[0], 0, sizeof ( m_ucPanelStates ) );
-    memset ( &m_ucLightStates[0], 0, sizeof ( m_ucLightStates ) );
-}
-
-// For blow respawn timer
-void CVehicle::SetIsBlown ( bool bBlown )
-{
-    if ( !bBlown )
-        m_llBlowTime = CTickCount ( 0LL );
-    else
-        m_llBlowTime = CTickCount::Now ();
-}
-
-
-bool CVehicle::GetIsBlown ( void )
-{
-    return m_llBlowTime.ToLongLong () != 0;
-}
-
-
-bool CVehicle::IsBlowTimerFinished ( void )
-{
-    return GetIsBlown () && CTickCount::Now () > m_llBlowTime + CTickCount ( (long long)m_ulBlowRespawnInterval );
-}
-
-
-void CVehicle::StopIdleTimer ( void )
-{
-    m_llIdleTime = CTickCount ( 0LL );
-}
-
-
-void CVehicle::RestartIdleTimer ( void )
-{
-    m_llIdleTime = CTickCount::Now ();
-}
-
-
-bool CVehicle::IsIdleTimerRunning ( void )
-{
-    return m_llIdleTime.ToLongLong () != 0;
-}
-
-
-bool CVehicle::IsIdleTimerFinished ( void )
-{
-    return IsIdleTimerRunning () && CTickCount::Now () > m_llIdleTime + CTickCount ( (long long)m_ulIdleRespawnInterval );
-}
-
-
-// Check if vehicle has not moved (much) since the last call
-bool CVehicle::IsStationary ( void )
-{
-    const CVector& vecPosition = GetPosition ();
-    if ( ( vecPosition - m_vecStationaryCheckPosition ).LengthSquared () < 0.1f * 0.1f )
-        return true;
-
-    m_vecStationaryCheckPosition = vecPosition;
-    return false;
-}
-
-
-void CVehicle::SetJackingPlayer ( CPlayer* pPlayer )
-{
-    if ( pPlayer == m_pJackingPlayer )
-        return;
-
-    // Remove old
-    if ( m_pJackingPlayer )
-    {
-        CPlayer* pPrev = m_pJackingPlayer;
-        m_pJackingPlayer = NULL;
-        pPrev->SetJackingVehicle ( NULL );
-    }
-
-    // Set new
-    m_pJackingPlayer = pPlayer;
-
-    if ( m_pJackingPlayer )
-        m_pJackingPlayer->SetJackingVehicle ( this );
-}
-
-
-void CVehicle::OnRelayUnoccupiedSync ( void )
-{
-    // Detect dimension change
-    m_bNeedsDimensionResync |= ( GetDimension() != m_usLastUnoccupiedSyncDimension );
-    m_usLastUnoccupiedSyncDimension = GetDimension();
-}
-
-
-void CVehicle::HandleDimensionResync ( void )
-{
-    if ( m_bNeedsDimensionResync )
-    {
-        // Unoccupied vehicle might be desynced because of dimension optimizations, so resync to players in new dimension
-        g_pGame->GetPlayerManager()->BroadcastDimensionOnlyJoined( CVehicleResyncPacket( this ), GetDimension() );
-        m_bNeedsDimensionResync = false;
-    }
-}
-
-void CVehicle::SetRespawnEnabled ( bool bEnabled )
-{ 
-    // If we changed the state, update the internal var and notify the vehicle manager
-    if ( bEnabled != m_bRespawnEnabled )
-    {
-        if ( bEnabled ) 
-            m_pVehicleManager->GetRespawnEnabledVehicles ( ).push_back ( this );
-        else 
-            m_pVehicleManager->GetRespawnEnabledVehicles ( ).remove ( this );
-
-        m_bRespawnEnabled = bEnabled;
-    }
 }

@@ -23,9 +23,14 @@
 #include "CCommon.h"
 #include "CPad.h"
 
+#ifndef PI
+#define PI 3.14159265358979323846264338327950
+#endif
+
+#define SAFE_DELETE(p) { if(p) { delete (p); (p)=NULL; } }
+
 bool            CheckNickProvided           ( const char* szNick );
 float           DistanceBetweenPoints2D     ( const CVector& vecPosition1, const CVector& vecPosition2 );
-float           DistanceBetweenPoints2D     ( const CVector2D& vecPosition1, const CVector2D& vecPosition2 );
 float           DistanceBetweenPoints3D     ( const CVector& vecPosition1, const CVector& vecPosition2 );
 bool            IsPointNearPoint2D          ( const CVector& vecPosition1, const CVector& vecPosition2, float fDistance );
 bool            IsPointNearPoint3D          ( const CVector& vecPosition1, const CVector& vecPosition2, float fDistance );
@@ -42,10 +47,11 @@ void            stripControlCodes           ( char* szString );
 bool            StringBeginsWith            ( const char* szText, const char* szBegins );
 bool            IsNumericString             ( const char* szString );
 bool            IsNumericString             ( const char* szString, size_t sizeString );
+unsigned int    HashString                  ( const char* szString );
+
+void            InitializeTime              ( void );
 
 void            DisconnectPlayer            ( class CGame* pGame, class CPlayer& Player, const char* szMessage );
-void            DisconnectPlayer            ( class CGame* pGame, class CPlayer& Player, CPlayerDisconnectedPacket::ePlayerDisconnectType eDisconnectType,  const char* szMessage = "" );
-void            DisconnectPlayer            ( class CGame* pGame, class CPlayer& Player, CPlayerDisconnectedPacket::ePlayerDisconnectType eDisconnectType,  time_t BanDuration, const char* szMessage = "" );
 void            DisconnectConnectionDesync  ( class CGame* pGame, class CPlayer& Player, unsigned int uiCode );
 
 bool            InitializeSockets           ( void );
@@ -56,12 +62,26 @@ double          GetRandomDouble             ( void );
 int             GetRandom                   ( int iLow, int iHigh );
 
 bool            IsValidFilePath             ( const char* szPath );
-bool            IsValidOrganizationPath     ( const char* szPath );
 
 unsigned int    HexToInt                    ( const char* szHex );
 bool            XMLColorToInt               ( const char* szColor, unsigned long& ulColor );
 bool            XMLColorToInt               ( const char* szColor, unsigned char& ucRed, unsigned char& ucGreen, unsigned char& ucBlue, unsigned char& ucAlpha );
 
+
+inline unsigned long GetTime ( void )
+{
+    #if WIN32
+        extern LONGLONG g_lTimeCounts;
+        LARGE_INTEGER lPerf;
+        QueryPerformanceCounter ( &lPerf );
+        return static_cast < unsigned long > ( lPerf.QuadPart / g_lTimeCounts );
+    #else
+        extern timeval  g_tvInitialTime;
+        timeval tvNow;
+        gettimeofday ( &tvNow, 0 );
+        return static_cast < unsigned long > ( ( tvNow.tv_sec - g_tvInitialTime.tv_sec ) * 1000 + ( tvNow.tv_usec - g_tvInitialTime.tv_usec ) / 1000 );
+    #endif
+}
 
 inline float WrapAround ( float fValue, float fHigh )
 {
@@ -141,24 +161,13 @@ inline void ConvertDegreesToRadiansNoWrap ( CVector& vecRotation )
     vecRotation.fZ = ConvertDegreesToRadiansNoWrap ( vecRotation.fZ );
 }
 
-// Assuming fValue is the result of a difference calculation, calculate
-// the shortest positive distance after wrapping
-inline float GetSmallestWrapUnsigned ( float fValue, float fHigh )
-{
-    float fWrapped =  fValue - ( fHigh * floor ( static_cast < float > ( fValue / fHigh ) ) );
-    if ( fWrapped > fHigh / 2 )
-        fWrapped = fHigh - fWrapped;
-    return fWrapped;
-}
-
 // Escapes the HTML characters <, >, &, " and '. Don't forget to remove your buffer to avoid memory leaks.
 const char* HTMLEscapeString ( const char *szSource );
 
-bool ReadSmallKeysync ( CControllerState& ControllerState, NetBitStreamInterface& BitStream );
-void WriteSmallKeysync ( const CControllerState& ControllerState, NetBitStreamInterface& BitStream );
+bool ReadSmallKeysync ( CControllerState& ControllerState, const CControllerState& LastControllerState, NetBitStreamInterface& BitStream );
+void WriteSmallKeysync ( const CControllerState& ControllerState, const CControllerState& LastControllerState, NetBitStreamInterface& BitStream );
 bool ReadFullKeysync ( CControllerState& ControllerState, NetBitStreamInterface& BitStream );
 void WriteFullKeysync ( const CControllerState& ControllerState, NetBitStreamInterface& BitStream );
-void ReadCameraOrientation ( const CVector& vecBasePosition, NetBitStreamInterface& BitStream, CVector& vecOutCamPosition, CVector& vecOutCamFwd );
 
 
 // Validation funcs
@@ -167,7 +176,7 @@ bool            IsNametagValid              ( const char* szNick );
 void            RotateVector                ( CVector& vecLine, const CVector& vecRotation );
 
 // Network funcs
-SString         LongToDottedIP              ( unsigned long ulIP );
+void            LongToDottedIP              ( unsigned long ulIP, char* szDottedIP );
 
 
 inline bool IsVisibleCharacter ( unsigned char c )
@@ -175,6 +184,8 @@ inline bool IsVisibleCharacter ( unsigned char c )
     // 32..126 are visible characters
     return c >= 32 && c <= 126;
 }
+
+bool            FileCopy                    ( const char* szPathNameSrc, const char* szPathDst );
 
 inline SString SQLEscape ( const SString& strEscapeString, bool bSingleQuotes, bool bDoubleQuotes )
 {
@@ -191,20 +202,16 @@ inline SString SQLEscape ( const SString& strEscapeString, bool bSingleQuotes, b
 }
 
 // Maths utility functions
-CVector             ConvertEulerRotationOrder   ( const CVector& a_vRotation, eEulerRotationOrder a_eSrcOrder, eEulerRotationOrder a_eDstOrder );
-
-// Clear list of object pointers
-template < class T >
-void DeletePointersAndClearList ( T& elementList )
+enum eEulerRotationOrder
 {
-    T cloneList = elementList;
-    elementList.clear ();
+    EULER_DEFAULT,
+    EULER_ZXY,
+    EULER_ZYX,
+    EULER_MINUS_ZYX,
+    EULER_INVALID = 0xFF,
+};
 
-    typename T::const_iterator iter = cloneList.begin ();
-    for ( ; iter != cloneList.end () ; iter++ )
-    {
-        delete *iter;
-    }
-}
+eEulerRotationOrder EulerRotationOrderFromString( const char* szString );
+CVector             ConvertEulerRotationOrder   ( const CVector& a_vRotation, eEulerRotationOrder a_eSrcOrder, eEulerRotationOrder a_eDstOrder );
 
 #endif

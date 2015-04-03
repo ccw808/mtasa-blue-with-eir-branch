@@ -96,16 +96,9 @@ void CObjectRPCs::SetObjectScale ( CClientEntity* pSource, NetBitStreamInterface
     CDeathmatchObject* pObject = static_cast < CDeathmatchObject* > ( m_pObjectManager->Get ( pSource->GetID () ) );
     if ( pObject )
     {
-        CVector vecScale;
+        float fScale;
         
-        bitStream.Read ( vecScale.fX );
-        vecScale.fY = vecScale.fX;
-        vecScale.fZ = vecScale.fX;
-        if( bitStream.Version () >= 0x40 )
-        {
-             bitStream.Read ( vecScale.fY );
-             bitStream.Read ( vecScale.fZ );
-        }
-        pObject->SetScale ( vecScale );
+        if ( bitStream.Read ( fScale ) )
+            pObject->SetScale ( fScale );
     }
 }

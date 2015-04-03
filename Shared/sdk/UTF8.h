@@ -141,14 +141,8 @@ utf8_wctomb (unsigned char *dest, wchar_t wc, int dest_size)
     return count;
 }
 
-
-//////////////////////////////////////////////////
-//
-// Original - For testing
-//
-
 std::wstring
-utf8_mbstowcs_orig (const std::string & str)
+utf8_mbstowcs (const std::string & str)
 {
     std::wstring wstr;
     wchar_t wc;
@@ -167,7 +161,7 @@ utf8_mbstowcs_orig (const std::string & str)
 }
 
 std::string
-utf8_wcstombs_orig (const std::wstring & wstr)
+utf8_wcstombs (const std::wstring & wstr)
 {
     std::string str;
     char utf8 [6];
@@ -179,93 +173,4 @@ utf8_wcstombs_orig (const std::wstring & wstr)
             str.append (utf8, un);
     }
     return str;
-}
-
-
-//////////////////////////////////////////////////
-//
-// Optimized - faster for strings smaller than SMALL_STRING_LIMIT
-//
-#define SMALL_STRING_LIMIT 1000
-
-std::wstring
-utf8_mbstowcs (const std::string & str)
-{
-    const unsigned char *s = (const unsigned char *) str.c_str ();
-    const unsigned int length = str.length ();
-
-    if ( length < SMALL_STRING_LIMIT )
-    {
-        // Faster but limited size
-        uint cCharacters = length + 1;
-        uint cBytes = ( cCharacters ) * sizeof( wchar_t );
-
-        wchar_t* buffer = (wchar_t*)alloca ( cBytes );
-        wchar_t* ptr = buffer;
-        wchar_t wc;
-        unsigned int sn = 0;
-        int un = 0;
-
-        while (sn < length && *s != 0 &&
-                (un=utf8_mbtowc (&wc, s, length - sn)) > 0) {
-            *ptr++ = wc;
-            s += un;
-            sn += un;
-        }
-        size_t usedsize = ptr - buffer;
-        dassert ( usedsize < cCharacters );
-        return std::wstring( buffer, usedsize );
-    }
-    else
-    {
-        // Slower but any size
-        std::wstring wstr;
-        wchar_t wc;
-        unsigned int sn = 0;
-        int un = 0;
-
-        while (sn < length && *s != 0 &&
-                (un=utf8_mbtowc (&wc, s, length - sn)) > 0) {
-            wstr.push_back (wc);
-            s += un;
-            sn += un;
-        }
-        return wstr;
-    }
-}
-
-
-// Optimized
-std::string
-utf8_wcstombs (const std::wstring & wstr)
-{
-    const unsigned int size = wstr.length ();
-
-    if ( size < SMALL_STRING_LIMIT )
-    {
-        // Faster but limited size
-        uint cBytes = ( size + 1 ) * 6;
-        char* buffer = (char*)alloca ( cBytes );
-        char* ptr = buffer;
-        for (unsigned int i = 0; i<size ; ++i)
-        {
-            ptr += utf8_wctomb ((unsigned char*)ptr, wstr [i], 6 );
-        }
-        size_t usedsize = ptr - buffer;
-        dassert ( usedsize < cBytes );
-        return std::string( buffer, usedsize );
-    }
-    else
-    {
-        // Slower but any size
-        char utf8 [6];
-        std::string str;
-
-        for (unsigned int i = 0; i<size ; ++i) {
-            int un = utf8_wctomb ((unsigned char*)utf8, wstr [i], 6);
-            if (un > 0)
-                str.append (utf8, un);
-        }
-        return str;
-    }
 }

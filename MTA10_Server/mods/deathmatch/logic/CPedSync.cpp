@@ -12,21 +12,26 @@
 
 #include "StdInc.h"
 
+extern CGame * g_pGame;
+
+#define MAX_PLAYER_SYNC_DISTANCE 100.0f
 
 CPedSync::CPedSync ( CPlayerManager* pPlayerManager, CPedManager* pPedManager )
 {
     m_pPlayerManager = pPlayerManager;
     m_pPedManager = pPedManager;
+    m_ulLastSweepTime = 0;
 }
 
 
 void CPedSync::DoPulse ( void )
 {
     // Time to check for players that should no longer be syncing a ped or peds that should be synced?
-    if ( m_UpdateTimer.Get() > 500 )
+    unsigned long ulCurrentTime = GetTime ();
+    if ( ulCurrentTime >= m_ulLastSweepTime + 500 )
     {
-        m_UpdateTimer.Reset();
-        Update ();
+        m_ulLastSweepTime = ulCurrentTime;
+        Update ( ulCurrentTime );
     }
 }
 
@@ -54,22 +59,20 @@ void CPedSync::OverrideSyncer ( CPed* pPed, CPlayer* pPlayer )
         StopSync ( pPed );
     }
 
-    if ( pPlayer && !pPed->IsBeingDeleted () )
+    if ( pPlayer )
         StartSync ( pPlayer, pPed );
 }
 
 
-void CPedSync::Update ( void )
+void CPedSync::Update ( unsigned long ulCurrentTime )
 {
     // Update all the ped's sync states
     list < CPed* > ::const_iterator iter = m_pPedManager->IterBegin ();
-    for ( ; iter != m_pPedManager->IterEnd (); )
+    for ( ; iter != m_pPedManager->IterEnd (); iter++ )
     {
         // It is a ped, yet not a player
         if ( IS_PED ( *iter ) && !IS_PLAYER ( *iter ) )
-            UpdatePed ( *( iter++ ) );
-        else
-            iter++;
+            UpdatePed ( *iter );
     }
 }
 
@@ -94,17 +97,14 @@ void CPedSync::UpdatePed ( CPed* pPed )
     if ( pSyncer )
     {
         // He isn't close enough to the ped and in the right dimension?
-        if ( ( !IsPointNearPoint3D ( pSyncer->GetPosition (), pPed->GetPosition (), (float)g_TickRateSettings.iPedSyncerDistance ) ) ||
+        if ( ( !IsPointNearPoint3D ( pSyncer->GetPosition (), pPed->GetPosition (), MAX_PLAYER_SYNC_DISTANCE ) ) ||
                 ( pPed->GetDimension () != pSyncer->GetDimension () ) )
         {
             // Stop him from syncing it
             StopSync ( pPed );
 
-            if ( !pPed->IsBeingDeleted () )
-            {
-                // Find a new syncer for it
-                FindSyncer ( pPed );
-            }
+            // Find a new syncer for it
+            FindSyncer ( pPed );
         }
     }
     else
@@ -120,7 +120,7 @@ void CPedSync::FindSyncer ( CPed* pPed )
     assert ( pPed->IsSyncable () );
 
     // Find a player close enough to him
-    CPlayer* pPlayer = FindPlayerCloseToPed ( pPed, g_TickRateSettings.iPedSyncerDistance - 20.0f );
+    CPlayer* pPlayer = FindPlayerCloseToPed ( pPed, MAX_PLAYER_SYNC_DISTANCE - 20.0f );
     if ( pPlayer )
     {
         // Tell him to start syncing it
@@ -227,7 +227,7 @@ void CPedSync::Packet_PedSync ( CPedSyncPacket& Packet )
                     if ( pData->ucFlags & 0x01 )
                     {
                         pPed->SetPosition ( pData->vecPosition );
-                        g_pGame->GetColManager()->DoHitDetection ( pPed->GetPosition (), pPed );
+                        g_pGame->GetColManager()->DoHitDetection ( pPed->GetLastPosition (), pPed->GetPosition (), 0.0f, pPed );
                     }
                     if ( pData->ucFlags & 0x02 ) pPed->SetRotation ( pData->fRotation );
                     if ( pData->ucFlags & 0x04 ) pPed->SetVelocity ( pData->vecVelocity );
@@ -254,12 +254,6 @@ void CPedSync::Packet_PedSync ( CPedSyncPacket& Packet )
                     }
 
                     if ( pData->ucFlags & 0x10 ) pPed->SetArmor ( pData->fArmor );
-                    
-                    if ( pData->ucFlags & 0x20 && pPlayer->GetBitStreamVersion() >= 0x04E )
-                        pPed->SetOnFire ( pData->bOnFire );
-
-                    if ( pData->ucFlags & 0x40 && pPlayer->GetBitStreamVersion() >= 0x55 )
-                        pPed->SetInWater ( pData->bIsInWater );
 
                     // Send this sync
                     pData->bSend = true;

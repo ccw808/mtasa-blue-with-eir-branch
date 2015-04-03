@@ -13,48 +13,22 @@
 *****************************************************************************/
 
 #include "UTF8.h"
+#include "minibidi.c"
+#include "CNickGen.h"
 #include "UTF8Detect.cpp"
 #ifdef WIN32
     #include <direct.h>
     #include <shellapi.h>
-    #include <TlHelp32.h>
-#else
-    #include <wctype.h>
-    #ifndef _GNU_SOURCE
-    # define _GNU_SOURCE    /* See feature_test_macros(7) */
-    #endif
-    #include <sched.h>
-    #include <sys/time.h>
-    #include <sys/resource.h>
-    #ifndef RUSAGE_THREAD
-        #define	RUSAGE_THREAD	1		/* only the calling thread */
-    #endif
 #endif
-
-CCriticalSection CRefCountable::ms_CS;
-std::map < uint, uint > ms_ReportAmountMap;
 
 #ifdef MTA_CLIENT
 #ifdef WIN32
 
-#define TROUBLE_URL1 "http://updatesa.multitheftauto.com/sa/trouble/?v=_VERSION_&id=_ID_&tr=_TROUBLE_"
+#define TROUBLE_URL1 "http://updatesa.multitheftauto.com/sa/trouble/?v=%VERSION%&id=%ID%&tr=%TROUBLE%"
 
 
 #ifndef MTA_DM_ASE_VERSION
     #include <../../MTA10/version.h>
-#endif
-
-//
-// Output a UTF8 encoded messagebox
-// Used in the Win32 Client only
-//
-#ifdef _WINDOWS_ //Only for modules that use windows.h
-    int SharedUtil::MessageBoxUTF8 ( HWND hWnd, SString lpText, SString lpCaption, UINT uType )
-    {
-        WString strText = MbUTF8ToUTF16 ( lpText );
-        WString strCaption = MbUTF8ToUTF16 ( lpCaption );
-        return MessageBoxW ( hWnd, strText.c_str(), strCaption.c_str(), uType );
-    }
 #endif
 
 
@@ -70,7 +44,7 @@ SString SharedUtil::GetMTASABaseDir ( void )
         strInstallRoot = GetRegistryValue ( "", "Last Run Location" );
         if ( strInstallRoot.empty () )
         {
-            MessageBoxUTF8 ( 0, _("Multi Theft Auto has not been installed properly, please reinstall."), _("Error")+_E("U01"), MB_OK | MB_TOPMOST );
+            MessageBox ( 0, "Multi Theft Auto has not been installed properly, please reinstall.", "Error", MB_OK );
             TerminateProcess ( GetCurrentProcess (), 9 );
         }
     }
@@ -86,17 +60,6 @@ SString SharedUtil::CalcMTASAPath ( const SString& strPath )
     return PathJoin ( GetMTASABaseDir(), strPath );
 }
 
-//
-// Returns true if current process is GTA (i.e not MTA process)
-//
-bool SharedUtil::IsGTAProcess ( void )
-{
-    SString strLaunchPathFilename = GetLaunchPathFilename();
-    if ( strLaunchPathFilename.EndsWithI( "gta_sa.exe" )
-        || strLaunchPathFilename.EndsWithI( "proxy_sa.exe" ) )
-        return true;
-    return false;
-}
 
 //
 // Write a registry string value
@@ -104,13 +67,10 @@ bool SharedUtil::IsGTAProcess ( void )
 static void WriteRegistryStringValue ( HKEY hkRoot, const char* szSubKey, const char* szValue, const SString& strBuffer )
 {
     HKEY hkTemp;
-    WString wstrSubKey = FromUTF8( szSubKey );
-    WString wstrValue = FromUTF8( szValue );
-    WString wstrBuffer = FromUTF8( strBuffer );
-    RegCreateKeyExW ( hkRoot, wstrSubKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hkTemp, NULL );
+    RegCreateKeyEx ( hkRoot, szSubKey, 0, NULL, REG_OPTION_NON_VOLATILE, KEY_ALL_ACCESS, NULL, &hkTemp, NULL );
     if ( hkTemp )
     {
-        RegSetValueExW ( hkTemp, wstrValue, NULL, REG_SZ, (LPBYTE)wstrBuffer.c_str (), ( wstrBuffer.length () + 1 ) * sizeof( wchar_t ) );
+        RegSetValueEx ( hkTemp, szValue, NULL, REG_SZ, (LPBYTE)strBuffer.c_str (), strBuffer.length () + 1 );
         RegCloseKey ( hkTemp );
     }
 }
@@ -125,18 +85,15 @@ static SString ReadRegistryStringValue ( HKEY hkRoot, const char* szSubKey, cons
 
     bool bResult = false;
     HKEY hkTemp = NULL;
-    WString wstrSubKey = FromUTF8( szSubKey );
-    WString wstrValue = FromUTF8( szValue );
-    if ( RegOpenKeyExW ( hkRoot, wstrSubKey, 0, KEY_READ, &hkTemp ) == ERROR_SUCCESS ) 
+    if ( RegOpenKeyEx ( hkRoot, szSubKey, 0, KEY_READ, &hkTemp ) == ERROR_SUCCESS ) 
     {
         DWORD dwBufferSize;
-        if ( RegQueryValueExW ( hkTemp, wstrValue, NULL, NULL, NULL, &dwBufferSize ) == ERROR_SUCCESS )
+        if ( RegQueryValueExA ( hkTemp, szValue, NULL, NULL, NULL, &dwBufferSize ) == ERROR_SUCCESS )
         {
-            wchar_t* szBuffer = static_cast < wchar_t* > ( alloca ( dwBufferSize + sizeof( wchar_t ) ) );
-            if ( RegQueryValueExW ( hkTemp, wstrValue, NULL, NULL, (LPBYTE)szBuffer, &dwBufferSize ) == ERROR_SUCCESS )
+            char *szBuffer = static_cast < char* > ( alloca ( dwBufferSize + 1 ) );
+            if ( RegQueryValueExA ( hkTemp, szValue, NULL, NULL, (LPBYTE)szBuffer, &dwBufferSize ) == ERROR_SUCCESS )
             {
-                szBuffer[ dwBufferSize / sizeof( wchar_t ) ] = 0;
-                strOutResult = ToUTF8( szBuffer );
+                strOutResult = szBuffer;
                 bResult = true;
             }
         }
@@ -157,110 +114,63 @@ static bool DeleteRegistryKey ( HKEY hkRoot, const char* szSubKey )
 }
 
 
-
-
 //
-// GetMajorVersionString
+// GetVersionAppendString
 //
-SString SharedUtil::GetMajorVersionString ( void )
+SString SharedUtil::GetVersionAppendString ( const SString& strUsingASEVersion )
 {
-    return SStringX ( MTA_DM_ASE_VERSION ).Left ( 3 );
+    SString strVersionAppend = SString ( " %s", strUsingASEVersion.empty () ? MTA_DM_ASE_VERSION : *strUsingASEVersion );
+
+    // Remove nightly appendage
+    strVersionAppend = strVersionAppend.TrimEnd ( "n" );
+
+    // 1.0 has no version number in the path
+    if ( strVersionAppend == " 1.0" )
+        strVersionAppend = "";
+
+    return strVersionAppend;
 }
 
+
 //
-// GetSystemRegistryValue
+// MakeRegistryPath
 //
-SString SharedUtil::GetSystemRegistryValue ( uint hKey, const SString& strPath, const SString& strName )
+// Turns "Settings"
+// into  "Software\\Multi Theft Auto: San Andreas 1.1\\Settings"
+// 
+static SString MakeRegistryPath ( const SString& strInPath )
 {
-    return ReadRegistryStringValue ( (HKEY)hKey, strPath, strName, NULL );
-}
+    SString strPath = strInPath;
+    SString strUsingASEVersion = MTA_DM_ASE_VERSION;
 
+    // Use version from path instead?
+    if ( strPath.Left ( 3 ) == "..\\" )
+    {
+        strPath.Right ( strPath.length () - 3 ).Split ( "\\", &strUsingASEVersion, &strPath );
+    }
 
-
-// Old layout:
-//              HKCU Software\\Multi Theft Auto: San Andreas\\             - For 1.0
-//              HKCU Software\\Multi Theft Auto: San Andreas 1.1\\         - For 1.1
-//
-static SString MakeVersionRegistryPathLegacy ( const SString& strVersion, const SString& strPath )
-{
-    SString strResult = "Software\\Multi Theft Auto: San Andreas";
-    if ( strVersion != "1.0" )
-        strResult += " " + strVersion;
-
-    strResult = PathJoin ( strResult, strPath );
+    SString strResult = PathJoin ( "Software\\Multi Theft Auto: San Andreas" + GetVersionAppendString ( strUsingASEVersion ), strPath );
     strResult = strResult.TrimEnd ( "\\" );
     return strResult;
-}
-
-
-// Get/set registry values for a version using the old (HKCU) layout
-void SharedUtil::SetVersionRegistryValueLegacy ( const SString& strVersion, const SString& strPath, const SString& strName, const SString& strValue )
-{
-    WriteRegistryStringValue ( HKEY_CURRENT_USER, MakeVersionRegistryPathLegacy ( strVersion, strPath ), strName, strValue );
-}
-
-SString SharedUtil::GetVersionRegistryValueLegacy ( const SString& strVersion, const SString& strPath, const SString& strName )
-{
-    return ReadRegistryStringValue ( HKEY_CURRENT_USER, MakeVersionRegistryPathLegacy ( strVersion, strPath ), strName, NULL );
-}
-
-
-
-//
-// New layout:
-//              HKLM Software\\Multi Theft Auto: San Andreas All\\Common    - For all versions
-//              HKLM Software\\Multi Theft Auto: San Andreas All\\1.1       - For 1.1
-//              HKLM Software\\Multi Theft Auto: San Andreas All\\1.2       - For 1.2
-//
-static SString MakeVersionRegistryPath ( const SString& strVersion, const SString& strPath )
-{
-    SString strResult = PathJoin ( "Software\\Multi Theft Auto: San Andreas All", strVersion, strPath );
-    return strResult.TrimEnd ( "\\" );
 }
 
 //
 // Registry values
 // 
-// Get/set registry values for the current version
-void SharedUtil::SetRegistryValue ( const SString& strPath, const SString& strName, const SString& strValue )
+void SharedUtil::SetRegistryValue ( const SString& strPath, const SString& strKey, const SString& strValue )
 {
-    WriteRegistryStringValue ( HKEY_LOCAL_MACHINE, MakeVersionRegistryPath ( GetMajorVersionString (), strPath ), strName, strValue );
+    WriteRegistryStringValue ( HKEY_CURRENT_USER, MakeRegistryPath ( strPath ), strKey, strValue );
 }
 
-SString SharedUtil::GetRegistryValue ( const SString& strPath, const SString& strName )
+SString SharedUtil::GetRegistryValue ( const SString& strPath, const SString& strKey )
 {
-    return ReadRegistryStringValue ( HKEY_LOCAL_MACHINE, MakeVersionRegistryPath ( GetMajorVersionString (), strPath ), strName, NULL );
+    return ReadRegistryStringValue ( HKEY_CURRENT_USER, MakeRegistryPath ( strPath ), strKey, NULL );
 }
 
-bool SharedUtil::RemoveRegistryKey ( const SString& strPath )
+bool DeleteRegistryValue ( const SString& strPathKey )
 {
-    return DeleteRegistryKey ( HKEY_LOCAL_MACHINE, MakeVersionRegistryPath ( GetMajorVersionString (), strPath ) );
+    return DeleteRegistryKey ( HKEY_CURRENT_USER, strPathKey );
 }
-
-// Get/set registry values for a version
-void SharedUtil::SetVersionRegistryValue ( const SString& strVersion, const SString& strPath, const SString& strName, const SString& strValue )
-{
-    WriteRegistryStringValue ( HKEY_LOCAL_MACHINE, MakeVersionRegistryPath ( strVersion, strPath ), strName, strValue );
-}
-
-SString SharedUtil::GetVersionRegistryValue ( const SString& strVersion, const SString& strPath, const SString& strName )
-{
-    return ReadRegistryStringValue ( HKEY_LOCAL_MACHINE, MakeVersionRegistryPath ( strVersion, strPath ), strName, NULL );
-}
-
-// Get/set registry values for all versions (common)
-void SharedUtil::SetCommonRegistryValue ( const SString& strPath, const SString& strName, const SString& strValue )
-{
-    WriteRegistryStringValue ( HKEY_LOCAL_MACHINE, MakeVersionRegistryPath ( "Common", strPath ), strName, strValue );
-}
-
-SString SharedUtil::GetCommonRegistryValue ( const SString& strPath, const SString& strName )
-{
-    return ReadRegistryStringValue ( HKEY_LOCAL_MACHINE, MakeVersionRegistryPath ( "Common", strPath ), strName, NULL );
-}
-
-
-
 
 
 //
@@ -323,73 +233,67 @@ bool SharedUtil::GetOnRestartCommand ( SString& strOperation, SString& strFile, 
 //
 // Get/set string
 //
-void SharedUtil::SetApplicationSetting ( const SString& strPath, const SString& strName, const SString& strValue )
+void SharedUtil::SetApplicationSetting ( const SString& strPath, const SString& strKey, const SString& strValue )
 {
-    SetRegistryValue ( PathJoin ( "Settings", strPath ), strName, strValue );
+    SetRegistryValue ( PathJoin ( "Settings", strPath ), strKey, strValue );
 }
 
-SString SharedUtil::GetApplicationSetting ( const SString& strPath, const SString& strName )
+SString SharedUtil::GetApplicationSetting ( const SString& strPath, const SString& strKey )
 {
-    return GetRegistryValue ( PathJoin ( "Settings", strPath ), strName );
+    return GetRegistryValue ( PathJoin ( "Settings", strPath ), strKey );
 }
-
-// Delete a setting key
-bool SharedUtil::RemoveApplicationSettingKey ( const SString& strPath )
-{
-    return RemoveRegistryKey ( PathJoin ( "Settings", strPath ) );
-}
-
 
 //
 // Get/set int
 //
-void SharedUtil::SetApplicationSettingInt ( const SString& strPath, const SString& strName, int iValue )
+void SharedUtil::SetApplicationSettingInt ( const SString& strPath, const SString& strKey, int iValue )
 {
-    SetApplicationSetting ( strPath, strName, SString ( "%d", iValue ) );
+    SetApplicationSetting ( strPath, strKey, SString ( "%d", iValue ) );
 }
 
-int SharedUtil::GetApplicationSettingInt ( const SString& strPath, const SString& strName )
+int SharedUtil::GetApplicationSettingInt ( const SString& strPath, const SString& strKey )
 {
-    return atoi ( GetApplicationSetting ( strPath, strName ) );
+    return atoi ( GetApplicationSetting ( strPath, strKey ) );
 }
-
-int SharedUtil::IncApplicationSettingInt ( const SString& strPath, const SString& strName )
-{
-    int iValue = GetApplicationSettingInt ( strPath, strName ) + 1;
-    SetApplicationSettingInt ( strPath, strName, iValue );
-    return iValue;
-}
-
-
 
 //
-// Get/set string - Which uses 'general' key
+// Get/set string - Combined path and key i.e. "group.key"
 //
-void SharedUtil::SetApplicationSetting ( const SString& strName, const SString& strValue )
+SString SharedUtil::GetApplicationSetting ( const SString& strPathKey )
 {
-    SetApplicationSetting ( "general", strName, strValue );
+    SString strPath;
+    SString strKey = strPathKey.SplitRight ( ".", &strPath, -1 );
+    if ( !strPath.length () )
+        strPath = "general";
+    return GetApplicationSetting ( strPath, strKey );
 }
 
-SString SharedUtil::GetApplicationSetting ( const SString& strName )
+void SharedUtil::SetApplicationSetting ( const SString& strPathKey, const SString& strValue )
 {
-    return GetApplicationSetting ( "general", strName );
+    SString strPath;
+    SString strKey = strPathKey.SplitRight ( ".", &strPath, -1 );
+    if ( !strPath.length () )
+        strPath = "general";
+    SetApplicationSetting ( strPath, strKey, strValue );
 }
 
-void SharedUtil::SetApplicationSettingInt ( const SString& strName, int iValue )
+//
+// Get/set int - Combined path and key i.e. "group.key"
+//
+void SharedUtil::SetApplicationSettingInt ( const SString& strPathKey, int iValue )
 {
-    SetApplicationSettingInt ( "general", strName, iValue );
+    SetApplicationSetting ( strPathKey, SString ( "%d", iValue ) );
 }
 
-int SharedUtil::GetApplicationSettingInt ( const SString& strName )
+int SharedUtil::GetApplicationSettingInt ( const SString& strPathKey )
 {
-    return GetApplicationSettingInt ( "general", strName );
+    return atoi ( GetApplicationSetting ( strPathKey ) );
 }
 
-int SharedUtil::IncApplicationSettingInt ( const SString& strName )
+// Delete a setting key
+static bool DeleteApplicationSettingKey ( const SString& strPathKey )
 {
-    int iValue = GetApplicationSettingInt ( strName ) + 1;
-    SetApplicationSettingInt ( strName, iValue );
-    return iValue;
+    return DeleteRegistryValue ( "Settings." + strPathKey );
 }
 
 
@@ -400,7 +304,7 @@ int SharedUtil::IncApplicationSettingInt ( const SString& strName )
 
 void SharedUtil::WatchDogReset ( void )
 {
-    RemoveApplicationSettingKey ( "watchdog" );
+    DeleteApplicationSettingKey ( "watchdog" );
 }
 
 // Section
@@ -435,9 +339,6 @@ void SharedUtil::WatchDogClearCounter ( const SString& str )
     SetApplicationSettingInt ( "watchdog", str, 0 );
 }
 
-//
-// Unclean stop flag
-//
 static bool bWatchDogWasUncleanStopCached = false;
 static bool bWatchDogWasUncleanStopValue = false;
 
@@ -445,8 +346,8 @@ bool SharedUtil::WatchDogWasUncleanStop ( void )
 {
     if ( !bWatchDogWasUncleanStopCached )
     {
-        bWatchDogWasUncleanStopValue = GetApplicationSettingInt ( "watchdog", "uncleanstop" ) != 0;
         bWatchDogWasUncleanStopCached = true;
+        bWatchDogWasUncleanStopValue = GetApplicationSettingInt ( "watchdog", "uncleanstop" ) != 0;
     }
     return bWatchDogWasUncleanStopValue;
 }
@@ -458,139 +359,66 @@ void SharedUtil::WatchDogSetUncleanStop ( bool bOn )
     bWatchDogWasUncleanStopValue = bOn;
 }
 
-//
-// Crash flag
-//
-static bool bWatchDogWasLastRunCrashCached = false;
-static bool bWatchDogWasLastRunCrashValue = false;
-
-bool SharedUtil::WatchDogWasLastRunCrash( void )
-{
-    if ( !bWatchDogWasLastRunCrashCached )
-    {
-        bWatchDogWasLastRunCrashValue = GetApplicationSettingInt( "watchdog", "lastruncrash" ) != 0;
-        bWatchDogWasLastRunCrashCached = true;
-    }
-    return bWatchDogWasLastRunCrashValue;
-}
-
-void SharedUtil::WatchDogSetLastRunCrash( bool bOn )
-{
-    SetApplicationSettingInt( "watchdog", "lastruncrash", bOn );
-    bWatchDogWasLastRunCrashCached = true;
-    bWatchDogWasLastRunCrashValue = bOn;
-}
-
-
-
-void SharedUtil::SetClipboardText ( const SString& strText )
-{
-    // If we got something to copy
-    if ( !strText.empty() )
-    {
-        // Convert it to Unicode
-        WString strUTF = MbUTF8ToUTF16( strText );
-
-        // Open and empty the clipboard
-        OpenClipboard( NULL );
-        EmptyClipboard();
-
-        // Allocate the clipboard buffer and copy the data
-        HGLOBAL hBuf = GlobalAlloc( GMEM_DDESHARE, strUTF.length() * sizeof(wchar_t) + sizeof(wchar_t) );
-        wchar_t* buf = reinterpret_cast < wchar_t* > ( GlobalLock( hBuf ) );
-        wcscpy ( buf , strUTF );
-        GlobalUnlock( hBuf );
-
-        // Copy the data into the clipboard
-        SetClipboardData( CF_UNICODETEXT , hBuf );
-
-        // Close the clipboard
-        CloseClipboard();
-    }
-}
 
 //
 // Direct players to info about trouble
 //
-void SharedUtil::BrowseToSolution( const SString& strType, int iFlags, const SString& strMessageBoxMessage, const SString& strErrorCode )
+void SharedUtil::BrowseToSolution ( const SString& strType, bool bAskQuestion, bool bTerminateProcess, bool bDoOnExit, const SString& strMessageBoxMessage )
 {
     AddReportLog ( 3200, SString ( "Trouble %s", *strType ) );
 
     // Put args into a string and save in the registry
     CArgMap argMap;
     argMap.Set ( "type", strType.SplitLeft ( ";" ) );
-    argMap.Set ( "flags", iFlags );
+    argMap.Set ( "bAskQuestion", bAskQuestion );
     argMap.Set ( "message", strMessageBoxMessage );
-    argMap.Set ( "ecode", strErrorCode );
     SetApplicationSetting ( "pending-browse-to-solution", argMap.ToString () );
 
-    if ( iFlags & EXIT_GAME_FIRST )
-    {
-        // Exit game and continue in loader.dll
-        TerminateProcess( GetCurrentProcess (), 1 );
-    }
+    // Do it now if required
+    if ( !bDoOnExit )
+        ProcessPendingBrowseToSolution ();
 
-    // Otherwise, do it now
-    bool bDidBrowse = ProcessPendingBrowseToSolution ();
-
-    // Exit game if required
-    int iFlagMatch = bDidBrowse ? TERMINATE_IF_YES : TERMINATE_IF_NO;
-    if ( iFlags & iFlagMatch  )
+    // Exit if required
+    if ( bTerminateProcess )
         TerminateProcess ( GetCurrentProcess (), 1 );
 }
 
 //
 // Process next BrowseToSolution
-// Return true if did browse
 //
-bool SharedUtil::ProcessPendingBrowseToSolution ( void )
+void SharedUtil::ProcessPendingBrowseToSolution ( void )
 {
-    SString strType, strMessageBoxMessage, strErrorCode;
-    int iFlags;
+    SString strType, strMessageBoxMessage;
+    int bAskQuestion;
 
     // Get args from the registry
     CArgMap argMap;
     argMap.SetFromString ( GetApplicationSetting ( "pending-browse-to-solution" ) );
-    if ( !argMap.Get ( "type", strType ) )
-        return false;
+    argMap.Get ( "type", strType );
     argMap.Get ( "message", strMessageBoxMessage );
-    argMap.Get ( "flags", iFlags );
-    argMap.Get ( "ecode", strErrorCode );
+    argMap.Get ( "bAskQuestion", bAskQuestion );
+
+    // Check if anything to do
+    if ( strType.empty () )
+        return;
 
     ClearPendingBrowseToSolution ();
 
-    SString strTitle( "MTA: San Andreas %s   (CTRL+C to copy)", *strErrorCode );
-    // Show message if set, ask question if required, and then launch URL
-    if ( iFlags & ASK_GO_ONLINE )
+    // Show message box if required
+    if ( !strMessageBoxMessage.empty () )
+        MessageBox ( 0, strMessageBoxMessage, "Error", MB_OK|MB_ICONEXCLAMATION );
+
+    // Ask question if required, and then launch URL
+    if ( !bAskQuestion || IDYES == MessageBox( 0, "Do you want to see some on-line help about this problem ?", "MTA: San Andreas", MB_ICONQUESTION|MB_YESNO ) )
     {
-        if ( !strMessageBoxMessage.empty() )
-            strMessageBoxMessage += "\n\n\n";
-        strMessageBoxMessage += _("Do you want to see some on-line help about this problem ?");
-        if ( IDYES != MessageBoxUTF8( NULL, strMessageBoxMessage, strTitle, MB_YESNO | MB_ICONQUESTION | MB_TOPMOST ) )
-            return false;
+        SString strQueryURL = GetApplicationSetting ( "trouble-url" );
+        if ( strQueryURL == "" )
+            strQueryURL = TROUBLE_URL1;
+        strQueryURL = strQueryURL.Replace ( "%VERSION%", GetApplicationSetting ( "mta-version-ext" ) );
+        strQueryURL = strQueryURL.Replace ( "%ID%", GetApplicationSetting ( "serial" ) );
+        strQueryURL = strQueryURL.Replace ( "%TROUBLE%", strType );
+        ShellExecuteNonBlocking ( "open", strQueryURL.c_str () );
     }
-    else
-    {
-        if ( !strMessageBoxMessage.empty() )
-            MessageBoxUTF8 ( NULL, strMessageBoxMessage, strTitle, MB_OK | MB_ICONEXCLAMATION | MB_TOPMOST );
-        if ( iFlags & SHOW_MESSAGE_ONLY )
-            return true;
-    }
-
-    MessageBoxUTF8 ( NULL, _("Your browser will now display a web page with some help infomation.\n\n(If the page fails to load, paste (CTRL-V) the URL into your web browser)")
-                        , "MTA: San Andreas", MB_OK | MB_ICONINFORMATION | MB_TOPMOST );
-
-    SString strQueryURL = GetApplicationSetting ( "trouble-url" );
-    if ( strQueryURL == "" )
-        strQueryURL = TROUBLE_URL1;
-    strQueryURL = strQueryURL.Replace ( "%", "_" );
-    strQueryURL = strQueryURL.Replace ( "_VERSION_", GetApplicationSetting ( "mta-version-ext" ) );
-    strQueryURL = strQueryURL.Replace ( "_ID_", GetApplicationSetting ( "serial" ) );
-    strQueryURL = strQueryURL.Replace ( "_TROUBLE_", strType );
-    SetClipboardText( strQueryURL );
-    ShellExecuteNonBlocking ( "open", strQueryURL.c_str () );
-
-    return true;
 }
 
 //
@@ -629,30 +457,28 @@ static SString GetReportLogHeaderText ( void )
 }
 
 
-void SharedUtil::AddReportLog ( uint uiId, const SString& strText, uint uiAmountLimit )
+void SharedUtil::AddReportLog ( uint uiId, const SString& strText )
 {
-    uint& uiAmount = MapGet( ms_ReportAmountMap, uiId );
-    if ( uiAmount++ >= uiAmountLimit )
-        return;
-
-    SString strPathFilename = PathJoin ( GetMTADataPath (), "report.log" );
+    SString strPathFilename = PathJoin ( GetMTALocalAppDataPath (), "report.log" );
     MakeSureDirExists ( strPathFilename );
 
-    SString strMessage ( "%u: %s %s [%s] - %s\n", uiId, GetTimeString ( true, false ).c_str (), GetReportLogHeaderText ().c_str (), GetReportLogProcessTag().c_str (), strText.c_str () );
+    SString strMessage ( "%u: %s %s - %s\n", uiId, GetTimeString ( true, false ).c_str (), GetReportLogHeaderText ().c_str (), strText.c_str () );
     FileAppend ( strPathFilename, &strMessage.at ( 0 ), strMessage.length () );
-    OutputDebugLine ( SStringX ( "[ReportLog] " ) + strMessage );
+#if MTA_DEBUG
+    OutputDebugString ( SStringX ( "ReportLog: " ) + strMessage );
+#endif
 }
 
 void SharedUtil::SetReportLogContents ( const SString& strText )
 {
-    SString strPathFilename = PathJoin ( GetMTADataPath (), "report.log" );
+    SString strPathFilename = PathJoin ( GetMTALocalAppDataPath (), "report.log" );
     MakeSureDirExists ( strPathFilename );
     FileSave ( strPathFilename, strText.length () ? &strText.at ( 0 ) : NULL, strText.length () );
 }
 
 SString SharedUtil::GetReportLogContents ( void )
 {
-    SString strReportFilename = PathJoin ( GetMTADataPath (), "report.log" );
+    SString strReportFilename = PathJoin ( GetMTALocalAppDataPath (), "report.log" );
     // Load file into a string
     std::vector < char > buffer;
     FileLoad ( strReportFilename, buffer );
@@ -660,93 +486,6 @@ SString SharedUtil::GetReportLogContents ( void )
     return &buffer[0];
 }
 
-SString SharedUtil::GetReportLogProcessTag ( void )
-{
-    static SString strResult;
-    if ( strResult.empty() )
-    {
-        int pid = GetCurrentProcessId();
-        if ( !IsGTAProcess() )
-        {
-            // Use pid only for launcher
-            strResult = SString( "%05d", pid );
-        }
-        else
-        {
-            // Use pid & parent pid for game
-            int parentPid = 0;
-            HANDLE h = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
-            PROCESSENTRY32W pe = { 0 };
-            pe.dwSize = sizeof( PROCESSENTRY32W );
-            if( Process32FirstW( h, &pe ))
-            {
-    	        do
-                {
-    		        if ( pe.th32ProcessID == pid )
-                    {
-                        parentPid = pe.th32ParentProcessID;
-                        break;
-    		        }
-    	        }
-                while( Process32NextW( h, &pe ) );
-            }
-            CloseHandle( h );
-            strResult = SString( "%05d-%05d", parentPid, pid );
-        }
-    }
-    return strResult;
-}
-
-// Client logfile.txt
-void WriteEvent( const char* szType, const SString& strText )
-{
-    // Split into lines if required
-    if ( strText.Contains( "\n" ) )
-    {
-        std::vector< SString > lineList;
-        strText.Split( "\n", lineList );
-        for ( uint i = 0 ; i < lineList.size() ; i++ )
-            WriteEvent( szType, lineList[i] );
-        return;
-    }
-    SString strPathFilename = CalcMTASAPath( PathJoin( "mta", "logfile.txt" ) );
-    SString strMessage( "%s - %s %s", *GetLocalTimeString(), szType, *strText );
-    FileAppend( strPathFilename, strMessage + "\n" );
-#ifdef MTA_DEBUG
-    OutputDebugLine ( strMessage );
-#endif
-}
-
-void SharedUtil::WriteDebugEvent( const SString& strText )
-{
-    WriteEvent( "[DEBUG]", strText );
-}
-
-void SharedUtil::WriteErrorEvent( const SString& strText )
-{
-    WriteEvent( "[Error]", strText );
-}
-
-void SharedUtil::BeginEventLog( void )
-{
-    // Cycle now if flag requires it
-    if ( GetApplicationSettingInt(  "no-cycle-event-log" ) == 0 )
-    {
-        SetApplicationSettingInt( "no-cycle-event-log", 1 );
-        SString strPathFilename = CalcMTASAPath( PathJoin( "mta", "logfile.txt" ) );
-        SString strPathFilenamePrev = CalcMTASAPath( PathJoin( "mta", "logfile_old.txt" ) );
-        FileDelete( strPathFilenamePrev );
-        FileRename( strPathFilename, strPathFilenamePrev );
-        FileDelete( strPathFilename );
-    }
-    WriteDebugEvent( "BeginEventLog" );
-}
-
-void SharedUtil::CycleEventLog( void )
-{
-    // Set flag to cycle on next start
-    SetApplicationSettingInt( "no-cycle-event-log", 0 );
-}
 
 ///////////////////////////////////////////////////////////////////////////
 //
@@ -759,13 +498,13 @@ SString SharedUtil::GetSystemErrorMessage ( uint uiError, bool bRemoveNewlines, 
 {
     SString strResult;
 
-    LPWSTR szErrorText = NULL;
-    FormatMessageW ( FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
-                    NULL, uiError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPWSTR)&szErrorText, 0, NULL );
+    LPSTR szErrorText = NULL;
+    FormatMessageA ( FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_IGNORE_INSERTS,
+                    NULL, uiError, MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPTSTR)&szErrorText, 0, NULL );
 
     if ( szErrorText )
     {
-        strResult = UTF16ToMbUTF8(szErrorText);
+        strResult = szErrorText;
         LocalFree ( szErrorText );
         szErrorText = NULL;
     }
@@ -778,7 +517,6 @@ SString SharedUtil::GetSystemErrorMessage ( uint uiError, bool bRemoveNewlines, 
 
     return strResult;
 }
-
 
 #endif
 
@@ -822,20 +560,16 @@ static bool MyShellExecute ( bool bBlocking, const SString& strAction, const SSt
 
     if ( bBlocking )
     {
-        WString wstrAction = FromUTF8( strAction );
-        WString wstrFile = FromUTF8( strFile );
-        WString wstrParameters = FromUTF8( strParameters );
-        WString wstrDirectory = FromUTF8( strDirectory );
-        SHELLEXECUTEINFOW info;
+        SHELLEXECUTEINFO info;
         memset( &info, 0, sizeof ( info ) );
         info.cbSize = sizeof ( info );
         info.fMask = SEE_MASK_NOCLOSEPROCESS;
-        info.lpVerb = wstrAction;
-        info.lpFile = wstrFile;
-        info.lpParameters = wstrParameters;
-        info.lpDirectory = wstrDirectory;
+        info.lpVerb = strAction;
+        info.lpFile = strFile;
+        info.lpParameters = strParameters;
+        info.lpDirectory = strDirectory;
         info.nShow = nShowCmd;
-        bool bResult = ShellExecuteExW( &info ) != FALSE;
+        bool bResult = ShellExecuteExA( &info ) != FALSE;
         if ( info.hProcess )
         {
             WaitForSingleObject ( info.hProcess, INFINITE );
@@ -880,24 +614,24 @@ bool SharedUtil::ShellExecuteNonBlocking ( const SString& strAction, const SStri
 #endif  // MTA_CLIENT
 
 
-static uchar ToHexChar ( uchar c )
+static char ToHexChar ( char c )
 {
     return c > 9 ? c - 10 + 'A' : c + '0';
 }
 
-static uchar FromHexChar ( uchar c )
+static char FromHexChar ( char c )
 {
     return c > '9' ? c - 'A' + 10 : c - '0';
 }
 
-SString SharedUtil::EscapeString ( const SString& strText, const SString& strDisallowedChars, char cSpecialChar, uchar ucLowerLimit, uchar ucUpperLimit )
+SString SharedUtil::EscapeString ( const SString& strText, const SString& strDisallowedChars, char cSpecialChar )
 {
     // Replace each disallowed char with #FF
     SString strResult;
     for ( uint i = 0 ; i < strText.length () ; i++ )
     {
-        uchar c = strText[i];
-        if ( strDisallowedChars.find ( c ) == std::string::npos && c != cSpecialChar && c >= ucLowerLimit && c <= ucUpperLimit )
+        char c = strText[i];
+        if ( strDisallowedChars.find ( c ) == std::string::npos && c != cSpecialChar )
             strResult += c;
         else
         {
@@ -916,26 +650,16 @@ SString SharedUtil::UnescapeString ( const SString& strText, char cSpecialChar )
     // Replace #FF with char
     for ( uint i = 0 ; i < strText.length () ; i++ )
     {
-        uchar c = strText[i];
+        char c = strText[i];
         if ( c == cSpecialChar && i < strText.length () - 2 )
         {
-            uchar c0 = FromHexChar ( strText[++i] );
-            uchar c1 = FromHexChar ( strText[++i] );
+            char c0 = FromHexChar ( strText[++i] );
+            char c1 = FromHexChar ( strText[++i] );
             c = ( c0 << 4 ) | c1;
         }
         strResult += c;
     }
     return strResult;
-}
-
-
-//
-// Ensure string does not contain any special URL chars
-//
-SString SharedUtil::EscapeURLArgument ( const SString& strArg )
-{
-    static SString strDisallowedChars = "!*'();:@&=+$,/?#[] \"%<>\\^`{|}";
-    return EscapeString( strArg, strDisallowedChars, '%', 32, 126 );
 }
 
 
@@ -995,29 +719,6 @@ SString SharedUtil::EscapeURLArgument ( const SString& strArg )
 
 #endif
 
-//
-// Ensure rand() seed gets set to a new unique value
-//
-void SharedUtil::RandomizeRandomSeed ( void )
-{
-    srand ( rand () + GetTickCount32 () );
-}
-
-
-//
-// Return true if currently executing the main thread.
-// Main thread being defined as the thread the function is first called from.
-//
-bool SharedUtil::IsMainThread ( void )
-{
-#ifdef WIN32
-    static DWORD dwMainThread = GetCurrentThreadId ();
-    return GetCurrentThreadId () == dwMainThread;
-#else
-    static pthread_t dwMainThread = pthread_self ();
-    return pthread_equal ( pthread_self (), dwMainThread ) != 0;
-#endif
-}
 
 
 //
@@ -1065,12 +766,11 @@ bool SharedUtil::IsMainThread ( void )
 #endif
 #endif
 
-//
-// Return version of the string with color codes removed
-//
-SString SharedUtil::RemoveColorCodes( const char* szString )
+
+// Copied from CChatLine::RemoveColorCode()
+std::string SharedUtil::RemoveColorCode ( const char* szString )
 {
-    SString strOut;
+    std::string strOut;
     const char* szStart = szString;
     const char* szEnd = szString;
 
@@ -1082,82 +782,36 @@ SString SharedUtil::RemoveColorCodes( const char* szString )
             break;
         }
         else
-        if ( IsColorCode ( szEnd ) )
         {
-            strOut.append ( szStart, szEnd - szStart );
-            szStart = szEnd + 7;
-            szEnd = szStart;
-        }
-        else
-        {
-            szEnd++;
+            bool bIsColorCode = false;
+            if ( *szEnd == '#' )
+            {
+                bIsColorCode = true;
+                for ( int i = 0; i < 6; i++ )
+                {
+                    char c = szEnd [ 1 + i ];
+                    if ( !isdigit ( (unsigned char)c ) && (c < 'A' || c > 'F') && (c < 'a' || c > 'f') )
+                    {
+                        bIsColorCode = false;
+                        break;
+                    }
+                }
+            }
+
+            if ( bIsColorCode )
+            {
+                strOut.append ( szStart, szEnd - szStart );
+                szStart = szEnd + 7;
+                szEnd = szStart;
+            }
+            else
+            {
+                szEnd++;
+            }
         }
     }
 
     return strOut;
-}
-
-//
-// Replace color codes in supplied wide string
-//
-void SharedUtil::RemoveColorCodesInPlaceW( WString& strText )
-{
-    uint uiSearchPos = 0;
-    while( true )
-    {
-        std::wstring::size_type uiFoundPos = strText.find( L'#', uiSearchPos );
-        if ( uiFoundPos == std::wstring::npos )
-            break;
-
-        if ( IsColorCodeW( strText.c_str() + uiFoundPos ) )
-        {
-            strText = strText.SubStr( 0, uiFoundPos ) + strText.SubStr( uiFoundPos + 7 );
-        }
-        else
-        {
-            uiSearchPos = uiFoundPos + 1;
-        }
-    }
-}
-
-//
-// Returns true if string is a color code
-//
-bool SharedUtil::IsColorCode ( const char* szColorCode )
-{
-    if ( *szColorCode != '#' )
-        return false;
-
-    bool bValid = true;
-    for ( int i = 0; i < 6; i++ )
-    {
-        char c = szColorCode [ 1 + i ];
-        if ( !isdigit ( (unsigned char)c ) && (c < 'A' || c > 'F') && (c < 'a' || c > 'f') )
-        {
-            bValid = false;
-            break;
-        }
-    }
-    return bValid;
-}
-
-//
-// Returns true if wide string is a color code
-//
-bool SharedUtil::IsColorCodeW ( const wchar_t* wszColorCode )
-{
-    if ( *wszColorCode != L'#' )
-        return false;
-
-    for ( uint i = 0 ; i < 6 ; i++ )
-    {
-        wchar_t c = wszColorCode [ i + 1 ];
-        if ( !iswdigit ( c ) && (c < 'A' || c > 'F') && (c < 'a' || c > 'f') )
-        {
-            return false;
-        }
-    }
-    return true;
 }
 
 
@@ -1174,7 +828,7 @@ std::string SharedUtil::UTF16ToMbUTF8 (const std::wstring& input)
 }
 
 // Get UTF8 confidence
-int SharedUtil::GetUTF8Confidence (const unsigned char* input, int len)
+int SharedUtil::GetUTF8Confidence (unsigned char* input, int len)
 {
     return icu_getUTF8Confidence (input, len);
 }
@@ -1187,37 +841,40 @@ std::wstring SharedUtil::ANSIToUTF16 ( const std::string& input )
         return L"?";
     wchar_t* wcsOutput = new wchar_t[len+1];
     mbstowcs ( wcsOutput, input.c_str(), input.length() );
-    wcsOutput[len] = 0; //Null terminate the string
+    wcsOutput[len] = NULL; //Null terminate the string
     std::wstring strOutput(wcsOutput);
-    delete [] wcsOutput;
+    delete wcsOutput;
     return strOutput;
 }
 
-// Check for BOM bytes
-bool SharedUtil::IsUTF8BOM( const void* pData, uint uiLength )
+std::wstring SharedUtil::GetBidiString (const std::wstring input)
 {
-    const uchar* pCharData = (const uchar*)pData;
-    return ( uiLength > 2 && pCharData[0] == 0xEF && pCharData[1] == 0xBB && pCharData[2] == 0xBF );
+    int iCount = input.size();
+    wchar_t* wcsLineBidi = new wchar_t[iCount + 1];
+    memcpy ( wcsLineBidi, input.c_str(), ( iCount + 1 ) * sizeof ( wchar_t ) );
+    doBidi ( wcsLineBidi, iCount, 1, 1 );  //Process our UTF string through MiniBidi, for Bidirectionalism
+    std::wstring strLineBidi(wcsLineBidi);
+    delete wcsLineBidi;
+    return strLineBidi;
 }
 
-// Check for UTF8/ANSI compiled script
-bool SharedUtil::IsLuaCompiledScript( const void* pData, uint uiLength )
-{
-    const uchar* pCharData = (const uchar*)pData;
-    if ( IsUTF8BOM( pCharData, uiLength ) )
-    {
-        pCharData += 3;
-        uiLength -= 3;
-    }
-    return ( uiLength > 0 && pCharData[0] == 0x1B );    // Do the same check as what the Lua parser does
-}
 
-// Check for encypted script
-bool SharedUtil::IsLuaEncryptedScript( const void* pData, uint uiLength )
+#ifdef MTA_DEBUG
+//
+// Output timestamped line into the debugger
+//
+void SharedUtil::OutputDebugLine ( const char* szMessage )
 {
-    const uchar* pCharData = (const uchar*)pData;
-    return ( uiLength > 0 && pCharData[0] == 0x1C );    // Look for our special marker
+    SString strMessage = GetLocalTimeString ( false, true ) + " - " + szMessage;
+    if ( strMessage.length () > 0 && strMessage[ strMessage.length () - 1 ] != '\n' )
+        strMessage += "\n";
+#ifdef _WIN32
+    OutputDebugString ( strMessage );
+#else
+    // Other platforms here
+#endif
 }
+#endif
 
 
 //
@@ -1229,8 +886,8 @@ bool SharedUtil::IsValidVersionString ( const SString& strVersion )
     uint uiLength = Min ( strCheck.length (), strVersion.length () );
     for ( unsigned int i = 0 ; i < uiLength ; i++ )
     {
-        uchar c = strVersion[i];
-        uchar d = strCheck[i];
+        char c = strVersion[i];
+        char d = strCheck[i];
         if ( !isdigit( c ) || !isdigit( d ) )
             if ( c != d )
                 return false;
@@ -1238,61 +895,34 @@ bool SharedUtil::IsValidVersionString ( const SString& strVersion )
     return true;
 }
 
-// Return build number as a 5 character sortable string
-SString SharedUtil::ExtractVersionStringBuildNumber( const SString& strVersion )
-{
-    return strVersion.SubStr( 8, 5 );
-}
-
-
-// Replace major/minor/type to match current configuration
-SString SharedUtil::ConformVersionStringToBaseVersion( const SString& strVersion, const SString& strBaseVersion )
-{
-    SString strResult = strVersion;
-    strResult[0] = strBaseVersion[0];  // Major
-    strResult[2] = strBaseVersion[2];  // Minor
-    strResult[6] = strBaseVersion[6];  // Type
-    return strResult;
-}
-
 
 //
 // Try to make a path relative to the 'resources/' directory
 //
-SString SharedUtil::ConformResourcePath ( const char* szRes, bool bConvertToUnixPathSep )
+SString SharedUtil::ConformResourcePath ( const char* szRes )
 {
     // Remove up to first '/resources/'
     // else
     // remove up to first '/resource-cache/unzipped/'
-    // else
-    // remove up to first '/http-client-no-client-cache-files/'
     // else
     // remove up to first '/deathmatch/'
     // else
     // if starts with '...'
     //  remove up to first '/'
 
-    SString strDelimList[] = { "/resources/", "/resource-cache/unzipped/", "/http-client-files-no-client-cache/", "/deathmatch/" };
+    SString strDelimList[] = { "/resources/", "/resource-cache/unzipped/", "/deathmatch/" };
     SString strText = szRes ? szRes : "";
-    char cPathSep;
-
-    // Handle which path sep char
 #ifdef WIN32
-    if ( !bConvertToUnixPathSep )
-    {
-        cPathSep = '\\';
-        for ( unsigned int i = 0 ; i < NUMELMS ( strDelimList ) ; i++ )
-            strDelimList[i] = strDelimList[i].Replace ( "/", "\\" );
-        strText = strText.Replace ( "/", "\\" );
-    }
-    else
+    char cPathSep = '\\';
+    for ( unsigned int i = 0 ; i < NUMELMS ( strDelimList ) ; i++ )
+        strDelimList[i] = strDelimList[i].Replace ( "/", "\\" );
+    strText = strText.Replace ( "/", "\\" );
+#else
+    char cPathSep = '/';
+    for ( unsigned int i = 0 ; i < NUMELMS ( strDelimList ) ; i++ )
+        strDelimList[i] = strDelimList[i].Replace ( "\\", "/" );
+    strText = strText.Replace ( "\\", "/" );
 #endif
-    {
-        cPathSep = '/';
-        for ( unsigned int i = 0 ; i < NUMELMS ( strDelimList ) ; i++ )
-            strDelimList[i] = strDelimList[i].Replace ( "\\", "/" );
-        strText = strText.Replace ( "\\", "/" );
-    }
 
     for ( unsigned int i = 0 ; i < NUMELMS ( strDelimList ) ; i++ )
     {
@@ -1313,6 +943,12 @@ SString SharedUtil::ConformResourcePath ( const char* szRes, bool bConvertToUnix
     return strText;
 }
 
+SString SharedUtil::GenerateNickname ( void )
+{
+    return CNickGen::GetRandomNickname();
+}
+
+
 namespace SharedUtil
 {
     CArgMap::CArgMap ( const SString& strArgSep, const SString& strPartsSep, const SString& strExtraDisallowedChars )
@@ -1320,12 +956,6 @@ namespace SharedUtil
         , m_strPartsSep ( strPartsSep )
     {
         m_strDisallowedChars = strExtraDisallowedChars + m_strArgSep + m_strPartsSep;
-        m_cEscapeCharacter = '#';
-    }
-
-    void CArgMap::SetEscapeCharacter ( char cEscapeCharacter )
-    {
-        m_cEscapeCharacter = cEscapeCharacter;
     }
 
     void CArgMap::Merge ( const CArgMap& other, bool bAllowMultiValues )
@@ -1386,12 +1016,12 @@ namespace SharedUtil
 
     SString CArgMap::Escape ( const SString& strIn ) const
     {
-        return EscapeString ( strIn, m_strDisallowedChars, m_cEscapeCharacter );
+        return EscapeString ( strIn, m_strDisallowedChars );
     } 
 
     SString CArgMap::Unescape ( const SString& strIn ) const
     {
-        return UnescapeString ( strIn, m_cEscapeCharacter );
+        return UnescapeString ( strIn );
     } 
 
 
@@ -1481,292 +1111,4 @@ namespace SharedUtil
             outList.push_back ( iter->first );
     }
 
-
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // GetCurrentProcessorNumber for the current thread.
-    //
-    // Only a guide as it could change after the call has returned
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    DWORD _GetCurrentProcessorNumber ( void )
-    {
-        DWORD dwProcessorNumber = -1;
-#ifdef WIN32
-        typedef DWORD (WINAPI *FUNC_GetCurrentProcessorNumber)( VOID ); 
-
-        // Dynamically load GetCurrentProcessorNumber, as it does not exist on XP
-        static FUNC_GetCurrentProcessorNumber pfn = NULL;
-        static bool bDone = false;
-        if ( !bDone )
-        {
-            HMODULE hModule = LoadLibraryA ( "Kernel32" );
-            pfn = static_cast < FUNC_GetCurrentProcessorNumber > ( static_cast < PVOID > ( GetProcAddress ( hModule, "GetCurrentProcessorNumber" ) ) );
-            bDone = true;
-        }
-
-        if ( pfn )
-            dwProcessorNumber = pfn ();
-#endif
-        if ( dwProcessorNumber == (DWORD)-1 )
-        {
-            LOCAL_FUNCTION_START
-                static DWORD GetCurrentProcessorNumberXP(void)
-                {
-#ifdef WIN32
-    #ifdef WIN_x64
-                    return 0;
-    #else
-                    // This should work on XP
-                    _asm {mov eax, 1}
-                    _asm {cpuid}
-                    _asm {shr ebx, 24}
-                    _asm {mov eax, ebx}
-    #endif
-#else
-                    // This should work on Linux
-                    return sched_getcpu();
-#endif
-                }
-            LOCAL_FUNCTION_END
-            dwProcessorNumber = LOCAL_FUNCTION::GetCurrentProcessorNumberXP();
-        }
-        return dwProcessorNumber;
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // GetThreadCPUTimes
-    //
-    // Returns time in microseconds used by this thread
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    void GetThreadCPUTimes ( uint64& outUserTime, uint64& outKernelTime )
-    {
-        outUserTime = 0;
-        outKernelTime = 0;
-#ifdef WIN32
-        FILETIME CreationTime, ExitTime, KernelTime, UserTime;
-        if ( SUCCEEDED( GetThreadTimes( GetCurrentThread(), &CreationTime, &ExitTime, &KernelTime, &UserTime ) ) )
-        {
-            ((ULARGE_INTEGER*)&outUserTime)->LowPart = UserTime.dwLowDateTime;
-            ((ULARGE_INTEGER*)&outUserTime)->HighPart = UserTime.dwHighDateTime;
-            ((ULARGE_INTEGER*)&outKernelTime)->LowPart = KernelTime.dwLowDateTime;
-            ((ULARGE_INTEGER*)&outKernelTime)->HighPart = KernelTime.dwHighDateTime;
-            outUserTime /= 10;
-            outKernelTime /= 10;
-        }
-#else
-        rusage usage;
-        if ( getrusage( RUSAGE_THREAD, &usage ) == 0 )
-        {
-            outUserTime = (uint64)usage.ru_utime.tv_sec * 1000000ULL + (uint64)usage.ru_utime.tv_usec;
-            outKernelTime = (uint64)usage.ru_stime.tv_sec * 1000000ULL + (uint64)usage.ru_stime.tv_usec;
-        }
-#endif
-    }
-
-
-    ///////////////////////////////////////////////////////////////////////////
-    //
-    // UpdateThreadCPUTimes
-    //
-    // Updates struct with datum
-    //
-    ///////////////////////////////////////////////////////////////////////////
-    void UpdateThreadCPUTimes( SThreadCPUTimesStore& store, long long* pllTickCount )
-    {
-        // Use supplied tick count if present
-        uint64 ullCPUMeasureTimeMs;
-        if ( pllTickCount )
-            ullCPUMeasureTimeMs = *pllTickCount;
-        else
-            ullCPUMeasureTimeMs = GetTickCount64_();
-
-        if ( ullCPUMeasureTimeMs - store.ullPrevCPUMeasureTimeMs > 1000 )
-        {
-            store.uiProcessorNumber = SharedUtil::_GetCurrentProcessorNumber ();
-            uint64 ullUserTimeUs, ullKernelTimeUs;
-            GetThreadCPUTimes( ullUserTimeUs, ullKernelTimeUs );
-
-            float fCPUMeasureTimeDeltaMs = (float)( ullCPUMeasureTimeMs - store.ullPrevCPUMeasureTimeMs );
-            float fUserTimeDeltaUs       = (float)( ullUserTimeUs - store.ullPrevUserTimeUs );
-            float fKernelTimeDeltaUs     = (float)( ullKernelTimeUs - store.ullPrevKernelTimeUs );
-            if ( fCPUMeasureTimeDeltaMs > 0 )
-            {
-                float fPercentScaler = 0.1f / fCPUMeasureTimeDeltaMs;
-                store.fUserPercent = fUserTimeDeltaUs * fPercentScaler;
-                store.fKernelPercent = fKernelTimeDeltaUs * fPercentScaler;
-                store.fTotalCPUPercent = ( fUserTimeDeltaUs + fKernelTimeDeltaUs ) * fPercentScaler;
-            }
-            else
-            {
-                store.fUserPercent = 0;
-                store.fKernelPercent = 0;
-                store.fTotalCPUPercent = 0;
-            }
-            store.ullPrevUserTimeUs = ullUserTimeUs;
-            store.ullPrevKernelTimeUs = ullKernelTimeUs;
-            store.ullPrevCPUMeasureTimeMs = ullCPUMeasureTimeMs;
-
-            // Updated smoothed values
-            float fAlpha = 1.f / store.fAvgTimeSeconds;
-            store.fUserPercentAvg = Lerp( store.fUserPercentAvg, fAlpha, store.fUserPercent );
-            store.fKernelPercentAvg = Lerp( store.fKernelPercentAvg, fAlpha, store.fKernelPercent );
-            store.fTotalCPUPercentAvg = Lerp( store.fTotalCPUPercentAvg, fAlpha, store.fTotalCPUPercent );
-        }  
-    }
-
-
-    //
-    // class CRanges
-    //
-    //  Ranges of numbers. i.e.   100-4000, 5000-6999, 7000-7010
-    //
-    void CRanges::SetRange ( uint uiStart, uint uiLength )
-    {
-        if ( uiLength < 1 )
-            return;
-        uint uiLast = uiStart + uiLength - 1;
-
-        // Make a hole
-        UnsetRange ( uiStart, uiLength );
-
-        // Insert
-        m_StartLastMap [ uiStart ] = uiLast;
-
-        // Maybe join adjacent ranges one day
-    }
-
-    void CRanges::UnsetRange ( uint uiStart, uint uiLength )
-    {
-        if ( uiLength < 1 )
-            return;
-        uint uiLast = uiStart + uiLength - 1;
- 
-        RemoveObscuredRanges ( uiStart, uiLast );
-
-        IterType iterOverlap;
-        if ( GetRangeOverlappingPoint ( uiStart, iterOverlap ) )
-        {
-            uint uiOverlapPrevLast = iterOverlap->second;
-
-            // Modify overlapping range last point
-            uint uiNewLast = uiStart - 1;
-            iterOverlap->second = uiNewLast;
-
-            if ( uiOverlapPrevLast > uiLast )
-            {
-                // Need to add range after hole
-                uint uiNewStart = uiLast + 1;
-                m_StartLastMap[ uiNewStart ] = uiOverlapPrevLast;
-            }
-        }
-
-        if ( GetRangeOverlappingPoint ( uiLast, iterOverlap ) )
-        {
-            // Modify overlapping range start point
-            uint uiNewStart = uiLast + 1;
-            uint uiOldLast = iterOverlap->second;
-            m_StartLastMap.erase ( iterOverlap );
-            m_StartLastMap[ uiNewStart ] = uiOldLast;
-        }
-    }
-
-    // Returns true if any part of the range already exists in the map
-    bool CRanges::IsRangeSet ( uint uiStart, uint uiLength )
-    {
-        if ( uiLength < 1 )
-            return false;
-        uint uiLast = uiStart + uiLength - 1;
-
-        IterType iter = m_StartLastMap.lower_bound ( uiStart );
-        // iter is on or after start
-
-        if ( iter != m_StartLastMap.end () )
-        {
-            // If start of found range is before or at query last, then range is used
-            if ( iter->first <= uiLast )
-                return true;
-        }
-
-        if ( iter != m_StartLastMap.begin () )
-        {
-            iter--;
-            // iter is now before start
-
-            // If last of found range is after or at query start, then range is used
-            if ( iter->second >= uiStart )
-                return true;
-        }
-
-        return false;
-    }
-
-    void CRanges::RemoveObscuredRanges ( uint uiStart, uint uiLast )
-    {
-        while ( true )
-        {
-            IterType iter = m_StartLastMap.lower_bound ( uiStart );
-            // iter is on or after start
-
-            if ( iter == m_StartLastMap.end () )
-                return;
-
-            // If last of found range is after query last, then range is not obscured
-            if ( iter->second > uiLast )
-                return;
-
-            // Remove obscured
-            m_StartLastMap.erase ( iter );
-        }
-    }
-
-    bool CRanges::GetRangeOverlappingPoint ( uint uiPoint, IterType& result )
-    {
-        IterType iter = m_StartLastMap.lower_bound ( uiPoint );
-        // iter is on or after point - So it can't overlap the point
-
-        if ( iter != m_StartLastMap.begin () )
-        {
-            iter--;
-            // iter is now before point
-
-            // If last of found range is after or at query point, then range is overlapping
-            if ( iter->second >= uiPoint )
-            {
-                result = iter;
-                return true;
-            }
-        }
-        return false;
-    }
-
-}
-
-
-//
-// For checking MTA library module versions
-//
-MTAEXPORT void GetLibMtaVersion( char* pBuffer, uint uiMaxSize )
-{
-    SString strVersion( "%d.%d.%d-%d.%05d.%d"
-#ifdef MTASA_VERSION_MAJOR
-                            ,MTASA_VERSION_MAJOR
-                            ,MTASA_VERSION_MINOR
-                            ,MTASA_VERSION_MAINTENANCE
-                            ,MTASA_VERSION_TYPE
-                            ,MTASA_VERSION_BUILD
-#else
-                            ,0
-                            ,0
-                            ,0
-                            ,0
-                            ,0
-#endif
-                            ,0
-                            );
-    uint uiLengthInclTerm = strVersion.length() + 1;
-    STRNCPY( pBuffer, *strVersion, Max( uiLengthInclTerm, uiMaxSize ) );
 }

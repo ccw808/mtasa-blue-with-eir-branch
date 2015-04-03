@@ -41,8 +41,7 @@ CSettings::CSettings ( CResourceManager* pResourceManager )
         // Create a new root node
         m_pNodeGlobalSettings = m_pFile->CreateRootNode ( ROOTNODE_SETTINGS );
 
-        if ( !m_pFile->Write () )
-            CLogger::ErrorPrintf ( "Error saving '%s'\n", FILENAME_SETTINGS );
+        m_pFile->Write ();
     }
 }
 
@@ -118,7 +117,7 @@ CXMLNode* CSettings::Get ( CXMLNode *pSource, CXMLNode *pStorage, const char *sz
             if ( strContent.empty () ) continue;
 
             // Parse the settings name and store the resource name in szResource
-            if ( !GetResourceName ( strContent.c_str (), szResource, MAX_RESOURCE_LENGTH - 1 ) ) {
+            if ( !GetResourceName ( const_cast < const char* > ( strContent.c_str () ), szResource, MAX_RESOURCE_LENGTH - 1 ) ) {
                 // If there was no resource name, copy the owner's name
                 strncpy ( szResource, szSourceResource, MAX_RESOURCE_LENGTH - 1 );
             } else {
@@ -342,9 +341,8 @@ bool CSettings::Set ( const char *szLocalResource, const char *szSetting, const 
             g_pGame->GetMapManager ()->GetRootElement ()->CallEvent ( "onSettingChange", Arguments );
 
             // Save the XML file
-            if ( m_pFile->Write () )
-                return true;
-            CLogger::ErrorPrintf ( "Error saving '%s'\n", FILENAME_SETTINGS );
+            m_pFile->Write ();
+            return true;
         }
     }
 
@@ -405,7 +403,13 @@ inline bool CSettings::HasResourceName ( const char *szSetting ) {
 // Parses the name and returns the actual name of the variable
 inline const char* CSettings::GetName ( const char *szSetting, unsigned int uiResourceLength ) {
     // Only calculate the resource length if it's not already specified
-    if ( HasPrefix ( szSetting[0] ) ) szSetting++;
+    if ( uiResourceLength < 0 ) {
+        char szBuffer[MAX_RESOURCE_LENGTH] = {0};
+        uiResourceLength = ( GetResourceName ( szSetting, szBuffer, MAX_RESOURCE_LENGTH - 1 ) != NULL ) ? 0 : strlen ( szBuffer ) + 1;
+    } else {
+        // Make sure the prefix is stripped off
+        if ( HasPrefix ( szSetting[0] ) ) szSetting++;
+    }
 
     // Since we know the resource length, we just return the pointer to whereever the resource part ends (and the name begins)
     const char * szName = ( szSetting + uiResourceLength );

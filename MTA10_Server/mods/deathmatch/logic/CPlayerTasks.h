@@ -54,8 +54,8 @@ public:
     bool                        SetSecondaryTask            ( unsigned int uiTaskType, CPlayerTask* pTask );
     
 protected:
-    SFixedArray < CPlayerTask*, TASK_PRIORITY_MAX >        m_PriorityTasks;
-    SFixedArray < CPlayerTask*, TASK_SECONDARY_MAX >       m_SecondaryTasks;
+    CPlayerTask*                m_PriorityTasks [ TASK_PRIORITY_MAX ];
+    CPlayerTask*                m_SecondaryTasks [ TASK_SECONDARY_MAX ];
 };
 
 class CPlayerTask

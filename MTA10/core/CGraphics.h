@@ -22,101 +22,76 @@ class CGraphics;
 #include <gui/CGUI.h>
 #include "CGUI.h"
 #include "CSingleton.h"
-#include <CRenderItemManager.h>
 
-#define DUMMY_PROGRESS_INITIAL_DELAY        1000    // Game stall time before spinner is displayed
-#define DUMMY_PROGRESS_MIN_DISPLAY_TIME     1000    // Minimum time spinner is drawn (to prevent flicker)
-#define DUMMY_PROGRESS_ANIMATION_INTERVAL   100     // Animation speed
-
-class CTileBatcher;
-class CLine3DBatcher;
-class CMaterialLine3DBatcher;
-class CAspectRatioConverter;
 struct IDirect3DDevice9;
 struct IDirect3DSurface9;
 
-namespace EDrawMode
+struct SCachedTextureInfo
 {
-    enum EDrawModeType
-    {
-        NONE,
-        DX_LINE,
-        DX_SPRITE,
-        TILE_BATCHER,
-    };
-}
-using EDrawMode::EDrawModeType;
-
-struct SCustomScaleFontInfo
-{
-    SCustomScaleFontInfo( void ) : fScale( 0 ), fontType( FONT_DEFAULT ), pFont( NULL ) {}
-    float fScale;
-    eFontType fontType;
-    ID3DXFont* pFont;
-};
-
-struct sFontInfo
-{
-    const char* szName;
-    unsigned int uiHeight;
-    unsigned int uiWeight;
+    IDirect3DTexture9*  d3dTexture;
+    unsigned long       ulTimeLastUsed;
+    unsigned int        uiSurfaceWidth;
+    unsigned int        uiSurfaceHeight;
+    unsigned int        uiFileWidth;
+    unsigned int        uiFileHeight;
 };
 
 class CGraphics : public CGraphicsInterface, public CSingleton < CGraphics >
 {
     friend class CDirect3DEvents9;
 public:
-    ZERO_ON_NEW
                         CGraphics               ( CLocalGUI* pGUI );
                         ~CGraphics              ( void );
 
     // DirectX misc. functions
+    void                BeginDrawing            ( void );
+    void                EndDrawing              ( void );
+
+    inline void         SetRenderTarget         ( IDirect3DSurface9 * pSurface )    { m_pRenderTarget = pSurface; }
+
     inline IDirect3DDevice9 *   GetDevice       ( void )            { return m_pDevice; };
+
+    void                BeginSingleDrawing      ( void );
+    void                EndSingleDrawing        ( void );
 
     // Transformation functions
     void                CalcWorldCoors          ( CVector * vecScreen, CVector * vecWorld );
     void                CalcScreenCoors         ( CVector * vecWorld, CVector * vecScreen );
 
     // DirectX drawing functions
+    void                Draw3DBox               ( float fX, float fY, float fZ, float fL, float fW, float fH, DWORD dwColor, bool bWireframe = false );
     void                DrawText                ( int iLeft, int iTop, int iRight, int iBottom, unsigned long dwColor, const char* wszText, float fScaleX, float fScaleY, unsigned long ulFormat, ID3DXFont * pDXFont = NULL );
     void                DrawText                ( int iX, int iY, unsigned long dwColor, float fScale, const char * szText, ... );
+    void                DrawText2DA             ( int uiX, int uiY, unsigned long ulColor, float fScale, const char* szDisplayText, ... );
+    void                DrawText3DA             ( float fX, float fY, float fZ, unsigned long ulColor, float fScale, const char* szDisplayText, ... );
+    void                DrawLine                ( float fX1, float fY1, float fX2, float fY2, unsigned long ulColor );
     void                DrawLine3D              ( const CVector& vecBegin, const CVector& vecEnd, unsigned long ulColor, float fWidth = 1.0f );
-    void                DrawRectangle           ( float fX, float fY, float fWidth, float fHeight, unsigned long ulColor, bool bSubPixelPositioning = false );
+    void                DrawRectangle           ( float fX, float fY, float fWidth, float fHeight, unsigned long ulColor );
 
-    void                SetBlendMode            ( EBlendModeType blendMode );
-    EBlendModeType      GetBlendMode            ( void );
-    SColor              ModifyColorForBlendMode ( SColor color, EBlendModeType blendMode );
-    void                BeginDrawBatch          ( EBlendModeType blendMode = EBlendMode::NONE );
-    void                EndDrawBatch            ( void );
-    void                SetBlendModeRenderStates ( EBlendModeType blendMode );
+    void                Render3DSprite          ( float fX, float fY, float fZ, float fScale, unsigned long ulColor );
 
     unsigned int        GetViewportWidth        ( void );
     unsigned int        GetViewportHeight       ( void );
 
-    void                SetAspectRatioAdjustmentEnabled     ( bool bEnabled, float fSourceRatio = 4/3.f );
-    bool                IsAspectRatioAdjustmentEnabled      ( void );
-    float               GetAspectRatioAdjustmentSourceRatio ( void );
-    void                SetAspectRatioAdjustmentSuspended   ( bool bSuspended );
-    float               ConvertPositionForAspectRatio       ( float fY );
-    void                ConvertSideForAspectRatio           ( float* pfY, float* pfHeight );
-
     // DirectX font functions
-    ID3DXFont *         GetFont                 ( eFontType fontType = FONT_DEFAULT, float* pfOutScaleUsed = NULL, float fRequestedScale = 1, const char* szCustomScaleUser = NULL );
+    ID3DXFont *         GetFont                 ( eFontType fontType = FONT_DEFAULT );
+    eFontType           GetFontType             ( const char* szFontName );
 
-    bool                LoadStandardDXFonts     ( void );
-    bool                DestroyStandardDXFonts  ( void );
-    bool                CreateStandardDXFontWithCustomScale ( eFontType fontType, float fScale, ID3DXFont** ppD3DXFont );
+    bool                LoadFonts               ( void );
+    bool                DestroyFonts            ( void );
 
-    bool                LoadAdditionalDXFont    ( std::string strFontPath, std::string strFontName, unsigned int uiHeight, bool bBold, ID3DXFont** ppD3DXFont );
-    bool                DestroyAdditionalDXFont ( std::string strFontPath, ID3DXFont* pD3DXFont );
+    bool                LoadFont                ( std::string strFontPath, std::string strFontName, unsigned int uiHeight, bool bBold, ID3DXFont** pDXSmallFont, ID3DXFont** pDXBigFont );
+    bool                DestroyFont             ( std::string strFontPath );
 
     float               GetDXFontHeight         ( float fScale = 1.0f, ID3DXFont * pDXFont = NULL );
     float               GetDXCharacterWidth     ( char c, float fScale = 1.0f, ID3DXFont * pDXFont = NULL );
-    float               GetDXTextExtent         ( const char * szText, float fScale = 1.0f, ID3DXFont * pDXFont = NULL, bool bColorCoded = false );
-    float               GetDXTextExtentW        ( const wchar_t* wszText, float fScale = 1.0f, LPD3DXFONT pDXFont = NULL );
+    float               GetDXTextExtent         ( const char * szText, float fScale = 1.0f, ID3DXFont * pDXFont = NULL );
 
     // Textures
-    void                DrawTexture             ( CTextureItem* texture, float fX, float fY, float fScaleX = 1.0f, float fScaleY = 1.0f, float fRotation = 0.0f, float fCenterX = 0.0f, float fCenterY = 0.0f, DWORD dwColor = 0xFFFFFFFF, float fU = 0, float fV = 0, float fSizeU = 1, float fSizeV = 1, bool bRelativeUV = true );
+    IDirect3DTexture9*  CreateTexture           ( DWORD* dwBitMap, unsigned int uiWidth, unsigned int uiHeight );
+    IDirect3DTexture9*  LoadTexture             ( const char* szFile );
+    IDirect3DTexture9*  LoadTexture             ( const char* szFile, unsigned int uiWidth, unsigned int uiHeight );
+    void                DrawTexture             ( IDirect3DTexture9* texture, float fX, float fY, float fScaleX = 1.0f, float fScaleY = 1.0f, float fRotation = 0.0f, float fCenterX = 0.0f, float fCenterY = 0.0f, unsigned char ucAlpha = 255 );
 
     // Interface functions
     void                SetCursorPosition       ( int iX, int iY, DWORD Flags );
@@ -128,120 +103,82 @@ public:
                                                   unsigned long ulColor,
                                                   bool bPostGUI );
 
-    void                DrawLine3DQueued       ( const CVector& vecBegin,
-                                                 const CVector& vecEnd,
-                                                 float fWidth,
-                                                 unsigned long ulColor,
-                                                 bool bPostGUI );
-
-    void                DrawMaterialLine3DQueued
-                                               ( const CVector& vecBegin,
-                                                 const CVector& vecEnd,
-                                                 float fWidth,
-                                                 unsigned long ulColor,
-                                                 CMaterialItem* pMaterial,
-                                                 float fU = 0, float fV = 0,
-                                                 float fSizeU = 1, float fSizeV = 1, 
-                                                 bool bRelativeUV = true,
-                                                 bool bUseFaceToward = false,
-                                                 const CVector& vecFaceToward = CVector () );
+    void                DrawLine3DQueued        ( const CVector& vecBegin,
+                                                  const CVector& vecEnd,
+                                                  float fWidth,
+                                                  unsigned long ulColor,
+                                                  bool bPostGUI );
 
     void                DrawRectQueued          ( float fX, float fY,
                                                   float fWidth, float fHeight,
                                                   unsigned long ulColor,
-                                                  bool bPostGUI,
-                                                  bool bSubPixelPositioning = false );
+                                                  bool bPostGUI );
 
-    void                DrawTextureQueued       ( float fX, float fY,
+    bool                DrawTextureQueued       ( float fX, float fY,
                                                   float fWidth, float fHeight,
                                                   float fU, float fV,
                                                   float fSizeU, float fSizeV, 
                                                   bool bRelativeUV,
-                                                  CMaterialItem* pMaterial,
+                                                  const std::string& strFilename,
                                                   float fRotation,
                                                   float fRotCenOffX,
                                                   float fRotCenOffY,
                                                   unsigned long ulColor,
                                                   bool bPostGUI );
 
-    void                DrawTextQueued          ( float iLeft, float iTop,
-                                                  float iRight, float iBottom,
+    void                DrawTextQueued          ( int iLeft, int iTop,
+                                                  int iRight, int iBottom,
                                                   unsigned long dwColor,
                                                   const char* wszText,
                                                   float fScaleX,
                                                   float fScaleY,
                                                   unsigned long ulFormat,
                                                   ID3DXFont * pDXFont = NULL,
-                                                  bool bPostGUI = false,
-                                                  bool bColorCoded = false,
-                                                  bool bSubPixelPositioning = false,
-                                                  float fRotation = 0,
-                                                  float fRotationCenterX = 0,
-                                                  float fRotationCenterY = 0 );
-
-    void                OnChangingRenderTarget  ( uint uiNewViewportSizeX, uint uiNewViewportSizeY );
-
-    // Subsystems
-    CRenderItemManagerInterface* GetRenderItemManager   ( void )        { return m_pRenderItemManager; }
-    CScreenGrabberInterface*     GetScreenGrabber       ( void )        { return m_pScreenGrabber; }
-    CPixelsManagerInterface*     GetPixelsManager       ( void )        { return m_pPixelsManager; }
-
-    // Transition between GTA and MTA controlled rendering
-    virtual void                            EnteringMTARenderZone       ( void );
-    virtual void                            LeavingMTARenderZone        ( void );
-    virtual void                            MaybeEnteringMTARenderZone  ( void );
-    virtual void                            MaybeLeavingMTARenderZone   ( void );
-    void                                    SaveGTARenderStates         ( void );
-    void                                    RestoreGTARenderStates      ( void );
+                                                  bool bPostGUI = false );
 
     // To draw queued up drawings
     void                DrawPreGUIQueue         ( void );
     void                DrawPostGUIQueue        ( void );
-    void                DrawMaterialLine3DQueue ( void );
-    bool                HasMaterialLine3DQueueItems ( void );
-
-    void                DidRenderScene          ( void );
-    void                SetProgressMessage      ( const SString& strMessage );
-    void                DrawProgressMessage     ( bool bPreserveBackbuffer = true );
-    void                DrawRectangleInternal   ( float fX, float fY, float fWidth, float fHeight, unsigned long ulColor, bool bSubPixelPositioning );
-
+    
 private:
     void                OnDeviceCreate          ( IDirect3DDevice9 * pDevice );
     void                OnDeviceInvalidate      ( IDirect3DDevice9 * pDevice );
     void                OnDeviceRestore         ( IDirect3DDevice9 * pDevice );
-    void                OnZBufferModified       ( void );
-    ID3DXFont*          MaybeGetBigFont         ( ID3DXFont* pDXFont, float& fScaleX, float& fScaleY );
-    void                CheckModes              ( EDrawModeType newDrawMode, EBlendModeType newBlendMode = EBlendMode::NONE );
-    void                DrawColorCodedTextLine  ( float fLeft, float fRight, float fY, SColor& currentColor, const wchar_t* wszText,
-                                                  float fScaleX, float fScaleY, unsigned long ulFormat, ID3DXFont* pDXFont, bool bPostGUI, bool bSubPixelPositioning,
-                                                  float fRotation, float fRotationCenterX, float fRotationCenterY );
+    SCachedTextureInfo& CacheTexture            ( const std::string& strFilename );
+    void                ExpireCachedTextures    ( bool bExpireAll = false );
+    ID3DXFont*          GetBigFont              ( ID3DXFont* pDXFont );
 
     CLocalGUI*          m_pGUI;
 
-    int                 m_iDebugQueueRefs;
-    int                 m_iDrawBatchRefCount;
-    EBlendModeType      m_ActiveBlendMode;
-    EDrawModeType       m_CurDrawMode;
-    EBlendModeType      m_CurBlendMode;
+    bool                m_bIsDrawing;
 
     LPD3DXSPRITE        m_pDXSprite;
+    IDirect3DTexture9 * m_pDXPixelTexture;
+
+    IDirect3DSurface9 * m_pRenderTarget;
+    IDirect3DSurface9 * m_pOriginalTarget;
 
     IDirect3DDevice9 *  m_pDevice;
-
-    CRenderItemManager*         m_pRenderItemManager;
-    CScreenGrabberInterface*    m_pScreenGrabber;
-    CPixelsManagerInterface*    m_pPixelsManager;
-    CTileBatcher*               m_pTileBatcher;
-    CLine3DBatcher*             m_pLine3DBatcherPreGUI;
-    CLine3DBatcher*             m_pLine3DBatcherPostGUI;
-    CMaterialLine3DBatcher*     m_pMaterialLine3DBatcher;
-    CAspectRatioConverter*      m_pAspectRatioConverter;
 
     // Fonts
     ID3DXFont*          m_pDXFonts [ NUM_FONTS ];
     ID3DXFont*          m_pBigDXFonts [ NUM_FONTS ];
 
     std::vector < SString > m_FontResourceNames;
+
+    /*
+    ID3DXFont *         m_pDXDefaultFont;
+    ID3DXFont *         m_pDXDefaultBoldFont;
+    ID3DXFont *         m_pDXClearFont;
+    ID3DXFont *         m_pDXArialFont;
+    ID3DXFont *         m_pDXSansFont;
+    ID3DXFont *         m_pDXPricedownFont;
+    ID3DXFont *         m_pDXBankGothicFont;
+    ID3DXFont *         m_pDXDiplomaFont;
+    ID3DXFont *         m_pDXBeckettFont;
+
+    ID3DXFont *         m_pDXBigDefaultFont;
+    */
 
     // ******* Drawing queue code ***********
     // Used by client scripts to draw DX stuff. Rather than drawing immediately,
@@ -250,10 +187,11 @@ private:
     enum eDrawQueueType
     {
         QUEUE_LINE,
+        QUEUE_LINE3D,
         QUEUE_TEXT,
         QUEUE_RECT,
+        QUEUE_CIRCLE,
         QUEUE_TEXTURE,
-        QUEUE_SHADER,
     };
 
     struct sDrawQueueLine
@@ -266,20 +204,29 @@ private:
         unsigned long   ulColor;
     };
 
+    struct sDrawQueueLine3D
+    {
+        float           fX1;
+        float           fY1;
+        float           fZ1;
+        float           fX2;
+        float           fY2;
+        float           fZ2;
+        float           fWidth;
+        unsigned long   ulColor;
+    };
+
     struct sDrawQueueText
     {
-        float           fLeft;
-        float           fTop;
-        float           fRight;
-        float           fBottom;
+        int             iLeft;
+        int             iTop;
+        int             iRight;
+        int             iBottom;
         unsigned long   ulColor;
         float           fScaleX;
         float           fScaleY;
         unsigned long   ulFormat;
         ID3DXFont*      pDXFont;
-        float           fRotation;
-        float           fRotationCenterX;
-        float           fRotationCenterY;
     };
 
     struct sDrawQueueRect
@@ -289,12 +236,19 @@ private:
         float           fWidth;
         float           fHeight;
         unsigned long   ulColor;
-        bool            bSubPixelPositioning;
+    };
+
+    struct sDrawQueueCircle
+    {
+        float           fX;
+        float           fY;
+        float           fRadius;
+        unsigned long   ulColor;
     };
 
     struct sDrawQueueTexture
     {
-        CMaterialItem*  pMaterial;
+        SCachedTextureInfo info;
         float           fX;
         float           fY;
         float           fWidth;
@@ -313,58 +267,41 @@ private:
     struct sDrawQueueItem
     {
         eDrawQueueType      eType;
-        EBlendModeType      blendMode;
-        std::wstring        wstrText;
+        std::wstring        strText;
 
         // Queue item data based on the eType.
         union
         {
             sDrawQueueLine          Line;
+            sDrawQueueLine3D        Line3D;
             sDrawQueueText          Text;
             sDrawQueueRect          Rect;
+            sDrawQueueCircle        Circle;
             sDrawQueueTexture       Texture;
         };
+    };
+
+
+    struct sFontInfo
+    {
+        const char* szName;
+        unsigned int uiHeight;
+        unsigned int uiWeight;
     };
 
     // Drawing queues
     std::vector < sDrawQueueItem >      m_PreGUIQueue;
     std::vector < sDrawQueueItem >      m_PostGUIQueue;
 
+    bool                                IsDrawQueueItemSprite   ( const sDrawQueueItem& Item );
     void                                AddQueueItem            ( const sDrawQueueItem& Item, bool bPostGUI );
     void                                DrawQueueItem           ( const sDrawQueueItem& Item );
     void                                DrawQueue               ( std::vector < sDrawQueueItem >& Queue );
-    void                                ClearDrawQueue          ( std::vector < sDrawQueueItem >& Queue );
-    void                                AddQueueRef             ( CRenderItem* pRenderItem );
-    void                                RemoveQueueRef          ( CRenderItem* pRenderItem );
-    void                                AddQueueRef             ( IUnknown* pUnknown );
-    void                                RemoveQueueRef          ( IUnknown* pUnknown );
 
     // Drawing types
     struct ID3DXLine*                   m_pLineInterface;
 
-    enum EMTARenderZone
-    {
-        MTA_RZONE_NONE,
-        MTA_RZONE_MAIN,     // MTA rendering inside known areas.
-        MTA_RZONE_OUTSIDE,  // MTA rendering outside known areas. i.e. During a keypress or GTA callback
-    };
-
-    EMTARenderZone                      m_MTARenderZone;
-    int                                 m_iOutsideZoneCount;
-    IDirect3DStateBlock9*               m_pSavedStateBlock;
-    CElapsedTime                        m_LastRenderedSceneTimer;
-    IDirect3DSurface9*                  m_pSavedFrontBufferData;
-    CRenderTargetItem*                  m_pTempBackBufferData;
-    CTextureItem*                       m_ProgressSpinnerTexture;
-    CTextureItem*                       m_RectangleEdgeTexture;
-    SString                             m_strProgressMessage;
-    CElapsedTime                        m_FirstDrawnProgressTimer;
-    CElapsedTime                        m_LastDrawnProgressTimer;
-    CElapsedTime                        m_LastLostDeviceTimer;
-    bool                                m_bProgressVisible;
-    CElapsedTime                        m_ProgressAnimTimer;
-    uint                                m_uiProgressAnimFrame;
-    std::map < SString, SCustomScaleFontInfo > m_CustomScaleFontMap;
+    std::map < std::string, SCachedTextureInfo > m_CachedTextureInfoMap;
 };
 
 #endif

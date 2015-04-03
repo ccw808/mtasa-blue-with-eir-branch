@@ -28,7 +28,7 @@ public:
     void                    OverrideSyncer                      ( CPed* pPed, CPlayer* pPlayer );
 
 private:
-    void                    Update                              ( void );
+    void                    Update                              ( unsigned long ulCurrentTime );
     void                    UpdatePed                           ( CPed* pPed );
     void                    FindSyncer                          ( CPed* pPed );
     CPlayer*                FindPlayerCloseToPed                ( CPed* pPed, float fMaxDistance );
@@ -41,7 +41,7 @@ private:
     CPlayerManager*         m_pPlayerManager;
     CPedManager*            m_pPedManager;
 
-    CElapsedTime            m_UpdateTimer;
+    unsigned long           m_ulLastSweepTime;
 };
 
 #endif

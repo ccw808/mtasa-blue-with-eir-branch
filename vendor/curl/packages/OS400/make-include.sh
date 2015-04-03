@@ -2,6 +2,7 @@
 #
 #       Installation of the include files in the OS/400 library.
 #
+# $Id: make-include.sh,v 1.4 2008-12-11 19:20:03 patrickm Exp $
 
 SCRIPTDIR=`dirname "${0}"`
 . "${SCRIPTDIR}/initscript.sh"
@@ -34,15 +35,11 @@ fi
 copy_hfile()
 
 {
-	destfile="${1}"
-	srcfile="${2}"
-	shift
-	shift
         sed -e '1i\
 #pragma enum(int)\
-' "${@}" -e '$a\
+' -e '$a\
 #pragma enum(pop)\
-' < "${srcfile}" > "${destfile}"
+' < "${2}" > "${1}"
 }
 
 #       Copy the header files.
@@ -58,15 +55,3 @@ done
 #       Copy the ILE/RPG include file, setting-up version number.
 
         versioned_copy "${SCRIPTDIR}/curl.inc.in" "${SRCPF}/CURL.INC.MBR"
-
-
-#	Duplicate file H as CURL to support more include path forms.
-
-if action_needed "${LIBIFSNAME}/CURL.FILE"
-then	:
-else	system "DLTF FILE(${TARGETLIB}/CURL)"
-fi
-
-CMD="CRTDUPOBJ OBJ(H) FROMLIB(${TARGETLIB}) OBJTYPE(*FILE) TOLIB(*FROMLIB)"
-CMD="${CMD} NEWOBJ(CURL) DATA(*YES)"
-system "${CMD}"

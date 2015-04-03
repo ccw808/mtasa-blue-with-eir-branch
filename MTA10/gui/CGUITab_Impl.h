@@ -34,9 +34,7 @@ public:
 #undef SETVISIBLE_HACK
 
     void                    SetVisible              ( bool bVisible );
-    bool                    IsVisible               ( void );
     void                    SetEnabled              ( bool bEnabled );
-    bool                    IsEnabled               ( void );
 };
 
 #endif

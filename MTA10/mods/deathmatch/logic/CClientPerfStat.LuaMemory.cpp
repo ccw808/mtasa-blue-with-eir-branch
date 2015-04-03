@@ -32,6 +32,8 @@ namespace
         int Refs;
         int TimerCount;
         int ElementCount;
+        int TextDisplayCount;
+        int TextItemCount;
     };
 
     typedef std::map < CLuaMain*, CLuaMainMemory > CLuaMainMemoryMap;
@@ -180,6 +182,8 @@ void CClientPerfStatLuaMemoryImpl::UpdateLuaMemory ( CLuaMain* pLuaMain, int iMe
     pLuaMainMemory->Refs = pLuaMain->m_CallbackTable.size ();
     pLuaMainMemory->TimerCount = pLuaMain->GetTimerCount ();
     pLuaMainMemory->ElementCount = pLuaMain->GetElementCount ();
+    //pLuaMainMemory->TextDisplayCount = pLuaMain->GetTextDisplayCount ();
+    //pLuaMainMemory->TextItemCount = pLuaMain->GetTextItemCount ();
 }
 
 
@@ -260,14 +264,8 @@ void CClientPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CClientPerfStatResult* pR
     pResult->AddColumn ( "refs" );
     pResult->AddColumn ( "Timers" );
     pResult->AddColumn ( "Elements" );
+    pResult->AddColumn ( "TextDisplays" );
     pResult->AddColumn ( "TextItems" );
-    pResult->AddColumn ( "DxFonts" );
-    pResult->AddColumn ( "GuiFonts" );
-    pResult->AddColumn ( "Textures" );
-    pResult->AddColumn ( "Shaders" );
-    pResult->AddColumn ( "RenderTargets" );
-    pResult->AddColumn ( "ScreenSources" );
-    pResult->AddColumn ( "WebBrowsers" );
 
     // Calc totals
     if ( strFilter == "" )
@@ -298,43 +296,23 @@ void CClientPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CClientPerfStatResult* pR
 
         row[c++] = SString ( "%d KB", calcedCurrent );
         row[c++] = SString ( "%d KB", calcedMax );
-
-        // Some extra 'all VM' things
-        c += 4;
-        int TextItemCount = g_pClientGame->GetManager ()->GetDisplayManager ()->Count ();
-        int DxFontCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetDxFontCount ();
-        int GuiFontCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetGuiFontCount ();
-        int TextureCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetTextureCount ();
-        int ShaderCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetShaderCount ();
-        int RenderTargetCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetRenderTargetCount ();
-        int ScreenSourceCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetScreenSourceCount ();
-        int WebBrowserCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetWebBrowserCount ();
-        TextItemCount = Max ( TextItemCount - 4, 0 );   // Remove count for radar items
-        row[c++] = !TextItemCount ? "-" : SString ( "%d", TextItemCount );
-        row[c++] = !DxFontCount ? "-" : SString ( "%d", DxFontCount );
-        row[c++] = !GuiFontCount ? "-" : SString ( "%d", GuiFontCount );
-        row[c++] = !TextureCount ? "-" : SString ( "%d", TextureCount );
-        row[c++] = !ShaderCount ? "-" : SString ( "%d", ShaderCount );
-        row[c++] = !RenderTargetCount ? "-" : SString ( "%d", RenderTargetCount );
-        row[c++] = !ScreenSourceCount ? "-" : SString ( "%d", ScreenSourceCount );
-        row[c++] = !WebBrowserCount ? "-" : SString ( "%d", WebBrowserCount );
     }
 
     // For each VM
     for ( CLuaMainMemoryMap::iterator iter = AllLuaMemory.LuaMainMemoryMap.begin () ; iter != AllLuaMemory.LuaMainMemoryMap.end () ; ++iter )
     {
         CLuaMainMemory& LuaMainMemory = iter->second;
-        const SString strResName = iter->first->GetScriptName ();
+        SString resname = iter->first->GetScriptNamePointer ();
 
         // Apply filter
-        if ( strFilter != "" && strResName.find ( strFilter ) == SString::npos )
+        if ( strFilter != "" && resname.find ( strFilter ) == SString::npos )
             continue;
 
         // Add row
         SString* row = pResult->AddRow ();
 
         int c = 0;
-        row[c++] = strResName;
+        row[c++] = resname;
 
         if ( labs ( LuaMainMemory.Delta ) >= 1 )
         {
@@ -349,5 +327,7 @@ void CClientPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CClientPerfStatResult* pR
         row[c++] = !LuaMainMemory.Refs ? "-" : SString ( "%d", LuaMainMemory.Refs );
         row[c++] = !LuaMainMemory.TimerCount ? "-" : SString ( "%d", LuaMainMemory.TimerCount );
         row[c++] = !LuaMainMemory.ElementCount ? "-" : SString ( "%d", LuaMainMemory.ElementCount );
+        row[c++] = !LuaMainMemory.TextDisplayCount ? "-" : SString ( "%d", LuaMainMemory.TextDisplayCount );
+        row[c++] = !LuaMainMemory.TextItemCount ? "-" : SString ( "%d", LuaMainMemory.TextItemCount );
     }
 }

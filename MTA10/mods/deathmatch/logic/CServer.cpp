@@ -15,7 +15,6 @@
 
 static volatile bool g_bIsStarted = false;
 extern CCoreInterface* g_pCore;
-extern CLocalizationInterface* g_pLocalization;
 CCriticalSection CServer::m_OutputCC;
 std::list < std::string > CServer::m_OutputQueue;
 
@@ -30,7 +29,7 @@ std::list < std::string > CServer::m_OutputQueue;
 #define ERROR_NETWORK_LIBRARY_FAILED 2
 #define ERROR_LOADING_MOD 3
 
-static const SFixedArray < const char*, 4 > szServerErrors =
+char* szServerErrors[4] =
 {
     "Server stopped",
     "Could not load network library",
@@ -48,8 +47,22 @@ CServer::CServer ( void )
     m_hThread = INVALID_HANDLE_VALUE;
     m_iLastError = ERROR_NO_ERROR;
 
-    m_strServerRoot = CalcMTASAPath ( "server" );
-    m_strDLLFile = PathJoin ( m_strServerRoot, SERVER_DLL_PATH );
+    // Grab the path to the MTA installation folder
+    strncpy ( m_szServerRoot, g_pCore->GetInstallRoot (), MAX_PATH );
+    size_t sizeInstallRoot = strlen ( m_szServerRoot );
+
+    // Append / if neccessary
+    if ( m_szServerRoot [sizeInstallRoot - 1] != '/' ||
+         m_szServerRoot [sizeInstallRoot - 1] != '\\' )
+    {
+        m_szServerRoot [sizeInstallRoot] = '/';
+    }
+
+    // Append server/ to it
+    strncat ( m_szServerRoot, "server/", MAX_PATH );
+
+    // Append the server core dll name to it
+    m_strDLLFile.Format ( "%s%s", m_szServerRoot, SERVER_DLL_PATH );
 }
 
 
@@ -78,7 +91,7 @@ void CServer::DoPulse ( void )
         {
             // Loop through our output queue and echo it to console
             std::list < std::string >::const_iterator iter = m_OutputQueue.begin ();
-            for ( ; iter != m_OutputQueue.end (); ++iter )
+            for ( ; iter != m_OutputQueue.end (); iter++ )
             {
                 // Echo it
                 const char* szString = iter->c_str ();
@@ -118,7 +131,7 @@ bool CServer::Start ( const char* szConfig )
         m_strConfig = szConfig;
 
         // Check that the DLL exists
-        if ( !FileExists ( m_strDLLFile ) )
+        if ( !DoesFileExist ( m_strDLLFile ) )
         {
             g_pCore->GetConsole ()->Printf ( "Unable to find: '%s'", m_strDLLFile.c_str () );
             return false;
@@ -188,11 +201,11 @@ bool CServer::Stop ( void )
         DWORD dwExitCode = 0;
         if ( GetExitCodeThread ( m_hThread, &dwExitCode ) )
         {
-            // Handle non-zero exit codes
-            if ( dwExitCode != ERROR_NO_ERROR )
+            // Non-zero, output error
+            if ( dwExitCode != 0 )
             {
-                g_pCore->ShowMessageBox ( _("Error")+_E("CD60"), _("Could not start the local server. See console for details."), MB_BUTTON_OK | MB_ICON_ERROR );
-                g_pCore->GetConsole ()->Printf ( _("Error: Could not start local server. [%s]"), szServerErrors[GetLastError()] );
+                g_pCore->ShowMessageBox ( "Error", "Could not start the local server. See console for details.", MB_BUTTON_OK | MB_ICON_ERROR );
+                g_pCore->GetConsole ()->Printf ( "Error: Could not start local server. [%s]", szServerErrors[GetLastError()] );
             }
         }
 
@@ -276,7 +289,7 @@ unsigned long CServer::Thread_Run ( void )
             strcpy ( szArgument1, "-D" );
 
             char szArgument2 [256];
-            strncpy ( szArgument2, m_strServerRoot, 256 );
+            strncpy ( szArgument2, m_szServerRoot, 256 );
             szArgument2 [ 255 ] = 0;
 
             char szArgument3 [16];

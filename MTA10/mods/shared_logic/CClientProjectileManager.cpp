@@ -57,6 +57,13 @@ void CClientProjectileManager::DoPulse ( void )
         {
             pProjectile->DoPulse ();
         }
+        else
+        {           
+            // Remove this projectile            
+            m_List.remove ( pProjectile );
+            pProjectile->m_bLinked = false;
+            pElementDeleter->Delete ( pProjectile );
+        }
     }
 }
 
@@ -86,24 +93,21 @@ bool CClientProjectileManager::Exists ( CClientProjectile * pProjectile )
     return false;
 }
 
-CClientProjectile* CClientProjectileManager::Get ( CEntitySAInterface * pProjectile )
-{
-    int iCount = m_List.size();
-    assert ( iCount <= 32 );
-    list < CClientProjectile* > ::iterator iter = m_List.begin ();
-    for ( ; iter != m_List.end () ; iter++ )
-    {
-        if ( (*iter)->GetGameEntity ( )->GetInterface() == pProjectile )
-        {
-            return (*iter);
-        }
-    }
-    return NULL;
-}
 
 void CClientProjectileManager::RemoveFromList ( CClientProjectile* pProjectile )
 {
     m_List.remove ( pProjectile );
+}
+
+
+void CClientProjectileManager::OnInitiate ( CClientProjectile * pProjectile )
+{
+    // Do we have a handler for this event?
+    if ( m_pInitiateHandler )
+    {
+        // Call it
+        (*m_pInitiateHandler) ( pProjectile );
+    }
 }
 
 

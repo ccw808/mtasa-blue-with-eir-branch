@@ -204,21 +204,13 @@ bool CHTTPClient::ParseURL ( const char* szURL, char* szProtocol, unsigned int u
     {
         strncpy ( szHost, szHostnameStart, uiSizeHost - 1 );
         szHost [ uiSizeHost - 1 ] = 0;
-    }
-    else
-    {
-        // If we did, copy the rest over to the path buffer
-        strncpy ( szPath, szTemp, uiSizePath );
-        szPath [ uiSizePath - 1 ] = 0;
+        return true;
     }
 
-    // Find port spec if there
-    char* szPortSep = strstr( szHost, ":" );
-    if ( szPortSep )
-    {
-        usPort = atoi( szPortSep + 1 );
-        *szPortSep = 0;
-    }
+    // If we did, copy the rest over to the path buffer
+    strncpy ( szPath, szTemp, uiSizePath );
+    szPath [ uiSizePath - 1 ] = 0;
+
     return true;
 }
 

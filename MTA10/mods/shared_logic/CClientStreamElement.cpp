@@ -15,7 +15,7 @@
 
 using std::list;
 
-CClientStreamElement::CClientStreamElement ( CClientStreamer * pStreamer, ElementID ID ) : ClassInit ( this ), CClientEntity ( ID )
+CClientStreamElement::CClientStreamElement ( CClientStreamer * pStreamer, ElementID ID ) : CClientEntity ( ID )
 {
     m_pStreamer = pStreamer;    
     m_pStreamRow = NULL;
@@ -46,9 +46,10 @@ void CClientStreamElement::UpdateStreamPosition ( const CVector & vecPosition )
     m_pManager->OnUpdateStreamPosition ( this );
 
     // Update attached elements stream position
-    for ( uint i = 0 ; i < m_AttachedEntities.size () ; i++ )
+    list < CClientEntity* >::iterator i = m_AttachedEntities.begin();
+    for (; i != m_AttachedEntities.end(); i++)
     {
-        CClientStreamElement* attachedElement = dynamic_cast< CClientStreamElement* > ( m_AttachedEntities[i] );
+        CClientStreamElement* attachedElement = dynamic_cast< CClientStreamElement* > (*i);
         if ( attachedElement )
         {
             attachedElement->UpdateStreamPosition( vecPosition + attachedElement->m_vecAttachedPosition );
@@ -75,16 +76,12 @@ void CClientStreamElement::InternalStreamOut ( void )
         m_bStreamedIn = false;
 
         // Stream out attached elements
-        CClientObject* thisObject = DynamicCast < CClientObject > ( this );
-        for ( uint i = 0 ; i < m_AttachedEntities.size () ; i++ )
+        list < CClientEntity* >::iterator i = m_AttachedEntities.begin();
+        for (; i != m_AttachedEntities.end(); i++)
         {
-            CClientStreamElement* attachedElement = dynamic_cast< CClientStreamElement* > ( m_AttachedEntities[i] );
+            CClientStreamElement* attachedElement = dynamic_cast< CClientStreamElement* > (*i);
             if ( attachedElement )
             {
-                // Don't stream out low LOD version
-                CClientObject* attachedObject = DynamicCast < CClientObject > ( attachedElement );
-                if ( attachedObject && thisObject && attachedObject->IsLowLod () != thisObject->IsLowLod () )
-                    continue;
                 attachedElement->InternalStreamOut();
             }
         }

@@ -14,11 +14,15 @@
 
 #include "StdInc.h"
 
+using namespace google;
+
 #define CGUICOMBOBOX_NAME "CGUI/Combobox"
 
 CGUIComboBox_Impl::CGUIComboBox_Impl ( CGUI_Impl* pGUI, CGUIElement* pParent, const char* szCaption )
 {
     m_pManager = pGUI;
+    m_Items.set_deleted_key ( (CEGUI::ListboxItem *)0xFFFFFFFF );
+    m_Items.set_empty_key ( (CEGUI::ListboxItem *)0x00000000 );
 
     // Get an unique identifier for CEGUI (gah, there's gotta be an another way)
     char szUnique [CGUI_CHAR_SIZE];
@@ -41,8 +45,7 @@ CGUIComboBox_Impl::CGUIComboBox_Impl ( CGUI_Impl* pGUI, CGUIElement* pParent, co
 
     //Add out changed event
     m_pWindow->subscribeEvent ( CEGUI::Combobox::EventListSelectionAccepted, CEGUI::Event::Subscriber ( &CGUIComboBox_Impl::Event_OnSelectionAccepted, this ) );
-    m_pWindow->subscribeEvent ( CEGUI::Combobox::EventDropListRemoved, CEGUI::Event::Subscriber ( &CGUIComboBox_Impl::Event_OnDropListRemoved, this ) );
-
+    
     AddEvents ();
 
     // If a parent is specified, add it to it's children list, if not, add it as a child to the pManager
@@ -110,7 +113,7 @@ CGUIListItem* CGUIComboBox_Impl::GetSelectedItem ( void )
 int CGUIComboBox_Impl::GetSelectedItemIndex( void )
 {
     CEGUI::ListboxItem* pItem = reinterpret_cast < CEGUI::Combobox* > ( m_pWindow ) -> getSelectedItem ();
-    CFastHashMap < CEGUI::ListboxItem*, CGUIListItem_Impl* >::iterator it;
+    dense_hash_map < CEGUI::ListboxItem*, CGUIListItem_Impl* >::iterator it;
     it = m_Items.find ( pItem );
     if ( it == m_Items.end () )
         return -1;
@@ -127,7 +130,7 @@ int CGUIComboBox_Impl::GetSelectedItemIndex( void )
 
 int CGUIComboBox_Impl::GetItemIndex( CGUIListItem* pItem )
 {
-    CFastHashMap < CEGUI::ListboxItem*, CGUIListItem_Impl* >::iterator it;
+    dense_hash_map < CEGUI::ListboxItem*, CGUIListItem_Impl* >::iterator it;
     bool found;
     
     for ( it = m_Items.begin (); it != m_Items.end (); it++ )
@@ -157,24 +160,14 @@ const char* CGUIComboBox_Impl::GetItemText ( int index )
 {
     try
     {
-        if( index == -1 )
-        {
-            return m_pWindow->getText( ).c_str( );
-        }
-        else
-        {
-            CEGUI::ListboxItem* pItem = reinterpret_cast < CEGUI::Combobox* > ( m_pWindow ) ->getListboxItemFromIndex ( index );
-            if( pItem != NULL )
-            {
-                return pItem->getText( ).c_str( );
-            }
-        }
+        CEGUI::ListboxItem* pItem = reinterpret_cast < CEGUI::Combobox* > ( m_pWindow ) ->getListboxItemFromIndex ( index );
+        return pItem->getText( ).c_str( );
     }
     catch(...)
     {
-        return "";
+        return NULL;
     }
-    return "";
+    return NULL;
 }
 
 bool CGUIComboBox_Impl::SetItemText ( int index, const char* szText )
@@ -237,7 +230,7 @@ void CGUIComboBox_Impl::Clear ( void )
 {
     reinterpret_cast < CEGUI::Combobox* > ( m_pWindow ) -> getDropList () -> resetList ();
 
-    CFastHashMap < CEGUI::ListboxItem*, CGUIListItem_Impl* >::iterator it;
+    dense_hash_map < CEGUI::ListboxItem*, CGUIListItem_Impl* >::iterator it;
     for ( it = m_Items.begin (); it != m_Items.end (); it++ )
     {
         delete it->second;
@@ -255,7 +248,7 @@ void CGUIComboBox_Impl::SetReadOnly ( bool bReadonly )
 
 CGUIListItem_Impl* CGUIComboBox_Impl::GetListItem ( CEGUI::ListboxItem* pItem )
 {
-    CFastHashMap < CEGUI::ListboxItem*, CGUIListItem_Impl* >::iterator it;
+    dense_hash_map < CEGUI::ListboxItem*, CGUIListItem_Impl* >::iterator it;
     it = m_Items.find ( pItem );
     if ( it == m_Items.end () )
         return NULL;
@@ -273,37 +266,11 @@ void CGUIComboBox_Impl::SetSelectionHandler ( GUI_CALLBACK Callback  )
     m_OnSelectChange = Callback;
 }
 
-void CGUIComboBox_Impl::SetDropListRemoveHandler ( GUI_CALLBACK Callback  )
-{
-    m_OnDropListRemoved = Callback;
-}
-
 
 bool CGUIComboBox_Impl::Event_OnSelectionAccepted ( const CEGUI::EventArgs& e )
 {
     if ( m_OnSelectChange )
         m_OnSelectChange ( reinterpret_cast < CGUIElement* > ( this ) );
     return true;
-}
-
-
-bool CGUIComboBox_Impl::Event_OnDropListRemoved ( const CEGUI::EventArgs& e )
-{
-    if ( m_OnDropListRemoved )
-        m_OnDropListRemoved ( reinterpret_cast < CGUIElement* > ( this ) );
-    return true;
-}
-
-
-void CGUIComboBox_Impl::ShowDropList ( void )
-{
-    reinterpret_cast < CEGUI::Combobox* > ( m_pWindow ) -> showDropList ();
-    reinterpret_cast < CEGUI::Combobox* > ( m_pWindow ) -> setSingleClickEnabled ( true );
-}
-
-
-void CGUIComboBox_Impl::HideDropList ( void )
-{
-    reinterpret_cast < CEGUI::Combobox* > ( m_pWindow ) -> hideDropList ();
 }
 

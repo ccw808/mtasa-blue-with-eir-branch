@@ -14,9 +14,3 @@
 #include "MTAPlatform.h"
 #include "SharedUtil.h"
 #include "../version.h"
-
-#ifdef WIN32
-    #include "CExceptionInformation_Impl.h"
-#endif
-
-void WaitForKey ( int iKey );

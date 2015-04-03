@@ -41,6 +41,7 @@ Zac Hansen ( xaxxon@slackworks.com )
 #include <winsock.h>
 #include <windows.h>
 #include <time.h>
+#include <assert.h>
 
 // make stricmp sound like strcasecmp
 #define strcasecmp stricmp

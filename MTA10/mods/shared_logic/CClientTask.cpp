@@ -106,7 +106,7 @@ bool CClientTask::ReadElements ( lua_State* luaVM, int iTableIndex, bool bClear 
     {
         // Get the index and the element ID
         unsigned int uiIndex = static_cast < unsigned int > ( lua_tonumber ( luaVM, -2 ) );
-        ElementID ID = static_cast < ElementID > ( static_cast < unsigned int > ( lua_tonumber ( luaVM, -1 ) ) );
+        ElementID ID = static_cast < ElementID > ( lua_tonumber ( luaVM, -1 ) );
 
         // Grab the element and check he's a player/ped
         CClientEntity* pEntity = CElementIDs::GetElement ( ID );
@@ -116,7 +116,7 @@ bool CClientTask::ReadElements ( lua_State* luaVM, int iTableIndex, bool bClear 
             if ( bClear )
             {
                 // Store it
-                m_Elements.push_back ( ID );
+                m_Elements.push_back ( ID );;
             }
             else
             {
@@ -278,7 +278,7 @@ bool CClientTask::WriteElements ( lua_State* luaVM, int iTableIndex )
     {
         // Add the entries to it
         lua_pushnumber ( luaVM, uiIndex );
-        lua_pushnumber ( luaVM, (*iterElements).Value() );
+        lua_pushnumber ( luaVM, *iterElements );
         lua_settable ( luaVM, iNewTableIndex );
 
         // Increment index
@@ -476,10 +476,10 @@ CPed* CClientTask::GetParameterPed ( const char* szKey )
 {
     // Grab the parameter, is it userdata?
     CLuaArgument* pArgument = GetParameter ( szKey );
-    if ( pArgument && pArgument->GetType () == LUA_TUSERDATA )
+    if ( pArgument && pArgument->GetType () == LUA_TLIGHTUSERDATA )
     {
         // Grab the player and verify it
-        CClientPlayer* pPlayer = reinterpret_cast < CClientPlayer* > ( pArgument->GetUserData () );
+        CClientPlayer* pPlayer = reinterpret_cast < CClientPlayer* > ( pArgument->GetLightUserData () );
         if ( VERIFY_PLAYER ( pPlayer ) )
         {
             // Return his game player
@@ -511,10 +511,10 @@ CVehicle* CClientTask::GetParameterVehicle ( const char* szKey )
 {
     // Grab the parameter, is it userdata?
     CLuaArgument* pArgument = GetParameter ( szKey );
-    if ( pArgument && pArgument->GetType () == LUA_TUSERDATA )
+    if ( pArgument && pArgument->GetType () == LUA_TLIGHTUSERDATA )
     {
         // Grab the player and verify it
-        CClientVehicle* pVehicle = reinterpret_cast < CClientVehicle* > ( pArgument->GetUserData () );
+        CClientVehicle* pVehicle = reinterpret_cast < CClientVehicle* > ( pArgument->GetLightUserData () );
         if ( VERIFY_VEHICLE ( pVehicle ) )
         {
             // Return the game vehicle

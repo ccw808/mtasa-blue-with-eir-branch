@@ -13,11 +13,13 @@
 #include "StdInc.h"
 #include "CServerImpl.h"
 #define ALLOC_STATS_MODULE_NAME "core"
+#define ALLOC_STATS_PRE_COUNT 0     // Increase if crashing at startup
 #include "SharedUtil.hpp"
-#include "SharedUtil.Tests.hpp"
-#ifdef WIN_x86
-    // TODO - 64 bit file hooks
-    #include "SharedUtil.Win32Utf8FileHooks.hpp"
+
+#if WIN32
+    #define MTAEXPORT extern "C" __declspec(dllexport)
+#else
+    #define MTAEXPORT extern "C"
 #endif
 
 #ifdef WIN32
@@ -26,31 +28,6 @@ CThreadCommandQueue g_CommandQueue;
 
 MTAEXPORT int Run ( int iArgumentCount, char* szArguments [] )
 {
-    if ( iArgumentCount > 1 )
-    {
-        if ( strcmp ( szArguments[1], "--version" ) == 0 || strcmp ( szArguments[1], "-v" ) == 0 )
-        {
-            printf ( MTA_DM_FULL_STRING " v" MTA_DM_BUILDTAG_LONG "\n" );
-            return 1;
-        }
-    }
-
-    SharedUtil_Tests ();
-
-    #ifdef WIN32
-        // Disable critical error message boxes
-        SetErrorMode ( SEM_FAILCRITICALERRORS );
-    #endif
-
-    #ifdef WIN_x86
-        // Apply file hooks if not already done by the client
-        bool bSkipFileHooks = false;
-        for( int i = 1 ; i < iArgumentCount ; i++ )
-            bSkipFileHooks |= SStringX( szArguments[i] ).Contains( "--clientfeedback" );
-        if( !bSkipFileHooks )
-            AddUtf8FileHooks();
-    #endif
-
     // Create the server
     #ifdef WIN32
         CServerImpl Server ( &g_CommandQueue );
@@ -67,10 +44,6 @@ MTAEXPORT int Run ( int iArgumentCount, char* szArguments [] )
     while ( iReturn == SERVER_RESET_RETURN );
 
     // Done
-    #ifdef WIN_x86
-        RemoveUtf8FileHooks();
-    #endif
-
     return iReturn;
 }
 

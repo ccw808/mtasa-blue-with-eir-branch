@@ -12,8 +12,6 @@
 
 #include "StdInc.h"
 
-#ifdef WITH_OBJECT_SYNC
-
 #define SYNC_RATE 500
 #define MAX_PLAYER_SYNC_DISTANCE 100.0f
 
@@ -21,15 +19,17 @@ CObjectSync::CObjectSync ( CPlayerManager* pPlayerManager, CObjectManager* pObje
 {
     m_pPlayerManager = pPlayerManager;
     m_pObjectManager = pObjectManager;
+    m_ulLastSweepTime = 0;
 }
 
 
 void CObjectSync::DoPulse ( void )
 {
     // Time to check for players that should no longer be syncing a object or objects that should be synced?
-    if ( m_UpdateTimer.Get() > SYNC_RATE )
+    unsigned long ulCurrentTime = GetTime ();
+    if ( ulCurrentTime >= m_ulLastSweepTime + SYNC_RATE )
     {
-        m_UpdateTimer.Reset();
+        m_ulLastSweepTime = ulCurrentTime;
         Update ();
     }
 }
@@ -217,7 +217,7 @@ void CObjectSync::Packet_ObjectSync ( CObjectSyncPacket& Packet )
                     if ( pData->ucFlags & 0x1 )
                     {
                         pObject->SetPosition ( pData->vecPosition );
-                        g_pGame->GetColManager()->DoHitDetection ( pObject->GetPosition (), pObject );
+                        g_pGame->GetColManager()->DoHitDetection ( pObject->GetLastPosition (), pObject->GetPosition (), 0.0f, pObject );
                     }
                     if ( pData->ucFlags & 0x2 ) pObject->SetRotation ( pData->vecRotation );
                     if ( pData->ucFlags & 0x4 ) pObject->SetHealth ( pData->fHealth );
@@ -232,5 +232,3 @@ void CObjectSync::Packet_ObjectSync ( CObjectSyncPacket& Packet )
         m_pPlayerManager->BroadcastOnlyJoined ( Packet, pPlayer );
     }
 }
-
-#endif

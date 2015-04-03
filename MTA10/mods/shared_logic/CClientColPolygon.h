@@ -15,12 +15,10 @@
 
 class CClientColPolygon : public CClientColShape
 {
-    DECLARE_CLASS( CClientColPolygon, CClientColShape )
 public:
-                                CClientColPolygon   ( CClientManager* pManager, ElementID ID, const CVector2D& vecPosition );
+                                CClientColPolygon   ( CClientManager* pManager, ElementID ID, const CVector& vecPosition );
 
     virtual CSphere             GetWorldBoundingSphere  ( void );
-    virtual void                DebugRender             ( const CVector& vecPosition, float fDrawRadius );
 
     eColShapeType               GetShapeType        ( void )                { return COLSHAPE_POLYGON; }
 

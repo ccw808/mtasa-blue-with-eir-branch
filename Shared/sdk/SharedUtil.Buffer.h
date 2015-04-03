@@ -44,27 +44,10 @@ namespace SharedUtil
             return empty ();
         }
 
-        void Reserve ( uint uiSize )
-        {
-            return reserve ( uiSize );
-        }
-
-        // Comparison
-        bool operator== ( const CBuffer& other ) const
-        {
-            return size () == other.size ()
-                && std::equal( begin(), end(), other.begin() );
-        }
-
-        bool operator!= ( const CBuffer& other ) const
-        {
-            return !operator== ( other );
-        }
-
         // Status
         void SetSize ( uint uiSize, bool bZeroPad = false )
         {
-            uint uiOldSize = (uint)size ();
+            uint uiOldSize = size ();
             resize ( uiSize );
             if ( bZeroPad && uiSize > uiOldSize )
                 memset ( GetData () + uiOldSize, 0, uiSize - uiOldSize );
@@ -72,7 +55,7 @@ namespace SharedUtil
 
         uint GetSize ( void ) const
         {
-            return (uint)size ();
+            return size ();
         }
 
         // Access
@@ -223,13 +206,6 @@ namespace SharedUtil
         virtual int             GetSize ( void ) const          { return pBuffer->GetSize (); }
         virtual const char*     GetData ( void ) const          { return pBuffer->GetData (); }
 
-        // Return true if enough bytes left in the buffer
-        bool CanReadNumberOfBytes( int iLength )
-        {
-            Seek( Tell() );
-            return iLength >= 0 && iLength <= ( GetSize() - Tell() );
-        }
-
         bool ReadBytes ( void* pData, int iLength, bool bToFromNetwork = false )
         {
             // Validate pos
@@ -265,9 +241,6 @@ namespace SharedUtil
 
             if ( usLength )
             {
-                // Check has enough data
-                if ( !CanReadNumberOfBytes( usLength ) )
-                    return false;
                 // Read the data
                 char* buffer = static_cast < char* > ( alloca ( usLength ) );
                 if ( !ReadBytes ( buffer, usLength, false ) )
@@ -283,23 +256,15 @@ namespace SharedUtil
             outResult.Clear ();
 
             // Get the length
-            ushort usLength = 0;
+            unsigned short usLength = 0;
             if ( !Read ( usLength ) )
                 return false;
 
-            uint uiLength = usLength;
-            if ( uiLength == 65535 )
-                if ( !Read ( uiLength ) )
-                    return false;
-
-            if ( uiLength )
+            if ( usLength )
             {
-                // Check has enough data
-                if ( !CanReadNumberOfBytes( uiLength ) )
-                    return false;
                 // Read the data
-                outResult.SetSize ( uiLength );
-                if ( !ReadBytes ( outResult.GetData (), uiLength, false ) )
+                outResult.SetSize ( usLength );
+                if ( !ReadBytes ( outResult.GetData (), usLength, false ) )
                 {
                     outResult.Clear ();
                     return false;
@@ -313,33 +278,6 @@ namespace SharedUtil
         {
             return ReadBytes ( &e, sizeof ( e ), m_bToFromNetwork );
         }
-
-#ifdef ANY_x64
-        // Force all these types to use 4 bytes
-        bool Read( unsigned long& e )
-        {
-            uint temp;
-            bool bResult = Read( temp );
-            e = temp;
-            return bResult;
-        }
-        bool Read( long& e )
-        {
-            int temp;
-            bool bResult = Read( temp );
-            e = temp;
-            return bResult;
-        }
-    #ifdef WIN_x64
-        bool Read( size_t& e )
-        {
-            uint temp;
-            bool bResult = Read( temp );
-            e = temp;
-            return bResult;
-        }
-    #endif
-#endif
     };
 
 
@@ -376,7 +314,7 @@ namespace SharedUtil
         void Write ( const CBuffer& );     // Not defined as it won't work
         void WriteString ( const SString& str, bool bByteLength = false, bool bDoesLengthIncludeLengthOfLength = false )
         {
-            ushort usLength = (ushort)str.length ();
+            ushort usLength = str.length ();
             if ( bDoesLengthIncludeLengthOfLength && usLength )
                 usLength += bByteLength ? 1 : 2;
 
@@ -392,20 +330,11 @@ namespace SharedUtil
         void WriteBuffer ( const CBuffer& inBuffer )
         {
             // Write the length
-            uint uiLength = (uint)inBuffer.GetSize ();
-            if ( uiLength > 65534 )
-            {
-                Write ( (ushort)65535 );
-                Write ( uiLength );
-            }
-            else
-            {
-                Write ( (ushort)uiLength );
-            }
-
+            unsigned short usLength = inBuffer.GetSize ();
+            Write ( usLength );
             // Write the data
-            if ( uiLength )
-                WriteBytes ( inBuffer.GetData (), uiLength, false );
+            if ( usLength )
+                WriteBytes ( inBuffer.GetData (), usLength, false );
         }
 
         template < class T >
@@ -413,24 +342,6 @@ namespace SharedUtil
         {
             WriteBytes ( &e, sizeof ( e ), m_bToFromNetwork );
         }
-
-#ifdef ANY_x64
-        // Force all these types to use 4 bytes
-        void Write( unsigned long e )
-        {
-            Write( (uint)e );
-        }
-        void Write( long e )
-        {
-            Write( (int)e );
-        }
-    #ifdef WIN_x64
-        void Write( size_t e )
-        {
-            Write( (uint)e );
-        }
-    #endif
-#endif
     };
 
 }

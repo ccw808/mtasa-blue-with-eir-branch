@@ -27,8 +27,6 @@ public:
     // Create/edit functions
     static int      createResource                      ( lua_State* luaVM );
     static int      copyResource                        ( lua_State* luaVM );
-    static int      renameResource                      ( lua_State* luaVM );
-    static int      deleteResource                      ( lua_State* luaVM );
 
     static int      addResourceMap                      ( lua_State* luaVM );
     static int      addResourceConfig                   ( lua_State* luaVM );
@@ -65,12 +63,6 @@ public:
     // Misc
     static int      call                                ( lua_State* luaVM );
     static int      refreshResources                    ( lua_State* luaVM );
-
-    static int      getResourceACLRequests              ( lua_State* luaVM );
-    static int      updateResourceACLRequest            ( lua_State* luaVM );
-
-    static int      LoadString                          ( lua_State* luaVM );
-    static int      Load                                ( lua_State* luaVM );
 };
 
 #endif

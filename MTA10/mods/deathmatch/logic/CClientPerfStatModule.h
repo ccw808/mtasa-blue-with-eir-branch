@@ -10,6 +10,9 @@
 *
 *****************************************************************************/
 
+typedef unsigned long TIMEUS;
+TIMEUS GetTimeUs ( void );
+
 //
 // CClientPerfStatResult
 //

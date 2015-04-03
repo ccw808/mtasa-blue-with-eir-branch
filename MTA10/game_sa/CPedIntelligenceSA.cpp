@@ -83,19 +83,3 @@ bool CPedIntelligenceSA::TestForStealthKill ( CPed * pPed, bool bUnk )
     }
     return bReturn;
 }
-
-
-CTaskSimpleUseGunSAInterface* CPedIntelligenceSA::GetTaskUseGun ( void )
-{
-    CTaskSimpleUseGunSAInterface* pTaskUseGun;
-    DWORD dwThis = ( DWORD ) internalInterface;
-    DWORD dwFunc = FUNC_CPedIntelligence_GetTaskUseGun;
-    _asm
-    {
-        mov     ecx, dwThis
-        call    dwFunc
-        mov     pTaskUseGun, eax
-    }
-
-    return pTaskUseGun;
-}

@@ -22,16 +22,6 @@ class CEventDamageSAInterface;
 class CPed;
 class CPedDamageResponse;
 
-namespace EDamageReason
-{
-    enum EDamageReasonType
-    {
-        OTHER,
-        PISTOL_WHIP,
-    };
-};
-using EDamageReason::EDamageReasonType;
-
 class CEventDamage
 {
 public:
@@ -59,9 +49,6 @@ public:
     virtual void                        ComputeDeathAnim    ( CPed * pPed, bool bUnk ) = 0;
     virtual void                        ComputeDamageAnim   ( CPed * pPed, bool bUnk ) = 0;
     virtual bool                        AffectsPed          ( CPed * pPed ) = 0;
-
-    virtual void                        SetDamageReason     ( EDamageReasonType damageReason ) = 0;
-    virtual EDamageReasonType           GetDamageReason     ( void ) = 0;
 };
 
 #endif

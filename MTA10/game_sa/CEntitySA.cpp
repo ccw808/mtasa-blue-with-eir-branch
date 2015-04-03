@@ -20,30 +20,16 @@ extern CGameSA * pGame;
 
 unsigned long CEntitySA::FUNC_CClumpModelInfo__GetFrameFromId;
 unsigned long CEntitySA::FUNC_RwFrameGetLTM;
-
-CEntitySA::CEntitySA ( void )
-{
-    // Set these variables to a constant state
-    m_pInterface = NULL;
-    internalID = 0;
-    BeingDeleted = false;
-    DoNotRemoveFromGame = false;
-    m_pStoredPointer = NULL;
-    m_ulArrayID = INVALID_POOL_ARRAY_ID;
-}
-
 /*VOID CEntitySA::SetModelAlpha ( int iAlpha )
 {
     this->internalInterface->ModelClump->SetAlpha(iAlpha);
 }*/
 VOID CEntitySA::SetPosition(float fX, float fY, float fZ)
 {
-    // Remove & add to world?
     DEBUG_TRACE("VOID CEntitySA::SetPosition(float fX, float fY, float fZ)");
     CVector * vecPos;
     if ( m_pInterface->Placeable.matrix )
     {
-        OnChangingPosition ( CVector ( fX, fY, fZ ) );
         vecPos = &m_pInterface->Placeable.matrix->vPos;
     }
     else
@@ -56,7 +42,6 @@ VOID CEntitySA::SetPosition(float fX, float fY, float fZ)
         vecPos->fX = fX;
         vecPos->fY = fY;
         vecPos->fZ = fZ;
-        m_LastGoodPosition = *vecPos;
     }
 
     WORD wModelID = GetModelIndex();
@@ -64,16 +49,12 @@ VOID CEntitySA::SetPosition(float fX, float fY, float fZ)
     {
         // If it's a train, recalculate its rail position parameter (does not affect derailed state)
         DWORD dwThis = (DWORD) m_pInterface;
-        DWORD dwFunc = FUNC_CTrain_FindPositionOnTrackFromCoors;
+        DWORD dwFunc = FUNC_CVehicle_RecalcOnRailDistance;
         _asm
         {
             mov     ecx, dwThis
             call    dwFunc
         }
-    }
-    if ( m_pInterface->nType == ENTITY_TYPE_OBJECT )
-    {
-        ((CObjectSAInterface*)m_pInterface)->bUpdateScale = true;
     }
 }
 
@@ -162,7 +143,7 @@ VOID CEntitySA::Render ( )
 VOID CEntitySA::SetOrientation ( float fX, float fY, float fZ )
 {
     DEBUG_TRACE("VOID CEntitySA::SetOrientation ( float fX, float fY, float fZ )");
-    pGame->GetWorld()->Remove ( this, CEntity_SetOrientation );
+    pGame->GetWorld()->Remove ( this );
     DWORD dwThis = (DWORD) m_pInterface;
     DWORD dwFunc = FUNC_SetOrientation;
     _asm
@@ -191,18 +172,13 @@ VOID CEntitySA::SetOrientation ( float fX, float fY, float fZ )
         call    dwFunc
     }
 
-    if ( m_pInterface->nType == ENTITY_TYPE_OBJECT )
-    {
-        ((CObjectSAInterface*)m_pInterface)->bUpdateScale = true;
-    }
-
-    pGame->GetWorld()->Add ( this, CEntity_SetOrientation );
+    pGame->GetWorld()->Add ( this );
 }
 
 VOID CEntitySA::FixBoatOrientation ( void )
 {
     DEBUG_TRACE("VOID CEntitySA::FixBoatOrientation ( void )");
-    pGame->GetWorld()->Remove ( this, CEntity_FixBoatOrientation );
+    pGame->GetWorld()->Remove ( this );
     DWORD dwThis = (DWORD) m_pInterface;
     DWORD dwFunc = 0x446F90;
     _asm
@@ -218,7 +194,7 @@ VOID CEntitySA::FixBoatOrientation ( void )
         call    dwFunc
     }
 
-    pGame->GetWorld()->Add ( this, CEntity_FixBoatOrientation );
+    pGame->GetWorld()->Add ( this );
 }
 
 VOID CEntitySA::SetPosition( CVector * vecPosition )
@@ -243,36 +219,7 @@ VOID CEntitySA::SetPosition( CVector * vecPosition )
         SetPosition ( vecPosition->fX, vecPosition->fY, vecPosition->fZ );
 }
 
-
-void CEntitySA::RestoreLastGoodPhysicsState ( void )
-{
-    // Validate m_LastGoodPosition
-    if ( !IsValidPosition ( m_LastGoodPosition ) )
-        m_LastGoodPosition = CVector ( 6000, (float)( rand () % 2000 ), 1000 );
-
-    CMatrix matrix;
-    matrix.vPos = m_LastGoodPosition;
-    SetMatrix ( &matrix );
-    SetPosition ( &m_LastGoodPosition );
-}
-
-
-//
-// Get entity position. Fixes bad numbers
-//
-CVector* CEntitySA::GetPosition ( void )
-{
-    CVector* pPosition = GetPositionInternal ();
-    if ( !IsValidPosition ( *pPosition ) )
-    {
-        RestoreLastGoodPhysicsState ();
-        pPosition = GetPositionInternal ();
-    }
-    m_LastGoodPosition = *pPosition;
-    return pPosition;
-}
-
-CVector * CEntitySA::GetPositionInternal ( )
+CVector * CEntitySA::GetPosition( )
 {
     DEBUG_TRACE("CVector * CEntitySA::GetPosition( )");
     if ( m_pInterface->Placeable.matrix )
@@ -282,25 +229,7 @@ CVector * CEntitySA::GetPositionInternal ( )
 }
 
 
-//
-// Get entity matrix. Fixes bad numbers
-//
-CMatrix* CEntitySA::GetMatrix ( CMatrix * matrix )
-{
-    CMatrix* pMatrix = GetMatrixInternal ( matrix );
-    if ( pMatrix )
-    {
-        if ( !IsValidMatrix ( *pMatrix ) )
-        {
-            RestoreLastGoodPhysicsState ();
-            pMatrix = GetMatrixInternal ( matrix );
-        }       
-        m_LastGoodPosition = pMatrix->vPos;
-    }
-    return pMatrix;
-}
-
-CMatrix * CEntitySA::GetMatrixInternal ( CMatrix * matrix )
+CMatrix * CEntitySA::GetMatrix ( CMatrix * matrix ) const
 {
     DEBUG_TRACE("CMatrix * CEntitySA::GetMatrix ( CMatrix * matrix )");
     if ( m_pInterface->Placeable.matrix && matrix )
@@ -320,18 +249,14 @@ CMatrix * CEntitySA::GetMatrixInternal ( CMatrix * matrix )
 VOID CEntitySA::SetMatrix ( CMatrix * matrix )
 {
     DEBUG_TRACE("VOID CEntitySA::SetMatrix ( CMatrix * matrix )");
-
     if ( m_pInterface->Placeable.matrix && matrix )
     {
-        OnChangingPosition ( matrix->vPos );
-
         MemCpyFast (&m_pInterface->Placeable.matrix->vFront,     &matrix->vFront, sizeof(CVector));
         MemCpyFast (&m_pInterface->Placeable.matrix->vPos,           &matrix->vPos, sizeof(CVector));
         MemCpyFast (&m_pInterface->Placeable.matrix->vUp,            &matrix->vUp, sizeof(CVector));
         MemCpyFast (&m_pInterface->Placeable.matrix->vRight,         &matrix->vRight, sizeof(CVector));
 
         m_pInterface->Placeable.m_transform.m_translate = matrix->vPos;
-        m_LastGoodPosition = matrix->vPos;
 
         /*
         WORD wModelID = GetModelIndex();
@@ -349,7 +274,7 @@ VOID CEntitySA::SetMatrix ( CMatrix * matrix )
         }
         */
 
-        pGame->GetWorld()->Remove ( this, CEntity_SetMatrix );
+        pGame->GetWorld()->Remove ( this );
         DWORD dwThis = (DWORD) m_pInterface;
         DWORD dwFunc = 0x446F90;    // CEntity::UpdateRwMatrix
         _asm
@@ -364,13 +289,7 @@ VOID CEntitySA::SetMatrix ( CMatrix * matrix )
             mov     ecx, dwThis
             call    dwFunc
         }
-
-        if ( m_pInterface->nType == ENTITY_TYPE_OBJECT )
-        {
-            ((CObjectSAInterface*)m_pInterface)->bUpdateScale = true;
-        }
-
-        pGame->GetWorld()->Add ( this, CEntity_SetMatrix );
+        pGame->GetWorld()->Add ( this );
     }
 }
 
@@ -484,17 +403,6 @@ bool CEntitySA::IsOnScreen ()
 }
 
 
-bool CEntitySA::IsFullyVisible ( void )
-{
-    if ( m_pInterface->bDistanceFade )
-        return false;
-
-    if ( m_pInterface->GetEntityVisibilityResult () != 1 )
-        return false;
-
-    return true;
-}
-
 bool CEntitySA::IsVisible ( void )
 {
     return m_pInterface->bIsVisible;
@@ -572,10 +480,26 @@ void CEntitySA::SetAreaCode ( BYTE areaCode )
     m_pInterface->m_areaCode = areaCode;
 }
 
+
+void CEntitySA::GetImmunities ( bool & bNoClip, bool & bFrozen, bool & bBulletProof, bool & bFlameProof, bool & bUnk, bool & bUnk2, bool & bCollisionProof, bool & bExplosionProof )
+{
+    unsigned char ucImmunities = m_pInterface->nImmunities;
+    bNoClip = ( ucImmunities & 0x1 ) ? true:false;
+    bFrozen = ( ucImmunities & 0x2 ) ? true:false;
+    bBulletProof = ( ucImmunities & 0x4 ) ? true:false;
+    bFlameProof = ( ucImmunities & 0x8 ) ? true:false;
+    bUnk = ( ucImmunities & 0x10 ) ? true:false;
+    bUnk2 = ( ucImmunities & 0x20 ) ? true:false;
+    bCollisionProof = ( ucImmunities & 0x40 ) ? true:false;
+    bExplosionProof = ( ucImmunities & 0x80 ) ? true:false;
+}
+
+
 void CEntitySA::SetUnderwater ( bool bUnderwater )
 {
     m_pInterface->bUnderwater = bUnderwater;
 }
+
 
 bool CEntitySA::GetUnderwater ( void )
 {

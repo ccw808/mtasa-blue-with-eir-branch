@@ -18,6 +18,7 @@ class CClientTextDisplay;
 
 #include "CClientDisplay.h"
 #include "CClientDisplayManager.h"
+#include "CClientTime.h"
 #include <gui/CGUI.h>
 
 class CClientTextDisplay: public CClientDisplay
@@ -25,11 +26,13 @@ class CClientTextDisplay: public CClientDisplay
     friend class CClientDisplayManager;
 
 public:
-                                CClientTextDisplay      ( CClientDisplayManager* pDisplayManager, int ID = 0xFFFFFFFF );
+                                CClientTextDisplay      ( CClientDisplayManager* pDisplayManager, int ID, bool bIs3DTex );
                                 ~CClientTextDisplay     ( void );
 
     inline eDisplayType         GetType                 ( void )                                { return DISPLAY_TEXT; }
 
+    inline const char*          GetCaptionPointer       ( void )                                { return m_szCaption; };
+    char*                       GetCaption              ( char* szBuffer, size_t sizeBuffer );
     void                        SetCaption              ( const char* szCaption );
 
     void                        SetPosition             ( const CVector& vecPosition );
@@ -50,7 +53,8 @@ public:
 
     static void                 SetGlobalScale          ( float fScale )                        { m_fGlobalScale = fScale; }
 private:
-    SString                     m_strCaption;
+    char*                       m_szCaption;
+    bool                        m_bIs3DText;
     float                       m_fScale;
 
     unsigned long               m_ulFormat;

@@ -34,11 +34,6 @@ public:
     CGUITab*                GetSelectedTab          ( void );
     void                    SetSelectedTab          ( CGUITab* pTab );
 
-    void                    SetSelectedIndex        ( unsigned int uiIndex );
-    unsigned int            GetSelectedIndex        ( void );
-
-    unsigned int            GetTabCount             ( void );
-
     bool                    IsTabSelected           ( CGUITab* pTab );
 
     eCGUIType               GetType                 ( void ) { return CGUI_TABPANEL; };

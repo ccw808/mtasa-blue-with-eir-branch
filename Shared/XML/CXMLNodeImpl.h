@@ -53,7 +53,7 @@ public:
     bool                    GetTagContent       ( unsigned int& uiContent );
     bool                    GetTagContent       ( float& fContent );
 
-    void                    SetTagContent       ( const char* szContent, bool bCDATA = false );
+    void                    SetTagContent       ( const char* szContent );
     void                    SetTagContent       ( bool bContent );
     void                    SetTagContent       ( int iContent );
     void                    SetTagContent       ( unsigned int uiContent );
@@ -75,8 +75,6 @@ public:
     void                    RemoveAllFromList   ( void );
 
     bool                    IsValid             ( void ) { return !m_bUsingIDs || m_ulID != INVALID_XML_ID; };
-
-    virtual SString         GetAttributeValue   ( const SString& strAttributeName );
 
 private:
     bool                    StringToLong        ( const char* szString, long& lValue );

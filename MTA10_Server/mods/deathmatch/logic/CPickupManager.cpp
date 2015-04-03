@@ -12,17 +12,18 @@
 
 #include "StdInc.h"
 
-static SFixedArray < unsigned short, 47 > g_usWeaponModels = { {
-    0, 331, 333, 334, 335, 336, 337, 338, 339, 341,     // 9
+static unsigned short g_usWeaponModels [47] =
+{   0, 331, 333, 334, 335, 336, 337, 338, 339, 341,     // 9
     321, 322, 323, 0, 325, 326, 342, 343, 344, 0,       // 19
     0, 0, 346, 347, 348, 349, 350, 351, 352, 353,       // 29
     355, 356, 372, 357, 358, 359, 360, 361, 362, 363,   // 39
     364, 365, 366, 367, 368, 369, 371                   // 46
-} };
+};
 
 CPickupManager::CPickupManager ( CColManager* pColManager )
 {
     // Init
+    m_bDontRemoveFromList = false;
     m_pColManager = pColManager;
 }
 
@@ -64,13 +65,33 @@ CPickup* CPickupManager::CreateFromXML ( CElement* pParent, CXMLNode& Node, CLua
 
 void CPickupManager::DeleteAll ( void )
 {
-    DeletePointersAndClearList ( m_List );
+    // Delete all the classes
+    m_bDontRemoveFromList = true;
+    list < CPickup* > ::const_iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
+    {
+        delete *iter;
+    }
+    m_bDontRemoveFromList = false;
+
+    // Clear the list
+    m_List.clear ();
 }
 
 
 bool CPickupManager::Exists ( CPickup* pPickup )
 {
-    return ListContains ( m_List, pPickup );
+    // Return true if it exists, otherwize false
+    list < CPickup* > ::const_iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
+    {
+        if ( *iter == pPickup )
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 

@@ -12,9 +12,9 @@
 
 #include "StdInc.h"
 
-const char* sNoTaskName = "[NO TASK TYPE]";
+char sNoTaskName[100] = "[NO TASK TYPE]";
 
-const sTaskName TaskNames[1802] = 
+sTaskName TaskNames[1802] = 
 {
     {"TASK_SIMPLE_PLAYER_ON_FOOT"},                                       {"TASK_SIMPLE_PLAYER_IN_CAR"},                                        /* 0 - 1*/
     {"[2]"},                                                              {"[3]"},                                                              /* 2 - 3*/

@@ -19,61 +19,67 @@
 class CColPointSAInterface
 {
 public:
-	CVector         Position;       // 0
-	float           fUnknown1;      // 12 
-	CVector         Normal;         // 16
-	float           fUnknown2;      // 28
-	EColSurface     ucSurfaceTypeA; // 32
-	uint8           ucPieceTypeA;   // 33
-	CColLighting    lightingA;      // 34
-	EColSurface     ucSurfaceTypeB; // 35
-	uint8           ucPieceTypeB;   // 36
-	CColLighting    lightingB;      // 37
-	uint8           pad1;           // 38
-	uint8           pad2;           // 39
-	float           fDepth;         // 40
+    CVector Position;
+    FLOAT fUnknown1;
+    CVector Normal;
+    FLOAT fUnknown2;
+    BYTE bSurfaceTypeA;
+    BYTE bPieceTypeA;
+    BYTE bLightingA;
+    BYTE bSurfaceTypeB;
+    BYTE bPieceTypeB;
+    BYTE bLightingB;
+    FLOAT fDepth;
+/*
+    +0 Position (12 Bytes  Vector)
+    +12?
+    +16 Normal (12 Bytes  Vector)
+    +32 SurfaceTypeA
+    +33 PieceTypeA
+    +34 LightingA (assumed)
+    +35 SurfaceTypeB 
+    +36 PieceTypeB
+    +37 LightingB 
+    +40 Depth (float)*/
 };
-C_ASSERT(sizeof(CColPointSAInterface) == 0x2C);
 
 class CColPointSA : public CColPoint
 {
 private:
-    CColPointSAInterface * m_pInternalInterface;
+    CColPointSAInterface * internalInterface;
 public:
-                                    CColPointSA                 ( void );
-                                    CColPointSA                 ( CColPointSAInterface* pInterface ) { m_pInternalInterface = pInterface; };
+    CColPointSAInterface * GetInterface() { return this->internalInterface; }
+    CColPointSA();
+    CColPointSA(CColPointSAInterface * pInterface ) { this->internalInterface = pInterface; };
 
-    virtual CColPointSAInterface*   GetInterface                ( void )                        { return m_pInternalInterface; }
-    virtual const CVector&          GetPosition                 ( void )                        { return GetInterface ()->Position; }
-    virtual void                    SetPosition                 ( const CVector& vecPosition )  { GetInterface ()->Position = vecPosition; }
+    CVector * GetPosition()  { return &this->GetInterface()->Position; };
+    VOID SetPosition(CVector * vecPosition)  { MemCpyFast (&this->GetInterface()->Position, vecPosition, sizeof(CVector)); };
 
-    virtual const CVector&          GetNormal                   ( void )                        { return GetInterface ()->Normal; }
-    virtual void                    SetNormal                   ( const CVector& vecNormal )    { GetInterface ()->Normal = vecNormal;  }
+    CVector * GetNormal() { return &this->GetInterface()->Normal; };
+    VOID SetNormal(CVector * vecNormal) { MemCpyFast (&this->GetInterface()->Normal, vecNormal, sizeof(CVector)); };
 
-    virtual EColSurface             GetSurfaceTypeA             ( void )                        { return GetInterface ()->ucSurfaceTypeA; }
-    virtual EColSurface             GetSurfaceTypeB             ( void )                        { return GetInterface ()->ucSurfaceTypeB; }
+    BYTE GetSurfaceTypeA() { return this->GetInterface()->bSurfaceTypeA; };
+    BYTE GetSurfaceTypeB() { return this->GetInterface()->bSurfaceTypeB; };
 
-    virtual void                    SetSurfaceTypeA             ( EColSurface surfaceType )     { GetInterface ()->ucSurfaceTypeA = surfaceType; }
-    virtual void                    SetSurfaceTypeB             ( EColSurface surfaceType )     { GetInterface ()->ucSurfaceTypeB = surfaceType; }
+    VOID SetSurfaceTypeA(BYTE bSurfaceType) { this->GetInterface()->bSurfaceTypeA = bSurfaceType; };
+    VOID SetSurfaceTypeB(BYTE bSurfaceType) { this->GetInterface()->bSurfaceTypeB = bSurfaceType; };
 
-    virtual BYTE                    GetPieceTypeA               ( void )                        { return GetInterface ()->ucPieceTypeA; }
-    virtual BYTE                    GetPieceTypeB               ( void )                        { return GetInterface ()->ucPieceTypeB; }
+    BYTE GetPieceTypeA() { return this->GetInterface()->bPieceTypeA; };
+    BYTE GetPieceTypeB() { return this->GetInterface()->bPieceTypeB; };
 
-    virtual void                    SetPieceTypeA               ( BYTE ucPieceType )            { GetInterface ()->ucPieceTypeA = ucPieceType; }
-    virtual void                    SetPieceTypeB               ( BYTE ucPieceType )            { GetInterface ()->ucPieceTypeB = ucPieceType; }
+    VOID SetPieceTypeA(BYTE bPieceType) { this->GetInterface()->bPieceTypeA = bPieceType; };
+    VOID SetPieceTypeB(BYTE bPieceType) { this->GetInterface()->bPieceTypeB = bPieceType; };
 
-    virtual CColLighting            GetLightingA                ( void )                        { return GetInterface ()->lightingA; }
-    virtual CColLighting            GetLightingB                ( void )                        { return GetInterface ()->lightingB; }
+    BYTE GetLightingA() { return this->GetInterface()->bLightingA; };
+    BYTE GetLightingB() { return this->GetInterface()->bLightingB;};
 
-    virtual void                    SetLightingA                ( CColLighting lighting )       { GetInterface ()->lightingA = lighting; }
-    virtual void                    SetLightingB                ( CColLighting lighting )       { GetInterface ()->lightingB = lighting; }
+    VOID SetLightingA(BYTE bLighting) { this->GetInterface()->bLightingA = bLighting; };
+    VOID SetLightingB(BYTE bLighting) { this->GetInterface()->bLightingB = bLighting; };
 
-    virtual float                   GetDepth                    ( void )                        { return GetInterface ()->fDepth; }
-    virtual void                    SetDepth                    ( float fDepth )                { GetInterface ()->fDepth = fDepth; }
+    FLOAT GetDepth() { return this->GetInterface()->fDepth; };
+    VOID SetDepth(FLOAT fDepth) { this->GetInterface()->fDepth = fDepth; };
 
-    virtual void                    Destroy                     ( void )                        { if ( m_pInternalInterface ) delete m_pInternalInterface; delete this; }
-    virtual float                   GetLightingForTimeOfDay     ( void );
-
+    VOID Destroy() { if ( this->internalInterface ) delete this->internalInterface; delete this; }
 };
 
 #endif

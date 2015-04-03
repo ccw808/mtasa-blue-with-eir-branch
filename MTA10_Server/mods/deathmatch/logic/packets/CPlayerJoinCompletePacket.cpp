@@ -22,14 +22,10 @@ CPlayerJoinCompletePacket::CPlayerJoinCompletePacket ( void )
     m_usHTTPDownloadPort = 0;
     m_iHTTPMaxConnectionsPerClient = 4;
     m_iEnableClientChecks = 0;
-    m_bVoiceEnabled = true;
-    m_ucSampleRate = 1;
-    m_ucQuality = 4;
-    m_uiBitrate = 0;
 }
 
 
-CPlayerJoinCompletePacket::CPlayerJoinCompletePacket ( ElementID PlayerID, unsigned char ucNumberOfPlayers, ElementID RootElementID, eHTTPDownloadType ucHTTPDownloadType, unsigned short usHTTPDownloadPort, const char* szHTTPDownloadURL, int iHTTPMaxConnectionsPerClient, int iEnableClientChecks, bool bVoiceEnabled, unsigned char ucSampleRate, unsigned char ucVoiceQuality, unsigned int uiBitrate )
+CPlayerJoinCompletePacket::CPlayerJoinCompletePacket ( ElementID PlayerID, unsigned char ucNumberOfPlayers, ElementID RootElementID, eHTTPDownloadType ucHTTPDownloadType, unsigned short usHTTPDownloadPort, const char* szHTTPDownloadURL, int iHTTPMaxConnectionsPerClient, int iEnableClientChecks )
 {
     m_PlayerID = PlayerID;
     m_ucNumberOfPlayers = ucNumberOfPlayers;
@@ -37,10 +33,6 @@ CPlayerJoinCompletePacket::CPlayerJoinCompletePacket ( ElementID PlayerID, unsig
     m_ucHTTPDownloadType = ucHTTPDownloadType;
     m_iHTTPMaxConnectionsPerClient = iHTTPMaxConnectionsPerClient;
     m_iEnableClientChecks = iEnableClientChecks;
-    m_bVoiceEnabled = bVoiceEnabled;
-    m_ucSampleRate = ucSampleRate;
-    m_ucQuality = ucVoiceQuality;
-    m_uiBitrate = uiBitrate;
 
     switch ( m_ucHTTPDownloadType )
     {
@@ -49,7 +41,9 @@ CPlayerJoinCompletePacket::CPlayerJoinCompletePacket ( ElementID PlayerID, unsig
         break;
     case HTTP_DOWNLOAD_ENABLED_URL:
         m_usHTTPDownloadPort = usHTTPDownloadPort;
-        m_strHTTPDownloadURL.AssignLeft ( szHTTPDownloadURL, MAX_HTTP_DOWNLOAD_URL );
+
+        strncpy ( m_szHTTPDownloadURL, szHTTPDownloadURL, MAX_HTTP_DOWNLOAD_URL );
+        m_szHTTPDownloadURL [MAX_HTTP_DOWNLOAD_URL] = 0;
         break;
     default:
         break;
@@ -59,26 +53,12 @@ CPlayerJoinCompletePacket::CPlayerJoinCompletePacket ( ElementID PlayerID, unsig
 
 bool CPlayerJoinCompletePacket::Write ( NetBitStreamInterface& BitStream ) const
 {
-    BitStream.Write ( m_PlayerID );
+    BitStream.WriteCompressed ( m_PlayerID );
     BitStream.Write ( m_ucNumberOfPlayers );
-    BitStream.Write ( m_RootElementID );
+    BitStream.WriteCompressed ( m_RootElementID );
 
     // Transmit server requirement for the client to check settings
     BitStream.Write ( m_iEnableClientChecks );
-
-    // Transmit whether or not the Voice is enabled
-    BitStream.WriteBit ( m_bVoiceEnabled );
-
-    // Transmit the sample rate for voice
-    SIntegerSync < unsigned char, 2 > sampleRate ( m_ucSampleRate );
-    BitStream.Write ( &sampleRate );
-
-    // Transmit the quality for voice
-    SIntegerSync < unsigned char, 4 > voiceQuality ( m_ucQuality );
-    BitStream.Write ( &voiceQuality );
-
-    // Transmit the max bitrate for voice
-    BitStream.WriteCompressed ( m_uiBitrate );
 
     // Tellclient about maybe throttling back http client requests
     BitStream.Write ( m_iHTTPMaxConnectionsPerClient );
@@ -95,11 +75,13 @@ bool CPlayerJoinCompletePacket::Write ( NetBitStreamInterface& BitStream ) const
         break;
     case HTTP_DOWNLOAD_ENABLED_URL:
         {
-            // Internal http server port
-            BitStream.Write( m_usHTTPDownloadPort );
+            size_t sizeHTTPDownloadURL = strlen ( m_szHTTPDownloadURL );
 
-            // External http server URL
-            BitStream.WriteString ( m_strHTTPDownloadURL );
+            BitStream.Write ( static_cast < unsigned short > ( sizeHTTPDownloadURL ) );
+            if ( sizeHTTPDownloadURL > 0 )
+            {
+                BitStream.Write ( const_cast < char* > ( m_szHTTPDownloadURL ), sizeHTTPDownloadURL );
+            }
         }
 
         break;

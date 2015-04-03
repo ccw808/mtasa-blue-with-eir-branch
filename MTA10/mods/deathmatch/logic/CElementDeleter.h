@@ -32,8 +32,6 @@ public:
 
     void                        Unreference             ( class CClientEntity* pElement );
 
-    void                        CleanUpForVM            ( CLuaMain* pLuaMain );
-
     // Call this to see if this class can be destroyed. That means no objects this class
     // has in the delete queue is undestroyable.
     bool                        CanBeDestroyed          ( void );

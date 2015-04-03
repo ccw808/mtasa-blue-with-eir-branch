@@ -26,28 +26,25 @@ class CMapEvent
 
 public:
     inline class CLuaMain*  GetVM               ( void )                                { return m_pMain; };
-    inline const SString&   GetName             ( void )                                { return m_strName; };
+    inline const char*      GetName             ( void )                                { return m_szName; };
     const CLuaFunctionRef&  GetLuaFunction      ( void )                                { return m_iLuaFunction; };
     inline bool             IsPropagated        ( void )                                { return m_bPropagated; }
     inline bool             IsBeingDestroyed    ( void )                                { return m_bBeingDestroyed; }
 
     void                    Call                ( const class CLuaArguments& Arguments );
-    bool                    IsHigherPriorityThan ( const CMapEvent* pOther );
 
 private:
-                            CMapEvent           ( class CLuaMain* pMain, const char* szName, const CLuaFunctionRef& iLuaFunction, bool bPropagated, EEventPriorityType eventPriority, float fPriorityMod );
+                            CMapEvent           ( class CLuaMain* pMain, const char* szName, const CLuaFunctionRef& iLuaFunction, bool bPropagated );
                             ~CMapEvent          ( void );
 
     inline void             SetBeingDestroyed   ( bool bBeingDestroyed )                { m_bBeingDestroyed = bBeingDestroyed; }
 
     class CLuaMain*         m_pMain;
     CLuaFunctionRef         m_iLuaFunction;
-    SString                 m_strName;
+    char                    m_szName [MAPEVENT_MAX_LENGTH_NAME + 1];
     bool                    m_bPropagated;
     bool                    m_bDestroyFunction;
     bool                    m_bBeingDestroyed;
-    EEventPriorityType      m_eventPriority;
-    float                   m_fPriorityMod;
 };
 
 #endif

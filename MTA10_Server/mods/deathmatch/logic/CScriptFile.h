@@ -27,7 +27,7 @@ public:
         MODE_CREATE,
     };
 
-                            CScriptFile             ( uint uiScriptId, const char* szFilename, unsigned long ulMaxSize );
+                            CScriptFile             ( CResource* pResource, const char* szFilename, unsigned long ulMaxSize );
                             ~CScriptFile            ( void );
 
     // Functions required by CElement
@@ -35,7 +35,7 @@ public:
     bool                    ReadSpecialData         ( void )    { return true; };
 
     // Load and unload routines
-    bool                    Load                    ( CResource* pResourceForFilePath, eMode Mode );
+    bool                    Load                    ( eMode Mode );
     void                    Unload                  ( void );
     bool                    IsLoaded                ( void )    { return m_pFile != NULL; };
 
@@ -54,7 +54,7 @@ public:
 
 private:
     FILE*                   m_pFile;
-    uint                    m_uiScriptId;
+    CResource*              m_pResource;
     std::string             m_strFilename;
     unsigned long           m_ulMaxSize;
 };

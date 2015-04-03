@@ -20,7 +20,8 @@ class CServerInfo;
 
 // Dimensions for our window
 #define INFO_WINDOW_DEFAULTWIDTH        370.0f
-#define INFO_WINDOW_DEFAULTHEIGHT       400.0f
+#define INFO_WINDOW_DEFAULTHEIGHT       345.0f
+#define PASSWORD_WINDOW_DEFAULTHEIGHT   375.0f
 
 #define INFO_WINDOW_HSPACING 20
 #define INFO_LABEL_VSPACING 0
@@ -95,9 +96,9 @@ private:
     eWindowType         m_pCurrentWindowType;
     bool                m_bWaitingToActivatePassword;
 
-    SString             m_strHost;
+    const char*         m_szHost;
     unsigned short      m_usPort;
-    SString             m_strPassword;
+    const char*         m_szPassword;
 
     void                Refresh                     ( void );
     void                Connect                     ( void );

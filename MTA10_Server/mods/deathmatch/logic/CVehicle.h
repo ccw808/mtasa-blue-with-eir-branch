@@ -114,38 +114,12 @@ enum eVehicleType
     VEHICLE_TRAILER
 };
 
-#define SIREN_TYPE_FIRST 1
-#define SIREN_TYPE_LAST 6
-#define SIREN_ID_MAX 7
-#define SIREN_COUNT_MAX 8
-
-struct SSirenBeaconInfo
-{
-    CVector                     m_vecSirenPositions;
-    SColor                      m_RGBBeaconColour;
-    DWORD                       m_dwMinSirenAlpha;
-};
-struct SSirenInfo
-{
-    // Flags
-    bool                        m_b360Flag;
-    bool                        m_bDoLOSCheck;
-    bool                        m_bUseRandomiser;
-    bool                        m_bSirenSilent;
-    // End of flags
-    bool                        m_bOverrideSirens;
-    unsigned char               m_ucSirenType;
-    unsigned char               m_ucSirenCount;
-    SFixedArray < SSirenBeaconInfo, 8 >    m_tSirenInfo;
-};
-
 class CVehicle : public CElement
 {
     friend class CPlayer;
 
 public:
-    ZERO_ON_NEW
-                                    CVehicle                ( class CVehicleManager* pVehicleManager, CElement* pParent, CXMLNode* pNode, unsigned short usModel, unsigned char ucVariant, unsigned char ucVariant2 );
+                                    CVehicle                ( class CVehicleManager* pVehicleManager, CElement* pParent, CXMLNode* pNode, unsigned short usModel );
                                     ~CVehicle               ( void );
 
     bool                            IsEntity                ( void )                        { return true; }
@@ -159,11 +133,6 @@ public:
     void                            SetModel            ( unsigned short usModel );
     bool                            HasValidModel       ( void );
 
-    inline unsigned char            GetVariant              ( void )                        { return m_ucVariant; };
-    inline unsigned char            GetVariant2             ( void )                        { return m_ucVariant2; };
-
-    void                            SetVariants             ( unsigned char ucVariant, unsigned char ucVariant2 );
-
     eVehicleType                    GetVehicleType          ( void )                        { return m_eVehicleType; };
 
     inline CVehicleColor&           GetColor                ( void )                        { return m_Color; };
@@ -174,11 +143,9 @@ public:
 
     const CVector&                  GetPosition             ( void );
     void                            SetPosition             ( const CVector& vecPosition );
-    void                            GetRotation             ( CVector& vecRotation );
+    inline void                     GetRotation             ( CVector& vecRotation );
     void                            GetRotationDegrees      ( CVector& vecRotation );
     void                            SetRotationDegrees      ( const CVector& vecRotation );
-    void                            GetMatrix               ( CMatrix& matrix );
-    void                            SetMatrix               ( const CMatrix& matrix );
 
     inline const CVector&           GetVelocity             ( void )                        { return m_vecVelocity; };
     inline void                     SetVelocity             ( const CVector& vecVelocity )  { m_vecVelocity = vecVelocity; };
@@ -189,9 +156,15 @@ public:
 
     inline float                    GetHealth               ( void )                        { return m_fHealth; };
     inline void                     SetHealth               ( float fHealth )               { m_fHealth = fHealth; };
-    inline float                    GetLastSyncedHealth     ( void )                        { return m_fLastSyncedHealthHealth; };
-    inline void                     SetLastSyncedHealth     ( float fHealth )               { m_fLastSyncedHealthHealth = fHealth; };
+    inline unsigned long            GetHealthChangeTime     ( void )                        { return m_ulHealthChangeTime; }
+    inline void                     SetHealthChangeTime     ( unsigned long ulTime )        { m_ulHealthChangeTime = ulTime; }
     
+    inline unsigned long            GetBlowTime             ( void )                        { return m_ulBlowTime; };
+    inline void                     SetBlowTime             ( unsigned long ulBlowTime )    { m_ulBlowTime = ulBlowTime; };
+    
+    inline unsigned long            GetIdleTime             ( void )                        { return m_ulIdleTime; };
+    inline void                     SetIdleTime             ( unsigned long ulIdleTime )    { m_ulIdleTime = ulIdleTime; };
+
     CVehicleColor&                  RandomizeColor          ( void );
 
     float                           GetDoorOpenRatio        ( unsigned char ucDoor ) const;
@@ -269,10 +242,12 @@ public:
     inline unsigned char            GetAlpha                ( void )                        { return m_ucAlpha; }
     inline void                     SetAlpha                ( unsigned char ucAlpha )       { m_ucAlpha = ucAlpha; }
 
-    void                            GetInitialDoorStates    ( SFixedArray < unsigned char, MAX_DOORS >& ucOutDoorStates );
+    void                            GetInitialDoorStates    ( unsigned char * pucDoorStates );
 
-    inline CPlayer *                GetJackingPlayer        ( void )                        { return m_pJackingPlayer; }
-    void                            SetJackingPlayer        ( CPlayer * pPlayer );
+//    inline CPlayer *                GetJackingPlayer        ( void )                        { return m_pJackingPlayer; }
+//    inline void                     SetJackingPlayer        ( CPlayer * pPlayer )           { m_pJackingPlayer = pPlayer; }
+    inline CPed *                   GetEnteringPed          ( void )                        { return m_pEnteringPed; }
+    inline void                     SetEnteringPed          ( CPed * pPed )                 { m_pEnteringPed = pPed; }
 
     inline bool                     IsInWater               ( void )                        { return m_bInWater; }
     inline void                     SetInWater              ( bool bInWater )               { m_bInWater = bInWater; }
@@ -286,15 +261,6 @@ public:
     inline void                     SetDerailable           ( bool bDerailable )            { m_bIsDerailable = bDerailable; }
     inline bool                     GetTrainDirection       ( void )                        { return m_bTrainDirection; }
     inline void                     SetTrainDirection       ( bool bDirection )             { m_bTrainDirection = bDirection; }
-
-    inline float                    GetTrainSpeed           ( void )                        { return m_fTrainSpeed; }
-    inline void                     SetTrainSpeed           ( float fSpeed )                { m_fTrainSpeed = fSpeed; }
-
-    inline float                    GetTrainPosition        ( void )                        { return m_fTrainPosition; }
-    inline void                     SetTrainPosition        ( float fPosition )             { m_fTrainPosition = fPosition; }
-
-    inline uchar                    GetTrainTrack           ( void )                        { return m_ucTrackID; }
-    inline void                     SetTrainTrack           ( uchar ucTrack )               { m_ucTrackID = ucTrack; }
 
     inline SColor                   GetHeadLightColor       ( void )                        { return m_HeadLightColor; }
     inline void                     SetHeadLightColor       ( const SColor color )          { m_HeadLightColor = color; }
@@ -315,45 +281,25 @@ public:
     inline void                     SetRespawnRotationDegrees ( const CVector& vecRotation ){ m_vecRespawnRotationDegrees = vecRotation; };
     inline float                    GetRespawnHealth        ( void )                        { return m_fRespawnHealth; };
     inline void                     SetRespawnHealth        ( float fHealth )               { m_fRespawnHealth = fHealth; };
+    inline bool                     GetRespawnInfoChanged   ( void )                        { return m_bRespawnInfoChanged; }
     inline bool                     GetRespawnEnabled       ( void )                        { return m_bRespawnEnabled; }
-    void                            SetRespawnEnabled       ( bool bEnabled );
-    void                            SetBlowRespawnInterval  ( unsigned long ulTime )        { m_ulBlowRespawnInterval = ulTime; }
-    void                            SetIdleRespawnInterval  ( unsigned long ulTime )        { m_ulIdleRespawnInterval = ulTime; }
-
+    inline void                     SetRespawnEnabled       ( bool bEnabled )               { m_bRespawnEnabled = bEnabled; m_bRespawnInfoChanged = true; };
+    inline unsigned long            GetRespawnTime          ( void )                        { return m_ulRespawnTime; };
+    inline void                     SetRespawnTime          ( unsigned long ulTime )        { m_ulRespawnTime = ulTime; m_bRespawnInfoChanged = true; };
+    inline unsigned long            GetIdleRespawnTime      ( void )                        { return m_ulIdleRespawnTime; };
+    inline void                     SetIdleRespawnTime      ( unsigned long ulTime )        { m_ulIdleRespawnTime = ulTime; m_bRespawnInfoChanged = true; };
+    
     void                            SpawnAt                 ( const CVector& vecPosition, const CVector& vecRotation );
     void                            Respawn                 ( void );
 
     void                            GenerateHandlingData    ( void );
     CHandlingEntry*                 GetHandlingData         ( void )                      { return m_pHandlingEntry; }
 
-    uint                            GetTimeSinceLastPush    ( void )                      { return (uint)( CTickCount::Now ( true ) - m_LastPushedTime ).ToLongLong (); }
-    void                            ResetLastPushTime       ( void )                      { m_LastPushedTime = CTickCount::Now ( true ); }
-
-    inline bool                     DoesVehicleHaveSirens   ( void )                      { return m_tSirenBeaconInfo.m_bOverrideSirens; }
-    void                            RemoveVehicleSirens     ( void );
-    void                            SetVehicleSirenPosition     ( unsigned char ucSirenID, CVector vecPos );
-    void                            SetVehicleSirenMinimumAlpha ( unsigned char ucSirenID, DWORD dwPercentage );
-    void                            SetVehicleSirenColour       ( unsigned char ucSirenID, SColor tVehicleSirenColour );
-    void                            SetVehicleFlags             ( bool bEnable360, bool bEnableRandomiser, bool bEnableLOSCheck, bool bEnableSilent );
-
-    void                            ResetDoors              ( void );
-    void                            ResetDoorsWheelsPanelsLights ( void );
-    void                            SetIsBlown              ( bool bBlown );
-    bool                            GetIsBlown              ( void );
-    bool                            IsBlowTimerFinished     ( void );
-    void                            StopIdleTimer           ( void );
-    void                            RestartIdleTimer        ( void );
-    bool                            IsIdleTimerRunning      ( void );
-    bool                            IsIdleTimerFinished     ( void );
-    bool                            IsStationary            ( void );
-    void                            OnRelayUnoccupiedSync   ( void );
-    void                            HandleDimensionResync   ( void );
-
 private:
     class CVehicleManager*          m_pVehicleManager;
 
     CPlayer*                        m_pSyncer;
-    SFixedArray < CPed*, MAX_VEHICLE_SEATS >   m_pOccupants;
+    CPed*                           m_pOccupants [MAX_VEHICLE_SEATS];
 
     unsigned short                  m_usModel;
     eVehicleType                    m_eVehicleType;
@@ -363,9 +309,9 @@ private:
     CVector                         m_vecVelocityMeters;
     CVector                         m_vecTurnSpeed;
     float                           m_fHealth;
-    float                           m_fLastSyncedHealthHealth;
-    CTickCount                      m_llBlowTime;
-    CTickCount                      m_llIdleTime;
+    unsigned long                   m_ulHealthChangeTime;
+    unsigned long                   m_ulBlowTime;
+    unsigned long                   m_ulIdleTime;
 
     unsigned char                   m_ucMaxPassengersOverride;
 
@@ -384,7 +330,7 @@ private:
     char                            m_szRegPlate [9];
     unsigned char                   m_ucPaintjob;
 
-    SFixedArray < float, 6 >        m_fDoorOpenRatio;
+    float                           m_fDoorOpenRatio [ 6 ];
     bool                            m_bLocked;
     bool                            m_bDoorsUndamageable;
     bool                            m_bEngineOn;
@@ -394,25 +340,21 @@ private:
     bool                            m_bSmokeTrail;
     unsigned char                   m_ucAlpha;
     bool                            m_bInWater;
-    CPlayer *                       m_pJackingPlayer;
+    bool                            m_bDerailed;
+    bool                            m_bIsDerailable;
+    bool                            m_bTrainDirection;
+    CPed *                          m_pEnteringPed;
     SColor                          m_HeadLightColor;
     bool                            m_bHeliSearchLightVisible;
-
-    // Train specific data
-    bool                        m_bDerailed;
-    bool                        m_bIsDerailable;
-    bool                        m_bTrainDirection;
-    float                       m_fTrainSpeed;
-    float                       m_fTrainPosition;
-    uchar                       m_ucTrackID;
 
     // Used to remember where this vehicle spawns
     CVector                         m_vecRespawnPosition;
     CVector                         m_vecRespawnRotationDegrees;
     float                           m_fRespawnHealth;
+    bool                            m_bRespawnInfoChanged;
     bool                            m_bRespawnEnabled;
-    unsigned long                   m_ulBlowRespawnInterval;
-    unsigned long                   m_ulIdleRespawnInterval;
+    unsigned long                   m_ulRespawnTime;
+    unsigned long                   m_ulIdleRespawnTime;
 
     // Vehicle specific data
     float                           m_fTurretPositionX;
@@ -426,23 +368,12 @@ private:
     CHandlingEntry*                 m_pHandlingEntry;
     bool                            m_bHandlingChanged;
 
-    unsigned char                   m_ucVariant;
-    unsigned char                   m_ucVariant2;
-
-    CTickCount                      m_LastPushedTime;
-    CVector                         m_vecStationaryCheckPosition;
-    bool                            m_bNeedsDimensionResync;
-    ushort                          m_usLastUnoccupiedSyncDimension;
-
 public: // 'Safe' variables (that have no need for accessors)
     bool                            m_bDamageProof;
-    uint                            m_uiDamageInfoSendPhase;
-    SFixedArray < unsigned char, MAX_DOORS >   m_ucDoorStates;
-    SFixedArray < unsigned char, MAX_WHEELS >  m_ucWheelStates;
-    SFixedArray < unsigned char, MAX_PANELS >  m_ucPanelStates;
-    SFixedArray < unsigned char, MAX_LIGHTS >  m_ucLightStates;
-    SSirenInfo                      m_tSirenBeaconInfo;
-    bool                            m_bOccupantChanged;
+    unsigned char                   m_ucDoorStates [MAX_DOORS];
+    unsigned char                   m_ucWheelStates [MAX_WHEELS];
+    unsigned char                   m_ucPanelStates [MAX_PANELS];
+    unsigned char                   m_ucLightStates [MAX_LIGHTS];
 };
 
 #endif

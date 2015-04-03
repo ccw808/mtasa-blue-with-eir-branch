@@ -42,64 +42,43 @@ class CClientTeam;
 class CClientTXD;
 class CClientVehicle;
 class CClientWater;
-class CClientWeapon;
+class CClientIFP;
 class CClientRadarArea;
-class CClientPointLights;
 class CLuaTimer;
 class CResource;
 class CXMLNode;
 
 
 // Lua push/pop macros for our datatypes
+CClientRadarMarker*     lua_toblip          ( lua_State* luaVM, int iArgument );
+CClientColModel*        lua_tocolmodel      ( lua_State* luaVM, int iArgument );
+CClientColShape*        lua_tocolshape      ( lua_State* luaVM, int iArgument );
+CScriptFile*            lua_tofile          ( lua_State* luaVM, int iArgument );
+CClientDFF*             lua_todff           ( lua_State* luaVM, int iArgument );
+CClientEntity*          lua_toelement       ( lua_State* luaVM, int iArgument );
+CClientGUIElement*      lua_toguielement    ( lua_State* luaVM, int iArgument );
+CClientMarker*          lua_tomarker        ( lua_State* luaVM, int iArgument );
+CClientObject*          lua_toobject        ( lua_State* luaVM, int iArgument );
+CClientPed*             lua_toped           ( lua_State* luaVM, int iArgument );
+CClientPickup*          lua_topickup        ( lua_State* luaVM, int iArgument );
+CClientPlayer*          lua_toplayer        ( lua_State* luaVM, int iArgument );
+CClientProjectile*      lua_toprojectile    ( lua_State* luaVM, int iArgument );
+CLuaTimer*              lua_totimer         ( lua_State* luaVM, int iArgument );
+CResource*              lua_toresource      ( lua_State* luaVM, int iArgument );
+CClientSound*           lua_tosound         ( lua_State* luaVM, int iArgument );
+CClientTeam*            lua_toteam          ( lua_State* luaVM, int iArgument );
+CClientTXD*             lua_totxd           ( lua_State* luaVM, int iArgument );
+CClientVehicle*         lua_tovehicle       ( lua_State* luaVM, int iArgument );
+CClientWater*           lua_towater         ( lua_State* luaVM, int iArgument );
+CClientIFP*             lua_toifp           ( lua_State* luaVM, int iArgument );
+CXMLNode*               lua_toxmlnode       ( lua_State* luaVM, int iArgument );
+CClientRadarArea*       lua_toradararea     ( lua_State* luaVM, int iArgument );
 
-class CClientEntity*    lua_toelement           ( lua_State* luaVM, int iArgument );
+void                    lua_pushelement     ( lua_State* luaVM, CClientEntity* pElement );
+void                    lua_pushresource    ( lua_State* luaVM, CResource* pElement );
+void                    lua_pushtimer       ( lua_State* luaVM, CLuaTimer* pElement );
+void                    lua_pushxmlnode     ( lua_State* luaVM, CXMLNode* pElement );
 
-void                    lua_pushelement         ( lua_State* luaVM, CClientEntity* pElement );
-void                    lua_pushresource        ( lua_State* luaVM, CResource* pElement );
-void                    lua_pushtimer           ( lua_State* luaVM, CLuaTimer* pElement );
-void                    lua_pushxmlnode         ( lua_State* luaVM, CXMLNode* pElement );
-void                    lua_pushuserdata        ( lua_State* luaVM, void* pData );
-
-void                    lua_pushobject          ( lua_State* luaVM, const char* szClass, void* pObject );
-
-void                    lua_pushvector          ( lua_State* luaVM, const CVector4D& vector );
-void                    lua_pushvector          ( lua_State* luaVM, const CVector& vector );
-void                    lua_pushvector          ( lua_State* luaVM, const CVector2D& vector );
-void                    lua_pushmatrix          ( lua_State* luaVM, const CMatrix& matrix );
-
-// Internal use
-void                    lua_initclasses         ( lua_State* luaVM );
-
-void                    lua_newclass            ( lua_State* luaVM );
-void                    lua_getclass            ( lua_State* luaVM, const char* szName );
-void                    lua_registerclass       ( lua_State* luaVM, const char* szName, const char* szParent = NULL );
-void                    lua_registerstaticclass ( lua_State* luaVM, const char* szName );
-void                    lua_classfunction       ( lua_State* luaVM, const char* szFunction, lua_CFunction fn );
-void                    lua_classfunction       ( lua_State* luaVM, const char* szFunction, const char* fn );
-void                    lua_classvariable       ( lua_State* luaVM, const char* szVariable, lua_CFunction set, lua_CFunction get );
-void                    lua_classvariable       ( lua_State* luaVM, const char* szVariable, const char* set, const char* get );
-void                    lua_classmetamethod     ( lua_State* luaVM, const char* szName, lua_CFunction fn );
-
-const char*             lua_makestring          ( lua_State* luaVM, int iArgument );
-
-// Lua debug info for logging
-enum
-{
-    DEBUG_INFO_NONE,
-    DEBUG_INFO_FILE_AND_LINE,
-    DEBUG_INFO_SHORT_SRC,
-};
-
-#define INVALID_LINE_NUMBER (-1)
-
-struct SLuaDebugInfo
-{
-    SLuaDebugInfo( void ) : iLine( INVALID_LINE_NUMBER ), infoType( DEBUG_INFO_NONE ) {}
-    SLuaDebugInfo( const SString& strFile, int iLine ) : strFile( strFile ), iLine( iLine ), infoType( DEBUG_INFO_FILE_AND_LINE ) {}
-    SString     strFile;
-    SString     strShortSrc;
-    int         iLine;
-    int         infoType;
-};
+#define lua_istype(luavm, number,type) (lua_type(luavm,number) == type)
 
 #endif

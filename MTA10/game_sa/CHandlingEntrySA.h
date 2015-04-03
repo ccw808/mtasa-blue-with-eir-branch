@@ -16,7 +16,6 @@
 
 #include <game/CHandlingEntry.h>
 #include "Common.h"
-#define FUNC_HandlingDataMgr_ConvertBikeDataToGameUnits 0x6F5290
 #define FUNC_HandlingDataMgr_ConvertDataToGameUnits 0x6F5080
 // http://www.gtamodding.com/index.php?title=Handling.cfg#GTA_San_Andreas
 // http://www.gtamodding.com/index.php?title=Memory_Addresses_%28SA%29#Handling
@@ -146,8 +145,6 @@ public:
     eLightType      GetTailLight                    ( void ) const    { return static_cast < eLightType > ( m_Handling.ucTailLight ); };
     unsigned char   GetAnimGroup                    ( void ) const    { return m_Handling.ucAnimGroup; };
 
-    eVehicleTypes   GetModel                        ( void ) const    { return static_cast < eVehicleTypes > ( m_Handling.iVehicleID ); };
-    bool            HasSuspensionChanged            ( void ) const    { return true; };
 
     // Set functions
     void            SetMass                         ( float fMass )                 { m_Handling.fMass = fMass; };
@@ -174,13 +171,13 @@ public:
     void            SetTractionLoss                 ( float fTractionLoss )         { m_Handling.fTractionLoss = fTractionLoss; };
     void            SetTractionBias                 ( float fTractionBias )         { m_Handling.fTractionBias = fTractionBias; };
 
-    void            SetSuspensionForceLevel         ( float fForce );
-    void            SetSuspensionDamping            ( float fDamping );
-    void            SetSuspensionHighSpeedDamping   ( float fDamping );
-    void            SetSuspensionUpperLimit         ( float fUpperLimit );
-    void            SetSuspensionLowerLimit         ( float fLowerLimit );
-    void            SetSuspensionFrontRearBias      ( float fBias );
-    void            SetSuspensionAntiDiveMultiplier ( float fAntidive );
+    void            SetSuspensionForceLevel         ( float fForce )                { m_Handling.fSuspensionForceLevel = fForce; };
+    void            SetSuspensionDamping            ( float fDamping )              { m_Handling.fSuspensionDamping = fDamping; };
+    void            SetSuspensionHighSpeedDamping   ( float fDamping )              { m_Handling.fSuspensionHighSpdDamping = fDamping; };
+    void            SetSuspensionUpperLimit         ( float fUpperLimit )           { m_Handling.fSuspensionUpperLimit = fUpperLimit; };
+    void            SetSuspensionLowerLimit         ( float fLowerLimit )           { m_Handling.fSuspensionLowerLimit = fLowerLimit; };
+    void            SetSuspensionFrontRearBias      ( float fBias )                 { m_Handling.fSuspensionFrontRearBias = fBias; };
+    void            SetSuspensionAntiDiveMultiplier ( float fAntidive )             { m_Handling.fSuspensionAntiDiveMultiplier = fAntidive; };
 
     void            SetCollisionDamageMultiplier    ( float fMultiplier )           { m_Handling.fCollisionDamageMultiplier = fMultiplier; };
 
@@ -193,11 +190,9 @@ public:
     void            SetTailLight                    ( eLightType Style )            { m_Handling.ucTailLight = Style; };
     void            SetAnimGroup                    ( unsigned char ucGroup )       { m_Handling.ucAnimGroup = ucGroup; };
 
-    void            Recalculate                     ( unsigned short usModel );
+    void            Recalculate                     ( void );
 
     tHandlingDataSA*    GetInterface                ( void )                        { return m_pHandlingSA; };
-
-    void            SetSuspensionChanged            ( bool bChanged )               { m_bChanged = bChanged; };
 
 private:
     tHandlingDataSA*        m_pHandlingSA;
@@ -206,30 +201,6 @@ private:
     tHandlingDataSA         m_Handling;
 
     tHandlingDataSA*        m_pOriginalData;
-    bool                    m_bChanged;
-};
-
-// sizeof(tFlyingHandlingDataSA) == 0x58
-struct tFlyingHandlingDataSA
-{
-    int         iVehicleID;
-    float       fThrust;
-    float       fThrustFallOff;
-    float       fYaw;
-    float       fStab;
-    float       fSideSlip;
-    float       fRoll;
-    float       fRollStab;
-    float       fPitch;
-    float       fPitchStab;
-    float       fFormLift;
-    float       fAttackLift;
-    float       GearUpR;
-    float       GearDownL;
-    float       WindMult;
-    float       MoveResistance;
-    CVector     TurnResistance;
-    CVector     SpeedResistance;
 };
 
 #endif

@@ -64,8 +64,11 @@ CGUIStaticImage_Impl::~CGUIStaticImage_Impl ( void )
 }
 
 
-bool CGUIStaticImage_Impl::LoadFromFile ( const char* szFilename )
+bool CGUIStaticImage_Impl::LoadFromFile ( const char* szFilename, const char* szDirectory )
 {
+    std::string strPath = szDirectory ? szDirectory : m_pGUI->GetWorkingDirectory ();
+    strPath += szFilename;
+
     // Load texture
     if ( !m_pTexture )
     {
@@ -73,7 +76,7 @@ bool CGUIStaticImage_Impl::LoadFromFile ( const char* szFilename )
         m_bCreatedTexture = true;
     }
 
-    if ( !m_pTexture->LoadFromFile ( szFilename ) )
+    if ( !m_pTexture->LoadFromFile ( strPath.c_str () ) )
         return false;
 
     // Load image
@@ -91,12 +94,8 @@ bool CGUIStaticImage_Impl::LoadFromTexture ( CGUITexture* pTexture )
 
     if ( m_pTexture && pTexture != m_pTexture )
     {
-        if ( m_bCreatedTexture )
-        {
-            delete m_pTexture;
-            m_pTexture = NULL;
-            m_bCreatedTexture = false;
-        }
+        delete m_pTexture;
+        m_bCreatedTexture = false;
     }
     
     m_pTexture = (CGUITexture_Impl *)pTexture;
@@ -110,11 +109,7 @@ bool CGUIStaticImage_Impl::LoadFromTexture ( CGUITexture* pTexture )
 
     // Create an imageset
     if ( !m_pImageset )
-    {
-        while ( m_pImagesetManager->isImagesetPresent( szUnique ) )
-            m_pGUI->GetUniqueName ( szUnique );
-        m_pImageset = m_pImagesetManager->createImageset ( szUnique, pCEGUITexture, true );
-    }
+        m_pImageset = m_pImagesetManager->createImageset ( szUnique, pCEGUITexture );
 
     // Get an unique identifier for CEGUI for the image
     m_pGUI->GetUniqueName ( szUnique );
@@ -145,26 +140,12 @@ void CGUIStaticImage_Impl::Clear ( void )
         {
             delete m_pTexture;
             m_pTexture = NULL;
-            m_bCreatedTexture = false;
         }
         m_pImage = NULL;
         m_pImageset = NULL;
     }
 }
 
-bool CGUIStaticImage_Impl::GetNativeSize ( CVector2D &vecSize )
-{
-    if ( m_pTexture )
-    {
-        if ( m_pTexture->GetTexture() )
-        {
-            vecSize.fX = m_pTexture->GetTexture()->getWidth();
-            vecSize.fY = m_pTexture->GetTexture()->getHeight();
-            return true;
-        }
-    }
-    return false;    
-}
 
 void CGUIStaticImage_Impl::SetFrameEnabled ( bool bFrameEnabled )
 {

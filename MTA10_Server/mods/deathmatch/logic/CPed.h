@@ -28,7 +28,6 @@
 
 enum ePedMoveAnim
 {
-    MOVE_DEFAULT = 0,
     MOVE_PLAYER = 54,
     MOVE_PLAYER_F,
     MOVE_PLAYER_M,
@@ -67,45 +66,6 @@ enum ePedMoveAnim
     MOVE_JOGWOMAN,
     MOVE_OLDFATWOMAN,
     MOVE_SKATE,
-};
-
-inline bool IsValidMoveAnim( uint iMoveAnim )
-{
-    return ( iMoveAnim == MOVE_DEFAULT ) ||
-           ( iMoveAnim >= MOVE_PLAYER && iMoveAnim <= MOVE_JETPACK ) ||
-           ( iMoveAnim >= MOVE_MAN    && iMoveAnim <= MOVE_SKATE );
-}
-
-
-enum eBone { 
-    BONE_PELVIS1 = 1,
-    BONE_PELVIS,
-    BONE_SPINE1,
-    BONE_UPPERTORSO,
-    BONE_NECK,
-    BONE_HEAD2,
-    BONE_HEAD1,
-    BONE_HEAD,
-    BONE_RIGHTUPPERTORSO = 21,
-    BONE_RIGHTSHOULDER,
-    BONE_RIGHTELBOW,
-    BONE_RIGHTWRIST,
-    BONE_RIGHTHAND,
-    BONE_RIGHTTHUMB,
-    BONE_LEFTUPPERTORSO = 31,
-    BONE_LEFTSHOULDER,
-    BONE_LEFTELBOW,
-    BONE_LEFTWRIST,
-    BONE_LEFTHAND,
-    BONE_LEFTTHUMB,
-    BONE_LEFTHIP = 41,
-    BONE_LEFTKNEE,
-    BONE_LEFTANKLE,
-    BONE_LEFTFOOT,
-    BONE_RIGHTHIP = 51,
-    BONE_RIGHTKNEE,
-    BONE_RIGHTANKLE,
-    BONE_RIGHTFOOT
 };
 
 class CWeapon
@@ -167,15 +127,21 @@ public:
     void                                        SetWeaponAmmoInClip         ( unsigned short uscAmmoInClip, unsigned char ucSlot = 0xFF );
     unsigned short                              GetWeaponTotalAmmo          ( unsigned char ucSlot = 0xFF );
     void                                        SetWeaponTotalAmmo          ( unsigned short usTotalAmmo, unsigned char ucSlot = 0xFF );
+    float                                       GetWeaponRange              ( unsigned char ucSlot = 0xFF );
 
     float                                       GetMaxHealth                ( void );
     inline float                                GetHealth                   ( void )                            { return m_fHealth; }
     inline void                                 SetHealth                   ( float fHealth )                   { m_fHealth = fHealth; }
+    inline unsigned long                        GetHealthChangeTime         ( void )                            { return m_ulHealthChangeTime; }
+    inline void                                 SetHealthChangeTime         ( unsigned long ulTime )            { m_ulHealthChangeTime = ulTime; }
     inline float                                GetArmor                    ( void )                            { return m_fArmor; }
     inline void                                 SetArmor                    ( float fArmor )                    { m_fArmor = fArmor; }
+    inline unsigned long                        GetArmorChangeTime          ( void )                            { return m_ulArmorChangeTime; }
+    inline void                                 SetArmorChangeTime          ( unsigned long ulTime )            { m_ulArmorChangeTime = ulTime; }
     
     inline float                                GetPlayerStat               ( unsigned short usStat )       { return ( usStat < NUM_PLAYER_STATS ) ? m_fStats [ usStat ] : 0; }
     inline void                                 SetPlayerStat               ( unsigned short usStat, float fValue ) { if ( usStat < NUM_PLAYER_STATS ) m_fStats [ usStat ] = fValue; } 
+    inline float*                               GetPlayerStats              ( void )                        { return m_fStats; }
 
     inline CPlayerClothes*                      GetClothes                  ( void )                        { return m_pClothes; }
 
@@ -203,16 +169,13 @@ public:
 
     inline bool                                 IsDead                      ( void )                        { return m_bIsDead; };
     void                                        SetIsDead                   ( bool bDead );
+    inline unsigned long                        GetLastDieTime              ( void )                        { return m_ulLastDieTime; };
 
     inline bool                                 IsSpawned                   ( void )                        { return m_bSpawned; }
     inline void                                 SetSpawned                  ( bool bSpawned )               { m_bSpawned = bSpawned; }
 
     inline float                                GetRotation                 ( void )                        { return m_fRotation; }
     inline void                                 SetRotation                 ( float fRotation )             { m_fRotation = fRotation; }
-
-    void                                        GetRotation                 ( CVector & vecRotation );
-    void                                        GetMatrix                   ( CMatrix& matrix );
-    void                                        SetMatrix                   ( const CMatrix& matrix );
 
     inline CElement*                            GetTargetedElement          ( void )                        { return m_pTargetedEntity; }
     inline void                                 SetTargetedElement          ( CElement* pEntity )           { m_pTargetedEntity = pEntity; }
@@ -226,12 +189,19 @@ public:
     inline float                                GetGravity                  ( void )                        { return m_fGravity; }
     inline void                                 SetGravity                  ( float fGravity )              { m_fGravity = fGravity; }
 
+//    inline CVehicle*                            GetOccupyingVehicle         ( void )                        { return m_pOccupyingVehicle; };
     inline CVehicle*                            GetOccupiedVehicle          ( void )                        { return m_pVehicle; };
+//    inline unsigned int                         GetOccupyingVehicleSeat     ( void )                        { return m_uiOccupyingVehicleSeat; };
     inline unsigned int                         GetOccupiedVehicleSeat      ( void )                        { return m_uiVehicleSeat; };
+//    void                                        SetOccupyingVehicle         ( CVehicle* pVehicle, unsigned int uiSeat );
     CVehicle*                                   SetOccupiedVehicle          ( CVehicle* pVehicle, unsigned int uiSeat );
+    inline unsigned long                        GetVehicleActionStartTime   ( void )                        { return m_ulVehicleActionStartTime; };
 
     inline unsigned int                         GetVehicleAction            ( void )                        { return m_uiVehicleAction; };
     void                                        SetVehicleAction            ( unsigned int uiAction );
+    inline CVehicle *                           GetEnteringVehicle          ( void )                        { return m_pEnteringVehicle; }
+    inline unsigned int                         GetEnteringVehicleSeat      ( void )                        { return m_uiEnteringVehicleSeat; }
+    inline void                                 SetEnteringVehicle          ( CVehicle * pVehicle, unsigned int uiSeat ) { m_pEnteringVehicle = pVehicle; m_uiEnteringVehicleSeat = uiSeat; }
 
     bool                                        IsAttachToable              ( void );
 
@@ -268,21 +238,24 @@ protected:
     bool                                        m_bWearingGoggles;
     bool                                        m_bIsOnFire;
     float                                       m_fHealth;
+    unsigned long                               m_ulHealthChangeTime;
     float                                       m_fArmor;
-    SFixedArray < float, NUM_PLAYER_STATS >    m_fStats;
+    unsigned long                               m_ulArmorChangeTime;
+    float                                       m_fStats [ NUM_PLAYER_STATS ];
     CPlayerClothes*                             m_pClothes;
     bool                                        m_bHasJetPack;
     bool                                        m_bInWater;
     bool                                        m_bOnGround;
     bool                                        m_bIsPlayer;
     CPlayerTasks*                               m_pTasks;
-    SFixedArray < CWeapon, WEAPON_SLOTS >      m_Weapons;
+    CWeapon                                     m_Weapons [ WEAPON_SLOTS ];
     unsigned char                               m_ucWeaponSlot;
     unsigned char                               m_ucCurrentWeaponState;
     unsigned char                               m_ucAlpha;
     CElement*                                   m_pContactElement;
     CVector                                     m_vecContactPosition;
     bool                                        m_bIsDead;
+    unsigned long                               m_ulLastDieTime;
     float                                       m_fRotation;
     bool                                        m_bSpawned;
     CElement*                                   m_pTargetedEntity;
@@ -296,8 +269,13 @@ protected:
     bool                                        m_bStealthAiming;
 
     CVehicle*                                   m_pVehicle;
+/*    CVehicle*                                   m_pOccupyingVehicle;
+    unsigned int                                m_uiOccupyingVehicleSeat;*/
     unsigned int                                m_uiVehicleSeat;
     unsigned int                                m_uiVehicleAction;
+    unsigned long                               m_ulVehicleActionStartTime;
+    CVehicle*                                   m_pEnteringVehicle;
+    unsigned int                                m_uiEnteringVehicleSeat;
 
     bool                                        m_bSyncable;
     bool                                        m_bCollisionsEnabled;

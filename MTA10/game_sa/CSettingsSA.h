@@ -25,7 +25,6 @@
 
 #define VAR_ucFxQuality         0xA9AE54
 #define VAR_fMouseSensitivity   0xB6EC1C
-#define VAR_RadarMode           0xBA676C
 
 #define CLASS_CAudioEngine 0xB6BC90
 #define FUNC_CAudioEngine_SetEffectsMasterVolume 0x506E10
@@ -81,10 +80,7 @@ class CSettingsSA : public CGameSettings
 private:
     CSettingsSAInterface*   m_pInterface;
     bool                    m_bVolumetricShadowsEnabled;
-    bool                    m_bVolumetricShadowsSuspended;
     eAspectRatio            m_AspectRatio;
-    int                     m_iDesktopWidth;
-    int                     m_iDesktopHeight;
 
 public:
                             CSettingsSA                 ( void );
@@ -95,11 +91,6 @@ public:
     VideoMode *             GetVideoModeInfo            ( VideoMode * modeInfo, unsigned int modeIndex );
     unsigned int            GetCurrentVideoMode         ( void );
     void                    SetCurrentVideoMode         ( unsigned int modeIndex, bool bOnRestart );
-    unsigned int            GetNumAdapters              ( void );
-    unsigned int            GetCurrentAdapter           ( void );
-    void                    SetAdapter                  ( unsigned int uiAdapterIndex );
-    bool                    HasUnsafeResolutions        ( void );
-    bool                    IsUnsafeResolution          ( int iWidth, int iHeight );
     unsigned char           GetRadioVolume              ( void );
     void                    SetRadioVolume              ( unsigned char ucVolume );
     unsigned char           GetSFXVolume                ( void );
@@ -112,6 +103,7 @@ public:
     void                    SetRadioEqualizerEnabled    ( bool bEnable );
     bool                    IsRadioAutotuneEnabled      ( void );
     void                    SetRadioAutotuneEnabled     ( bool bEnable );
+
 
     float                   GetDrawDistance             ( void );
     void                    SetDrawDistance             ( float fDrawDistance );
@@ -133,25 +125,11 @@ public:
 
     bool                    IsVolumetricShadowsEnabled     ( void );
     void                    SetVolumetricShadowsEnabled    ( bool bEnable );
-    void                    SetVolumetricShadowsSuspended  ( bool bSuspended );
 
-    float                   GetAspectRatioValue         ( void );
     eAspectRatio            GetAspectRatio              ( void );
-    void                    SetAspectRatio              ( eAspectRatio aspectRatio, bool bAdjustmentEnabled = true );
-
-    bool                    IsGrassEnabled              ( void );
-    void                    SetGrassEnabled             ( bool bEnable );
-
-    eRadarMode              GetRadarMode                ( void );
-    void                    SetRadarMode                ( eRadarMode hudMode );
+    void                    SetAspectRatio              ( eAspectRatio aspectRatio );
 
     void                    Save                        ( void );
-
-    static void             StaticSetHooks              ( void );
-
-    uint                    FindVideoMode               ( int iResX, int iResY, int iColorBits );
-    void                    SetValidVideoMode           ( void );
-    int                     OnSelectDevice              ( void );
 
 private:
     static unsigned long    FUNC_GetNumVideoModes;
@@ -160,9 +138,6 @@ private:
     static unsigned long    FUNC_SetCurrentVideoMode;
     static unsigned long    FUNC_SetRadioVolume;
     static unsigned long    FUNC_SetDrawDistance;
-    static unsigned long    FUNC_GetNumSubSystems;
-    static unsigned long    FUNC_GetCurrentSubSystem;
-    static unsigned long    FUNC_SetSubSystem;
 };
 
 #endif

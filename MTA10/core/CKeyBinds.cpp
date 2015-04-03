@@ -164,70 +164,55 @@ SBindableKey g_bkKeys[] =
     { "pov_down",   VK_POV(3),          NO_KEY_DEFINED,            DATA_NONE,              0 },
     { "pov_left",   VK_POV(4),          NO_KEY_DEFINED,            DATA_NONE,              0 },
 
-    { "axis_1",     VK_AXIS(1),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_2",     VK_AXIS(2),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_3",     VK_AXIS(3),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_4",     VK_AXIS(4),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_5",     VK_AXIS(5),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_6",     VK_AXIS(6),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_7",     VK_AXIS(7),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_8",     VK_AXIS(8),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_9",     VK_AXIS(9),         NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_10",    VK_AXIS(10),        NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_11",    VK_AXIS(11),        NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_12",    VK_AXIS(12),        NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_13",    VK_AXIS(13),        NO_KEY_DEFINED,            DATA_NONE,              0 },
-    { "axis_14",    VK_AXIS(14),        NO_KEY_DEFINED,            DATA_NONE,              0 },
-
     { "",           0,          NO_KEY_DEFINED,         DATA_NONE }
 };
 
 SBindableGTAControl g_bcControls[] =
 {
-    { "fire",                   FIRE,                   CONTROL_FOOT,    false, true, _td("Fire") },
-    { "next_weapon",            NEXT_WEAPON,            CONTROL_FOOT,    false, true, _td("Next weapon") },
-    { "previous_weapon",        PREVIOUS_WEAPON,        CONTROL_FOOT,    false, true, _td("Previous weapon") },
-    { "forwards",               FORWARDS,               CONTROL_FOOT,    false, true, _td("Forwards") },
-    { "backwards",              BACKWARDS,              CONTROL_FOOT,    false, true, _td("Backwards") },
-    { "left",                   LEFT,                   CONTROL_FOOT,    false, true, _td("Left") },
-    { "right",                  RIGHT,                  CONTROL_FOOT,    false, true, _td("Right") },
-    { "zoom_in",                ZOOM_IN,                CONTROL_FOOT,    false, true, _td("Zoom in") },
-    { "zoom_out",               ZOOM_OUT,               CONTROL_FOOT,    false, true, _td("Zoom out") },
-    { "enter_exit",             ENTER_EXIT,             CONTROL_BOTH,    false, true, _td("Enter/Exit") },
-    { "change_camera",          CHANGE_CAMERA,          CONTROL_BOTH,    false, true, _td("Change camera") }, // 10
-    { "jump",                   JUMP,                   CONTROL_FOOT,    false, true, _td("Jump") },
-    { "sprint",                 SPRINT,                 CONTROL_FOOT,    false, true, _td("Sprint") },
-    { "look_behind",            LOOK_BEHIND,            CONTROL_FOOT,    false, true, _td("Look behind") },
-    { "crouch",                 CROUCH,                 CONTROL_FOOT,    false, true, _td("Crouch") },
-    { "action",                 ACTION,                 CONTROL_FOOT,    false, true, _td("Action") },
-    { "walk",                   WALK,                   CONTROL_FOOT,    false, true, _td("Walk") },
-    { "vehicle_fire",           VEHICLE_FIRE,           CONTROL_VEHICLE, false, true, _td("Vehicle fire") },
-    { "vehicle_secondary_fire", VEHICLE_SECONDARY_FIRE, CONTROL_VEHICLE, false, true, _td("Vehicle secondary fire") },
-    { "vehicle_left",           VEHICLE_LEFT,           CONTROL_VEHICLE, false, true, _td("Vehicle left") },
-    { "vehicle_right",          VEHICLE_RIGHT,          CONTROL_VEHICLE, false, true, _td("Vehicle right") }, // 20
-    { "steer_forward",          STEER_FORWARDS_DOWN,    CONTROL_VEHICLE, false, true, _td("Steer forwards/down") },
-    { "steer_back",             STEER_BACK_UP,          CONTROL_VEHICLE, false, true, _td("Steer backwards/up") },
-    { "accelerate",             ACCELERATE,             CONTROL_VEHICLE, false, true, _td("Accelerate") },
-    { "brake_reverse",          BRAKE_REVERSE,          CONTROL_VEHICLE, false, true, _td("Brake/Reverse") },
-    { "radio_next",             RADIO_NEXT,             CONTROL_VEHICLE, false, true, _td("Radio next") },
-    { "radio_previous",         RADIO_PREVIOUS,         CONTROL_VEHICLE, false, true, _td("Radio previous") },
-    { "radio_user_track_skip",  RADIO_USER_TRACK_SKIP,  CONTROL_VEHICLE, false, true, _td("Radio user track skip") },
-    { "horn",                   HORN,                   CONTROL_VEHICLE, false, true, _td("Horn") },
-    { "sub_mission",            SUB_MISSION,            CONTROL_VEHICLE, false, true, _td("Sub-mission") },
-    { "handbrake",              HANDBRAKE,              CONTROL_VEHICLE, false, true, _td("Handbrake") }, // 30
-    { "vehicle_look_left",      VEHICLE_LOOK_LEFT,      CONTROL_VEHICLE, false, true, _td("Vehicle look left") },
-    { "vehicle_look_right",     VEHICLE_LOOK_RIGHT,     CONTROL_VEHICLE, false, true, _td("Vehicle look right") },
-    { "vehicle_look_behind",    VEHICLE_LOOK_BEHIND,    CONTROL_VEHICLE, false, true, _td("Vehicle look behind") },
-    { "vehicle_mouse_look",     VEHICLE_MOUSE_LOOK,     CONTROL_VEHICLE, false, true, _td("Vehicle mouse look") },
-    { "special_control_left",   SPECIAL_CONTROL_LEFT,   CONTROL_VEHICLE, false, true, _td("Special control left") },
-    { "special_control_right",  SPECIAL_CONTROL_RIGHT,  CONTROL_VEHICLE, false, true, _td("Special control right") },
-    { "special_control_down",   SPECIAL_CONTROL_DOWN,   CONTROL_VEHICLE, false, true, _td("Special control down") },
-    { "special_control_up",     SPECIAL_CONTROL_UP,     CONTROL_VEHICLE, false, true, _td("Special control up") },
-    { "aim_weapon",             AIM_WEAPON,             CONTROL_FOOT,    false, true, _td("Aim weapon") },
-    { "conversation_yes",       CONVERSATION_YES,       CONTROL_FOOT,    false, true, _td("Conversation yes") }, // 40
-    { "conversation_no",        CONVERSATION_NO,        CONTROL_FOOT,    false, true, _td("Conversation no") },
-    { "group_control_forwards", GROUP_CONTROL_FORWARDS, CONTROL_FOOT,    false, true, _td("Group control forwards") },
-    { "group_control_back",     GROUP_CONTROL_BACK,     CONTROL_FOOT,    false, true, _td("Group control backwards") },
+    { "fire",                   FIRE,                   CONTROL_FOOT,    false, true, "Fire" },
+    { "next_weapon",            NEXT_WEAPON,            CONTROL_FOOT,    false, true, "Next weapon" },
+    { "previous_weapon",        PREVIOUS_WEAPON,        CONTROL_FOOT,    false, true, "Previous weapon" },
+    { "forwards",               FORWARDS,               CONTROL_FOOT,    false, true, "Forwards" },
+    { "backwards",              BACKWARDS,              CONTROL_FOOT,    false, true, "Backwards"},
+    { "left",                   LEFT,                   CONTROL_FOOT,    false, true, "Left" },
+    { "right",                  RIGHT,                  CONTROL_FOOT,    false, true, "Right" },
+    { "zoom_in",                ZOOM_IN,                CONTROL_FOOT,    false, true, "Zoom in" },
+    { "zoom_out",               ZOOM_OUT,               CONTROL_FOOT,    false, true, "Zoom out" },
+    { "enter_exit",             ENTER_EXIT,             CONTROL_BOTH,    false, true, "Enter/Exit" },
+    { "change_camera",          CHANGE_CAMERA,          CONTROL_BOTH,    false, true, "Change camera" }, // 10
+    { "jump",                   JUMP,                   CONTROL_FOOT,    false, true, "Jump" },
+    { "sprint",                 SPRINT,                 CONTROL_FOOT,    false, true, "Sprint" },
+    { "look_behind",            LOOK_BEHIND,            CONTROL_FOOT,    false, true, "Look behind" },
+    { "crouch",                 CROUCH,                 CONTROL_FOOT,    false, true, "Crouch" },
+    { "action",                 ACTION,                 CONTROL_FOOT,    false, true, "Action" },
+    { "walk",                   WALK,                   CONTROL_FOOT,    false, true, "Walk" },
+    { "vehicle_fire",           VEHICLE_FIRE,           CONTROL_VEHICLE, false, true, "Vehicle fire" },
+    { "vehicle_secondary_fire", VEHICLE_SECONDARY_FIRE, CONTROL_VEHICLE, false, true, "Vehicle secondary fire" },
+    { "vehicle_left",           VEHICLE_LEFT,           CONTROL_VEHICLE, false, true, "Vehicle left" },
+    { "vehicle_right",          VEHICLE_RIGHT,          CONTROL_VEHICLE, false, true, "Vehicle right" }, // 20
+    { "steer_forward",          STEER_FORWARDS_DOWN,    CONTROL_VEHICLE, false, true, "Steer forwards/down" },
+    { "steer_back",             STEER_BACK_UP,          CONTROL_VEHICLE, false, true, "Steer backwards/up" },
+    { "accelerate",             ACCELERATE,             CONTROL_VEHICLE, false, true, "Accelerate" },
+    { "brake_reverse",          BRAKE_REVERSE,          CONTROL_VEHICLE, false, true, "Brake/Reverse" },
+    { "radio_next",             RADIO_NEXT,             CONTROL_VEHICLE, false, true, "Radio next" },
+    { "radio_previous",         RADIO_PREVIOUS,         CONTROL_VEHICLE, false, true, "Radio previous" },
+    { "radio_user_track_skip",  RADIO_USER_TRACK_SKIP,  CONTROL_VEHICLE, false, true, "Radio user track skip" },
+    { "horn",                   HORN,                   CONTROL_VEHICLE, false, true, "Horn" },
+    { "sub_mission",            SUB_MISSION,            CONTROL_VEHICLE, false, true, "Sub-mission" },
+    { "handbrake",              HANDBRAKE,              CONTROL_VEHICLE, false, true, "Handbrake" }, // 30
+    { "vehicle_look_left",      VEHICLE_LOOK_LEFT,      CONTROL_VEHICLE, false, true, "Vehicle look left" },
+    { "vehicle_look_right",     VEHICLE_LOOK_RIGHT,     CONTROL_VEHICLE, false, true, "Vehicle look right" },
+    { "vehicle_look_behind",    VEHICLE_LOOK_BEHIND,    CONTROL_VEHICLE, false, true, "Vehicle look behind" },
+    { "vehicle_mouse_look",     VEHICLE_MOUSE_LOOK,     CONTROL_VEHICLE, false, true, "Vehicle mouse look" },
+    { "special_control_left",   SPECIAL_CONTROL_LEFT,   CONTROL_VEHICLE, false, true, "Special control left" },
+    { "special_control_right",  SPECIAL_CONTROL_RIGHT,  CONTROL_VEHICLE, false, true, "Special control right" },
+    { "special_control_down",   SPECIAL_CONTROL_DOWN,   CONTROL_VEHICLE, false, true, "Special control down" },
+    { "special_control_up",     SPECIAL_CONTROL_UP,     CONTROL_VEHICLE, false, true, "Special control up" },
+    { "aim_weapon",             AIM_WEAPON,             CONTROL_FOOT,    false, true, "Aim weapon" },
+    { "conversation_yes",       CONVERSATION_YES,       CONTROL_FOOT,    false, true, "Conversation yes" }, // 40
+    { "conversation_no",        CONVERSATION_NO,        CONTROL_FOOT,    false, true, "Conversation no" },
+    { "group_control_forwards", GROUP_CONTROL_FORWARDS, CONTROL_FOOT,    false, true, "Group control forwards" },
+    { "group_control_back",     GROUP_CONTROL_BACK,     CONTROL_FOOT,    false, true, "Group control backwards" },
 
     { "", (eControllerAction)0, (eControlType)0, false, false }
 };
@@ -246,11 +231,7 @@ SDefaultCommandBind g_dcbDefaultCommands[] =
     { "num_6",   true,  "radar_move_east",  NULL },
     { "num_4",   true,  "radar_move_west",  NULL },
     { "num_0",   true,  "radar_attach",     NULL },
-    { "num_div", true,  "radar_opacity_down", NULL },
-    { "num_mul", true,  "radar_opacity_up", NULL },
-    { "num_1",   true,  "radar_help",       NULL },
-    { "z",       true,  "voiceptt",         "1" },
-    { "z",       false, "voiceptt",         "0" },
+    
     { "pgup",    true,  "chatscrollup",     "1" },
     { "pgup",    false, "chatscrollup",     "0" },
     { "pgdn",    true,  "chatscrolldown",   "-1" },
@@ -266,22 +247,13 @@ SDefaultCommandBind g_dcbDefaultCommands[] =
 // HACK: our current shift key states
 bool bPreLeftShift = false, bPreRightShift = false;
 
-// Ensure zero length strings are NULL
-static void NullEmptyStrings( const char*& a, const char*& b = *(const char**)NULL, const char*& c = *(const char**)NULL, const char*& d = *(const char**)NULL, const char*& e = *(const char**)NULL )
-{
-    if ( &a && a && a[0] == 0 ) a = NULL;
-    if ( &b && b && b[0] == 0 ) b = NULL;
-    if ( &c && c && c[0] == 0 ) c = NULL;
-    if ( &d && d && d[0] == 0 ) d = NULL;
-    if ( &e && e && e[0] == 0 ) e = NULL;
-}
-
 
 CKeyBinds::CKeyBinds ( CCore* pCore )
 {
     m_pCore = pCore;
 
     m_pList = new list < CKeyBind* >;
+    m_szFileName = NULL;
     m_bMouseWheel = false;
     m_bInVehicle = false;
     m_pChatBoxBind = NULL;
@@ -301,9 +273,6 @@ CKeyBinds::~CKeyBinds ( void )
 
 bool CKeyBinds::ProcessMessage ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 {
-    if ( g_pCore->GetWebCore () && !m_pCore->IsMenuVisible() && !m_pCore->GetConsole()->IsVisible() && !m_pCore->IsChatInputEnabled() )
-        g_pCore->GetWebCore ()->ProcessInputMessage ( uMsg, wParam, lParam );
-
     // Don't process Shift keys here, we have a hack for that
     if ( wParam == 0x10 &&
         ( uMsg == WM_KEYDOWN || uMsg == WM_KEYUP || uMsg == WM_SYSKEYDOWN || uMsg == WM_SYSKEYUP ) )
@@ -364,17 +333,13 @@ bool CKeyBinds::ProcessKeyStroke ( const SBindableKey * pKey, bool bState )
     if ( pKey->iGTARelative == GTA_KEY_MSCROLLUP || pKey->iGTARelative == GTA_KEY_MSCROLLDOWN )
         m_bMouseWheel = true;
 
-    // Allow some keys to trigger onClientKey even when console input has focus
-    bool bIsConsoleInputKey = true;
-    if ( ( pKey->ulCode >= VK_F1 && pKey->ulCode <= VK_F12 ) || ( pKey->ulCode <= VK_MBUTTON ) )
-        bIsConsoleInputKey = false;
-
-    bool bAllowed = TriggerKeyStrokeHandler ( pKey->szKey, bState, bIsConsoleInputKey );
+    // Call the key-stroke handler if we have one
+    if ( m_KeyStrokeHandler ) m_KeyStrokeHandler ( pKey, bState );
 
     // Search through binds
     bool bFound = false;
     CKeyBind* pBind = NULL;
-    list < CCommandBind* > processedList;
+    list < CCommandBind* > *processedList = new list < CCommandBind* >;
     list < CKeyBind* > cloneList = *m_pList;
     list < CKeyBind* > ::const_iterator iter = cloneList.begin ();
     for ( ; iter != cloneList.end (); ++iter )
@@ -391,13 +356,10 @@ bool CKeyBinds::ProcessKeyStroke ( const SBindableKey * pKey, bool bState )
             {
                 case KEY_BIND_GTA_CONTROL:
                 {
-                    if ( bAllowed )
+                    if ( !bState || ( !bInputGoesToGUI && ( !m_pCore->IsCursorForcedVisible() || !m_pCore->IsCursorControlsToggled() ) ) )
                     {
-                        if ( !bState || ( !bInputGoesToGUI && ( !m_pCore->IsCursorForcedVisible() || !m_pCore->IsCursorControlsToggled() ) ) )
-                        {
-                            CallGTAControlBind ( static_cast < CGTAControlBind* > ( *iter ), bState );
-                            bFound = true;
-                        }
+                        CallGTAControlBind ( static_cast < CGTAControlBind* > ( *iter ), bState );
+                        bFound = true;
                     }
                     break;
                 }
@@ -422,38 +384,35 @@ bool CKeyBinds::ProcessKeyStroke ( const SBindableKey * pKey, bool bState )
                                     if ( !bInputGoesToGUI )
                                     {
                                         CCommandBind* pCommandBind = static_cast < CCommandBind* > ( pBind );
-                                        if ( bAllowed || strcmp ( pCommandBind->szCommand, "screenshot" ) == 0 )
+                                        // HACK: call chatbox commands on the next frame to stop a translated WM_CHAR key to pop up                                            
+                                        if ( strcmp ( pCommandBind->szCommand, "chatbox" ) == 0 )
                                         {
-                                            // HACK: call chatbox commands on the next frame to stop a translated WM_CHAR key to pop up                                            
-                                            if ( strcmp ( pCommandBind->szCommand, "chatbox" ) == 0 )
+                                            m_pChatBoxBind = pCommandBind;
+                                        }                                                                            
+                                        else
+                                        {
+                                            bool bAlreadyProcessed = false;
+                                            list < CCommandBind* > ::iterator iter = processedList->begin ();
+                                            for ( ; iter != processedList->end (); iter++ )
                                             {
-                                                m_pChatBoxBind = pCommandBind;
-                                            }                                                                            
-                                            else
-                                            {
-                                                bool bAlreadyProcessed = false;
-                                                list < CCommandBind* > ::iterator iter = processedList.begin ();
-                                                for ( ; iter != processedList.end (); iter++ )
+                                                if ( strcmp ( ( *iter )->szCommand, pCommandBind->szCommand ) == 0 )
                                                 {
-                                                    if ( strcmp ( ( *iter )->szCommand, pCommandBind->szCommand ) == 0 )
+                                                    if ( ( *iter )->bHitState == pCommandBind->bHitState )
                                                     {
-                                                        if ( ( *iter )->bHitState == pCommandBind->bHitState )
+                                                        if ( !pCommandBind->szArguments || ( ( *iter )->szArguments && strcmp ( ( *iter )->szArguments, pCommandBind->szArguments ) == 0 ) )
                                                         {
-                                                            if ( !pCommandBind->szArguments || ( ( *iter )->szArguments && strcmp ( ( *iter )->szArguments, pCommandBind->szArguments ) == 0 ) )
-                                                            {
-                                                                bAlreadyProcessed = true;
-                                                                break;
-                                                            }
+                                                            bAlreadyProcessed = true;
+                                                            break;
                                                         }
                                                     }
                                                 }
+                                            }
 
-                                                //don't fire if its already fired
-                                                if ( !bAlreadyProcessed )
-                                                {
-                                                    Call ( pCommandBind );
-                                                    processedList.push_back ( pCommandBind );
-                                                }
+                                            //don't fire if its already fired
+                                            if ( !bAlreadyProcessed )
+                                            {
+                                                Call ( pCommandBind );
+                                                processedList->push_back ( pCommandBind );
                                             }
                                         }
                                     }
@@ -461,15 +420,12 @@ bool CKeyBinds::ProcessKeyStroke ( const SBindableKey * pKey, bool bState )
                                 }
                                 case KEY_BIND_FUNCTION:
                                 {
-                                    if ( bAllowed )
+                                    CKeyFunctionBind* pFunctionBind = static_cast < CKeyFunctionBind* > ( pBind );
+                                    if ( !bInputGoesToGUI || pFunctionBind->bIgnoreGUI )
                                     {
-                                        CKeyFunctionBind* pFunctionBind = static_cast < CKeyFunctionBind* > ( pBind );
-                                        if ( !bInputGoesToGUI || pFunctionBind->bIgnoreGUI )
+                                        if ( pFunctionBind->Handler )
                                         {
-                                            if ( pFunctionBind->Handler )
-                                            {
-                                                pFunctionBind->Handler ( pFunctionBind );
-                                            }
+                                            pFunctionBind->Handler ( pFunctionBind );
                                         }
                                     }
                                     break;
@@ -564,7 +520,7 @@ bool CKeyBinds::Call ( CKeyBind* pKeyBind )
             {
                 CCommandBind* pBind = static_cast < CCommandBind* > ( pKeyBind );
                 if ( pBind->bActive )
-                    m_pCore->GetCommands ()->Execute ( pBind->szCommand, pBind->szArguments, false, pBind->szResource != NULL );
+                    m_pCore->GetCommands ()->Execute ( pBind->szCommand, pBind->szArguments );
                 break;
             }
             case KEY_BIND_FUNCTION:
@@ -590,31 +546,14 @@ bool CKeyBinds::Call ( CKeyBind* pKeyBind )
 }
 
 
-bool CKeyBinds::AddCommand ( const char* szKey, const char* szCommand, const char* szArguments, bool bState, const char* szResource, bool bScriptCreated, const char* szOriginalScriptKey )
+bool CKeyBinds::AddCommand ( const char* szKey, const char* szCommand, const char* szArguments, bool bState, const char* szResource, bool bAltKey )
 {
-    NullEmptyStrings( szCommand, szArguments, szResource );
-
-    if ( szKey == NULL || szCommand == NULL )
-        return false;
+    if ( szKey == NULL || szCommand == NULL ) return false;
 
     const SBindableKey* boundKey = GetBindableFromKey ( szKey );
     
     if ( boundKey )
     {
-        if ( szResource && bScriptCreated )
-        {
-            // Check if there is a waiting replacement
-            CCommandBind* pUserAddedBind = FindCommandMatch( NULL, szCommand, szArguments, szResource, szKey, true, bState, true, false );
-            if ( pUserAddedBind )
-            {
-                // Upgrade
-                pUserAddedBind->bScriptCreated = true;
-                pUserAddedBind->bIsReplacingScriptKey = true;
-                assert( pUserAddedBind->strOriginalScriptKey == szKey );
-                return true;
-            }
-        }
-
         CCommandBind* bind = new CCommandBind;
         bind->boundKey = boundKey;
         bind->szCommand = new char [ strlen ( szCommand ) + 1 ];
@@ -629,11 +568,13 @@ bool CKeyBinds::AddCommand ( const char* szKey, const char* szCommand, const cha
             bind->szResource = new char [ strlen ( szResource ) + 1 ];
             strcpy ( bind->szResource, szResource );
 
-            bind->bScriptCreated = bScriptCreated;
-            if ( bind->bScriptCreated )
-                bind->strOriginalScriptKey = szKey;
+            if ( bAltKey )
+                bind->szDefaultKey = "";
             else
-                bind->strOriginalScriptKey = szOriginalScriptKey;  // Will wait for script to addcommand before doing replace
+            {
+                bind->szDefaultKey = new char [ strlen ( szKey ) + 1 ];
+                strcpy ( bind->szDefaultKey, szKey );
+            }
         }
         bind->bHitState = bState;
         bind->bState = false;
@@ -648,8 +589,6 @@ bool CKeyBinds::AddCommand ( const char* szKey, const char* szCommand, const cha
 
 bool CKeyBinds::AddCommand ( const SBindableKey* pKey, const char* szCommand, const char* szArguments, bool bState )
 {
-    NullEmptyStrings( szCommand, szArguments );
-
     if ( pKey == NULL || szCommand == NULL ) return false;
     
     CCommandBind* bind = new CCommandBind;
@@ -672,13 +611,12 @@ bool CKeyBinds::AddCommand ( const SBindableKey* pKey, const char* szCommand, co
 }
 
 
-bool CKeyBinds::RemoveCommand ( const char* szKey, const char* szCommand, bool bCheckState, bool bState )
+bool CKeyBinds::RemoveCommand ( const char* szKey, const char* szCommand, bool bCheckState, bool bState, const char* szResource )
 {
     if ( szKey == NULL || szCommand == NULL ) return false;
 
-    bool bFound = false;
     list < CKeyBind* > ::iterator iter = m_pList->begin ();
-    for ( ; iter != m_pList->end (); )
+    for ( ; iter != m_pList->end (); iter++ )
     {
         if ( !(*iter)->IsBeingDeleted () && (*iter)->GetType () == KEY_BIND_COMMAND )
         {
@@ -689,9 +627,15 @@ bool CKeyBinds::RemoveCommand ( const char* szKey, const char* szCommand, bool b
                 {
                     if ( !bCheckState || pBind->bHitState == bState )
                     {
+#if 1   // crash fix
+                        // szResource is always NULL here
+                        assert ( szResource == NULL );
+
+                        Remove ( *iter );
+                        return true;
+#else
                         if ( !pBind->szResource )
                         {
-                            bFound = true;
                             if ( m_bProcessingKeyStroke )
                             {
                                 pBind->beingDeleted = true;
@@ -699,18 +643,22 @@ bool CKeyBinds::RemoveCommand ( const char* szKey, const char* szCommand, bool b
                             else
                             {
                                 delete pBind;
-                                iter = m_pList->erase ( iter );
-                                continue;
+                                m_pList->erase ( iter );
                             }
+                            return true;
                         }
+                        else if ( strcmp ( szResource, pBind->szResource ) == 0 )
+                        {
+                            pBind->bActive = false;
+                        }
+#endif
                     }
                 }
             }
         }
-        iter++;
     }
 
-    return bFound;
+    return false;
 }
 
 
@@ -762,32 +710,44 @@ bool CKeyBinds::RemoveAllCommands ( void )
 }
 
 
-bool CKeyBinds::CommandExists ( const char* szKey, const char* szCommand, bool bCheckState, bool bState, const char* szArguments, const char* szResource, bool bCheckScriptCreated, bool bScriptCreated )
+bool CKeyBinds::CommandExists ( const char* szKey, const char* szCommand, bool bCheckState, bool bState, const char* szArguments, const char* szResource )
 {
-    const char* szOriginalScriptKey = NULL;
-    if ( bCheckScriptCreated && bScriptCreated )
-    {
-        // If looking for script created command, check original key instead of current key
-        szOriginalScriptKey = szKey;
-        szKey = NULL;
-    }
-
-    if ( FindCommandMatch( szKey, szCommand, szArguments, szResource, szOriginalScriptKey, bCheckState, bState, bCheckScriptCreated, bScriptCreated ) )
-        return true;
-
-    return false;
-}
-
-bool CKeyBinds::SetCommandActive ( const char* szKey, const char* szCommand, bool bState, const char* szArguments, const char* szResource, bool bActive, bool checkHitState )
-{
-    NullEmptyStrings( szKey, szCommand, szArguments );
-
     list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
     for ( ; iter != m_pList->end (); iter++ )
     {
         if ( (*iter)->GetType () == KEY_BIND_COMMAND )
         {
-            if ( !szKey || ( stricmp ( (*iter)->boundKey->szKey, szKey ) == 0 ) )
+            CCommandBind* pBind = static_cast < CCommandBind* > ( *iter );
+            if ( !szKey || ( stricmp ( pBind->boundKey->szKey, szKey ) == 0 ) )
+            {
+                if ( strcmp ( pBind->szCommand, szCommand ) == 0 )
+                {
+                    if ( !bCheckState || pBind->bHitState == bState )
+                    {
+                        if ( !szArguments || ( pBind->szArguments && strcmp ( pBind->szArguments, szArguments ) == 0 ) )
+                        {
+                            if ( !szResource || ( pBind->szResource && strcmp ( pBind->szResource, szResource ) == 0 ) )
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
+bool CKeyBinds::SetCommandActive ( const char* szKey, const char* szCommand, bool bState, const char* szArguments, const char* szResource, bool bActive, bool checkHitState )
+{
+    list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
+    for ( ; iter != m_pList->end (); iter++ )
+    {
+        if ( (*iter)->GetType () == KEY_BIND_COMMAND )
+        {
+            if ( !szKey || ( strcmp ( (*iter)->boundKey->szKey, szKey ) == 0 ) )
             {
                 CCommandBind* pBind = static_cast < CCommandBind* > ( *iter );
                 if ( pBind->szResource && ( strcmp ( pBind->szResource, szResource ) == 0 ) )
@@ -812,8 +772,6 @@ bool CKeyBinds::SetCommandActive ( const char* szKey, const char* szCommand, boo
 
 void CKeyBinds::SetAllCommandsActive ( const char* szResource, bool bActive, const char* szCommand, bool bState, const char* szArguments, bool checkHitState )
 {
-    NullEmptyStrings( szCommand, szArguments );
-
     list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
     for ( ; iter != m_pList->end (); iter++ )
     {
@@ -840,8 +798,6 @@ void CKeyBinds::SetAllCommandsActive ( const char* szResource, bool bActive, con
 
 CCommandBind* CKeyBinds::GetBindFromCommand ( const char* szCommand, const char* szArguments, bool bMatchCase, const char* szKey, bool bCheckHitState, bool bState )
 {
-    NullEmptyStrings( szKey, szArguments );
-
     list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
     for ( ; iter != m_pList->end (); iter++ )
     {
@@ -874,140 +830,6 @@ CCommandBind* CKeyBinds::GetBindFromCommand ( const char* szCommand, const char*
 
     return NULL;
 }        
-
-
-CCommandBind* CKeyBinds::FindCommandMatch( const char* szKey, const char* szCommand, const char* szArguments, const char* szResource, const char* szOriginalScriptKey, bool bCheckState, bool bState, bool bCheckScriptCreated, bool bScriptCreated )
-{
-    NullEmptyStrings( szKey, szArguments, szResource, szOriginalScriptKey );
-
-    list < CKeyBind* > ::const_iterator iter = m_pList->begin();
-    for ( ; iter != m_pList->end(); iter++ )
-    {
-        if ( (*iter)->GetType() == KEY_BIND_COMMAND )
-        {
-            CCommandBind* pBind = static_cast < CCommandBind* > ( *iter );
-            if ( !szKey || ( stricmp( pBind->boundKey->szKey, szKey ) == 0 ) )
-            {
-                if ( strcmp( pBind->szCommand, szCommand ) == 0 )
-                {
-                    if ( !bCheckState || ( pBind->bHitState == bState ) )
-                    {
-                        if ( !szArguments || ( pBind->szArguments && strcmp( pBind->szArguments, szArguments ) == 0 ) )
-                        {
-                            if ( !szResource || ( pBind->szResource && strcmp( pBind->szResource, szResource ) == 0 ) )
-                            {
-                                if ( !bCheckScriptCreated || ( pBind->bScriptCreated == bScriptCreated ) )
-                                {
-                                    if ( !szOriginalScriptKey || ( pBind->strOriginalScriptKey == szOriginalScriptKey ) )
-                                    {
-                                        return pBind;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return NULL;
-}
-
-
-//
-// Get up-bind version of down-bind
-//
-CCommandBind* CKeyBinds::FindMatchingUpBind( CCommandBind* pBind )
-{
-    return FindCommandMatch( pBind->boundKey->szKey, pBind->szCommand, NULL, pBind->szResource, pBind->strOriginalScriptKey, true, false, true, pBind->bScriptCreated );
-}
-
-
-//
-// Called when the user removes an existing command bind
-//
-void CKeyBinds::UserRemoveCommandBoundKey( CCommandBind* pBind )
-{
-    if ( pBind->bScriptCreated )
-    {
-        if ( pBind->bIsReplacingScriptKey )
-        {
-            // Remove user added key change
-            pBind->bIsReplacingScriptKey = false;
-            const SBindableKey* boundKey = GetBindableFromKey( pBind->strOriginalScriptKey );
-            if ( boundKey )
-                pBind->boundKey = boundKey; 
-        }
-        // Can't manually remove script added command binds, as they will reappear when the resource re-starts
-        return;
-    }
-    Remove( pBind );
-}
-
-
-//
-// Called when the user changes the key of an existing command bind
-//
-void CKeyBinds::UserChangeCommandBoundKey( CCommandBind* pBind, const SBindableKey* pNewBoundKey )
-{
-    if ( pBind->bScriptCreated )
-    {
-        // Set replacing flag if was script bind (and key is different)
-        if ( pBind->strOriginalScriptKey != pNewBoundKey->szKey )
-            pBind->bIsReplacingScriptKey = true;
-        else
-            pBind->bIsReplacingScriptKey = false;
-    }
-    // Do change
-    pBind->boundKey = pNewBoundKey;
-}
-
-
-//
-// Sort command binds for consistency in settings gui
-//
-void CKeyBinds::SortCommandBinds( void )
-{
-    struct Sorter
-    {
-        bool operator()( CKeyBind* t1, CKeyBind* t2)
-        {
-            // Group command binds last
-            if ( t1->GetType() != KEY_BIND_COMMAND && t2->GetType() == KEY_BIND_COMMAND )
-                return true;
-            if ( t1->GetType() == KEY_BIND_COMMAND && t2->GetType() == KEY_BIND_COMMAND )
-            {
-                CCommandBind* pBind1 = static_cast < CCommandBind* > ( t1 );
-                CCommandBind* pBind2 = static_cast < CCommandBind* > ( t2 );
-
-                // Command binds with resource name last
-                if ( !pBind1->szResource && pBind2->szResource )
-                    return true;
-                if ( pBind1->szResource && pBind2->szResource )
-                {
-                    // Alpha sort by resource name
-                    int cmpResult = stricmp( pBind1->szResource, pBind2->szResource );
-                    if ( cmpResult < 0 )
-                        return true;
-                    if ( cmpResult == 0 )
-                    {
-                        // Script added before user added
-                        if ( pBind1->bScriptCreated && !pBind2->bScriptCreated )
-                            return true;
-                        if ( !pBind1->bScriptCreated && !pBind2->bScriptCreated )
-                        {
-                            // Replacers before norms
-                            if ( !pBind1->strOriginalScriptKey.empty() && pBind2->strOriginalScriptKey.empty() )
-                                return true;
-                        }
-                    }
-                }
-            }
-            return false; 
-        }
-    };
-    m_pList->sort( Sorter() );
-}
 
 
 bool CKeyBinds::GetBoundCommands ( const char * szCommand, list < CCommandBind * > & commandsList )
@@ -1051,6 +873,30 @@ bool CKeyBinds::AddGTAControl ( const char* szKey, const char* szControl )
 }
 
 
+bool CKeyBinds::AddGTAControl ( const char* szKey, eControllerAction action )
+{
+    char* szControl = GetControlFromAction ( action );
+    if ( szKey == NULL || szControl ) return false;
+
+    const SBindableKey* boundKey = GetBindableFromKey ( szKey );
+    SBindableGTAControl* boundControl = GetBindableFromControl ( szControl );
+
+    if ( boundKey && boundControl )
+    {        
+        CGTAControlBind* bind = new CGTAControlBind;
+        bind->boundKey = boundKey;
+        bind->control = boundControl;
+        bind->bState = false;
+
+        m_pList->push_back ( bind );
+
+        return true;
+    }
+
+    return false;
+}
+
+
 bool CKeyBinds::AddGTAControl ( const SBindableKey* pKey, SBindableGTAControl* pControl )
 {
     if ( pKey && pControl )
@@ -1066,6 +912,31 @@ bool CKeyBinds::AddGTAControl ( const SBindableKey* pKey, SBindableGTAControl* p
     }
 
     return false;
+}
+
+
+void CKeyBinds::RemoveGTAControls ( const char* szControl, bool bDestroy )
+{
+    if ( szControl == NULL ) return;
+
+    list < CKeyBind* > ::iterator iter = m_pList->begin ();
+    while ( iter != m_pList->end () )
+    {
+        if ( (*iter)->GetType () == KEY_BIND_GTA_CONTROL )
+        {
+            CGTAControlBind* pBind = static_cast < CGTAControlBind* > ( *iter );
+            if ( strcmp ( szControl, pBind->control->szControl ) == 0 )
+            {
+                // Only destroy if we have to
+                if ( bDestroy )
+                    delete *iter;
+
+                iter = m_pList->erase ( iter );
+                continue;
+            }
+        }
+        iter++;
+    }
 }
 
 
@@ -1185,6 +1056,21 @@ bool CKeyBinds::GTAControlExists ( const SBindableKey* pKey, SBindableGTAControl
     }
     
     return false;
+}
+
+
+unsigned int CKeyBinds::GTAControlsCount ( void )
+{
+    unsigned int uiCount = 0;
+    list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
+    for ( ; iter != m_pList->end (); iter++ )
+    {
+        if ( (*iter)->GetType () == KEY_BIND_GTA_CONTROL )
+        {
+            uiCount++;
+        }
+    }
+    return uiCount;
 }
 
 
@@ -1803,6 +1689,36 @@ bool CKeyBinds::ControlFunctionExists ( SBindableGTAControl* pControl, ControlFu
 }
 
 
+char* CKeyBinds::GetKeyFromCode ( unsigned long ulCode )
+{
+    for ( int i = 0 ; *g_bkKeys [ i ].szKey != NULL ; i++ )
+    {
+        SBindableKey* temp = &g_bkKeys [ i ];
+        if ( temp->ulCode == ulCode )
+        {
+            return temp->szKey;
+        }
+    }
+
+    return NULL;
+}
+
+
+bool CKeyBinds::GetCodeFromKey ( const char* szKey, unsigned long& ulCode )
+{
+    for ( int i = 0 ; *g_bkKeys [ i ].szKey != NULL ; i++ )
+    {
+        SBindableKey* temp = &g_bkKeys [ i ];
+        if ( stricmp ( temp->szKey, szKey ) == 0 )
+        {
+            ulCode = temp->ulCode;
+            return true;
+        }
+    }
+
+    return false;
+}
+
 const SBindableKey * CKeyBinds::GetBindableFromKey ( const char* szKey )
 {
     for ( int i = 0 ; *g_bkKeys [ i ].szKey != NULL ; i++ )
@@ -1848,6 +1764,21 @@ bool CKeyBinds::IsKey ( const char* szKey )
 }
 
 
+char* CKeyBinds::GetKeyFromGTARelative ( int iGTAKey )
+{
+    for ( int i = 0 ; *g_bkKeys [ i ].szKey != NULL ; i++ )
+    {
+        SBindableKey* temp = &g_bkKeys [ i ];
+        if ( temp->iGTARelative == iGTAKey )
+        {
+            return temp->szKey;
+        }
+    }
+    
+    return NULL;
+}
+
+
 const SBindableKey* CKeyBinds::GetBindableFromMessage ( UINT uMsg, WPARAM wParam, LPARAM lParam, bool& bState )
 {
     if ( uMsg != WM_KEYDOWN && uMsg != WM_KEYUP && uMsg != WM_SYSKEYDOWN &&
@@ -1878,6 +1809,7 @@ const SBindableKey* CKeyBinds::GetBindableFromMessage ( UINT uMsg, WPARAM wParam
         SBindableKey* bindable = &g_bkKeys [ i ];
 
         unsigned long ulCode = bindable->ulCode;
+        char* szKey = bindable->szKey;
         eKeyData keyData = bindable->data;
 
         bool bMouseWheel = false;
@@ -1950,6 +1882,36 @@ const SBindableKey* CKeyBinds::GetBindableFromMessage ( UINT uMsg, WPARAM wParam
     return NULL;
 }
 
+
+char* CKeyBinds::GetControlFromAction ( eControllerAction action )
+{
+    for ( int i = 0 ; *g_bcControls [ i ].szControl != NULL ; i++ )
+    {
+        SBindableGTAControl* temp = &g_bcControls [ i ];
+        if ( temp->action == action )
+        {
+            return temp->szControl;
+        }
+    }
+
+    return NULL;
+}
+
+
+bool CKeyBinds::GetActionFromControl ( const char* szControl, eControllerAction& action )
+{
+    for ( int i = 0 ; *g_bcControls [ i ].szControl != NULL ; i++ )
+    {
+        SBindableGTAControl* temp = &g_bcControls [ i ];
+        if ( stricmp ( temp->szControl, szControl ) == 0 )
+        {
+            action = temp->action;
+            return true;
+        }
+    }
+
+    return false;
+}
 
 SBindableGTAControl* CKeyBinds::GetBindableFromControl ( const char* szControl )
 {
@@ -2234,7 +2196,6 @@ void CKeyBinds::DoPostFramePulse ( void )
         cs.Select = ( g_bcControls [ 10 ].bState ) ? 255 : 0; // Change View   
 
         GetJoystickManager ()->ApplyAxes ( cs, bInVehicle );
-        //m_pCore->GetMouseControl()->ApplyAxes ( cs );
     }
         
     m_pCore->GetGame ()->GetPad ()->SetCurrentControllerState ( &cs );
@@ -2339,11 +2300,7 @@ bool CKeyBinds::LoadFromXML ( CXMLNode* pMainNode )
                                 if ( pAttribute )
                                 {
                                     strResource = pAttribute->GetValue ();
-
-                                    pAttribute = pNode->GetAttributes ().Find ( "default" );
-                                    SString strOriginalScriptKey = pAttribute ? pAttribute->GetValue () : "";
-
-                                    AddCommand ( strKey.c_str (), strCommand.c_str (), strArguments.c_str (), bState, strResource.c_str(), false, strOriginalScriptKey );
+                                    AddCommand ( strKey.c_str (), strCommand.c_str (), strArguments.c_str (), bState, strResource.c_str() );
                                     SetCommandActive ( strKey.c_str (), strCommand.c_str(), bState, strArguments.c_str(), strResource.c_str(), false, true );
                                 }
                                 else if ( !CommandExists ( strKey.c_str (), strCommand.c_str (), true, bState ) )
@@ -2451,14 +2408,8 @@ bool CKeyBinds::SaveToXML ( CXMLNode* pMainNode )
                         pA = pAttributes->Create ( "resource" );                        
                         pA->SetValue ( szResource );
 
-                        if ( !pBind->strOriginalScriptKey.empty() )
-                        {
-                            pA = pAttributes->Create ( "default" );                        
-                            pA->SetValue ( pBind->strOriginalScriptKey );
-                        }
-
-                        // Don't save script added binds
-                        if ( pBind->bScriptCreated && !pBind->bIsReplacingScriptKey )
+                        //If its still the default key dont bother saving it
+                        if ( !strcmp ( pBind->szDefaultKey, szKey ) )
                             pNode->GetParent()->DeleteSubNode(pNode);
                     }
                 }
@@ -2473,17 +2424,12 @@ bool CKeyBinds::SaveToXML ( CXMLNode* pMainNode )
                     }
 
                     CGTAControlBind* pBind = static_cast < CGTAControlBind* > ( *iter );
-                    const char* szControl = pBind->control->szControl;
+                    char* szControl = pBind->control->szControl;
                     if ( szControl )
                     {
                         pA = pAttributes->Create ( "control" );
                         pA->SetValue ( szControl );
                     }
-                }
-                else
-                {
-                    // Type doesn't require saving
-                    pNode->GetParent()->DeleteSubNode( pNode );
                 }
             }
         }
@@ -2496,10 +2442,90 @@ bool CKeyBinds::SaveToXML ( CXMLNode* pMainNode )
 
 void CKeyBinds::LoadDefaultBinds ( void )
 {
-    ClearCommandsAndControls ();
+    Clear ();
     
     LoadControlsFromGTA ();
     LoadDefaultCommands ( true );
+}
+
+
+void CKeyBinds::LoadDefaultControls ( void )
+{
+    AddGTAControl ( "lctrl", "fire" );
+    AddGTAControl ( "mouse1", "fire" );
+    AddGTAControl ( "e", "next_weapon" );
+    AddGTAControl ( "mouse_wheel down", "next_weapon" );
+    AddGTAControl ( "q", "previous_weapon" );
+    AddGTAControl ( "num_dec", "previous_weapon" );
+    AddGTAControl ( "mouse_wheel_up", "previous_weapon" );
+    AddGTAControl ( "g", "group_control_forwards" );
+    AddGTAControl ( "h", "group_control_back" );
+    AddGTAControl ( "y", "conversation_yes" );
+    AddGTAControl ( "n", "conversation_no" );
+    AddGTAControl ( "arrow_u", "forwards" );
+    AddGTAControl ( "w", "forwards" );
+    AddGTAControl ( "arrow_d", "backwards" );
+    AddGTAControl ( "s", "backwards" );
+    AddGTAControl ( "arrow_l", "left" );
+    AddGTAControl ( "a", "left" );
+    AddGTAControl ( "arrow_r", "right" );
+    AddGTAControl ( "d", "right" );
+    AddGTAControl ( "x", "zoom_in" );
+    AddGTAControl ( "pgup", "zoom_in" );
+    AddGTAControl ( "mouse_wheel_up", "zoom_in" );
+    AddGTAControl ( "y", "zoom_out" );
+    AddGTAControl ( "pgdn", "zoom_out" );
+    AddGTAControl ( "mouse_wheel_down", "zoom_out" );
+    AddGTAControl ( "f", "enter_exit" );
+    AddGTAControl ( "enter", "enter_exit" );
+    AddGTAControl ( "v", "change_camera" );
+    AddGTAControl ( "home", "change_camera" );
+    AddGTAControl ( "shift", "jump" );
+    AddGTAControl ( "rctrl", "jump" );
+    AddGTAControl ( "space", "sprint" );
+    AddGTAControl ( "delete", "aim_weapon" );
+    AddGTAControl ( "capslock", "aim_weapon" );
+    AddGTAControl ( "c", "crouch" );
+    AddGTAControl ( "tab", "action" );
+    AddGTAControl ( "lalt", "walk" );
+    AddGTAControl ( "num_1", "look_behind" );
+    AddGTAControl ( "mouse3", "look_behind" );
+
+    AddGTAControl ( "lalt", "vehicle_fire" );
+    AddGTAControl ( "mouse1", "vehicle_fire" );
+    AddGTAControl ( "ctrl", "vehicle_secondary_fire" );
+    AddGTAControl ( "num_0", "vehicle_secondary_fire" );
+    AddGTAControl ( "w", "accelerate" );
+    AddGTAControl ( "s", "brake_reverse" );
+    AddGTAControl ( "a", "vehicle_left" );
+    AddGTAControl ( "arrow_l", "vehicle_left" );
+    AddGTAControl ( "d", "vehicle_right" );
+    AddGTAControl ( "arrow_r", "vehicle_right" );
+    AddGTAControl ( "arrow_u", "steer_forward" );
+    AddGTAControl ( "arrow_d", "steer_back" );
+    AddGTAControl ( "insert", "radio_next" );
+    AddGTAControl ( "4", "radio_next" );
+    AddGTAControl ( "mouse_wheel_up", "radio_next" );
+    AddGTAControl ( "delete", "radio_previous" );
+    AddGTAControl ( "r", "radio_previous" );
+    AddGTAControl ( "mouse_wheel_down", "radio_previous" );
+    AddGTAControl ( "f5", "radio_user_track_skip" );
+    AddGTAControl ( "capslock", "horn" );
+    AddGTAControl ( "h", "horn" );
+    AddGTAControl ( "2", "sub_mission" );
+    AddGTAControl ( "num_add", "sub_mission" );
+    AddGTAControl ( "space", "handbrake" );
+    AddGTAControl ( "rctrl", "handbrake" );
+    AddGTAControl ( "mouse3", "vehicle_look_behind" );
+    AddGTAControl ( "mouse2", "vehicle_mouse_look" );
+    AddGTAControl ( "q", "vehicle_look_left" );
+    AddGTAControl ( "e", "vehicle_look_right" );
+    AddGTAControl ( "num_4", "special_control_left" );
+    AddGTAControl ( "num_6", "special_control_right" );
+    AddGTAControl ( "num_8", "special_control_up" );
+    AddGTAControl ( "delete", "special_control_up" );
+    AddGTAControl ( "num_2", "special_control_down" );
+    AddGTAControl ( "end", "special_control_down" );
 }
 
 
@@ -2617,18 +2643,16 @@ void CKeyBinds::BindCommand ( const char* szCmdLine )
                 if ( szCommand )
                 {
                     char* szArguments = strtok ( NULL, "\0" );
-                    SString strKeyState ( "%s", bState? "down" : "up" );
-                    SString strCommandAndArguments ( "%s%s%s", szCommand, szArguments ? " " : "", szArguments ? szArguments : "" );
 
-                    if ( !CommandExists ( szKey, szCommand, true, bState, szArguments ) )
+                    if ( !CommandExists ( szKey, szCommand, true, bState ) )
                     {
                         if ( AddCommand ( szKey, szCommand, szArguments, bState ) )
-                            pConsole->Printf ( "* Bound key '%s' '%s' to command '%s'", szKey, *strKeyState, *strCommandAndArguments );
+                            pConsole->Printf ( "* Bound key '%s' '%s' to command '%s'", szKey, ( bState ) ? "down" : "up", szCommand );
                         else
-                            pConsole->Printf ( "* Failed to bind '%s' '%s' to command '%s'", szKey, *strKeyState, *strCommandAndArguments );
+                            pConsole->Printf ( "* Failed to bind '%s' to command '%s'", szKey, szCommand );
                     }
                     else
-                        pConsole->Printf ( "* '%s' '%s' key already bound to command '%s'", szKey, *strKeyState, *strCommandAndArguments );
+                        pConsole->Printf ( "* '%s' key already bound to command '%s'", szKey, szCommand );
                 }
                 else
                     pConsole->Print ( szError );
@@ -2902,14 +2926,4 @@ bool CKeyBinds::IsFakeCtrl_L ( UINT message, WPARAM wParam, LPARAM lParam )
   
     /* Not a fake control left press/release */
     return FALSE;
-}
-
-bool CKeyBinds::TriggerKeyStrokeHandler ( const SString& strKey, bool bState, bool bIsConsoleInputKey )
-{
-    // Call the key-stroke handler if we have one
-    if ( m_KeyStrokeHandler ) 
-    {
-        return m_KeyStrokeHandler ( strKey, bState, bIsConsoleInputKey );
-    }
-    return true;
 }

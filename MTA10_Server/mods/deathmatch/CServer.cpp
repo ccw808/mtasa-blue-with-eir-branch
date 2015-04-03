@@ -13,13 +13,9 @@
 #include "StdInc.h"
 #define ALLOC_STATS_MODULE_NAME "deathmatch"
 #include "SharedUtil.hpp"
-#include "SharedUtil.Thread.h"
-#include "SharedUtil.IntervalCounter.h"
-#include "SharedUtil.IntervalCounter.hpp"
 
 CServerInterface* g_pServerInterface = NULL;
 CNetServer* g_pNetServer = NULL;
-CNetServer* g_pRealNetServer = NULL;
 
 CServer::CServer ( void )
 {
@@ -40,7 +36,6 @@ void CServer::ServerInitialize ( CServerInterface* pServerInterface )
     m_pServerInterface = pServerInterface;
     g_pServerInterface = pServerInterface;
     g_pNetServer = pServerInterface->GetNetwork ();
-    g_pRealNetServer = g_pNetServer;
 }
 
 
@@ -84,14 +79,10 @@ void CServer::HandleInput ( char* szCommand )
 
 void CServer::DoPulse()
 {
-    UNCLOCK( " Top", " Idle" );
     if ( m_pGame )
     {
-        CLOCK( " Top", "Game->DoPulse" );
         m_pGame->DoPulse ();
-        UNCLOCK( " Top", "Game->DoPulse" );
     }
-    CLOCK( " Top", " Idle" );
 }
 
 
@@ -102,29 +93,5 @@ bool CServer::IsFinished ()
         return m_pGame->IsFinished ();
     }
 
-    return false;
-}
-
-bool CServer::PendingWorkToDo ( void )
-{
-    if ( m_pGame && g_pNetServer )
-    {
-        if ( g_pNetServer->GetPendingPacketCount () > 0 )
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CServer::GetSleepIntervals ( int& iSleepBusyMs, int& iSleepIdleMs, int& iLogicFpsLimit )
-{
-    if ( m_pGame && g_pNetServer )
-    {
-        iSleepBusyMs = m_pGame->GetConfig ()->GetPendingWorkToDoSleepTime ();
-        iSleepIdleMs = m_pGame->GetConfig ()->GetNoWorkToDoSleepTime ();
-        iLogicFpsLimit = m_pGame->GetConfig ()->GetServerLogicFpsLimit ();
-        return true;
-    }
     return false;
 }

@@ -26,9 +26,12 @@ class CStreamingSA : public CStreaming
 {
 public:
     void            RequestModel                    ( DWORD dwModelID, DWORD dwFlags );
-    void            LoadAllRequestedModels          ( BOOL bOnlyPriorityModels = 0, const char* szTag = NULL );
+    void            LoadAllRequestedModels          ( BOOL bOnlyPriorityModels = 0 );
     BOOL            HasModelLoaded                  ( DWORD dwModelID );
-    void            RequestSpecialModel             ( DWORD model, const char * szTexture, DWORD channel );
+    void            RequestAnimations               ( int iAnimationLibraryBlock, DWORD dwFlags );
+    BOOL            HaveAnimationsLoaded            ( int iAnimationLibraryBlock );
+    bool            HasVehicleUpgradeLoaded         ( int model );
+    void            RequestSpecialModel ( DWORD model, const char * szTexture, DWORD channel );
 };
 
 #endif

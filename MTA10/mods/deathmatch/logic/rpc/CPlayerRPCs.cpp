@@ -24,8 +24,6 @@ void CPlayerRPCs::LoadFunctions ( void )
     AddHandler ( REMOVE_PLAYER_NAMETAG_COLOR, RemovePlayerNametagColor, "RemovePlayerNametagColor" );
     AddHandler ( SET_PLAYER_NAMETAG_COLOR, SetPlayerNametagColor, "SetPlayerNametagColor" );
     AddHandler ( SET_PLAYER_NAMETAG_SHOWING, SetPlayerNametagShowing, "SetPlayerNametagShowing" ); 
-    AddHandler ( SET_PLAYER_TEAM, SetPlayerTeam, "SetPlayerTeam" );
-    AddHandler ( TAKE_PLAYER_SCREEN_SHOT, TakePlayerScreenShot, "TakePlayerScreenShot" );
 }
 
 
@@ -33,14 +31,10 @@ void CPlayerRPCs::SetPlayerMoney ( NetBitStreamInterface& bitStream )
 {
     // Read out the new money amount
     long lMoney;
-    bool bInstant = false;
     if ( bitStream.Read ( lMoney ) )
     {
-        if (bitStream.GetNumberOfUnreadBits() > 0)
-            bitStream.ReadBit(bInstant);
-
         // Set it
-        m_pClientGame->SetMoney ( lMoney, bInstant );
+        m_pClientGame->SetMoney ( lMoney );
     }
 }
 
@@ -50,11 +44,52 @@ void CPlayerRPCs::ShowPlayerHudComponent ( NetBitStreamInterface& bitStream )
     unsigned char ucComponent, ucShow;
     if ( bitStream.Read ( ucComponent ) && bitStream.Read ( ucShow ) )
     {
-        bool bShow = ( ucShow != 0 );
-        g_pGame->GetHud ()->SetComponentVisible ( (eHudComponent)ucComponent, bShow );
-
-        if ( ucComponent == HUD_AREA_NAME || ucComponent == HUD_ALL )
-            g_pClientGame->SetHudAreaNameDisabled ( !bShow  );
+        bool bDisabled = ( ucShow != 1 );
+        enum eHudComponent { HUD_AMMO = 0, HUD_WEAPON, HUD_HEALTH, HUD_BREATH,
+                             HUD_ARMOUR, HUD_MONEY, HUD_VEHICLE_NAME, HUD_AREA_NAME, HUD_RADAR, HUD_CLOCK, HUD_RADIO, HUD_WANTED, HUD_ALL };
+        switch ( ucComponent )
+        {
+            case HUD_AMMO:
+                g_pGame->GetHud ()->DisableAmmo ( bDisabled );
+                break;
+            case HUD_WEAPON:
+                g_pGame->GetHud ()->DisableWeaponIcon ( bDisabled );
+                break;
+            case HUD_HEALTH:
+                g_pGame->GetHud ()->DisableHealth ( bDisabled );
+                break;
+            case HUD_BREATH:
+                g_pGame->GetHud ()->DisableBreath ( bDisabled );
+                break;
+            case HUD_ARMOUR:
+                g_pGame->GetHud ()->DisableArmour ( bDisabled );
+                break;
+            case HUD_MONEY:
+                g_pGame->GetHud ()->DisableMoney ( bDisabled );
+                break;
+            case HUD_VEHICLE_NAME:
+                g_pGame->GetHud ()->DisableVehicleName ( bDisabled );
+                break;
+            case HUD_AREA_NAME:
+                g_pClientGame->SetHudAreaNameDisabled ( bDisabled );
+                g_pGame->GetHud ()->DisableAreaName ( bDisabled );
+                break;
+            case HUD_RADAR:
+                g_pGame->GetHud ()->DisableRadar ( bDisabled );
+                break;
+            case HUD_CLOCK:
+                g_pGame->GetHud ()->DisableClock ( bDisabled );
+                break;
+            case HUD_RADIO:
+                g_pGame->GetHud ()->DisableRadioName ( bDisabled );
+                break;
+            case HUD_WANTED:
+                g_pGame->GetHud ()->DisableWantedLevel ( bDisabled );
+                break;
+            case HUD_ALL:
+                g_pGame->GetHud ()->DisableAll ( bDisabled );
+                break;
+        }
     }        
 }
 
@@ -129,55 +164,4 @@ void CPlayerRPCs::SetPlayerNametagShowing ( CClientEntity* pSource, NetBitStream
             pPlayer->SetNametagShowing ( ( ucShowing == 1 ) );
         }
     }
-}
-
-void CPlayerRPCs::SetPlayerTeam ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
-{
-    ElementID TeamID;
-    if ( bitStream.Read ( TeamID ) )
-    {
-        CClientTeam* pTeam = m_pTeamManager->GetTeam ( TeamID );
-        CClientPlayer* pPlayer = m_pPlayerManager->Get ( pSource->GetID () );
-        if ( pPlayer )
-        {
-            pPlayer->SetTeam ( pTeam, true );
-        }
-    }
-}
-
-
-void CPlayerRPCs::TakePlayerScreenShot ( NetBitStreamInterface& bitStream )
-{
-    ushort usSizeX;
-    ushort usSizeY;
-    SString strTag;
-    uchar ucQuality;
-    uint uiMaxBandwidth;
-    ushort usMaxPacketSize;
-    CResource* pResource;
-    uint uiServerSentTime;
-
-    bitStream.Read ( usSizeX );
-    bitStream.Read ( usSizeY );
-    bitStream.ReadString ( strTag );
-    bitStream.Read ( ucQuality );
-    bitStream.Read ( uiMaxBandwidth );
-    bitStream.Read ( usMaxPacketSize );
-    if ( bitStream.Version() >= 0x53 )
-    {
-        ushort usResourceNetId;
-        bitStream.Read ( usResourceNetId );
-        pResource = g_pClientGame->GetResourceManager ()->GetResourceFromNetID ( usResourceNetId );
-    }
-    else
-    {
-        SString strResourceName;
-        bitStream.ReadString ( strResourceName );
-        pResource = g_pClientGame->GetResourceManager ()->GetResource ( strResourceName );
-    }
-
-    if ( !bitStream.Read ( uiServerSentTime ) )
-        return;
-
-    m_pClientGame->TakePlayerScreenShot ( usSizeX, usSizeY, strTag, ucQuality, uiMaxBandwidth, usMaxPacketSize, pResource, uiServerSentTime );        
 }

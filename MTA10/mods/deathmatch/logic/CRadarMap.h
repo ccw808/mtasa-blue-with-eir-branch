@@ -21,6 +21,9 @@
 #include <CClientTextDisplay.h>
 #include <gui/CGUI.h>
 
+#define RADAR_TEXTURE_WIDTH 1152
+#define RADAR_TEXTURE_HEIGHT 1152
+
 class CRadarMap
 {
 public:
@@ -40,14 +43,11 @@ public:
 
     bool                                GetBoundingBox                      ( CVector &vecMin, CVector &vecMax );
 
-    void                                ToggleHelpText                      ( void );
+    int                                 GetRadarAlpha                       ( void ) const                  { return m_iRadarAlpha; }
+    void                                SetRadarAlpha                       ( int iRadarAlpha );
 
 protected:
     void                                InternalSetRadarEnabled             ( bool bEnabled );
-
-    void                                CreateMarkerTextures                ( void );
-    CTextureItem*                       GetMarkerTexture                    ( CClientRadarMarker* pMarker, float fLocalZ, float* pfScale, SColor* pColor );
-
 public:
 
     inline bool                         IsAttachedToLocalPlayer             ( void ) const                  { return m_bIsAttachedToLocal; };
@@ -68,8 +68,6 @@ public:
     void                                ZoomIn                              ( void );
     void                                ZoomOut                             ( void );
 
-    SString                             GetBoundKeyName                     ( const SString& strCommand );
-
 private:
     bool                                CalculateEntityOnScreenPosition     ( class CClientEntity* pEntity, CVector2D& vecLocalPos );
     bool                                CalculateEntityOnScreenPosition     ( CVector vecPosition, CVector2D& vecLocalPos );
@@ -85,9 +83,9 @@ private:
     class CClientRadarMarkerManager*    m_pRadarMarkerManager;
     class CClientRadarAreaManager*      m_pRadarAreaManager;
 
-    CTextureItem*                       m_pRadarImage;
-    CTextureItem*                       m_pLocalPlayerBlip;
-    std::vector < CTextureItem* >       m_MarkerTextureList;
+    IDirect3DTexture9*                  m_pRadarImage;
+
+    IDirect3DTexture9*                  m_pLocalPlayerBlip;
 
     unsigned int                        m_uiHeight;
     unsigned int                        m_uiWidth;
@@ -101,7 +99,9 @@ private:
     int                                 m_iHorizontalMovement;
     int                                 m_iVerticalMovement;
 
-    float                               m_fZoom;
+    int                                 m_iRadarAlpha;
+
+    unsigned char                       m_ucZoom;
 
     bool                                m_bIsRadarEnabled;
     bool                                m_bForcedState;
@@ -114,8 +114,10 @@ private:
 
     unsigned long                       m_ulUpdateTime;
 
-    std::vector < CClientTextDisplay* > m_HelpTextList;
-    bool                                m_bHideHelpText;
+    CClientTextDisplay*                 m_pModeText;
+    CClientTextDisplay*                 m_pHelpTextZooming;
+    CClientTextDisplay*                 m_pHelpTextMovement;
+    CClientTextDisplay*                 m_pHelpTextAttachment;
 
     bool                                m_bHudVisible;
     bool                                m_bChatVisible;

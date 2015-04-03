@@ -464,7 +464,7 @@ public:
 	\return
 		A String object that holds the current text for this Window.
 	*/
-	const String&	getText(bool bidified=false) const		{return bidified ? d_text : d_text_raw;}
+	const String&	getText(void) const		{return d_text;}
 
 
 	/*!
@@ -1439,7 +1439,7 @@ public:
 	\return
 		Nothing
 	*/
-	void	setText(const String& text);
+	void	setText(const String& text, bool bidify = false);
 
 
 	/*!

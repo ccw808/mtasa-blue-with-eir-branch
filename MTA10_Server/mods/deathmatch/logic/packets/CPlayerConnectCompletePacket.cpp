@@ -12,16 +12,19 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#define MAX_CONN_TEXT_LEN 128
 
-bool CPlayerConnectCompletePacket::Write ( NetBitStreamInterface& BitStream ) const
+CPlayerConnectCompletePacket::CPlayerConnectCompletePacket()
 {
-    // Send the connection string
-    SString strConnText ( "%s %s [%s]", MTA_DM_FULL_STRING, MTA_DM_VERSIONSTRING, MTA_OS_STRING );
-    BitStream.WriteString ( strConnText.Left ( MAX_CONN_TEXT_LEN ) );
-
-    // Send the full server version
-    BitStream.WriteString ( CStaticFunctionDefinitions::GetVersionSortable () );
-
-    return true;
+    snprintf(m_szConnText, MAX_CONN_TEXT_LEN, "%s %s [%s]", MTA_DM_FULL_STRING, MTA_DM_VERSIONSTRING, MTA_OS_STRING);
 }
+
+IO_DECLARE_FUNCTION(CPlayerConnectCompletePacket,
+{
+    if (!IO_VARIABLE_STRING_MAX(m_szConnText, MAX_CONN_TEXT_LEN)) 
+    { 
+        IO_RAISE_ERROR(1, "Could not perform IO on connection text buffer."); 
+        return false; 
+    } 
+ 
+    return true;
+})

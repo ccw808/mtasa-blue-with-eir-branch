@@ -40,9 +40,6 @@ enum ePools {
     POINT_ROUTE_POOL,
     POINTER_DOUBLE_LINK_POOL,
     POINTER_SINGLE_LINK_POOL,
-    ENV_MAP_MATERIAL_POOL,
-    ENV_MAP_ATOMIC_POOL,
-    SPEC_MAP_MATERIAL_POOL,
     MAX_POOLS
 };
 
@@ -68,7 +65,7 @@ class CPools
 {
 public:
     // Vehicles pool
-    virtual CVehicle*       AddVehicle              ( eVehicleTypes eVehicleType, unsigned char ucVariation, unsigned char ucVariation2 ) = 0;
+    virtual CVehicle*       AddVehicle              ( eVehicleTypes eVehicleType ) = 0;
     virtual CVehicle*       AddVehicle              ( DWORD* pGameInterface ) = 0;
     virtual void            RemoveVehicle           ( CVehicle* pVehicle, bool bDelete = true ) = 0;
     virtual void            RemoveVehicle           ( unsigned long ulID, bool bDelete = true ) = 0;
@@ -80,7 +77,8 @@ public:
     virtual unsigned long   GetVehicleCount         ( ) = 0;
 
     // Objects pool
-    virtual CObject*        AddObject               ( DWORD dwModelID, bool bLowLod, bool bBreakingDisabled ) = 0;
+    virtual CObject*        AddObject               ( DWORD dwModelID ) = 0;
+    virtual CObject*        AddObject               ( DWORD* pGameInterface ) = 0;
     virtual void            RemoveObject            ( CObject* pObject, bool bDelete = true ) = 0;
     virtual void            RemoveObject            ( unsigned long ulID, bool bDelete = true ) = 0;
     virtual CObject*        GetObject               ( unsigned long ulID ) = 0;
@@ -105,7 +103,7 @@ public:
 
     // Others
     virtual CBuilding*      AddBuilding             ( DWORD dwModelID ) = 0;
-    virtual CVehicle*       AddTrain                ( CVector* vecPosition, DWORD dwModels[], int iSize, bool iDirection, uchar ucTrackId = 0xFF ) = 0;
+    virtual CVehicle*       AddTrain                ( CVector* vecPosition, DWORD dwModels[], int iSize, bool iDirection ) = 0;
     virtual CEntity*        GetEntity               ( DWORD* pGameInterface ) = 0;
 
     virtual int             GetNumberOfUsedSpaces   ( ePools pool ) = 0;

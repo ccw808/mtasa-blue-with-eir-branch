@@ -50,8 +50,8 @@ CBlendedWeather*            CRPCFunctions::m_pBlendedWeather;
 CClientGame*                CRPCFunctions::m_pClientGame;
 CClientWaterManager*        CRPCFunctions::m_pWaterManager;
 
-SFixedArray < CRPCFunctions::SRPCHandler, CRPCFunctions::NUM_RPC_FUNCS >           CRPCFunctions::m_RPCHandlers;
-SFixedArray < CRPCFunctions::SElementRPCHandler, CRPCFunctions::NUM_RPC_FUNCS >    CRPCFunctions::m_ElementRPCHandlers;
+CRPCFunctions::SRPCHandler          CRPCFunctions::m_RPCHandlers[];
+CRPCFunctions::SElementRPCHandler   CRPCFunctions::m_ElementRPCHandlers[];
 
 CRPCFunctions::CRPCFunctions ( CClientGame* pClientGame )
 {
@@ -112,7 +112,7 @@ void CRPCFunctions::AddHandler ( unsigned char ucID, pfnRPCHandler Callback, con
         return;
 
     m_RPCHandlers [ ucID ].Callback = Callback;
-    m_RPCHandlers [ ucID ].strName = szName;
+    strcpy ( m_RPCHandlers [ ucID ].szName, szName );
 }
 
 void CRPCFunctions::AddHandler ( unsigned  char ucID, pfnElementRPCHandler Callback, const char* szName )
@@ -121,7 +121,7 @@ void CRPCFunctions::AddHandler ( unsigned  char ucID, pfnElementRPCHandler Callb
         return;
 
     m_ElementRPCHandlers [ ucID ].Callback = Callback;
-    m_ElementRPCHandlers [ ucID ].strName = szName;
+    strcpy ( m_ElementRPCHandlers [ ucID ].szName, szName );
 }
 
 void CRPCFunctions::ProcessPacket ( unsigned char ucPacketID, NetBitStreamInterface& bitStream )
@@ -136,11 +136,8 @@ void CRPCFunctions::ProcessPacket ( unsigned char ucPacketID, NetBitStreamInterf
         SRPCHandler* pHandler = &m_RPCHandlers [ ucFunctionID ];
         if ( pHandler->Callback != NULL )
         {
-            static bool bEnabled = ( g_pCore->GetDiagnosticDebug () == EDiagnosticDebug::LUA_TRACE_0000 );
-            if ( bEnabled )
-                g_pCore->LogEvent ( 0, "RPC", "", pHandler->strName );
             if ( m_bShowRPCs )
-                g_pCore->GetConsole ()->Printf ( "* rpc: %s", *pHandler->strName );
+                g_pCore->GetConsole ()->Printf ( "* rpc: %s", pHandler->szName );
             (pHandler->Callback) ( bitStream );
         }
     }
@@ -149,24 +146,26 @@ void CRPCFunctions::ProcessPacket ( unsigned char ucPacketID, NetBitStreamInterf
         SElementRPCHandler* pElementHandler = &m_ElementRPCHandlers [ ucFunctionID ];
         if ( pElementHandler->Callback != NULL )
         {
-            static bool bEnabled = ( g_pCore->GetDiagnosticDebug () == EDiagnosticDebug::LUA_TRACE_0000 );
-            if ( bEnabled )
-                g_pCore->LogEvent ( 0, "Element RPC", "", pElementHandler->strName );
             if ( m_bShowRPCs )
-                g_pCore->GetConsole ()->Printf ( "* element-rpc: %s", *pElementHandler->strName );
+                g_pCore->GetConsole ()->Printf ( "* element-rpc: %s", pElementHandler->szName );
 
             // Grab the source entity.
             ElementID ID;
-            bitStream.Read ( ID );
-            CClientEntity* pSource = CElementIDs::GetElement ( ID );
-            if ( pSource == NULL )
+            bitStream.ReadCompressed ( ID );
+            CClientEntity* pSource = NULL;
+            if ( ID != INVALID_ELEMENT_ID )
             {
+                pSource = CElementIDs::GetElement ( ID );
 #ifdef MTA_DEBUG
-                SString strMessage ( "CRPCFunctions::ProcessPacket - FIXME (%s)", *pElementHandler->strName );
-                OutputDebugLine ( SStringX ( "[RPC] " ) + strMessage );
-                CLogger::ErrorPrintf ( "%s", *strMessage );
+                if ( pSource == NULL )
+                {
+                    OutputDebugLine ( "CRPCFunctions::ProcessPacket - FIXME" );
+                    CLogger::ErrorPrintf ( "CRPCFunctions::ProcessPacket - FIXME" );
+                }
+                // assert ( pSource != NULL );
 #endif
-                return;
+                if ( pSource == NULL )
+                    return;
             }
 
             (pElementHandler->Callback) ( pSource, bitStream );

@@ -21,7 +21,6 @@
 // RenderWare definitions
 #define RW_STRUCT_ALIGN           ((int)((~((unsigned int)0))>>1))
 #define RW_TEXTURE_NAME_LENGTH    32
-#define RW_FRAME_NAME_LENGTH      23
 #define RW_MAX_TEXTURE_COORDS     8
 
 typedef struct RwV2d RwV2d;
@@ -179,8 +178,8 @@ struct RwFrame
     struct RwFrame   *root;             // 64
 
     // Rockstar Frame extension (0x253F2FE) (24 bytes)
-    unsigned char    pluginData[8];                       // padding
-    char             szName[RW_FRAME_NAME_LENGTH+1];        // name (as stored in the frame extension)
+    unsigned char    pluginData[8];     // padding
+    char             szName[16];        // name (as stored in the frame extension)
 };
 struct RwTexDictionary
 {
@@ -216,7 +215,6 @@ struct RwRaster
     unsigned char   format;
     unsigned char   *origPixels;
     int             origWidth, origHeight, origDepth;
-    void*           renderResource;
 };
 struct RwColorFloat
 {
@@ -258,11 +256,6 @@ struct RwCamera
     RwCameraFrustum      frustum4D[6];
     RwBBox               viewBBox;
     RwV3d                frustum3D[8];
-};
-struct RwGeometry
-{
-    unsigned char   unknown1[14];
-    unsigned short  refs;
 };
 struct RpInterpolation
 {
@@ -397,7 +390,7 @@ union RwStreamTypeData
     struct {
         unsigned int      position;
         unsigned int      size;
-        void              *ptr_file;
+        void              *ptr;
     };
     struct {
         void              *file;
@@ -407,7 +400,7 @@ union RwStreamTypeData
         RwIOCallbackRead  callbackRead;
         RwIOCallbackWrite callbackWrite;
         RwIOCallbackOther callbackOther;
-        void              *ptr_callback;
+        void              *ptr;
     };
 };
 struct RwStream

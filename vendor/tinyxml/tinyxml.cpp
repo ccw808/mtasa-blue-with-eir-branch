@@ -31,6 +31,7 @@ distribution.
 
 #include "tinyxml.h"
 
+
 bool TiXmlBase::condenseWhiteSpace = true;
 
 // Microsoft compiler security
@@ -503,7 +504,6 @@ const TiXmlDocument* TiXmlNode::GetDocument() const
 TiXmlElement::TiXmlElement (const char * _value)
 	: TiXmlNode( TiXmlNode::ELEMENT )
 {
-    m_bWasEmptyTag = false;
 	firstChild = lastChild = 0;
 	value = _value;
 }
@@ -513,7 +513,6 @@ TiXmlElement::TiXmlElement (const char * _value)
 TiXmlElement::TiXmlElement( const std::string& _value ) 
 	: TiXmlNode( TiXmlNode::ELEMENT )
 {
-    m_bWasEmptyTag = false;
 	firstChild = lastChild = 0;
 	value = _value;
 }
@@ -523,7 +522,6 @@ TiXmlElement::TiXmlElement( const std::string& _value )
 TiXmlElement::TiXmlElement( const TiXmlElement& copy)
 	: TiXmlNode( TiXmlNode::ELEMENT )
 {
-    m_bWasEmptyTag = false;
 	firstChild = lastChild = 0;
 	copy.CopyTo( this );	
 }
@@ -794,10 +792,7 @@ void TiXmlElement::Print( FILE* cfile, int depth ) const
 	TiXmlNode* node;
 	if ( !firstChild )
 	{
-        if ( m_bWasEmptyTag )
-		    fprintf( cfile, " />" );
-        else
-		    fprintf( cfile, "></%s>", value.c_str() );
+		fprintf( cfile, " />" );
 	}
 	else if ( firstChild == lastChild && firstChild->ToText() )
 	{
@@ -830,8 +825,6 @@ void TiXmlElement::CopyTo( TiXmlElement* target ) const
 {
 	// superclass:
 	TiXmlNode::CopyTo( target );
-
-    target->m_bWasEmptyTag = m_bWasEmptyTag;
 
 	// Element class: 
 	// Clone the attributes, then clone the children.
@@ -949,7 +942,7 @@ bool TiXmlDocument::SaveFile() const
 	return SaveFile( Value() );
 }
 
-bool TiXmlDocument::LoadFile( const char* _filename, TiXmlEncoding encoding, FILE** pFile )
+bool TiXmlDocument::LoadFile( const char* _filename, TiXmlEncoding encoding )
 {
 	// There was a really terrifying little bug here. The code:
 	//		value = filename
@@ -967,13 +960,7 @@ bool TiXmlDocument::LoadFile( const char* _filename, TiXmlEncoding encoding, FIL
 	if ( file )
 	{
 		bool result = LoadFile( file, encoding );
-
-        // Return file handle instead of closing, if requested and no errors
-        if ( pFile && result )
-            *pFile = file;
-        else
-    		fclose( file );
-
+		fclose( file );
 		return result;
 	}
 	else
@@ -1033,8 +1020,6 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 		data += buf;
 	}
 	*/
-    #define BLANK_LINE_COMMENT_MAGIC "##BLANK-LINE##"
-    bool bUseBlankLineMagic = true;
 
 	char* buf = new char[ length+1 ];
 	buf[0] = 0;
@@ -1048,23 +1033,9 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 	const char* lastPos = buf;
 	const char* p = buf;
 
-    bool bInComment = false;
-    bool bInTag = false;
-    bool bEmptyLine = false;
-    int iNewLineCount = 0;
-    bool bOnlyWhiteSpaceChars = false;
-
 	buf[length] = 0;
 	while( *p ) {
 		assert( p < (buf+length) );
-
- 		if ( *p == 0xa || *p == 0xd )
-        {
-            if ( bEmptyLine && !bInTag && !bInComment && bUseBlankLineMagic )
-                iNewLineCount++;
-            bEmptyLine = true;
-        }
-
 		if ( *p == 0xa ) {
 			// Newline character. No special rules for this. Append all the characters
 			// since the last string, and include the newline.
@@ -1094,45 +1065,7 @@ bool TiXmlDocument::LoadFile( FILE* file, TiXmlEncoding encoding )
 				assert( p <= (buf+length) );
 			}
 		}
-        else
-        if ( *p == ' ' ||  *p == '\t' )
-        {
-            // White space
-			++p;
-        }
 		else {
-            if ( strncmp ( p, "<!--", 4 ) == 0 )
-                bInComment = true;     // Entering comment
-            else
-            if ( strncmp ( p, "-->", 3 ) == 0 )
-                bInComment = false;     // Leaving comment
-
-            if ( strncmp ( p, "<", 1 ) == 0 )
-            {
-                bInTag = true;     // Entering tag
-                // If preceeding text contains only white space, save the blank lines as comments
-                if ( bOnlyWhiteSpaceChars )
-                {
-                    for ( int i = 0 ; i < iNewLineCount ; i++ )
-                    {
-                        data.append( "<!--" BLANK_LINE_COMMENT_MAGIC "-->" );
-                    }
-                    bOnlyWhiteSpaceChars = false;
-                    iNewLineCount = 0;
-                }
-            }
-            else
-            if ( strncmp ( p, ">", 1 ) == 0 )
-            {
-                bInTag = false;     // Leaving tag
-                // Start of possible white space area containing blank lines
-                bOnlyWhiteSpaceChars = true;
-                iNewLineCount = 0;
-            }
-            else
-                bOnlyWhiteSpaceChars = false;
-
-            bEmptyLine = false;
 			++p;
 		}
 	}
@@ -1371,8 +1304,7 @@ void TiXmlComment::Print( FILE* cfile, int depth ) const
 	{
 		fprintf( cfile,  "    " );
 	}
-    if ( value != BLANK_LINE_COMMENT_MAGIC )
-    	fprintf( cfile, "<!--%s-->", value.c_str() );
+	fprintf( cfile, "<!--%s-->", value.c_str() );
 }
 
 

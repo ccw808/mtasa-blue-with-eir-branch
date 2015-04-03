@@ -15,7 +15,7 @@
 CObjectSyncPacket::~CObjectSyncPacket ( void )
 {
     vector < SyncData* > ::const_iterator iter = m_Syncs.begin ();
-    for ( ; iter != m_Syncs.end (); ++iter )
+    for ( ; iter != m_Syncs.end (); iter++ )
     {
         delete *iter;
     }
@@ -33,7 +33,7 @@ bool CObjectSyncPacket::Read ( NetBitStreamInterface& BitStream )
         pData->bSend = false;
 
         // Read out the ID
-        if ( !BitStream.Read ( pData->ID ) )
+        if ( !BitStream.ReadCompressed ( pData->ID ) )
             return false;
 
         // Read the sync time context
@@ -86,14 +86,14 @@ bool CObjectSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
     bool bSent = false;
     vector < SyncData* > ::const_iterator iter = m_Syncs.begin ();
     // Write syncs
-    for ( ; iter != m_Syncs.end (); ++iter )
+    for ( ; iter != m_Syncs.end (); iter++ )
     {
         SyncData* pData = *iter;
         // If we're not supposed to ignore the packet
         if ( pData->bSend )
         {
             // Write the ID
-            BitStream.Write ( pData->ID );
+            BitStream.WriteCompressed ( pData->ID );
 
             // Write the sync time context
             BitStream.Write ( pData->ucSyncTimeContext );

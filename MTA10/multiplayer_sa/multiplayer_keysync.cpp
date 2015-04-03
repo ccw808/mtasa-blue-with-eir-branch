@@ -229,7 +229,6 @@ VOID ReturnContextToLocalPlayer()
 
 
         PostContextSwitch();
-        pGameInterface->OnPedContextChange ( NULL );
 
         if ( m_pPostContextSwitchHandler )
         {
@@ -241,7 +240,6 @@ VOID ReturnContextToLocalPlayer()
         // Store any changes to the local-players stats?
         if ( !bLocalStatsStatic )
         {
-            assert ( 0 );   // bLocalStatsStatic is always true
             MemCpyFast ( &localStatsData.StatTypesFloat, (void *)0xb79380, sizeof(float) * MAX_FLOAT_STATS );
             MemCpyFast ( &localStatsData.StatTypesInt, (void *)0xb79000, sizeof(int) * MAX_INT_STATS );
             MemCpyFast ( &localStatsData.StatReactionValue, (void *)0xb78f10, sizeof(float) * MAX_REACTION_STATS );
@@ -284,20 +282,12 @@ void SwitchContext ( CPed* thePed )
                 if ( data )
                 {
                     // We want the player to be seen as in targeting mode if they are right clicking and with weapons 
-                    CWeapon* pWeapon = thePed->GetWeapon(thePed->GetCurrentWeaponSlot());
-                    eWeaponType currentWeapon = pWeapon->GetType();
+                    eWeaponType currentWeapon = thePed->GetWeapon(thePed->GetCurrentWeaponSlot())->GetType();
                     CControllerState * cs = data->CurrentControllerState();
-                    CWeaponStat * pWeaponStat = NULL;
-                    if ( currentWeapon >= WEAPONTYPE_PISTOL && currentWeapon <= WEAPONTYPE_TEC9 )
-                    {
-                        float fValue = data->m_stats.StatTypesFloat [ pGameInterface->GetStats ()->GetSkillStatIndex ( currentWeapon ) ];
-                        pWeaponStat = pGameInterface->GetWeaponStatManager ( )->GetWeaponStatsFromSkillLevel ( currentWeapon, fValue );
-                    }
-                    else
-                        pWeaponStat = pGameInterface->GetWeaponStatManager ( )->GetWeaponStats ( currentWeapon );
-
+                    
                     if ( cs->RightShoulder1 != 0 
-                        && ( pWeaponStat && pWeaponStat->IsFlagSet ( WEAPONTYPE_FIRSTPERSON ) ) )
+                        && ( currentWeapon == WEAPONTYPE_SNIPERRIFLE || currentWeapon == WEAPONTYPE_ROCKETLAUNCHER
+                        || currentWeapon == WEAPONTYPE_ROCKETLAUNCHER_HS || currentWeapon == WEAPONTYPE_CAMERA ) )
                     {
                         b1stPersonWeaponModeHackInPlace = true;
                         
@@ -326,12 +316,16 @@ void SwitchContext ( CPed* thePed )
                     // Only disable mouselook if they're not holding a 1st-person weapon
                     // And if they're not under-water
                     bool bDisableMouseLook = true;
+                    CWeapon* pWeapon = thePed->GetWeapon ( thePed->GetCurrentWeaponSlot () );
                     if ( pWeapon )
                     {
                         eWeaponType weaponType = pWeapon->GetType ();
-                        if ( pWeaponStat->IsFlagSet ( WEAPONTYPE_FIRSTPERSON ) )
+                        switch ( weaponType )
                         {
-                            bDisableMouseLook = false;
+                            case WEAPONTYPE_SNIPERRIFLE:
+                            case WEAPONTYPE_ROCKETLAUNCHER:
+                            case WEAPONTYPE_ROCKETLAUNCHER_HS:
+                                bDisableMouseLook = false;
                         }
                     }
                     bMouseLookEnabled = *(bool *)0xB6EC2E;
@@ -435,7 +429,6 @@ void SwitchContext ( CPed* thePed )
                 MemPutFast < float > ( VAR_CameraRotation, fLocalPlayerCameraRotation );
         }
     }
-    pGameInterface->OnPedContextChange ( thePed );
 }
 
 

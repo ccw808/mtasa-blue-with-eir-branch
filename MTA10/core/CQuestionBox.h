@@ -40,8 +40,6 @@ public:
     void                SetCallbackEdit             ( pfnQuestionEditCallback callback, void* ptr = NULL );
     unsigned int        PollButtons                 ( void );
     bool                IsVisible                   ( void );
-    void                SetAutoCloseOnConnect       ( bool bEnable );
-    void                OnConnect                   ( void );
 
 private:
     bool                OnButtonClick               ( CGUIElement* pElement );
@@ -57,7 +55,6 @@ private:
     pfnQuestionEditCallback     m_CallbackEdit;
     void*                       m_CallbackParameter;
     SString                     m_strMsg;
-    bool                        m_bAutoCloseOnConnect;
 };
 
 

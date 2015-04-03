@@ -255,7 +255,7 @@ void CClientCheckpoint::SetIcon ( unsigned int uiIcon )
 }
 
 
-void CClientCheckpoint::SetColor ( const SColor& color )
+void CClientCheckpoint::SetColor ( const SColor color )
 {
     // Different from our current color?
     if ( m_Color != color )
@@ -300,24 +300,24 @@ unsigned char CClientCheckpoint::StringToIcon ( const char* szString )
 }
 
 
-bool CClientCheckpoint::IconToString ( unsigned char ucIcon, SString& strOutString )
+bool CClientCheckpoint::IconToString ( unsigned char ucIcon, char* szString )
 {
     switch ( ucIcon )
     {
         case ICON_NONE:
-            strOutString = "none";
+            strcpy ( szString, "none" );
             return true;
 
         case ICON_ARROW:
-            strOutString = "arrow";
+            strcpy ( szString, "arrow" );
             return true;
 
         case ICON_FINISH:
-            strOutString = "finish";
+            strcpy ( szString, "finish" );
             return true;
 
         default:
-            strOutString = "invalid";
+            strcpy ( szString, "invalid" );
             return false;
     }
 }

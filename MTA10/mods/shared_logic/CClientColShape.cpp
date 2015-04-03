@@ -15,7 +15,7 @@
 
 using std::list;
 
-CClientColShape::CClientColShape ( CClientManager* pManager, ElementID ID ) : ClassInit ( this ), CClientEntity ( ID )
+CClientColShape::CClientColShape ( CClientManager* pManager, ElementID ID ) : CClientEntity ( ID )
 {
     CClientEntityRefManager::AddEntityRefs ( ENTITY_REF_DEBUG ( this, "CClientColShape" ), &m_pOwningMarker, &m_pOwningPickup, NULL );
 
@@ -65,6 +65,20 @@ void CClientColShape::DoPulse ( void )
 {
     // Update our position/rotation if we're attached
     DoAttaching ();
+    #ifdef SPATIAL_DATABASE_TESTS
+        if ( !GetClientSpatialDatabase ()->IsEntityPresent ( this ) )
+        {
+            CSphere sphere = GetWorldBoundingSphere ();
+            CLogger::ErrorPrintf ( "Spatial problem - ColShape %08x Type %d not in new  sphere: %2.2f,%2.2f,%2.2f   %2.2f"
+                                                ,this
+                                                ,this->GetShapeType ()
+                                                ,sphere.vecPosition.fX
+                                                ,sphere.vecPosition.fY
+                                                ,sphere.vecPosition.fZ
+                                                ,sphere.fRadius
+                                                );
+        }
+    #endif
 }
 
 
@@ -76,12 +90,9 @@ bool CClientColShape::IsAttachable ( void )
 
 void CClientColShape::SetPosition ( const CVector& vecPosition )
 {
-    if ( vecPosition != m_vecPosition )
-    {
-        m_vecPosition = vecPosition;
-        UpdateSpatialData ();
-        CStaticFunctionDefinitions::RefreshColShapeColliders ( this );
-    }
+    m_vecPosition = vecPosition;
+    UpdateSpatialData ();
+    CStaticFunctionDefinitions::RefreshColShapeColliders ( this );
 };
 
 
@@ -107,7 +118,15 @@ void CClientColShape::CallLeaveCallback ( CClientEntity& Entity )
 
 bool CClientColShape::ColliderExists ( CClientEntity* pEntity )
 {
-    return m_Colliders.contains ( pEntity );
+    list < CClientEntity* > ::iterator iter = m_Colliders.begin ();
+    for ( ; iter != m_Colliders.end () ; iter++ )
+    {
+        if ( *iter == pEntity )
+        {
+            return true;
+        }
+    }    
+    return false;
 }
 
 
@@ -115,7 +134,7 @@ void CClientColShape::RemoveAllColliders ( bool bNotify )
 {
     if ( bNotify )
     {
-        CFastList < CClientEntity* > ::iterator iter = m_Colliders.begin ();
+        list < CClientEntity* > ::iterator iter = m_Colliders.begin ();
         for ( ; iter != m_Colliders.end () ; iter++ )
         {
             (*iter)->RemoveCollision ( this );

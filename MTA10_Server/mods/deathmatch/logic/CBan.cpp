@@ -14,27 +14,10 @@
 
 CBan::CBan ( void )
 {
-    m_uiScriptID = CIdArray::PopUniqueId ( this, EIdClass::BAN );
     m_tTimeOfBan = 0;
     m_tTimeOfUnban = 0;
-    CBanManager::SetBansModified();
 }
 
-CBan::~CBan ( void )
-{
-    CIdArray::PushUniqueId ( this, EIdClass::BAN, m_uiScriptID );
-    CBanManager::SetBansModified();
-}
-
-time_t CBan::GetBanTimeRemaining( void )
-{
-    time_t End = GetTimeOfUnban ();
-    if ( End > 0 )
-    {
-        return End - time( NULL );
-    }
-    return 0;
-}
 
 SString CBan::GetDurationDesc( void )
 {

@@ -18,7 +18,6 @@ CPlayerCamera::CPlayerCamera ( CPlayer * pPlayer )
     m_fRotation = 0.0f;
     m_ucInterior = 0;
     m_pTarget = pPlayer;
-    m_ucSyncTimeContext = 0;
 
     // We start off at chilliad
     m_Mode = CAMERAMODE_FIXED;
@@ -26,37 +25,47 @@ CPlayerCamera::CPlayerCamera ( CPlayer * pPlayer )
 
     m_fRoll = 0.0f;
     m_fFOV = 70.0f;
-
-    GetCameraSpatialDatabase ()->UpdateItem ( this );
 }
 
 
-CPlayerCamera::~CPlayerCamera ( void )
+void CPlayerCamera::GetMode ( eCameraMode Mode, char* szBuffer, size_t sizeBuffer )
 {
-    GetCameraSpatialDatabase ()->RemoveItem ( this );
-}
-
-
-void CPlayerCamera::SetMode ( eCameraMode Mode )
-{
-    if ( m_Mode != Mode )
+    switch ( Mode )
     {
-        m_Mode = Mode;
-        if ( m_Mode == CAMERAMODE_FIXED )
-            GetCameraSpatialDatabase ()->UpdateItem ( this );
-        else
-            GetCameraSpatialDatabase ()->RemoveItem ( this );
+        case CAMERAMODE_PLAYER:
+        {
+            strncpy ( szBuffer, "player", sizeBuffer );
+            szBuffer [sizeBuffer - 1] = 0;
+            break;
+        }
+
+        case CAMERAMODE_FIXED:
+        {
+            strncpy ( szBuffer, "fixed", sizeBuffer );
+            szBuffer [sizeBuffer - 1] = 0;
+            break;
+        }
+
+        default:
+        {
+            strncpy ( szBuffer, "invalid", sizeBuffer );
+            szBuffer [sizeBuffer - 1] = 0;
+            break;
+        }
     }
 }
 
-const CVector& CPlayerCamera::GetPosition ( void ) const
+
+eCameraMode CPlayerCamera::GetMode ( const char * szMode )
 {
-    if ( m_Mode == CAMERAMODE_PLAYER && m_pTarget )
-    {
-        return m_pTarget->GetPosition ();
-    }
-    return m_vecPosition;
+    if ( !stricmp ( szMode, "player" ) )
+        return CAMERAMODE_PLAYER;
+    if ( !stricmp ( szMode, "fixed" ) )
+        return CAMERAMODE_FIXED;
+
+    return CAMERAMODE_INVALID;
 }
+
 
 void CPlayerCamera::GetPosition ( CVector & vecPosition ) const
 {
@@ -76,7 +85,6 @@ void CPlayerCamera::SetPosition ( const CVector& vecPosition )
     if ( m_Mode == CAMERAMODE_FIXED )
     {
         m_vecPosition = vecPosition;
-        GetCameraSpatialDatabase ()->UpdateItem ( this );
     }
 }
 
@@ -109,22 +117,18 @@ void CPlayerCamera::SetMatrix ( const CVector& vecPosition, const CVector& vecLo
     {
         m_vecPosition = vecPosition;
         m_vecLookAt = vecLookAt;
-        GetCameraSpatialDatabase ()->UpdateItem ( this );
     }
 }
 
 
 void CPlayerCamera::SetTarget ( CElement* pElement )
 {
-    if ( !pElement )
-        pElement = m_pPlayer;
+    // We should always have a target here
+    assert ( pElement );
 
-    if ( m_pTarget != pElement )
-    {
-        if ( m_pTarget ) m_pTarget->m_FollowingCameras.remove ( this );
-        if ( pElement ) pElement->m_FollowingCameras.push_back ( this );
-        m_pTarget = pElement;
-    }
+    if ( m_pTarget ) m_pTarget->m_FollowingCameras.remove ( this );
+    if ( pElement ) pElement->m_FollowingCameras.push_back ( this );
+    m_pTarget = pElement;
 }
 
 
@@ -143,20 +147,3 @@ void CPlayerCamera::SetRotation ( CVector & vecRotation )
     m_vecLookAt = vecNormal;
 }
 
-
-uchar CPlayerCamera::GenerateSyncTimeContext( void )
-{
-    // Increment the sync time index (skipping 0)
-    m_ucSyncTimeContext = Max < uchar > ( 1, m_ucSyncTimeContext + 1 );
-    return m_ucSyncTimeContext;
-}
-
-
-bool CPlayerCamera::CanUpdateSync( uchar ucRemote )
-{
-    // We can update this camera's sync only if the sync time
-    // matches or either of them are 0 (ignore).
-    return ( m_ucSyncTimeContext == ucRemote ||
-             ucRemote == 0 ||
-             m_ucSyncTimeContext == 0 );
-}

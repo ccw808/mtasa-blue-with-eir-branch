@@ -15,45 +15,7 @@
 
 #include "StdInc.h"
 
-
-void CPhysicalSA::RestoreLastGoodPhysicsState ( void )
-{
-    CEntitySA::RestoreLastGoodPhysicsState ();
-
-    CVector vecDefault;
-    SetTurnSpeed ( &vecDefault );
-    SetMoveSpeed ( &vecDefault );
-
-    CPhysicalSAInterface* pInterface = (CPhysicalSAInterface *)this->GetInterface();
-    pInterface->m_pad4d = 0;
-    pInterface->m_fDamageImpulseMagnitude = 0;
-    pInterface->m_vecCollisionImpactVelocity = CVector ();
-    pInterface->m_vecCollisionPosition = CVector ();
-}
-
 CVector * CPhysicalSA::GetMoveSpeed(CVector * vecMoveSpeed)
-{
-    GetMoveSpeedInternal ( vecMoveSpeed );
-    if ( !IsValidPosition ( *vecMoveSpeed ) )
-    {
-        RestoreLastGoodPhysicsState ();
-        GetMoveSpeedInternal ( vecMoveSpeed );
-    }
-    return vecMoveSpeed;
-}
-
-CVector * CPhysicalSA::GetTurnSpeed(CVector * vecTurnSpeed)
-{
-    GetTurnSpeedInternal ( vecTurnSpeed );
-    if ( !IsValidPosition ( *vecTurnSpeed ) )
-    {
-        RestoreLastGoodPhysicsState ();
-        GetTurnSpeedInternal ( vecTurnSpeed );
-    }
-    return vecTurnSpeed;
-}
-
-CVector * CPhysicalSA::GetMoveSpeedInternal(CVector * vecMoveSpeed)
 {
     DEBUG_TRACE("CVector * CPhysicalSA::GetMoveSpeed(CVector * vecMoveSpeed)");
     DWORD dwFunc = FUNC_GetMoveSpeed;
@@ -69,7 +31,7 @@ CVector * CPhysicalSA::GetMoveSpeedInternal(CVector * vecMoveSpeed)
     return vecMoveSpeed;
 }
 
-CVector * CPhysicalSA::GetTurnSpeedInternal(CVector * vecTurnSpeed)
+CVector * CPhysicalSA::GetTurnSpeed(CVector * vecTurnSpeed)
 {
     DEBUG_TRACE("CVector * CPhysicalSA::GetTurnSpeed(CVector * vecTurnSpeed)");
     DWORD dwFunc = FUNC_GetTurnSpeed;
@@ -91,7 +53,6 @@ VOID CPhysicalSA::SetMoveSpeed(CVector * vecMoveSpeed)
     DWORD dwFunc = FUNC_GetMoveSpeed;
     DWORD dwThis = (DWORD)((CPhysicalSAInterface *)this->GetInterface());
     DWORD dwReturn = 0;
-
     _asm
     {
         mov     ecx, dwThis
@@ -99,12 +60,6 @@ VOID CPhysicalSA::SetMoveSpeed(CVector * vecMoveSpeed)
         mov     dwReturn, eax
     }
     MemCpyFast ((void *)dwReturn, vecMoveSpeed, sizeof(CVector));
-    
-    if ( GetInterface ()->nType == ENTITY_TYPE_OBJECT )
-    {
-        AddToMovingList ();
-        SetStatic ( false );
-    }
 }
 
 VOID CPhysicalSA::SetTurnSpeed(CVector * vecTurnSpeed)
@@ -124,49 +79,49 @@ VOID CPhysicalSA::SetTurnSpeed(CVector * vecTurnSpeed)
 
 float CPhysicalSA::GetMass ( void )
 {
-    return ((CPhysicalSAInterface *)this->GetInterface())->m_fMass;
+    return ((CPhysicalSAInterface *)this->GetInterface())->fMass;
 }
 
 
 void CPhysicalSA::SetMass ( float fMass )
 {
-    ((CPhysicalSAInterface *)this->GetInterface())->m_fMass = fMass;
+    ((CPhysicalSAInterface *)this->GetInterface())->fMass = fMass;
 }
 
 
 float CPhysicalSA::GetTurnMass ( void )
 {
-    return ((CPhysicalSAInterface *)this->GetInterface())->m_fTurnMass;
+    return ((CPhysicalSAInterface *)this->GetInterface())->fTurnMass;
 }
 
 
 void CPhysicalSA::SetTurnMass ( float fTurnMass )
 {
-    ((CPhysicalSAInterface *)this->GetInterface())->m_fTurnMass = fTurnMass;
+    ((CPhysicalSAInterface *)this->GetInterface())->fTurnMass = fTurnMass;
 }
 
 
 float CPhysicalSA::GetElasticity ( void )
 {
-    return ((CPhysicalSAInterface *)this->GetInterface())->m_fElasticity;
+    return ((CPhysicalSAInterface *)this->GetInterface())->fElasticity;
 }
 
 
 void CPhysicalSA::SetElasticity ( float fElasticity )
 {
-    ((CPhysicalSAInterface *)this->GetInterface())->m_fElasticity = fElasticity;
+    ((CPhysicalSAInterface *)this->GetInterface())->fElasticity = fElasticity;
 }
 
 
 float CPhysicalSA::GetBuoyancyConstant ( void )
 {
-    return ((CPhysicalSAInterface *)this->GetInterface())->m_fBuoyancyConstant;
+    return ((CPhysicalSAInterface *)this->GetInterface())->fBuoyancyConstant;
 }
 
 
 void CPhysicalSA::SetBuoyancyConstant ( float fBuoyancyConstant )
 {
-    ((CPhysicalSAInterface *)this->GetInterface())->m_fBuoyancyConstant = fBuoyancyConstant;
+    ((CPhysicalSAInterface *)this->GetInterface())->fBuoyancyConstant = fBuoyancyConstant;
 }
 
 
@@ -183,55 +138,22 @@ VOID CPhysicalSA::ProcessCollision()
     }
 }
 
-
-void CPhysicalSA::AddToMovingList ( void )
-{
-    DWORD dwFunc = FUNC_CPhysical_AddToMovingList;
-    DWORD dwThis = (DWORD)GetInterface ();
-
-    _asm
-    {
-        mov     ecx, dwThis
-        call    dwFunc
-    }
-}
-
 float CPhysicalSA::GetDamageImpulseMagnitude ( void )
 {
-    return ((CPhysicalSAInterface *)this->GetInterface())->m_fDamageImpulseMagnitude;
+    return ((CPhysicalSAInterface *)this->GetInterface())->fDamageImpulseMagnitude;
 }
 
 
 void CPhysicalSA::SetDamageImpulseMagnitude ( float fMagnitude )
 {
-    ((CPhysicalSAInterface *)this->GetInterface())->m_fDamageImpulseMagnitude = fMagnitude;
+    ((CPhysicalSAInterface *)this->GetInterface())->fDamageImpulseMagnitude = fMagnitude;
 }
 
 
 CEntity* CPhysicalSA::GetDamageEntity ( void )
 {
-    CEntitySAInterface * pInterface = ((CPhysicalSAInterface *)this->GetInterface())->m_pCollidedEntity;
-    CPoolsSA * pPools = ((CPoolsSA *)pGame->GetPools());
-    CEntity * pReturn = NULL;
-
-    if ( pPools && pInterface )
-    {
-        switch ( pInterface->nType )
-        {
-            case ENTITY_TYPE_PED:
-                pReturn = (CEntity*)(pPools->GetPed( (DWORD *)pInterface ));
-                break;
-            case ENTITY_TYPE_VEHICLE:
-                pReturn = (CEntity*)(pPools->GetVehicle( (DWORD *)pInterface ));
-                break;
-            case ENTITY_TYPE_OBJECT:
-                pReturn = (CEntity*)(pPools->GetObject ( (DWORD *)pInterface ));
-                break;
-            default:
-                break;
-        }
-    }
-    return pReturn;
+    // TODO: CPhysicalSA::GetDamageEntity
+    return NULL;
 }
 
 
@@ -239,19 +161,19 @@ void CPhysicalSA::SetDamageEntity ( CEntity* pEntity )
 {
     CEntitySA* pEntitySA = dynamic_cast < CEntitySA* > ( pEntity );
     if ( pEntitySA )
-        ((CPhysicalSAInterface *)this->GetInterface())->m_pCollidedEntity = pEntitySA->GetInterface ();
+        ((CPhysicalSAInterface *)this->GetInterface())->damageEntity = pEntitySA->GetInterface ();
 }
 
 
 void CPhysicalSA::ResetLastDamage ( void )
 {
-    ((CPhysicalSAInterface *)this->GetInterface())->m_fDamageImpulseMagnitude = 0.0f;
-    ((CPhysicalSAInterface *)this->GetInterface())->m_pCollidedEntity = NULL;
+    ((CPhysicalSAInterface *)this->GetInterface())->fDamageImpulseMagnitude = 0.0f;
+    ((CPhysicalSAInterface *)this->GetInterface())->damageEntity = NULL;
 }
 
 CEntity * CPhysicalSA::GetAttachedEntity ( void )
 {
-    CEntitySAInterface * pInterface = ((CPhysicalSAInterface *)this->GetInterface())->m_pAttachedEntity;
+    CEntitySAInterface * pInterface = ((CPhysicalSAInterface *)this->GetInterface())->pAttachedEntity;
     CPoolsSA * pPools = ((CPoolsSA *)pGame->GetPools());
     CEntity * pReturn = NULL;
 
@@ -298,7 +220,7 @@ void CPhysicalSA::DetachEntityFromEntity(float fUnkX, float fUnkY, float fUnkZ, 
 
     // DetachEntityFromEntity appears to crash when there's no entity attached (0x544403, bug 2350)
     // So do a NULL check here
-    if (((CPhysicalSAInterface *)this->GetInterface())->m_pAttachedEntity == NULL ) return;
+    if (((CPhysicalSAInterface *)this->GetInterface())->pAttachedEntity == NULL ) return;
 
     _asm
     {
@@ -340,20 +262,21 @@ bool CPhysicalSA::InternalAttachEntityToEntity(DWORD dwEntityInterface, const CV
 void CPhysicalSA::GetAttachedOffsets ( CVector & vecPosition, CVector & vecRotation )
 {
     CPhysicalSAInterface * pInterface = (CPhysicalSAInterface *)this->GetInterface();
-    if ( pInterface->m_pAttachedEntity )
+    if ( pInterface->pAttachedEntity )
     {
-        vecPosition = pInterface->m_vecAttachedOffset;
-        vecRotation = pInterface->m_vecAttachedRotation;
+        vecPosition = pInterface->vecAttachedPosition;
+        vecRotation = pInterface->vecAttachedRotation;
     }
 }
+
 
 void CPhysicalSA::SetAttachedOffsets ( CVector & vecPosition, CVector & vecRotation )
 {
     CPhysicalSAInterface * pInterface = (CPhysicalSAInterface *)this->GetInterface();
-    if ( pInterface->m_pAttachedEntity )
+    if ( pInterface->pAttachedEntity )
     {
-        pInterface->m_vecAttachedOffset = vecPosition;
-        pInterface->m_vecAttachedRotation = vecRotation;
+        pInterface->vecAttachedPosition = vecPosition;
+        pInterface->vecAttachedRotation = vecRotation;
     }
 }
 
@@ -361,12 +284,99 @@ void CPhysicalSA::SetAttachedOffsets ( CVector & vecPosition, CVector & vecRotat
 float CPhysicalSA::GetLighting ( void )
 {
     CPhysicalSAInterface * pInterface = (CPhysicalSAInterface *)this->GetInterface();
-    return pInterface->m_fLighting;
+    return pInterface->fLighting;
 }
 
 
 void CPhysicalSA::SetLighting ( float fLighting )
 {
     CPhysicalSAInterface * pInterface = (CPhysicalSAInterface *)this->GetInterface();
-    pInterface->m_fLighting = fLighting;
+    pInterface->fLighting = fLighting;
 }
+
+
+/*
+VOID CPhysicalSA::SetMassMultiplier(FLOAT fMassMultiplier)
+{
+    ((CPhysicalSAInterface *)this->GetInterface())->MassMultiplier = fMassMultiplier;
+}
+
+FLOAT CPhysicalSA::GetMassMultiplier()
+{
+    return ((CPhysicalSAInterface *)this->GetInterface())->MassMultiplier;
+}
+
+VOID CPhysicalSA::SetAirResistance(FLOAT fAirResistance)
+{
+    ((CPhysicalSAInterface *)this->GetInterface())->AirResistance = fAirResistance;
+}
+
+FLOAT CPhysicalSA::GetAirResistance()
+{
+    return ((CPhysicalSAInterface *)this->GetInterface())->AirResistance;
+}
+
+VOID CPhysicalSA::SetCenterOfMass(CVector * vecCenterOfMass)
+{
+    MemCpyFast (&((CPhysicalSAInterface *)this->GetInterface())->vecCenterOfMass, vecCenterOfMass, sizeof(CVector));
+}
+
+CVector * CPhysicalSA::GetCenterOfMass()
+{
+    return &((CPhysicalSAInterface *)this->GetInterface())->vecCenterOfMass;
+}
+
+BOOL CPhysicalSA::GetExtraHeavy()
+{
+    return ((CPhysicalSAInterface *)this->GetInterface())->ExtraHeavy;
+}
+
+VOID CPhysicalSA::SetExtraHeavy(BOOL bExtraHeavy)
+{
+    ((CPhysicalSAInterface *)this->GetInterface())->ExtraHeavy = bExtraHeavy;
+}
+
+BOOL CPhysicalSA::GetDoGravity()
+{
+    return ((CPhysicalSAInterface *)this->GetInterface())->DoGravity;
+}
+
+VOID CPhysicalSA::SetDoGravity(BOOL bDoGravity)
+{
+    ((CPhysicalSAInterface *)this->GetInterface())->DoGravity = bDoGravity;
+}
+
+BOOL CPhysicalSA::GetInfiniteMass()
+{
+    return ((CPhysicalSAInterface *)this->GetInterface())->InfiniteMass;
+}
+
+VOID CPhysicalSA::SetInfiniteMass(BOOL bInfiniteMass)
+{
+    ((CPhysicalSAInterface *)this->GetInterface())->InfiniteMass = bInfiniteMass;
+}
+
+BOOL CPhysicalSA::GetPositionFrozen()
+{
+    return ((CPhysicalSAInterface *)this->GetInterface())->CoorsFrozenByScript;
+}
+
+VOID CPhysicalSA::SetPositionFrozen(BOOL bPositionFrozen)
+{
+    ((CPhysicalSAInterface *)this->GetInterface())->CoorsFrozenByScript = bPositionFrozen;
+}
+
+BYTE CPhysicalSA::GetLastMaterialToHaveBeenStandingOn()
+{
+    return((CPhysicalSAInterface *)this->GetInterface())->LastMaterialToHaveBeenStandingOn;
+}
+
+BYTE CPhysicalSA::GetLevel()
+{
+    return ((CPhysicalSAInterface *)this->GetInterface())->LivesInThisLevel;
+}
+
+VOID CPhysicalSA::SetLevel(BYTE LivesInThisLevel)
+{
+    ((CPhysicalSAInterface *)this->GetInterface())->LivesInThisLevel = LivesInThisLevel;
+}*/

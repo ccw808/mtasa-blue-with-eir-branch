@@ -28,7 +28,7 @@ public:
 
     bool                        ApplyHandlingData               ( eVehicleTypes eModel, CHandlingEntry* pEntry );
 
-    const CHandlingEntry*       GetModelHandlingData            ( eVehicleTypes eModel );
+    CHandlingEntry*             GetModelHandlingData            ( eVehicleTypes eModel );
     const CHandlingEntry*       GetOriginalHandlingData         ( eVehicleTypes eModel );
 
     eHandlingTypes              GetHandlingID                   ( eVehicleTypes eModel );
@@ -43,15 +43,15 @@ private:
     void                        InitializeDefaultHandlings      ( void );
 
     // Original handling data unaffected by handling.cfg changes
-    static SFixedArray < tHandlingData, HT_MAX >        m_OriginalHandlingData;
+    static tHandlingData        m_OriginalHandlingData [HT_MAX];
 
     // Array with the original handling entries
-    static SFixedArray < CHandlingEntry*, HT_MAX >      m_pOriginalEntries;
+    static CHandlingEntry*      m_pOriginalEntries [HT_MAX];
 
     // Array with the model handling entries
-    static SFixedArray < CHandlingEntry*, HT_MAX >      m_pModelEntries;
+    static CHandlingEntry*      m_pModelEntries [VT_MAX];
 
-    SFixedArray < bool, HT_MAX >                        m_bModelHandlingChanged;
+    bool                        m_bModelHandlingChanged[VT_MAX];
 };
 
 #endif

@@ -21,7 +21,6 @@ namespace SharedUtil
 
     // Forbid use of GetTickCount
     #define GetTickCount GetTickCount_has_been_replaced_with_GetTickCount32
-    #define GetTickCount64 GetTickCount64_wont_work_on_XP_you_IDIOT
 
     //
     // Retrieves the number of milliseconds that have elapsed since some arbitrary point in time.
@@ -46,55 +45,6 @@ namespace SharedUtil
     // Get the local time as a sortable string.
     SString     GetLocalTimeString ( bool bDate = false, bool bMilliseconds = false );
 
-    // Get time in microseconds
-    typedef ulong TIMEUS;
-    TIMEUS      GetTimeUs ( void );
-
-    // Get tick count cached per module
-    long long   GetModuleTickCount64 ( void );
-    void        UpdateModuleTickCount64 ( void );
-
-    // Debugging
-    void        AddTickCount    ( long long llTickCountAdd );
-
-    //
-    // Encapsulate a tick count value
-    //
-    class CTickCount
-    {
-        long long m_llTicks;
-    public:
-        // Constructors
-                 CTickCount ( void )                : m_llTicks ( 0 ) {}
-        explicit CTickCount ( long long llTicks )   : m_llTicks ( llTicks ) {}
-        explicit CTickCount ( double dTicks )       : m_llTicks ( static_cast < long long > ( dTicks ) ) {}
-
-        // Operators
-        CTickCount operator+ ( const CTickCount& other ) const  { return CTickCount ( m_llTicks + other.m_llTicks ); }
-        CTickCount operator- ( const CTickCount& other ) const  { return CTickCount ( m_llTicks - other.m_llTicks ); }
-        CTickCount& operator+= ( const CTickCount& other )      { m_llTicks += other.m_llTicks; return *this; }
-        CTickCount& operator-= ( const CTickCount& other )      { m_llTicks -= other.m_llTicks; return *this; }
-
-        // Comparison
-        bool operator < ( const CTickCount& other ) const       { return m_llTicks < other.m_llTicks; }
-        bool operator > ( const CTickCount& other ) const       { return m_llTicks > other.m_llTicks; }
-        bool operator <= ( const CTickCount& other ) const      { return m_llTicks <= other.m_llTicks; }
-        bool operator >= ( const CTickCount& other ) const      { return m_llTicks >= other.m_llTicks; }
-        bool operator == ( const CTickCount& other ) const      { return m_llTicks == other.m_llTicks; }
-        bool operator != ( const CTickCount& other ) const      { return m_llTicks != other.m_llTicks; }
-
-        // Conversion
-        double      ToDouble        ( void ) const      { return static_cast < double > ( m_llTicks ); }
-        long long   ToLongLong      ( void ) const      { return m_llTicks; }
-        int         ToInt           ( void ) const      { return static_cast < int > ( m_llTicks ); }
-
-        // Static functions
-        static CTickCount Now ( bool bUseModuleTickCount = false )
-        {
-            return CTickCount ( bUseModuleTickCount ? GetModuleTickCount64 () : GetTickCount64_ () );
-        }
-    };
-
 
     //
     // Simple class to measure time passing
@@ -102,169 +52,30 @@ namespace SharedUtil
     //
     class CElapsedTime
     {
+        long long   m_llUpdateTime;
+        long        m_lElapsedTime;
+        long        m_lMaxIncrement;
     public:
-        // MaxIncrement should be set higher than the expected tick interval between Get() calls
-        CElapsedTime ( void )
+
+        CElapsedTime ( long lMaxIncrement = 500 )
+            : m_lMaxIncrement ( lMaxIncrement )
         {
-            m_llMaxIncrement = INT_MAX;
-            m_bUseModuleTickCount = false;
             Reset ();
-        }
-
-        void SetMaxIncrement ( long lMaxIncrement, bool bUseModuleTickCount = false )
-        {
-            m_llMaxIncrement = lMaxIncrement;
-            m_bUseModuleTickCount = bUseModuleTickCount;
-        }
-
-        void SetUseModuleTickCount ( bool bUseModuleTickCount )
-        {
-            m_bUseModuleTickCount = bUseModuleTickCount;
         }
 
         void Reset ( void )
         {
-            m_llUpdateTime = DoGetTickCount ();
-            m_ullElapsedTime = 0;
+            m_llUpdateTime = GetTickCount64_ ();
+            m_lElapsedTime = 0;
         }
 
-        unsigned long long Get ( void )
+        long Get ( void )
         {
-            long long llTime = DoGetTickCount ();
-            m_ullElapsedTime += Clamp ( 0LL, llTime - m_llUpdateTime, m_llMaxIncrement );
+            long long llTime = GetTickCount64_ ();
+            m_lElapsedTime += Min ( m_lMaxIncrement, static_cast < long > ( llTime - m_llUpdateTime ) );
             m_llUpdateTime = llTime;
-            return m_ullElapsedTime;
+            return m_lElapsedTime;
         }
-
-    protected:
-
-        long long DoGetTickCount ( void )
-        {
-            return m_bUseModuleTickCount ? GetModuleTickCount64 () : GetTickCount64_ ();
-        }
-
-        long long           m_llUpdateTime;
-        unsigned long long  m_ullElapsedTime;
-        long long           m_llMaxIncrement;
-        bool                m_bUseModuleTickCount;
-    };
-
-
-    //
-    // Like CElapsedTime except it is not as accurate.
-    // Has a lot better Get() performance than CElapsedTime as counting is done in another thread.
-    //
-    class CElapsedTimeApprox
-    {
-    public:
-
-        CElapsedTimeApprox( void )
-        {
-            m_bInitialized = false;
-            m_uiMaxIncrement = INT_MAX;
-            m_pucCounterValue = NULL;
-            m_ppIntervalCounter = NULL;
-            m_ucUpdateCount = 0;
-            m_uiElapsedTime = 0;
-    #ifndef SHARED_UTIL_MANUAL_TIMER_INITIALIZATION
-            StaticInitialize( this );
-    #endif
-        }
-
-        ~CElapsedTimeApprox( void )
-        {
-            if ( m_ppIntervalCounter && *m_ppIntervalCounter )
-                if ( (*m_ppIntervalCounter)->Release() == 0 )
-                    *m_ppIntervalCounter = NULL;
-        }
-
-        void SetMaxIncrement( uint uiMaxIncrement )
-        {
-            m_uiMaxIncrement = uiMaxIncrement;
-        }
-
-        void Reset( void )
-        {
-            dassert( m_bInitialized );
-            m_ucUpdateCount = DoGetCount();
-            m_uiElapsedTime = 0;
-        }
-
-        // This will wrap if gap between calls is over 25.5 seconds
-        uint Get( void )
-        {
-            dassert( m_bInitialized );
-            uchar ucCount = DoGetCount();
-            uint uiTimeDelta = ( ucCount - m_ucUpdateCount ) * 100U;
-            m_ucUpdateCount = ucCount;
-            m_uiElapsedTime += Min( uiTimeDelta, m_uiMaxIncrement );
-            return m_uiElapsedTime;
-        }
-
-        static void StaticInitialize( CElapsedTimeApprox* pTimer );
-    protected:
-
-        uchar DoGetCount( void )
-        {
-            return *m_pucCounterValue;
-        }
-
-        bool            m_bInitialized;
-        uchar           m_ucUpdateCount;
-        uint            m_uiMaxIncrement;
-        uint            m_uiElapsedTime;
-        uchar*          m_pucCounterValue;
-        CRefCountable** m_ppIntervalCounter;
-    };
-
-
-    //
-    // Timing sections of code
-    //
-    template < int RESERVE_NUM_ITEMS = 20 >
-    class CTimeUsMarker
-    {
-    public:
-        struct SItem
-        {
-            const char* szDesc;
-            TIMEUS timeUs;
-        };
-
-        CTimeUsMarker ( void )
-        {
-            itemList.reserve ( RESERVE_NUM_ITEMS );
-        }
-
-        void Set ( const char* szDesc )
-        {
-            itemList.push_back ( SItem () );
-            SItem& item = itemList.back ();
-            item.timeUs = GetTimeUs ();
-            item.szDesc = szDesc;
-        }
-
-        void SetAndStoreString ( const SString& strDesc )
-        {
-            stringStoreList.push_back ( strDesc );
-            Set ( stringStoreList.back () );
-        }
-
-        SString GetString ( void ) const
-        {
-            SString strStatus;
-            for ( uint i = 1 ; i < itemList.size () ; i++ )
-            {
-                const SItem& itemPrev = itemList[i-1];
-                const SItem& item = itemList[i];
-                strStatus += SString ( "[%0.2fms %s] ", ( item.timeUs - itemPrev.timeUs ) / 1000.f, item.szDesc ); 
-            }
-            return strStatus;
-        }
-
-     protected:
-        std::list < SString > stringStoreList;
-        std::vector < SItem > itemList;
     };
 
 }

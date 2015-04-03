@@ -32,7 +32,6 @@ enum eColShapeType
 
 class CClientColShape : public CClientEntity
 {
-    DECLARE_CLASS( CClientColShape, CClientEntity )
     friend class CClientMarker;
     friend class CClientPickup;
 public:
@@ -64,24 +63,24 @@ public:
     inline void                         SetAutoCallEvent                ( bool bAutoCallEvent )                             { m_bAutoCallEvent = bAutoCallEvent; };
 
     void                                AddCollider                     ( CClientEntity* pEntity )                          { m_Colliders.push_back ( pEntity ); }
-    void                                RemoveCollider                  ( CClientEntity* pEntity )                          { m_Colliders.remove ( pEntity ); }
+    void                                RemoveCollider                  ( CClientEntity* pEntity )                          { if ( !m_Colliders.empty() ) m_Colliders.remove ( pEntity ); }
     bool                                ColliderExists                  ( CClientEntity* pEntity );
     void                                RemoveAllColliders              ( bool bNotify );
-    CFastList < CClientEntity* > ::iterator  CollidersBegin             ( void )                                            { return m_Colliders.begin (); }
-    CFastList < CClientEntity* > ::iterator  CollidersEnd               ( void )                                            { return m_Colliders.end (); }
+    std::list < CClientEntity* > ::iterator  CollidersBegin             ( void )                                            { return m_Colliders.begin (); }
+    std::list < CClientEntity* > ::iterator  CollidersEnd               ( void )                                            { return m_Colliders.end (); }
 
     void                                SizeChanged                     ( void );
 protected:
     CVector                             m_vecPosition;
-    CClientMarkerPtr                    m_pOwningMarker;
-    CClientPickupPtr                    m_pOwningPickup;
+    CClientMarker *                     m_pOwningMarker;
+    CClientPickup *                     m_pOwningPickup;
 
 private:
     bool                                m_bIsEnabled;
     class CClientColManager*            m_pColManager;
     CClientColCallback*                 m_pCallback;
     bool                                m_bAutoCallEvent;  
-    CFastList < CClientEntity* >        m_Colliders;    
+    std::list < CClientEntity* >        m_Colliders;    
 };
 
 #endif

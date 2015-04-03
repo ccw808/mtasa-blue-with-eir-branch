@@ -24,13 +24,12 @@
 #include "CChat.h"
 
 // Macros
-#define CVARS_GET       CClientVariables::GetSingleton().Get
-#define CVARS_SET       CClientVariables::GetSingleton().Set
-#define CVARS_GET_VALUE CClientVariables::GetSingleton().GetValue
+#define CVARS_GET   CClientVariables::GetSingleton().Get
+#define CVARS_SET   CClientVariables::GetSingleton().Set
 
 class CClientVariables : public CCVarsInterface, public CSingleton < CClientVariables >
 {
-    // Sanity macros   << Who ever did this is idiot
+    // Sanity macros
     #define SAN     if(!m_pStorage) return
     #define SANGET  if(!Node(strVariable)) return false
 
@@ -40,7 +39,7 @@ public:
 
     // Get queries
     bool            Get                     ( const std::string& strVariable, bool &val )                    { SANGET; Node(strVariable)->GetTagContent ( val ); return true; };
-    bool            Get                     ( const std::string& strVariable, std::string &val )             { SANGET; val = Node(strVariable)->GetTagContent (); return !val.empty (); };
+    bool            Get                     ( const std::string& strVariable, std::string &val )             { SANGET; val = Node(strVariable)->GetTagContent (); return val.empty (); };
     bool            Get                     ( const std::string& strVariable, int &val )                     { SANGET; Node(strVariable)->GetTagContent ( val ); return true; };
     bool            Get                     ( const std::string& strVariable, unsigned int &val )            { SANGET; Node(strVariable)->GetTagContent ( val ); return true; };
     bool            Get                     ( const std::string& strVariable, float &val )                   { SANGET; Node(strVariable)->GetTagContent ( val ); return true; };
@@ -58,17 +57,11 @@ public:
     void            Set                     ( const std::string& strVariable, CVector2D val );
     void            Set                     ( const std::string& strVariable, CColor val );
 
-    void            ClampValue              ( const std::string& strVariable, int iMinValue, int iMaxValue );
-    void            ClampValue              ( const std::string& strVariable, float fMinValue, float fMaxValue );
-    void            ClampValue              ( const std::string& strVariable, CColor minValue, CColor maxValue );
-    void            ClampValue              ( const std::string& strVariable, CVector2D minValue, CVector2D maxValue );
-
     bool            Exists                  ( const std::string& strVariable );
 
     bool            Load                    ( void );
     bool            IsLoaded                ( void ) { return m_bLoaded; }
     int             GetRevision             ( void ) { return m_iRevision; }
-    void            ValidateValues          ( void );
 
 private:
     CXMLNode*       Node                    ( const std::string& strVariable );

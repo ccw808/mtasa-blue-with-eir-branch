@@ -10,7 +10,7 @@
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *
 *****************************************************************************/
-//#pragma once      Don't do this
+#pragma once
 
 /*************************************************************************
 	Simplification of some 'unsigned' types
@@ -37,60 +37,32 @@ typedef signed char         int8;       //  8
 typedef unsigned char       BYTE;       //  8
 typedef unsigned short      WORD;       //  16
 typedef unsigned long       DWORD;      //  32      32      64
-typedef float               FLOAT;      //  32
 
 // Type: considerations:
 // a) long (and therefore DWORD) is 64 bits when compiled using 64 bit GCC 
 // b) char range can be -127 to 128 or 0 to 255 depending on compiler options/mood
 
 
-#include <assert.h>
 #include "SharedUtil.Defines.h"
 #include "SharedUtil.AllocTracking.h"
 #include <list>
 #include <vector>
 #include <map>
-#include <set>
 #include <deque>
 #include <algorithm>
-#include <limits.h>
+#include <limits>
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
 #include <string>
 #include <stdarg.h>
-
-// Vendor
-#ifndef _
-#define _ //Use a dummy localisation define for modules that don't need it
-#endif
-
+#include <assert.h>
 #include "SString.h"
-#include "WString.h"
-
-#define _E(code) SString(" [%s]",code)
-
-#include "SharedUtil.Map.h"
-#if defined(SHARED_UTIL_WITH_HASH_MAP) || defined(SHARED_UTIL_WITH_FAST_HASH_MAP)
-    #include "SharedUtil.HashMap.h"
-#endif
-#if defined(SHARED_UTIL_WITH_FAST_HASH_MAP)
-    #include "SharedUtil.FastHashMap.h"
-    #include "SharedUtil.FastHashSet.h"
-#endif
 #include "SharedUtil.Misc.h"
 #include "SharedUtil.File.h"
 #include "SharedUtil.Time.h"
 #include "SharedUtil.Buffer.h"
 #include "SharedUtil.Game.h"
-#include "SharedUtil.Math.h"
-#include "SharedUtil.ClassIdent.h"
-#include "SharedUtil.Hash.h"
-#if defined(SHARED_UTIL_WITH_SYS_INFO)
-    #include "SharedUtil.SysInfo.h"
-#endif
-#include "SharedUtil.Profiling.h"
-#include "SharedUtil.Logging.h"
-#include "CFastList.h"
 
 #ifdef _MSC_VER
 #define snprintf _snprintf

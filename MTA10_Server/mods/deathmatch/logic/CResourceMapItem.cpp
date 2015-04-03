@@ -63,7 +63,7 @@ bool CResourceMapItem::Start ( void )
     if ( !m_pElementGroup )
     {
         m_pVM = m_resource->GetVirtualMachine ();
-        m_pElementGroup = new CElementGroup ();
+        m_pElementGroup = new CElementGroup ( m_resource );
 
         LoadMap ( m_strResourceFileName.c_str () );
         return true;
@@ -108,7 +108,7 @@ bool CResourceMapItem::LoadMap ( const char * szMapFilename )
         // Create Map Element
         m_pMapElement = new CDummy ( g_pGame->GetGroups(), m_resource->GetResourceRootElement () );
         m_pMapElement->SetTypeName ( "map" );
-        m_pMapElement->SetName ( m_strShortName );
+        m_pMapElement->SetName ( m_strShortName.c_str () );
 
         // Load and parse it
         m_pXMLFile = g_pServerInterface->GetXML ()->CreateXML ( szMapFilename );
@@ -182,21 +182,17 @@ bool CResourceMapItem::HandleNode ( CXMLNode& Node, CElement* pParent, vector < 
     std::string strBuffer;
     strBuffer = Node.GetTagName ();
 
-    EElementType elementType;
-    StringToEnum ( strBuffer, elementType );
-
     // Handle it based on the tag name
     CElement* pNode = NULL;
-    if ( elementType == CElement::VEHICLE )
+    if ( strBuffer.compare ( "vehicle" ) == 0 )
     {
         pNode = m_pVehicleManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
     }
-    else if ( elementType == CElement::OBJECT )
+    else if ( strBuffer.compare ( "object" ) == 0 )
     {
-        bool bIsLowLod = false;
-        pNode = m_pObjectManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents, bIsLowLod );
+        pNode = m_pObjectManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
     }
-    else if ( elementType == CElement::BLIP )
+    else if ( strBuffer.compare ( "blip" ) == 0 )
     {
         CBlip* pBlip = m_pBlipManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
         pNode = pBlip;
@@ -207,11 +203,11 @@ bool CResourceMapItem::HandleNode ( CXMLNode& Node, CElement* pParent, vector < 
         }
         */
     }
-    else if ( elementType == CElement::PICKUP )
+    else if ( strBuffer.compare ( "pickup" ) == 0 )
     {
         pNode = m_pPickupManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
     }
-    else if ( elementType == CElement::MARKER )
+    else if ( strBuffer.compare ( "marker" ) == 0 )
     {
         CMarker* pMarker = m_pMarkerManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
         pNode = pMarker;
@@ -222,7 +218,7 @@ bool CResourceMapItem::HandleNode ( CXMLNode& Node, CElement* pParent, vector < 
         }
         */
     }
-    else if ( elementType == CElement::RADAR_AREA )
+    else if ( strBuffer.compare ( "radararea" ) == 0 )
     {
         CRadarArea* pRadarArea = m_pRadarAreaManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
         pNode = pRadarArea;
@@ -233,15 +229,15 @@ bool CResourceMapItem::HandleNode ( CXMLNode& Node, CElement* pParent, vector < 
         }
         */
     }
-    else if ( elementType == CElement::TEAM )
+    else if ( strBuffer.compare ( "team" ) == 0 )
     {
         pNode = m_pTeamManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
     }
-    else if ( elementType == CElement::PED )
+    else if ( strBuffer.compare ( "ped" ) == 0 )
     {
         pNode = m_pPedManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
     }
-    else if ( elementType == CElement::WATER )
+    else if ( strBuffer.compare ( "water" ) == 0 )
     {
         pNode = m_pWaterManager->CreateFromXML ( pParent, Node, m_pVM, m_pEvents );
     }
@@ -300,7 +296,7 @@ void CResourceMapItem::LinkupElements ( void )
     {
         CVehicle* pVehicle = *iterVehicles;
 
-        const char* szAttachToID = pVehicle->GetAttachToID ();
+        char* szAttachToID = pVehicle->GetAttachToID ();
         if ( szAttachToID [ 0 ] )
         {
             CElement* pElement = g_pGame->GetMapManager ()->GetRootElement ()->FindChild ( szAttachToID, 0, true );
@@ -313,7 +309,7 @@ void CResourceMapItem::LinkupElements ( void )
     for ( ; iterPlayers != m_pPlayerManager->IterEnd (); iterPlayers++ )
     {
         CPlayer* pPlayer = *iterPlayers;
-        const char* szAttachToID = pPlayer->GetAttachToID ();
+        char* szAttachToID = pPlayer->GetAttachToID ();
         if ( szAttachToID [ 0 ] )
         {
             CElement* pElement = g_pGame->GetMapManager ()->GetRootElement ()->FindChild ( szAttachToID, 0, true );
@@ -322,11 +318,11 @@ void CResourceMapItem::LinkupElements ( void )
         }
     }
 
-    CObjectListType::const_iterator iterObjects = m_pObjectManager->IterBegin ();
+    list < CObject* > ::const_iterator iterObjects = m_pObjectManager->IterBegin ();
     for ( ; iterObjects != m_pObjectManager->IterEnd (); iterObjects++ )
     {
         CObject* pObject = *iterObjects;
-        const char* szAttachToID = pObject->GetAttachToID ();
+        char* szAttachToID = pObject->GetAttachToID ();
         if ( szAttachToID [ 0 ] )
         {
             CElement* pElement = g_pGame->GetMapManager ()->GetRootElement ()->FindChild ( szAttachToID, 0, true );
@@ -339,7 +335,7 @@ void CResourceMapItem::LinkupElements ( void )
     for ( ; iterBlips != m_pBlipManager->IterEnd (); iterBlips++ )
     {
         CBlip* pBlip = *iterBlips;
-        const char* szAttachToID = pBlip->GetAttachToID ();
+        char* szAttachToID = pBlip->GetAttachToID ();
         if ( szAttachToID [ 0 ] )
         {
             CElement* pElement = g_pGame->GetMapManager ()->GetRootElement ()->FindChild ( szAttachToID, 0, true );

@@ -34,26 +34,19 @@ public:
     static int      getMinuteDuration                   ( lua_State* luaVM );
     static int      isGarageOpen                        ( lua_State* luaVM );
     static int      isGlitchEnabled                     ( lua_State* luaVM );
-    static int      setJetpackWeaponEnabled             ( lua_State* luaVM );
-    static int      getJetpackWeaponEnabled             ( lua_State* luaVM );
     static int      getCloudsEnabled                    ( lua_State* luaVM );
     static int      getTrafficLightState                ( lua_State* luaVM );
     static int      areTrafficLightsLocked              ( lua_State* luaVM );
     static int      getJetpackMaxHeight                 ( lua_State* luaVM );
     static int      getHeatHaze                         ( lua_State* luaVM );
     static int      getSkyGradient                      ( lua_State* luaVM );
-    static int      getInteriorSoundsEnabled            ( lua_State* luaVM );
+    static int      areInteriorSoundsEnabled            ( lua_State* luaVM );
     static int      getRainLevel                        ( lua_State* luaVM );
     static int      getSunSize                          ( lua_State* luaVM );
     static int      getSunColor                         ( lua_State* luaVM );
     static int      getWindVelocity                     ( lua_State* luaVM );
     static int      getFarClipDistance                  ( lua_State* luaVM );
     static int      getFogDistance                      ( lua_State* luaVM );
-    static int      getAircraftMaxHeight                ( lua_State* luaVM );
-    static int      getAircraftMaxVelocity              ( lua_State* luaVM );
-    static int      setOcclusionsEnabled                ( lua_State* luaVM );
-    static int      getOcclusionsEnabled                ( lua_State* luaVM );
-    static int      getMoonSize                         ( lua_State* luaVM );
 
     // Set
     static int      setTime                             ( lua_State* luaVM );
@@ -79,11 +72,6 @@ public:
     static int      setWindVelocity                     ( lua_State* luaVM );
     static int      setFarClipDistance                  ( lua_State* luaVM );
     static int      setFogDistance                      ( lua_State* luaVM );
-    static int      setAircraftMaxHeight                ( lua_State* luaVM );
-    static int      setAircraftMaxVelocity              ( lua_State* luaVM );
-    static int      setPedTargetingMarkerEnabled        ( lua_State* luaVM );
-    static int      isPedTargetingMarkerEnabled         ( lua_State* luaVM );
-    static int      setMoonSize                         ( lua_State* luaVM );
 
     // Reset
     static int      resetSkyGradient                    ( lua_State* luaVM );
@@ -94,10 +82,6 @@ public:
     static int      resetWindVelocity                   ( lua_State* luaVM );
     static int      resetFarClipDistance                ( lua_State* luaVM );
     static int      resetFogDistance                    ( lua_State* luaVM );
-    static int      RemoveWorldModel                    ( lua_State* luaVM );
-    static int      RestoreWorldModel                   ( lua_State* luaVM );
-    static int      RestoreAllWorldModels               ( lua_State* luaVM );
-    static int      resetMoonSize                       ( lua_State* luaVM );
 };
 
 #endif

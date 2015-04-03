@@ -52,11 +52,6 @@ public:
     DECLARE_ELEMENT_RPC ( SetVehicleHeadLightColor );
     DECLARE_ELEMENT_RPC ( SetVehicleTurretPosition );
     DECLARE_ELEMENT_RPC ( SetVehicleDoorOpenRatio );
-    DECLARE_ELEMENT_RPC ( SetVehicleVariant );
-    DECLARE_ELEMENT_RPC ( GiveVehicleSirens );
-    DECLARE_ELEMENT_RPC ( RemoveVehicleSirens );
-    DECLARE_ELEMENT_RPC ( SetVehicleSirens );
-    DECLARE_ELEMENT_RPC ( SetVehiclePlateText );
 };
 
 #endif

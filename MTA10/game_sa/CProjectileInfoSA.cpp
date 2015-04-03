@@ -55,8 +55,9 @@ CProjectileInfo * CProjectileInfoSA::GetProjectileInfo ( void * projectileInfoIn
     return projectileInfo[((DWORD)projectileInfoInterface - ARRAY_CProjectileInfo) / sizeof(CProjectileInfoSAInterface)];
 }
 
-void CProjectileInfoSA::RemoveProjectile ( CProjectileInfo * pProjectileInfo, CProjectile * pProjectile, bool bBlow )
+void CProjectileInfoSA::RemoveProjectile ( CProjectileInfo * pProjectileInfo, CProjectile * pProjectile )
 {
+    DWORD dwFunc = FUNC_RemoveProjectile;
     CProjectileInfoSAInterface * projectileInfoInterface = ((CProjectileInfoSA*)pProjectileInfo)->internalInterface;
 
     CProjectileSA* pProjectileSA = dynamic_cast < CProjectileSA* > ( pProjectile );
@@ -72,26 +73,12 @@ void CProjectileInfoSA::RemoveProjectile ( CProjectileInfo * pProjectileInfo, CP
         // Has it not already been removed by GTA?
         if ( pProjectileInfo->IsActive () )
         {
-            if ( bBlow )
+            _asm
             {
-                DWORD dwFunc = FUNC_RemoveProjectile;
-                _asm
-                {
-                    push    projectileInterface
-                    push    projectileInfoInterface
-                    call    dwFunc
-                    add     esp, 8
-                }
-            }
-            else
-            {
-                DWORD dwFunc = FUNC_RemoveIfThisIsAProjectile;
-                _asm
-                {
-                    push   projectileInterface
-                    call   dwFunc
-                    add    esp, 4
-                }
+                push    projectileInterface
+                push    projectileInfoInterface
+                call    dwFunc
+                add     esp, 8
             }
         }
     }
@@ -215,5 +202,5 @@ void CProjectileInfoSA::SetTarget ( CEntity* pEntity )
 
 bool CProjectileInfoSA::IsActive ( void )
 {
-    return ( internalInterface->bProjectileActive == 1 && internalInterface->dwProjectileType != 0 );
+    return ( internalInterface->bProjectileActive == 1 );
 }

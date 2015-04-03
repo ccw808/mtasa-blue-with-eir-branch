@@ -23,7 +23,7 @@ struct SBindableKey;
 
 typedef void ( *KeyFunctionBindHandler ) ( CKeyFunctionBind* pBind );
 typedef void ( *ControlFunctionBindHandler ) ( CControlFunctionBind* pBind );
-typedef bool ( *KeyStrokeHandler ) ( const SString& strKey, bool bState, bool bIsConsoleInputKey );
+typedef void ( *KeyStrokeHandler ) ( const SBindableKey * pKey, bool bState );
 typedef bool ( *CharacterKeyHandler ) ( WPARAM wChar );
  
 enum eKeyData
@@ -36,7 +36,7 @@ enum eKeyData
 
 struct SBindableKey
 {
-    const char szKey [20];
+    char szKey [20];
     unsigned long ulCode;
     int iGTARelative;
     eKeyData data;
@@ -53,12 +53,12 @@ enum eControlType
 
 struct SBindableGTAControl
 {
-    const char szControl [25];
+    char szControl [25];
     eControllerAction action;
     eControlType controlType;
     bool bState;
     bool bEnabled;
-    const char* szDescription;
+    char* szDescription;
 };
 
 enum eKeyBindType
@@ -93,15 +93,13 @@ public:
 class CCommandBind: public CKeyBindWithState
 {
 public:
-    inline          CCommandBind    ( void ) { szCommand = NULL; szArguments = NULL; szResource = NULL; bScriptCreated = false; ; bIsReplacingScriptKey = false; }
+    inline          CCommandBind    ( void ) { szCommand = NULL; szArguments = NULL; szResource = NULL; }
     inline          ~CCommandBind   ( void ) { delete [] szCommand; if ( szArguments ) delete [] szArguments; if ( szResource ) delete [] szResource; }
     eKeyBindType    GetType         ( void ) { return KEY_BIND_COMMAND; }
     char*           szCommand;
     char*           szArguments;
     char*           szResource;
-    bool            bScriptCreated;         // true if created by script
-    bool            bIsReplacingScriptKey;  // true if script set key is not being used
-    SString         strOriginalScriptKey;   // Original key set by script
+    char*           szDefaultKey;
 };
 
 class CKeyFunctionBind: public CKeyBindWithState
@@ -144,25 +142,28 @@ public:
     virtual std::list < CKeyBind* > ::const_iterator IterEnd    ( void ) = 0;
 
     // Command-bind funcs
-    virtual bool                    AddCommand                  ( const char* szKey, const char* szCommand, const char* szArguments, bool bState, const char* szResource = NULL , bool bScriptCreated = false, const char* szOriginalScriptKey = NULL ) = 0;
+    virtual bool                    AddCommand                  ( const char* szKey, const char* szCommand, const char* szArguments = NULL, bool bState = true, const char* szResource = NULL, bool bAltKey = false ) = 0;
     virtual bool                    AddCommand                  ( const SBindableKey* pKey, const char* szCommand, const char* szArguments = NULL, bool bState = true ) = 0;
-    virtual bool                    CommandExists               ( const char* szKey, const char* szCommand, bool bCheckState = false, bool bState = true, const char* szArguments = NULL, const char* szResource = NULL, bool bCheckScriptCreated = false, bool bScriptCreated = false ) = 0;
+    virtual bool                    RemoveCommand               ( const char* szKey, const char* szCommand, bool bCheckState = false, bool bState = true, const char* szResource = NULL ) = 0;
+    virtual bool                    RemoveAllCommands           ( const char* szKey, bool bCheckState = false, bool bState = true ) = 0;
+    virtual bool                    RemoveAllCommands           ( void ) = 0;
+    virtual bool                    CommandExists               ( const char* szKey, const char* szCommand, bool bCheckState = false, bool bState = true, const char* szArguments = NULL, const char* szResource = NULL ) = 0;
     virtual bool                    SetCommandActive            ( const char* szKey, const char* szCommand, bool bState, const char* szArguments, const char* szResource, bool bActive, bool checkHitState ) = 0;
     virtual void                    SetAllCommandsActive        ( const char* szResource, bool bActive, const char* szCommand = NULL, bool bState = true, const char* szArguments = NULL, bool checkHitState = false ) = 0;
     virtual CCommandBind*           GetBindFromCommand          ( const char* szCommand, const char* szArguments = NULL, bool bMatchCase = true, const char* szKey = NULL, bool bCheckHitState = false, bool bState = NULL ) = 0;
     virtual bool                    GetBoundCommands            ( const char* szCommand, std::list < CCommandBind * > & commandsList ) = 0;
-    virtual void                    UserChangeCommandBoundKey   ( CCommandBind* pBind, const SBindableKey* pNewBoundKey ) = 0;
-    virtual void                    UserRemoveCommandBoundKey   ( CCommandBind* pBind ) = 0;
-    virtual CCommandBind*           FindMatchingUpBind          ( CCommandBind* pBind ) = 0;
 
     // Control-bind funcs
     virtual bool                    AddGTAControl               ( const char* szKey, const char* szControl ) = 0;
+    virtual bool                    AddGTAControl               ( const char* szKey, eControllerAction action ) = 0;
     virtual bool                    AddGTAControl               ( const SBindableKey* pKey, SBindableGTAControl* pControl ) = 0;
     virtual bool                    RemoveGTAControl            ( const char* szKey, const char* szControl ) = 0;
+    virtual void                    RemoveGTAControls           ( const char* szControl, bool bDestroy = true ) = 0;
     virtual bool                    RemoveAllGTAControls        ( const char* szKey ) = 0;
     virtual bool                    RemoveAllGTAControls        ( void ) = 0;
     virtual bool                    GTAControlExists            ( const char* szKey, const char* szControl ) = 0;
     virtual bool                    GTAControlExists            ( const SBindableKey* pKey, SBindableGTAControl* pControl ) = 0;
+    virtual unsigned int            GTAControlsCount            ( void ) = 0;
     virtual void                    CallGTAControlBind          ( CGTAControlBind* pBind, bool bState ) = 0;
     virtual void                    CallAllGTAControlBinds      ( eControlType controlType, bool bState ) = 0;
     virtual bool                    GetBoundControls            ( SBindableGTAControl * pControl, std::list < CGTAControlBind * > & controlsList ) = 0;
@@ -193,14 +194,19 @@ public:
     virtual bool                    ControlFunctionExists       ( SBindableGTAControl* pControl, ControlFunctionBindHandler Handler, bool bCheckState = false, bool bState = true ) = 0;
 
     // Key/code funcs
+    virtual char*                   GetKeyFromCode              ( unsigned long ulCode ) = 0;
+    virtual bool                    GetCodeFromKey              ( const char* szKey, unsigned long& ucCode ) = 0;
     virtual const SBindableKey*     GetBindableFromKey          ( const char* szKey ) = 0;
     virtual const SBindableKey*     GetBindableFromGTARelative  ( int iGTAKey ) = 0;
     virtual bool                    IsKey                       ( const char* szKey ) = 0;
+    virtual char*                   GetKeyFromGTARelative       ( int iGTAKey ) = 0;
     virtual const SBindableKey*     GetBindableFromMessage      ( UINT uMsg, WPARAM wParam, LPARAM lParam, bool& bState ) = 0;
     virtual void                    SetKeyStrokeHandler         ( KeyStrokeHandler Handler ) = 0;
     virtual void                    SetCharacterKeyHandler      ( CharacterKeyHandler Handler ) = 0;
 
     // Control/action funcs
+    virtual char*                   GetControlFromAction        ( eControllerAction action ) = 0;
+    virtual bool                    GetActionFromControl        ( const char* szControl, eControllerAction& action ) = 0;
     virtual SBindableGTAControl*    GetBindableFromControl      ( const char* szControl ) = 0;
     virtual SBindableGTAControl*    GetBindableFromAction       ( eControllerAction action ) = 0;
     virtual bool                    IsControl                   ( const char* szControl ) = 0;
@@ -217,14 +223,13 @@ public:
     virtual bool                    LoadFromXML                 ( class CXMLNode* pMainNode ) = 0;
     virtual bool                    SaveToXML                   ( class CXMLNode* pMainNode ) = 0;
     virtual void                    LoadDefaultBinds            ( void ) = 0;
-    //virtual void                    LoadDefaultControls         ( void ) = 0;
+    virtual void                    LoadDefaultControls         ( void ) = 0;
     virtual void                    LoadDefaultCommands         ( bool bForce ) = 0;
     virtual void                    LoadControlsFromGTA         ( void ) = 0;
 
     virtual void                    BindCommand                 ( const char* szCmdLine ) = 0;
     virtual void                    UnbindCommand               ( const char* szCmdLine ) = 0;
     virtual void                    PrintBindsCommand           ( const char* szCmdLine ) = 0;
-    virtual bool                    TriggerKeyStrokeHandler     ( const SString& strKey, bool bActive, bool bIsConsoleInputKey ) = 0;
 };
 
 #endif

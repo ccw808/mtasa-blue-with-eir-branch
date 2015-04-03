@@ -29,7 +29,6 @@ namespace
         int Current;
         int Max;
         int OpenXMLFiles;
-        int OpenFiles;
         int Refs;
         int TimerCount;
         int ElementCount;
@@ -56,7 +55,6 @@ namespace
 class CPerfStatLuaMemoryImpl : public CPerfStatLuaMemory
 {
 public:
-    ZERO_ON_NEW
                                 CPerfStatLuaMemoryImpl  ( void );
     virtual                     ~CPerfStatLuaMemoryImpl ( void );
 
@@ -181,7 +179,6 @@ void CPerfStatLuaMemoryImpl::UpdateLuaMemory ( CLuaMain* pLuaMain, int iMemUsed 
     pLuaMainMemory->Max = Max ( pLuaMainMemory->Max, pLuaMainMemory->Current );
 
     pLuaMainMemory->OpenXMLFiles = pLuaMain->GetXMLFileCount ();
-    pLuaMainMemory->OpenFiles = pLuaMain->GetOpenFileCount ();
     pLuaMainMemory->Refs = pLuaMain->m_CallbackTable.size ();
     pLuaMainMemory->TimerCount = pLuaMain->GetTimerCount ();
     pLuaMainMemory->ElementCount = pLuaMain->GetElementCount ();
@@ -264,14 +261,11 @@ void CPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CPerfStatResult* pResult, const
     pResult->AddColumn ( "current" );
     pResult->AddColumn ( "max" );
     pResult->AddColumn ( "XMLFiles" );
-    pResult->AddColumn ( "OpenFiles" );
     pResult->AddColumn ( "refs" );
     pResult->AddColumn ( "Timers" );
     pResult->AddColumn ( "Elements" );
     pResult->AddColumn ( "TextDisplays" );
     pResult->AddColumn ( "TextItems" );
-    pResult->AddColumn ( "DB Queries" );
-    pResult->AddColumn ( "DB Connections" );
 
     // Calc totals
     if ( strFilter == "" )
@@ -302,28 +296,23 @@ void CPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CPerfStatResult* pResult, const
 
         row[c++] = SString ( "%d KB", calcedCurrent );
         row[c++] = SString ( "%d KB", calcedMax );
-
-        // Some extra 'all VM' things
-        c += 6;
-        row[c++] = !g_pStats->iDbJobDataCount ? "-" : SString ( "%d", g_pStats->iDbJobDataCount );
-        row[c++] = g_pStats->iDbConnectionCount - 2 == 0 ? "-" : SString ( "%d", g_pStats->iDbConnectionCount - 2 );
     }
 
     // For each VM
     for ( CLuaMainMemoryMap::iterator iter = AllLuaMemory.LuaMainMemoryMap.begin () ; iter != AllLuaMemory.LuaMainMemoryMap.end () ; ++iter )
     {
         CLuaMainMemory& LuaMainMemory = iter->second;
-        const SString& strResName = iter->first->GetScriptName ();
+        SString resname = iter->first->GetScriptNamePointer ();
 
         // Apply filter
-        if ( strFilter != "" && strResName.find ( strFilter ) == SString::npos )
+        if ( strFilter != "" && resname.find ( strFilter ) == SString::npos )
             continue;
 
         // Add row
         SString* row = pResult->AddRow ();
 
         int c = 0;
-        row[c++] = strResName;
+        row[c++] = resname;
 
         if ( labs ( LuaMainMemory.Delta ) >= 1 )
         {
@@ -335,7 +324,6 @@ void CPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CPerfStatResult* pResult, const
         row[c++] = SString ( "%d KB", LuaMainMemory.Current );
         row[c++] = SString ( "%d KB", LuaMainMemory.Max );
         row[c++] = !LuaMainMemory.OpenXMLFiles ? "-" : SString ( "%d", LuaMainMemory.OpenXMLFiles );
-        row[c++] = !LuaMainMemory.OpenFiles ? "-" : SString ( "%d", LuaMainMemory.OpenFiles );
         row[c++] = !LuaMainMemory.Refs ? "-" : SString ( "%d", LuaMainMemory.Refs );
         row[c++] = !LuaMainMemory.TimerCount ? "-" : SString ( "%d", LuaMainMemory.TimerCount );
         row[c++] = !LuaMainMemory.ElementCount ? "-" : SString ( "%d", LuaMainMemory.ElementCount );

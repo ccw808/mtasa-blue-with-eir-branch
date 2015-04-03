@@ -30,7 +30,6 @@
 #define _CEGUIBase_h_
 
 #include <cassert>
-#include <algorithm>
 
 // bring in configuration options
 #include "CEGUIConfig.h"
@@ -101,8 +100,8 @@
 #    define ceguimin	std::_cpp_min
 #    define ceguimax	std::_cpp_max
 #else
-template<class T> static inline T ceguimin ( const T& a, const T& b ) { return std::min(a,b); }
-template<class T> static inline T ceguimax ( const T& a, const T& b ) { return std::max(a,b); }
+#    define ceguimin	std::min
+#    define ceguimax	std::max
 #endif
 
 

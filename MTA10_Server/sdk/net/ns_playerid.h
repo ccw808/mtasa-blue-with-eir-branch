@@ -15,39 +15,22 @@
 #define __NS_PLAYERID_H
 
 #include <MTAPlatform.h>
-
-class SNetExtraInfo : public CRefCountable
-{
-protected:
-    SNetExtraInfo( const SNetExtraInfo& );
-    const SNetExtraInfo& operator=( const SNetExtraInfo& );
-    ~SNetExtraInfo ( void ) {}
-public:
-    ZERO_ON_NEW
-    SNetExtraInfo( void ) {}
-
-    bool    m_bHasPing;
-    uint    m_uiPing;
-};
+#include <SharedUtil.h>
 
 
 class NetServerPlayerID
 {
-protected:
+public:
     unsigned long           m_uiBinaryAddress;
     unsigned short          m_usPort;
+    CStaticString < 32 >    m_strSerial;
+    CStaticString < 32 >    m_strPlayerVersion;
 
 public:
     NetServerPlayerID ( void )
     {
         m_uiBinaryAddress = 0xFFFFFFFF;
         m_usPort = 0xFFFF;
-    };
-
-    NetServerPlayerID ( unsigned long uiBinaryAddress, unsigned short usPort )
-    {
-        m_uiBinaryAddress = uiBinaryAddress;
-        m_usPort = usPort;
     };
 
     ~NetServerPlayerID ( void )
@@ -64,15 +47,14 @@ public:
         return ((left.m_uiBinaryAddress != right.m_uiBinaryAddress) || (left.m_usPort != right.m_usPort));
     };
 
-    friend inline bool operator < ( const NetServerPlayerID& left, const NetServerPlayerID& right )
-    {
-        return left.m_uiBinaryAddress < right.m_uiBinaryAddress
-               || ( left.m_uiBinaryAddress == right.m_uiBinaryAddress && left.m_usPort < right.m_usPort );
-    } 
-
-
     inline unsigned long    GetBinaryAddress    ( void ) const                      { return m_uiBinaryAddress; };
     inline unsigned short   GetPort             ( void ) const                      { return m_usPort; };
+    
+    const char*             GetSerial           ( void ) const                      { return m_strSerial; };
+    inline void             SetSerial           ( const char* szSerial )            { m_strSerial = szSerial; };
+
+    const char*             GetPlayerVersion    ( void ) const                      { return m_strPlayerVersion; }
+    void                    SetPlayerVersion    ( const char* szPlayerVersion )     { m_strPlayerVersion = szPlayerVersion; }
 };
 
 #endif

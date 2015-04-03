@@ -26,7 +26,6 @@ class ASE;
     #include <sys/socket.h>
     #include <sys/stat.h>
     #include <netinet/in.h>
-    #include <arpa/inet.h>
     #define sockclose close
 #endif
 
@@ -39,29 +38,25 @@ class ASE;
 
 #include <list>
 
-#define MAX_ASE_GAME_TYPE_LENGTH    200
-#define MAX_ASE_MAP_NAME_LENGTH     200
-#define MAX_RULE_KEY_LENGTH         200
-#define MAX_RULE_VALUE_LENGTH       200
-#define MAX_ANNOUNCE_VALUE_LENGTH   200
-
 class CASERule;
 
 class ASE
 {
 public:
-    ZERO_ON_NEW
-                            ASE                      ( CMainConfig* pMainConfig, CPlayerManager* pPlayerManager, unsigned short usPort, const char* szServerIP = NULL );
+                            ASE                      ( CMainConfig* pMainConfig, CPlayerManager* pPlayerManager, unsigned short usPort, const char* szServerIP = NULL, bool bLan = false );
                             ~ASE                     ( void );
 
     void                    DoPulse                  ( void );
-    bool                    SetPortEnabled           ( bool bInternetEnabled, bool bLanEnabled );
 
     static ASE*             GetInstance              ( void )                { return _instance; }
 
+    const std::string&      QueryFullCached          ( void );
+    std::string             QueryFull                ( void );
+    const std::string&      QueryLightCached         ( void );
+    std::string             QueryLight               ( void );
+    const std::string&      QueryXfireLightCached    ( void );
+    std::string             QueryXfireLight          ( void );
     unsigned long           GetMasterServerQueryCount ( void )          { return m_ulMasterServerQueryCount; }
-    uint                    GetTotalQueryCount      ( void )            { return m_uiNumQueriesTotal; }
-    uint                    GetQueriesPerMinute     ( void )            { return m_uiNumQueriesPerMinute; }
 
     CLanBroadcast*          InitLan             ( void );
 
@@ -81,16 +76,7 @@ public:
     list < CASERule* > ::iterator IterBegin     ( void )                { return m_Rules.begin (); }
     list < CASERule* > ::iterator IterEnd       ( void )                { return m_Rules.end (); }
 
-    std::string             QueryLight               ( void );
 private:
-    const std::string*      QueryFullCached          ( void );
-    std::string             QueryFull                ( void );
-    const std::string*      QueryLightCached         ( void );
-    const std::string*      QueryXfireLightCached    ( void );
-    std::string             QueryXfireLight          ( void );
-
-    long long               m_llCurrentTime;
-    uint                    m_uiCurrentPlayerCount;
 
     CMainConfig*            m_pMainConfig;
     CPlayerManager*         m_pPlayerManager;
@@ -101,14 +87,13 @@ private:
     std::string             m_strPort;
 
     static ASE*             _instance;
-    time_t                  m_tStartTime;
 
     list < CASERule* >      m_Rules;
 
     unsigned int            m_Socket;
     sockaddr_in             m_SockAddr;
 
-    unsigned short          m_usPortBase;
+    bool                    m_bLan;
     unsigned short          m_usPort;
 
     // Full query cache
@@ -129,16 +114,10 @@ private:
     long                    m_lXfireLightMinInterval;
     std::string             m_strXfireLightCached;
 
-    std::string             m_strMtaAseVersion;
-
-    // Stats
     unsigned long           m_ulMasterServerQueryCount;
-    uint                    m_uiNumQueriesTotal;
-    uint                    m_uiNumQueriesPerMinute;
-    uint                    m_uiTotalAtMinuteStart;
-    CElapsedTime            m_MinuteTimer;
+protected:
+    void                    GetStatusVals();
 
-    CConnectHistory         m_QueryDosProtect;
 };
 
 class CASERule

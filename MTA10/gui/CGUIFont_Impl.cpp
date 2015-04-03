@@ -33,7 +33,7 @@ CGUIFont_Impl::CGUIFont_Impl ( CGUI_Impl* pGUI, const char* szFontName, const ch
     }
 
     // Define our glyphs
-    m_pFont->setInitialFontGlyphs( " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~" );
+    defineFontGlyphs( " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~" );
 
     // Set default attributes
     SetNativeResolution ( 1024, 768 );
@@ -64,7 +64,7 @@ void CGUIFont_Impl::DrawTextString ( const char *szText, CRect2D DrawArea, float
     else
         fmt = CEGUI::LeftAligned;
 
-    m_pFont->drawText ( szText ? CGUI_Impl::GetUTFString( szText ) : CEGUI::String (), CEGUI::Rect ( DrawArea.fX1, DrawArea.fY1, DrawArea.fX2, DrawArea.fY2 ), fZ, CEGUI::Rect ( ClipRect.fX1, ClipRect.fY1, ClipRect.fX2, ClipRect.fY2 ), fmt, CEGUI::ColourRect ( CEGUI::colour ( ( CEGUI::argb_t ) ulColor ) ), fScaleX, fScaleY );
+    m_pFont->drawText ( szText ? CEGUI::String ( szText ) : CEGUI::String (), CEGUI::Rect ( DrawArea.fX1, DrawArea.fY1, DrawArea.fX2, DrawArea.fY2 ), fZ, CEGUI::Rect ( ClipRect.fX1, ClipRect.fY1, ClipRect.fX2, ClipRect.fY2 ), fmt, CEGUI::ColourRect ( CEGUI::colour ( ( CEGUI::argb_t ) ulColor ) ), fScaleX, fScaleY );
 }
 
 bool CGUIFont_Impl::IsAntiAliasingEnabled ( void )
@@ -119,4 +119,26 @@ float CGUIFont_Impl::GetTextExtent ( const char* szText, float fScale )
 CEGUI::Font* CGUIFont_Impl::GetFont ( void )
 {
     return m_pFont;
+}
+
+void CGUIFont_Impl::defineFontGlyphs (unsigned int uExtraGlyphs[])
+{
+        CEGUI::String glyphSet; // (?) we needs temporary (CEGUI::String) string to define our glyphs correctly
+        
+        for ( unsigned int g = 0; uExtraGlyphs[g] >= 32; ++g ) // (?) adding extra glyphs codes to temp string
+	    {
+            glyphSet += (CEGUI::utf32) uExtraGlyphs[g];
+	    }
+        
+        m_pFont->defineFontGlyphs( glyphSet ); // (?) defining font's glyphs
+}
+
+void CGUIFont_Impl::defineFontGlyphs (const char *szExtraGlyphs)
+{
+    m_pFont->defineFontGlyphs( (CEGUI::utf8*)szExtraGlyphs );
+}
+
+bool CGUIFont_Impl::isGlyphBeingUsed (unsigned long ulGlyph)
+{
+    return m_pFont->isGlyphBeingUsed ( ulGlyph );
 }

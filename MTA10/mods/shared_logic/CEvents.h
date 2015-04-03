@@ -25,6 +25,12 @@ struct SEvent
     bool                bAllowRemoteTrigger;
 };
 
+struct SExtinctEvent
+{
+    char * szName;
+    char * szNewName;
+};
+
 class CEvents
 {
 public:
@@ -39,10 +45,10 @@ public:
     inline bool                 Exists              ( const char* szName )  { return Get ( szName ) != NULL; };
     SEvent*                     Get                 ( const char* szName );
 
-    CFastHashMap < SString, SEvent* > ::const_iterator
-                                IterBegin           ( void )                { return m_EventHashMap.begin (); };
-    CFastHashMap < SString, SEvent* > ::const_iterator
-                                IterEnd             ( void )                { return m_EventHashMap.end (); };
+    std::list < SEvent* > ::const_iterator
+                                IterBegin           ( void )                { return m_Events.begin (); };
+    std::list < SEvent* > ::const_iterator
+                                IterEnd             ( void )                { return m_Events.end (); };
 
     void                        PreEventPulse       ( void );
     void                        PostEventPulse      ( void );
@@ -50,13 +56,16 @@ public:
     void                        CancelEvent         ( bool bCancelled = true );
     bool                        WasEventCancelled   ( void );
 
+    void                        AddExtinctEvent     ( const char * szName, const char * szNewName );
+    bool                        IsExtinctEvent      ( const char * szName, char * szNewName, unsigned int uiLength );
+
 private:
     void                            RemoveAllEvents     ( void );
-
-    CFastHashMap < SString, SEvent * >      m_EventHashMap;
-    std::vector < int >                     m_CancelledList;
-    bool                                    m_bEventCancelled;
-    bool                                    m_bWasEventCancelled;
+    std::list < SEvent* >           m_Events;
+    std::vector < int >             m_CancelledList;
+    bool                            m_bEventCancelled;
+    bool                            m_bWasEventCancelled;
+    std::list < SExtinctEvent * >   m_ExtinctEvents;
 };
 
 #endif

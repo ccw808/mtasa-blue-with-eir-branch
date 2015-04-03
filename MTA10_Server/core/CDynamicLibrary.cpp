@@ -87,16 +87,12 @@ bool CDynamicLibrary::Load ( const char* szFilename )
         }
     #else
         m_hModule = dlopen ( szFilename, RTLD_NOW );
-
-        // Output error if needed
-        if ( !m_hModule )
-        {
-            const char* szError = dlerror();
-            if ( szError )
-                Print ( "%s\n", szError );
-            else
-                printf ( "Loading %s failed\n", szFilename );
-        }
+    
+    // Output error if needed
+    if ( !m_hModule )
+    {
+        Print ( "%s\n", dlerror( ) );
+    }
     #endif
 
     // Return whether we succeeded or not

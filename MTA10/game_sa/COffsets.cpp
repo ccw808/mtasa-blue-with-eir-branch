@@ -22,9 +22,6 @@ void COffsets::Initialize10EU ( void )
     CSettingsSA::FUNC_GetNumVideoModes = 0x7F2D00;
     CSettingsSA::FUNC_GetVideoModeInfo = 0x7F2D30;
     CSettingsSA::FUNC_SetDrawDistance = 0x572ea0;
-    CSettingsSA::FUNC_GetNumSubSystems = 0x07F2C40;
-    CSettingsSA::FUNC_GetCurrentSubSystem = 0x07F2CA0;
-    CSettingsSA::FUNC_SetSubSystem = 0x07F2CD0;
 
     CEntitySA::FUNC_RwFrameGetLTM = 0x7F09D0;
     CCameraSA::FUNC_RwFrameGetLTM = 0x7F09D0;
@@ -39,9 +36,6 @@ void COffsets::Initialize10US ( void )
     CSettingsSA::FUNC_GetNumVideoModes = 0x7F2CC0;
     CSettingsSA::FUNC_GetVideoModeInfo = 0x7F2CF0;
     CSettingsSA::FUNC_SetDrawDistance = 0x572ea0;
-    CSettingsSA::FUNC_GetNumSubSystems = 0x07F2C00;
-    CSettingsSA::FUNC_GetCurrentSubSystem = 0x07F2C60;
-    CSettingsSA::FUNC_SetSubSystem = 0x07F2C90;
 
     CEntitySA::FUNC_RwFrameGetLTM = 0x7F0990;
     CCameraSA::FUNC_RwFrameGetLTM = 0x7F0990;

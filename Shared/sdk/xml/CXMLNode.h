@@ -48,7 +48,7 @@ public:
     virtual bool                GetTagContent       ( unsigned int& uiContent ) = 0;
     virtual bool                GetTagContent       ( float& fContent ) = 0;
 
-    virtual void                SetTagContent       ( const char* szContent, bool bCDATA = false ) = 0;
+    virtual void                SetTagContent       ( const char* szContent ) = 0;
     virtual void                SetTagContent       ( bool bContent ) = 0;
     virtual void                SetTagContent       ( int iContent ) = 0;
     virtual void                SetTagContent       ( unsigned int uiContent ) = 0;
@@ -59,8 +59,6 @@ public:
     virtual bool                CopyChildrenInto    ( CXMLNode* pDestination, bool bRecursive ) = 0;
 
     virtual bool                IsValid             ( void ) = 0;
-
-    virtual SString             GetAttributeValue   ( const SString& strAttributeName ) = 0;
 };
 
 #endif

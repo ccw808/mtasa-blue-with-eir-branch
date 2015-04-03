@@ -46,11 +46,6 @@ void CVehicleRPCs::LoadFunctions ( void )
     AddHandler ( SET_VEHICLE_HEADLIGHT_COLOR, SetVehicleHeadLightColor, "SetVehicleHeadLightColor" );
     AddHandler ( SET_VEHICLE_TURRET_POSITION, SetVehicleTurretPosition, "SetVehicleTurretPosition" );
     AddHandler ( SET_VEHICLE_DOOR_OPEN_RATIO, SetVehicleDoorOpenRatio, "SetVehicleDoorOpenRatio" );
-    AddHandler ( SET_VEHICLE_VARIANT, SetVehicleVariant, "SetVehicleVariant" );
-    AddHandler ( GIVE_VEHICLE_SIRENS, GiveVehicleSirens, "giveVehicleSirens");
-    AddHandler ( REMOVE_VEHICLE_SIRENS, RemoveVehicleSirens, "removeVehicleSirens");
-    AddHandler ( SET_VEHICLE_SIRENS, SetVehicleSirens, "setVehicleSirens");
-    AddHandler ( SET_VEHICLE_PLATE_TEXT, SetVehiclePlateText, "setVehiclePlateText");
 }
 
 
@@ -80,7 +75,7 @@ void CVehicleRPCs::FixVehicle ( CClientEntity* pSource, NetBitStreamInterface& b
 
 void CVehicleRPCs::BlowVehicle ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
-    // Read out the vehicle id
+    // Read out the vehicle id and whether to explode or not
     unsigned char ucTimeContext;
     if ( bitStream.Read ( ucTimeContext ) )
     {
@@ -266,7 +261,7 @@ void CVehicleRPCs::AddVehicleUpgrade ( CClientEntity* pSource, NetBitStreamInter
             CVehicleUpgrades* pUpgrades = pVehicle->GetUpgrades ();
             if ( pUpgrades )
             {
-                pUpgrades->AddUpgrade ( usUpgrade, false );
+                pUpgrades->AddUpgrade ( usUpgrade );
             }
         }
     }
@@ -574,74 +569,6 @@ void CVehicleRPCs::SetVehicleDoorOpenRatio ( CClientEntity* pSource, NetBitStrea
         if ( pVehicle )
         {
             pVehicle->SetDoorOpenRatio ( ucDoor, angle.data.fRatio, uiTime, true );
-        }
-    }
-}
-
-void CVehicleRPCs::SetVehicleVariant ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
-{
-    unsigned char ucVariant = 0;
-    unsigned char ucVariant2 = 0;
-    if ( bitStream.Read ( ucVariant ) &&
-         bitStream.Read ( ucVariant2 ) )
-    {
-        CClientVehicle* pVehicle = m_pVehicleManager->Get ( pSource->GetID () );
-        if ( pVehicle )
-        {
-            pVehicle->SetVariant ( ucVariant, ucVariant2 );
-        }
-    }
-}
-
-void CVehicleRPCs::GiveVehicleSirens ( CClientEntity* pSourceEntity, NetBitStreamInterface& bitStream )
-{
-    SVehicleSirenAddSync sirenData;
-    if ( bitStream.Read ( &sirenData ) )
-    {
-        CClientVehicle* pVehicle = m_pVehicleManager->Get ( pSourceEntity->GetID () );
-        if ( pVehicle )
-        {
-            pVehicle->GiveVehicleSirens( sirenData.data.m_ucSirenType, sirenData.data.m_ucSirenCount );
-            pVehicle->SetVehicleFlags ( sirenData.data.m_b360Flag, sirenData.data.m_bUseRandomiser, sirenData.data.m_bDoLOSCheck, sirenData.data.m_bEnableSilent );
-        }
-    }
-}
-
-void CVehicleRPCs::SetVehicleSirens ( CClientEntity* pSourceEntity, NetBitStreamInterface& bitStream )
-{
-    SVehicleSirenSync sirenData;
-    if ( bitStream.Read ( &sirenData ) )
-    {
-        CClientVehicle* pVehicle = m_pVehicleManager->Get ( pSourceEntity->GetID () );
-        if ( pVehicle )
-        {
-            pVehicle->SetVehicleSirenPosition ( sirenData.data.m_ucSirenID, sirenData.data.m_vecSirenPositions );
-            pVehicle->SetVehicleSirenMinimumAlpha ( sirenData.data.m_ucSirenID, sirenData.data.m_dwSirenMinAlpha );
-            pVehicle->SetVehicleSirenColour ( sirenData.data.m_ucSirenID, sirenData.data.m_colSirenColour );
-            pVehicle->SetVehicleFlags ( sirenData.data.m_b360Flag, sirenData.data.m_bUseRandomiser, sirenData.data.m_bDoLOSCheck, sirenData.data.m_bEnableSilent );
-        }
-    }
-}
-
-void CVehicleRPCs::RemoveVehicleSirens ( CClientEntity* pSourceEntity, NetBitStreamInterface& bitStream )
-{
-    CClientVehicle* pVehicle = m_pVehicleManager->Get ( pSourceEntity->GetID () );
-    if ( pVehicle )
-    {
-        pVehicle->RemoveVehicleSirens ( );
-    }
-}
-
-
-void CVehicleRPCs::SetVehiclePlateText ( CClientEntity* pSourceEntity, NetBitStreamInterface& bitStream )
-{
-    SString strText;
-    if ( bitStream.ReadString ( strText ) )
-    {
-        CClientVehicle* pVehicle = m_pVehicleManager->Get ( pSourceEntity->GetID () );
-        if ( pVehicle )
-        {
-            pVehicle->SetRegPlate ( strText );
         }
     }
 }

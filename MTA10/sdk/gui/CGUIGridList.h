@@ -55,9 +55,6 @@ public:
     virtual void                    RemoveColumn            ( unsigned int uiColumn ) = 0;
     virtual void                    AutoSizeColumn          ( unsigned int hColumn ) = 0;
     virtual void                    SetColumnWidth          ( int hColumn, float fWidth, bool bRelative = true ) = 0;
-    virtual bool                    GetColumnWidth          ( int hColumn, float& fOutWidth, bool bRelative = true ) = 0;
-    virtual void                    SetColumnTitle          ( int hColumn, const char* szTitle ) = 0;
-    virtual const char*             GetColumnTitle          ( int hColumn ) = 0;
 
     virtual void                    SetSelectionMode        ( SelectionMode mode ) = 0;
 
@@ -67,7 +64,7 @@ public:
     virtual int                     InsertRowAfter          ( int iRow ) = 0;
     virtual void                    Clear                   ( void ) = 0;
     virtual CGUIListItem*           GetItem                 ( int iRow, int hColumn ) = 0;
-    virtual const char*             GetItemText             ( int iRow, int hColumn ) = 0;
+    virtual char*                   GetItemText             ( int iRow, int hColumn ) = 0;
     virtual int                     SetItemText             ( int iRow, int hColumn, const char* szText, bool bNumber = false, bool bSection = false, bool bFast = false, const char* szSortText = NULL ) = 0;
     virtual void                    SetItemData             ( int iRow, int hColumn, void* pData, CGUICallback<void,void*> deleteDataCallback = NULL ) = 0;
     virtual void                    SetItemData             ( int iRow, int hColumn, const char* pszData ) = 0;
@@ -79,11 +76,6 @@ public:
     virtual void                    SetVerticalScrollBar    ( bool bEnabled ) = 0;
     virtual void                    SetSorting              ( bool bEnabled ) = 0;
     virtual void                    SetItemImage            ( int iRow, int hColumn, CGUIStaticImage* pImage ) = 0;
-
-    virtual float                   GetHorizontalScrollPosition ( void ) = 0;
-    virtual float                   GetVerticalScrollPosition   ( void ) = 0;
-    virtual void                    SetHorizontalScrollPosition ( float fPosition ) = 0;
-    virtual void                    SetVerticalScrollPosition   ( float fPosition ) = 0;
 
     virtual int                     GetColumnIndex          ( int hColumn ) = 0;
     virtual int                     GetItemColumnIndex      ( CGUIListItem* pItem ) = 0;

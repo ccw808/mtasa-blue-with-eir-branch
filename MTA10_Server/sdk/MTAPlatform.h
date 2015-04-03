@@ -17,12 +17,7 @@ extern "C" bool g_bNoTopBar;
 
 /** Operating system identifiers **/
 #if defined(WIN32)
-    #ifdef _WIN64
-        #define MTA_OS_STRING   "Windows x64"
-    #else
-        #define MTA_OS_STRING   "Windows"
-    #endif
-
+    #define MTA_OS_STRING       "Windows"
     #define MTA_LIB_EXTENSION   ".dll"
     #if defined(_DEBUG)
         #define MTA_LIB_SUFFIX  "_d"
@@ -30,11 +25,7 @@ extern "C" bool g_bNoTopBar;
         #define MTA_LIB_SUFFIX
     #endif
 #elif defined(__linux__)
-    #ifdef __x86_64__
-        #define MTA_OS_STRING   "GNU/Linux x64"
-    #else
-        #define MTA_OS_STRING   "GNU/Linux"
-    #endif
+    #define MTA_OS_STRING       "GNU/Linux"
     #define MTA_LIB_EXTENSION   ".so"
     #define MTA_LIB_SUFFIX
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
@@ -62,7 +53,7 @@ extern "C" bool g_bNoTopBar;
     #define Print printf
 
     // Define types
-    typedef int socklen_t;
+    #define socklen_t int
 
     // Define keys
     #define KEY_BACKSPACE   0x08
@@ -129,5 +120,12 @@ extern "C" bool g_bNoTopBar;
 // This function should be used instead of mkdir to preserve multiplatform
 // compatibility
 extern int mymkdir ( const char* dirname );
+
+// Set up export type definition for Win32
+#ifdef WIN32
+    #define MTAEXPORT extern "C" __declspec(dllexport)
+#else
+    #define MTAEXPORT extern "C"
+#endif
 
 #endif

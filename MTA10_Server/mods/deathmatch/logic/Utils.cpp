@@ -17,13 +17,19 @@
 #include "StdInc.h"
 #include "net/SyncStructures.h"
 
+#ifdef WIN32
+    LONGLONG    g_lTimeCounts = 0;
+#else
+    struct timeval     g_tvInitialTime;
+#endif
+
 #ifndef WIN32
     char * strupr (char* a) {
         char *ret = a;
         while (*a != '\0')
         {
-            if (islower ((uchar)*a))
-                *a = toupper ((uchar)*a);
+            if (islower (*a))
+                *a = toupper (*a);
             ++a;
         }
         return ret;
@@ -83,14 +89,6 @@ bool CheckNickProvided ( const char* szNick )
 
 
 float DistanceBetweenPoints2D ( const CVector& vecPosition1, const CVector& vecPosition2 )
-{
-    float fDistanceX = vecPosition2.fX - vecPosition1.fX;
-    float fDistanceY = vecPosition2.fY - vecPosition1.fY;
-
-    return sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY );
-}
-
-float DistanceBetweenPoints2D ( const CVector2D& vecPosition1, const CVector2D& vecPosition2 )
 {
     float fDistanceX = vecPosition2.fX - vecPosition1.fX;
     float fDistanceY = vecPosition2.fY - vecPosition1.fY;
@@ -272,31 +270,127 @@ bool IsNumericString ( const char* szString, size_t sizeString )
     return strspn ( szString, szSet ) == sizeString;
 }
 
+unsigned int HashString ( const char* szString )
+{
+    // Implementation of Bob Jenkin's awesome hash function
+    // Ref: http://burtleburtle.net/bob/hash/doobs.html
+
+    register const char* k;             //< pointer to the string data to be hashed
+    register unsigned int a, b, c;      //< temporary variables
+    register unsigned int len;          //< length of the string left
+
+    unsigned int length = (unsigned int) strlen ( szString );
+
+    k = szString;
+    len = length;
+    a = b = 0x9e3779b9;
+    c = 0xabcdef89;                     // initval, arbitrarily set
+
+    while ( len >= 12 )
+    {
+        a += ( k[0] + ((unsigned int)k[1]<<8) + ((unsigned int)k[2]<<16)  + ((unsigned int)k[3]<<24) );
+        b += ( k[4] + ((unsigned int)k[5]<<8) + ((unsigned int)k[6]<<16)  + ((unsigned int)k[7]<<24) );
+        c += ( k[8] + ((unsigned int)k[9]<<8) + ((unsigned int)k[10]<<16) + ((unsigned int)k[11]<<24) );
+
+        // Mix
+        a -= b; a -= c; a ^= ( c >> 13 );
+        b -= c; b -= a; b ^= ( a << 8 );
+        c -= a; c -= b; c ^= ( b >> 13 );
+        a -= b; a -= c; a ^= ( c >> 12 );
+        b -= c; b -= a; b ^= ( a << 16 );
+        c -= a; c -= b; c ^= ( b >> 5 );
+        a -= b; a -= c; a ^= ( c >> 3 );
+        b -= c; b -= a; b ^= ( a << 10 );
+        c -= a; c -= b; c ^= ( b >> 15 );
+
+        k += 12;
+        len -= 12;
+    }
+
+    // Handle the last 11 remaining bytes
+    // Note: All cases fall through
+
+    c += length;        // Lower byte of c gets used for length
+
+    switch ( len )
+    {
+    case 11: 
+        c += ((unsigned int)k[10]<<24);
+    case 10: 
+        c += ((unsigned int)k[9]<<16);
+    case 9: 
+        c += ((unsigned int)k[8]<<8);
+    case 8: 
+        b += ((unsigned int)k[7]<<24);
+    case 7: 
+        b += ((unsigned int)k[6]<<16);
+    case 6: 
+        b += ((unsigned int)k[5]<<8);
+    case 5: 
+        b += k[4];
+    case 4: 
+        a += ((unsigned int)k[3]<<24);
+    case 3: 
+        a += ((unsigned int)k[2]<<16);
+    case 2: 
+        a += ((unsigned int)k[1]<<8);
+    case 1: 
+        a += k[0];
+    }
+
+    // Mix
+    a -= b; a -= c; a ^= ( c >> 13 );
+    b -= c; b -= a; b ^= ( a << 8 );
+    c -= a; c -= b; c ^= ( b >> 13 );
+    a -= b; a -= c; a ^= ( c >> 12 );
+    b -= c; b -= a; b ^= ( a << 16 );
+    c -= a; c -= b; c ^= ( b >> 5 );
+    a -= b; a -= c; a ^= ( c >> 3 );
+    b -= c; b -= a; b ^= ( a << 10 );
+    c -= a; c -= b; c ^= ( b >> 15 );
+
+    return c;
+}
+
+void InitializeTime ( void )
+{
+    #ifdef WIN32
+        LARGE_INTEGER lFrequency;
+        if ( QueryPerformanceFrequency ( &lFrequency ) )
+        {
+            g_lTimeCounts = lFrequency.QuadPart / 1000;
+        }
+        else
+        {
+            // System doesn't support the high-resolution frequency counter. Fail and quit
+            CLogger::ErrorPrintf ( "High-resolution frequency counter unsupported!\n" );
+            ExitProcess ( 1 );
+        }
+    #else
+        gettimeofday ( &g_tvInitialTime, 0 );
+    #endif
+}
+
 
 void DisconnectPlayer ( CGame* pGame, CPlayer& Player, const char* szMessage )
 {
-    DisconnectPlayer ( pGame, Player, CPlayerDisconnectedPacket::CUSTOM, szMessage );
-}
-
-void DisconnectPlayer ( CGame* pGame, CPlayer& Player, CPlayerDisconnectedPacket::ePlayerDisconnectType eDisconnectType, const char* szMessage )
-{
     // Send it to the disconnected player
-    Player.Send ( CPlayerDisconnectedPacket ( eDisconnectType, szMessage ) );
+    Player.Send ( CPlayerDisconnectedPacket ( szMessage ) );
 
     // Quit him
     pGame->QuitPlayer ( Player );
 }
 
-void DisconnectPlayer ( CGame* pGame, CPlayer& Player, CPlayerDisconnectedPacket::ePlayerDisconnectType eDisconnectType, time_t BanDuration, const char* szMessage )
-{
-    Player.Send ( CPlayerDisconnectedPacket ( eDisconnectType, BanDuration, szMessage ) );
-    pGame->QuitPlayer ( Player );
-}
 
 void DisconnectConnectionDesync ( CGame* pGame, CPlayer& Player, unsigned int uiCode )
 {
-    // Send message to the disconnected player
-    Player.Send ( CPlayerDisconnectedPacket ( CPlayerDisconnectedPacket::CONNECTION_DESYNC, SString ( "(%u)", uiCode ) ) );
+    // Populate a disconnection message
+    char szBuffer [128];
+    snprintf ( szBuffer, sizeof ( szBuffer ), "Disconnected: Connection desync (%u)", uiCode );
+    szBuffer [127] = 0;
+
+    // Send it to the disconnected player
+    Player.Send ( CPlayerDisconnectedPacket ( szBuffer ) );
 
     // Quit him
     pGame->QuitPlayer ( Player, CClient::QUIT_CONNECTION_DESYNC );
@@ -349,10 +443,6 @@ bool IsValidFilePath ( const char *szDir )
     if ( szDir == NULL ) return false;
 
     unsigned int uiLen = strlen ( szDir );
-
-    if ( uiLen > 0 && szDir [ uiLen - 1 ] == '/' ) // will return false if ending with an invalid character, mainly used for linux (#6871)
-        return false;
-
     unsigned char c, c_d;
     
     // iterate through the char array
@@ -363,47 +453,6 @@ bool IsValidFilePath ( const char *szDir )
             return false;
     }
     return true;
-}
-
-bool IsValidOrganizationPath ( const char *szDir )
-{
-    if ( szDir == NULL ) return false;
-
-    unsigned int uiLen = strlen ( szDir );
-
-    if ( uiLen > 0 && szDir [ uiLen - 1 ] == '/' ) // will return false if ending with an invalid character, mainly used for linux (#6871)
-        return false;
-
-    unsigned char c, c_d;
-    bool bInsideBraces = false;
-    
-    // iterate through the char array
-    for ( unsigned int i = 0; i < uiLen; i++ ) {
-        c = szDir[i];                                       // current character
-        c_d = ( i < ( uiLen - 1 ) ) ? szDir[i+1] : 0;       // one character ahead, if any
-
-        // Enforce braces around visible letters
-        if ( !bInsideBraces && IsVisibleCharacter ( c ) && c != '[' && c != ']' && c != '/' && c != '\\' )
-            return false;
-
-        if ( c == '[' )
-        {
-            if ( bInsideBraces ) return false; // Duplicate braces (e.g. "[hel[lo]world]")
-            else bInsideBraces = true;
-        }
-        else if ( c == ']' )
-        {
-            if ( !bInsideBraces ) return false; // Ending brace without opening brace (e.g. "hello]")
-            else bInsideBraces = false;
-        }
-        else if ( c == '/' || c == '\\' )
-        {
-            if ( bInsideBraces ) return false; // Slash within braches (e.g. "[hell/o]")
-        }
-    }
-
-    // Make sure we ended with closed braces
-    return !bInsideBraces;
 }
 
 unsigned int HexToInt ( const char * szHex )
@@ -556,7 +605,7 @@ bool XMLColorToInt ( const char* szColor, unsigned char& ucRed, unsigned char& u
 }
 
 
-bool ReadSmallKeysync ( CControllerState& ControllerState, NetBitStreamInterface& BitStream )
+bool ReadSmallKeysync ( CControllerState& ControllerState, const CControllerState& LastControllerState, NetBitStreamInterface& BitStream )
 {
     SSmallKeysyncSync keys;
     if ( !BitStream.Read ( &keys ) )
@@ -571,17 +620,12 @@ bool ReadSmallKeysync ( CControllerState& ControllerState, NetBitStreamInterface
     ControllerState.ButtonTriangle  = keys.data.bButtonTriangle;
     ControllerState.ShockButtonL    = keys.data.bShockButtonL;
     ControllerState.m_bPedWalk      = keys.data.bPedWalk;
-    if ( BitStream.Version () >= 0x2C )
-    {
-        ControllerState.LeftStickX      = keys.data.sLeftStickX;
-        ControllerState.LeftStickY      = keys.data.sLeftStickY;
-    }
 
     return true;
 }
 
 
-void WriteSmallKeysync ( const CControllerState& ControllerState, NetBitStreamInterface& BitStream )
+void WriteSmallKeysync ( const CControllerState& ControllerState, const CControllerState& LastControllerState, NetBitStreamInterface& BitStream )
 {
     SSmallKeysyncSync keys;
     keys.data.bLeftShoulder1    = ( ControllerState.LeftShoulder1 != 0 );       // Action / Secondary-Fire
@@ -592,8 +636,6 @@ void WriteSmallKeysync ( const CControllerState& ControllerState, NetBitStreamIn
     keys.data.bButtonTriangle   = ( ControllerState.ButtonTriangle != 0 );      // Enter/Exit/Special-Attack / Enter/exit
     keys.data.bShockButtonL     = ( ControllerState.ShockButtonL != 0 );        // Crouch / Horn
     keys.data.bPedWalk          = ( ControllerState.m_bPedWalk != 0 );          // Walk / -
-    keys.data.sLeftStickX       = ControllerState.LeftStickX;
-    keys.data.sLeftStickY       = ControllerState.LeftStickY;
 
     // Write it
     BitStream.Write ( &keys );
@@ -642,76 +684,6 @@ void WriteFullKeysync ( const CControllerState& ControllerState, NetBitStreamInt
     // Write it
     BitStream.Write ( &keys );
 }
-
-
-void ReadCameraOrientation ( const CVector& vecBasePosition, NetBitStreamInterface& BitStream, CVector& vecOutCamPosition, CVector& vecOutCamFwd )
-{
-    //
-    // Read rotations
-    //
-    const float fPI = 3.14159265f;
-    SFloatAsBitsSync < 8 > rotation ( -fPI, fPI, false );
-
-    BitStream.Read ( &rotation );
-    float fCamRotZ = rotation.data.fValue;
-
-    BitStream.Read ( &rotation );
-    float fCamRotX = rotation.data.fValue;
-
-
-    // Remake direction
-    float fCosCamRotX = cos ( fCamRotX );
-    vecOutCamFwd.fX = fCosCamRotX * sin ( fCamRotZ );
-    vecOutCamFwd.fY = fCosCamRotX * cos ( fCamRotZ );
-    vecOutCamFwd.fZ = sin ( fCamRotX );
-
-    //
-    // Read offset
-    //
-
-    // Lookup table used when sending
-    struct {
-        uint uiNumBits;
-        float fRange;
-    } bitCountTable[4] = {
-                            { 3, 4.0f },        // 3 bits is +-4        12 bits total
-                            { 5, 16.0f },       // 5 bits is +-16       18 bits total
-                            { 9, 256.0f },      // 9 bits is +-256      30 bits total
-                            { 14, 8192.0f },    // 14 bits is +-8192    45 bits total
-                        };
-    // Read flag
-    bool bUseAbsolutePosition = false;
-    BitStream.ReadBit ( bUseAbsolutePosition );
-
-    // Read table look up index for num of bits
-    uchar idx = 0;
-    BitStream.ReadBits ( (char*)&idx, 2 );
-
-    const uint uiNumBits = bitCountTable[idx].uiNumBits;
-    const float fRange = bitCountTable[idx].fRange;
-
-
-    // Read each component
-    SFloatAsBitsSyncBase position ( uiNumBits, -fRange, fRange, false );
-
-    CVector vecUsePosition;
-    BitStream.Read ( &position );
-    vecUsePosition.fX = position.data.fValue;
-
-    BitStream.Read ( &position );
-    vecUsePosition.fY = position.data.fValue;
-
-    BitStream.Read ( &position );
-    vecUsePosition.fZ = position.data.fValue;
-
-    // Remake position
-    if ( bUseAbsolutePosition )
-        vecOutCamPosition = vecUsePosition;
-    else
-        vecOutCamPosition = vecBasePosition - vecUsePosition;
-}
-
-
 bool IsNametagValid ( const char* szNick )
 {
     // Grab the size of the nick. Check that it's not to long or short
@@ -793,11 +765,19 @@ void RotateVector ( CVector& vecLine, const CVector& vecRotation )
 }
 
 
-SString LongToDottedIP ( unsigned long ulIP )
+void LongToDottedIP ( unsigned long ulIP, char* szDottedIP )
 {
     in_addr in;
-    in.s_addr = ulIP;
-    return inet_ntoa ( in );
+    in.s_addr = ulIP;;
+    char* szTemp = inet_ntoa ( in );
+    if ( szTemp )
+    {
+        strncpy ( szDottedIP, szTemp, 22 );
+    }
+    else
+    {
+        szDottedIP [0] = 0;
+    }
 }
 
 const char* HTMLEscapeString ( const char *szSource )
@@ -836,6 +816,57 @@ const char* HTMLEscapeString ( const char *szSource )
     return szBuffer;
 }
 
+
+// Copies a single file.
+bool FileCopy ( const char* szPathNameSrc, const char* szPathDst )
+{
+    FILE* fhSrc = fopen ( szPathNameSrc, "rb" );
+    if ( !fhSrc )
+    {
+        return false;
+    }
+
+    FILE* fhDst = fopen ( szPathDst, "wb" );
+    if ( !fhDst )
+    {
+        fclose ( fhSrc );
+        return false;
+    }
+
+    char cBuffer[16384];
+    while ( true )
+    {
+        size_t dataLength = fread ( cBuffer, 1, 16384, fhSrc );
+        if ( dataLength == 0 )
+            break;
+        fwrite ( cBuffer, 1, dataLength, fhDst );
+    }
+
+    fclose ( fhSrc );
+    fclose ( fhDst );
+    return true;
+}
+
+eEulerRotationOrder    EulerRotationOrderFromString(const char* szString)
+{
+    // We don't provide a conversion for EULER_MINUS_ZYZ since it's only meant to be used internally, not via scripts
+    if ( stricmp ( szString, "default" ) == 0)
+    {
+        return EULER_DEFAULT;
+    }
+    else if ( stricmp ( szString, "ZXY" ) == 0 )
+    {
+        return EULER_ZXY;
+    }
+    else if ( stricmp ( szString, "ZYX" ) == 0 )
+    {
+        return EULER_ZYX;
+    }
+    else
+    {
+        return EULER_INVALID;
+    }
+}
 
 // RX(theta)
 // | 1              0               0       |
@@ -929,7 +960,9 @@ CVector    ConvertEulerRotationOrder    ( const CVector& a_vRotation, eEulerRota
 {
     if (a_eSrcOrder == a_eDstOrder      ||
         a_eSrcOrder == EULER_DEFAULT    ||
-        a_eDstOrder == EULER_DEFAULT)
+        a_eSrcOrder == EULER_INVALID    ||
+        a_eDstOrder == EULER_DEFAULT    ||
+        a_eDstOrder == EULER_INVALID)
     {
         return a_vRotation;
     }

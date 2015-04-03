@@ -11,7 +11,6 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-extern int ms_iNumNonDefaultAndNonZeroVertices;
 
 using namespace std;
 
@@ -304,7 +303,7 @@ bool CWaterZoneSA::RemovePoly ( EWaterPolyType type, WORD wID )
                     for ( ; pEntry < pEnd; pEntry++ )
                         (pEntry - 1)->m_wValue = pEntry->m_wValue;
 
-                    CWaterPolyEntrySAInterface* pZoneInterface = (CWaterPolyEntrySAInterface *)ARRAY_WaterZones;
+                    CWaterPolyEntrySAInterface* pZoneInterface = (CWaterPolyEntrySAInterface *)ARRAY_WaterZones;;
                     for ( ; pZoneInterface < &((CWaterPolyEntrySAInterface *)ARRAY_WaterZones) [ NUM_WaterZones ]; pZoneInterface++ )
                     {
                         if ( POLYENTRY_TYPE ( pZoneInterface ) == WATER_POLY_LIST &&
@@ -334,10 +333,6 @@ void CWaterChangeVertexMove::Undo ( void* pChangedObject )
 CWaterManagerSA::CWaterManagerSA ()
 {
     g_pWaterManager = this;
-    m_bInitializedVertices = false;
-    m_bAltRenderOrder = false;
-    m_iActivePolyCount = 0;
-    m_bWaterDrawnLast = true;
     RelocatePools ();
     InstallHooks ();
 
@@ -376,35 +371,6 @@ void CWaterManagerSA::RelocatePools ()
             MemAdd < DWORD > ( *ppXref, dwDelta );
         }
     }
-
-    //
-    // Fix outside world water blocks disappearing when using long draw distances
-    //
-
-    // GTA default is 70 blocks. We increase this to 512 which is 2^9
-    #define OUTSIDE_WORLD_BLOCKS_BITS   9
-    static short ms_BlocksToBeRenderedOutsideWorldX[ 1 << OUTSIDE_WORLD_BLOCKS_BITS ];
-    static short ms_BlocksToBeRenderedOutsideWorldY[ 1 << OUTSIDE_WORLD_BLOCKS_BITS ];
-
-    BYTE part1[] = { 0xC1, 0xF8, OUTSIDE_WORLD_BLOCKS_BITS + 1,     // sar eax,13           = 2^(10-1) = 512
-                     0x7A, 0x19 };                                  // jp part2             Effectively jump always
-
-    BYTE part2[] = { 0x72, 0xFB,                                    // jc exit              Jump if at limit
-                     0xA1, 0xEC, 0x15, 0xC2, 0x00,                  // mov eax,NumBlocks    Restore eax
-                     0x73, 0xDE };                                  // jnc dothing          Effectively jump always
-
-    MemCpy ( (void*)0x6E6CE9, part1, sizeof ( part1 ) );
-    MemCpy ( (void*)0x6E6D07, part2, sizeof ( part2 ) );
-
-    MemPut < uint > ( 0x6E6CF2, (uint)&ms_BlocksToBeRenderedOutsideWorldX );
-    MemPut < uint > ( 0x6E6CFA, (uint)&ms_BlocksToBeRenderedOutsideWorldY );
-
-    MemPut < uint > ( 0x6EF6E4, (uint)&ms_BlocksToBeRenderedOutsideWorldX );
-    MemPut < uint > ( 0x6EF6EC, (uint)&ms_BlocksToBeRenderedOutsideWorldY );
-
-    MemPut < uint > ( 0x6EFE86, (uint)&ms_BlocksToBeRenderedOutsideWorldX );
-    MemPut < uint > ( 0x6EFE99, (uint)&ms_BlocksToBeRenderedOutsideWorldY );
-    MemPut < uint > ( 0x6EFEB3, (uint)&ms_BlocksToBeRenderedOutsideWorldY );
 }
 
 // The following hooks change the way SA iterates over water polygons.
@@ -515,7 +481,7 @@ void CWaterManagerSA::GetZonesContaining ( CWaterPoly* pPoly, std::vector < CWat
     GetZonesContaining ( v1, v2, v3, out );
 }
 
-void CWaterManagerSA::GetZonesContaining ( const CVector& v1, const CVector& v2, const CVector& v3, std::vector < CWaterZoneSA* >& out )
+void CWaterManagerSA::GetZonesContaining ( CVector& v1, CVector& v2, CVector& v3, std::vector < CWaterZoneSA* >& out )
 {
     out.clear ();
     float fColumnLeft = -3000.0f;
@@ -532,13 +498,13 @@ void CWaterManagerSA::GetZonesContaining ( const CVector& v1, const CVector& v2,
     }
 }
 
-CWaterVertex* CWaterManagerSA::CreateVertex ( const CVector& vecPosition )
+CWaterVertex* CWaterManagerSA::CreateVertex ( CVector& vecPosition )
 {
     WORD wID = ( (CreateWaterVertex_t) FUNC_CreateWaterVertex )( (long)vecPosition.fX & ~1, (long)vecPosition.fY & ~1, vecPosition.fZ, 0.2f, 0.1f, 0 );
     return &m_Vertices [ wID ];
 }
 
-CWaterPoly* CWaterManagerSA::GetPolyAtPoint ( const CVector& vecPosition )
+CWaterPoly* CWaterManagerSA::GetPolyAtPoint ( CVector& vecPosition )
 {
     if ( vecPosition.fX < -3000.0f || vecPosition.fX > 3000.0f || vecPosition.fY < -3000.0f || vecPosition.fY > 3000.0f )
         return NULL;
@@ -558,7 +524,7 @@ CWaterPoly* CWaterManagerSA::GetPolyAtPoint ( const CVector& vecPosition )
     return NULL;
 }
 
-CWaterPoly* CWaterManagerSA::CreateQuad ( const CVector& vecBL, const CVector& vecBR, const CVector& vecTL, const CVector& vecTR, bool bShallow )
+CWaterPoly* CWaterManagerSA::CreateQuad ( CVector& vecBL, CVector& vecBR, CVector& vecTL, CVector& vecTR, bool bShallow )
 {
     if ( *(DWORD *)VAR_NumWaterQuads >= NUM_NewWaterQuads )
         return NULL;
@@ -592,7 +558,7 @@ CWaterPoly* CWaterManagerSA::CreateQuad ( const CVector& vecBL, const CVector& v
     pInterface->m_wVertexIDs [ 0 ] = pV1->GetID ();
     pInterface->m_wVertexIDs [ 1 ] = pV2->GetID ();
     pInterface->m_wVertexIDs [ 2 ] = pV3->GetID ();
-    pInterface->m_wVertexIDs [ 3 ] = pV4->GetID ();     // This is ok
+    pInterface->m_wVertexIDs [ 3 ] = pV4->GetID ();
     pInterface->m_wFlags = WATER_VISIBLE;
     if ( bShallow )
         pInterface->m_wFlags |= WATER_SHALLOW;
@@ -604,13 +570,10 @@ CWaterPoly* CWaterManagerSA::CreateQuad ( const CVector& vecBL, const CVector& v
 
     (*(DWORD *)VAR_NumWaterQuads)++;
     CWaterQuadSA* pPoly = &g_pWaterManager->m_Quads [ wID ];
-
-    m_iActivePolyCount++;
-    UpdateRenderOrderRequirement ();
     return pPoly;
 }
 
-CWaterPoly* CWaterManagerSA::CreateTriangle ( const CVector& vec1, const CVector& vec2, const CVector& vec3, bool bShallow )
+CWaterPoly* CWaterManagerSA::CreateTriangle ( CVector& vec1, CVector& vec2, CVector& vec3, bool bShallow )
 {
     if ( *(DWORD *)VAR_NumWaterVertices >= NUM_NewWaterVertices )
         return NULL;
@@ -653,9 +616,6 @@ CWaterPoly* CWaterManagerSA::CreateTriangle ( const CVector& vec1, const CVector
 
     (*(DWORD *)VAR_NumWaterTriangles)++;
     CWaterTriangleSA* pPoly = &g_pWaterManager->m_Triangles [ wID ];
-
-    m_iActivePolyCount++;
-    UpdateRenderOrderRequirement ();
     return pPoly;
 }
 
@@ -680,43 +640,46 @@ bool CWaterManagerSA::DeletePoly ( CWaterPoly* pPoly )
         MemSetFast ( ((CWaterTriangleSA *)pPoly)->GetInterface (), 0, sizeof ( CWaterTriangleSAInterface ) );
         (*(DWORD *)VAR_NumWaterTriangles)--;
     }
-
-    m_iActivePolyCount--;
-    UpdateRenderOrderRequirement ();
     return true;
 }
 
-bool CWaterManagerSA::GetWaterLevel ( const CVector& vecPosition, float* pfLevel, bool bCheckWaves, CVector* pvecUnknown )
+bool CWaterManagerSA::GetWaterLevel ( CVector& vecPosition, float* pfLevel, bool bCheckWaves, CVector* pvecUnknown )
 {
     return ( (GetWaterLevel_t) FUNC_GetWaterLevel )
         ( vecPosition.fX, vecPosition.fY, vecPosition.fZ, pfLevel, bCheckWaves, pvecUnknown );
 }
 
-bool CWaterManagerSA::SetPositionWaterLevel ( const CVector& vecPosition, float fLevel, void* pChangeSource )
+bool CWaterManagerSA::SetWaterLevel ( CVector* pvecPosition, float fLevel, void* pChangeSource, bool bSkipCustom )
 {
-    // Specific water poly
-    CWaterPoly* pPoly = GetPolyAtPoint ( vecPosition );
-    if ( !pPoly )
-        return false;
-
-    return SetPolyWaterLevel ( pPoly, fLevel, pChangeSource );
-}
-
-bool CWaterManagerSA::SetWorldWaterLevel ( float fLevel, void* pChangeSource, bool bIncludeWorldNonSeaLevel )
-{
-    assert ( m_bInitializedVertices );
-    CVector vecVertexPos;
-    for ( DWORD i = 0; i < NUM_DefWaterVertices; i++ )
+    if ( pvecPosition )
     {
-        m_Vertices [ i ].GetPosition ( vecVertexPos );
-        if ( bIncludeWorldNonSeaLevel || !m_Vertices [ i ].IsWorldNonSeaLevel () )
+        // Specific water poly
+        CWaterPoly* pPoly = GetPolyAtPoint ( *pvecPosition );
+        if ( !pPoly )
+            return false;
+
+        return SetWaterLevel ( pPoly, fLevel, pChangeSource );
+    }
+    else
+    {
+        // All water polys
+        CVector vecVertexPos;
+        for ( DWORD i = 0; i < *(DWORD *)VAR_NumWaterVertices; i++ )
+        {
+            WORD wID = m_Vertices [ i ].GetID();
+            if ( wID >= NUM_DefWaterVertices && bSkipCustom )
+                continue;
+                
+          
+            m_Vertices [ i ].GetPosition ( vecVertexPos );
             vecVertexPos.fZ = fLevel;
-        m_Vertices [ i ].SetPosition ( vecVertexPos, pChangeSource );
+            m_Vertices [ i ].SetPosition ( vecVertexPos, pChangeSource );
+        }
     }
     return true;
 }
 
-bool CWaterManagerSA::SetPolyWaterLevel ( CWaterPoly* pPoly, float fLevel, void* pChangeSource )
+bool CWaterManagerSA::SetWaterLevel ( CWaterPoly* pPoly, float fLevel, void* pChangeSource )
 {
     CVector vecVertexPos;
     for ( int i = 0; i < pPoly->GetNumVertices (); i++ )
@@ -769,7 +732,7 @@ void CWaterManagerSA::SetWaveLevel ( float fWaveLevel )
     }
 }
 
-bool CWaterManagerSA::TestLineAgainstWater ( const CVector& vecStart, const CVector& vecEnd, CVector* vecCollision )
+bool CWaterManagerSA::TestLineAgainstWater ( CVector& vecStart, CVector& vecEnd, CVector* vecCollision )
 {
     return ( (TestLineAgainstWater_t) FUNC_TestLineAgainstWater )
         ( vecEnd.fX, vecEnd.fY, vecEnd.fZ, vecStart.fX, vecStart.fY, vecStart.fZ, vecCollision );
@@ -833,13 +796,6 @@ void CWaterManagerSA::RebuildIndex ()
     ( (BuildWaterIndex_t) FUNC_BuildWaterIndex ) ();
 }
 
-void CWaterManagerSA::ResetWorldWaterLevel ()
-{
-    if ( m_bInitializedVertices )
-        for ( DWORD i = 0; i < NUM_DefWaterVertices; i++ )
-            m_Vertices [ i ].Reset ();
-}
-
 void CWaterManagerSA::Reset ()
 {
     // Resets all water to the original single player configuration
@@ -851,41 +807,4 @@ void CWaterManagerSA::Reset ()
     ( (ReadWaterConfiguration_t) FUNC_ReadWaterConfiguration )();
 
     SetWaveLevel ( DEFAULT_WAVE_LEVEL );
-
-    for ( DWORD i = 0; i < NUM_NewWaterVertices; i++ )
-        m_Vertices [ i ].Init ( i < NUM_DefWaterVertices );
-
-    ms_iNumNonDefaultAndNonZeroVertices = 0;
-    m_bInitializedVertices = true;
-}
-
-
-// Dynamically hook/unhook water rendering when required
-void CWaterManagerSA::UpdateRenderOrderRequirement ( void )
-{
-    bool bAltRenderOrderRequired = ms_iNumNonDefaultAndNonZeroVertices != 0 || m_iActivePolyCount > 0 || m_bWaterDrawnLast;
-    if ( m_bAltRenderOrder != bAltRenderOrderRequired )
-    {
-        OutputDebugLine ( SString ( "[Water] SetAltWaterOrderEnabled: %d  (ms_iNumNonDefaultAndNonZeroVertices:%d  m_bWaterDrawnLast:%d  m_Changes:%d  m_iActivePolyCount:%d"
-                                                        , bAltRenderOrderRequired
-                                                        , ms_iNumNonDefaultAndNonZeroVertices
-                                                        , m_bWaterDrawnLast
-                                                        , m_Changes.size ()
-                                                        , m_iActivePolyCount
-                                                    ));
-        m_bAltRenderOrder = bAltRenderOrderRequired;
-        g_pCore->GetMultiplayer()->SetAltWaterOrderEnabled ( m_bAltRenderOrder );
-    }
-}
-
-
-void CWaterManagerSA::SetWaterDrawnLast ( bool bEnable )
-{
-    m_bWaterDrawnLast = bEnable;
-    UpdateRenderOrderRequirement ();
-}
-
-bool CWaterManagerSA::IsWaterDrawnLast ( void )
-{
-    return m_bWaterDrawnLast;
 }

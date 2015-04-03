@@ -19,10 +19,10 @@
 class CProjectileSyncPacket : public CPacket
 {
 public:
-                            CProjectileSyncPacket       ( void );
+                            CProjectileSyncPacket        ( void );
                             
-    inline ePacketID                GetPacketID         ( void ) const                  { return PACKET_ID_PROJECTILE; };
-    inline unsigned long            GetFlags            ( void ) const                  { return PACKET_HIGH_PRIORITY | PACKET_RELIABLE | PACKET_SEQUENCED; };
+    inline ePacketID        GetPacketID                 ( void ) const                  { return PACKET_ID_PROJECTILE; };
+    inline unsigned long    GetFlags                    ( void ) const                  { return PACKET_RELIABLE | PACKET_SEQUENCED; };
 
     bool                    Read                        ( NetBitStreamInterface& BitStream );
     bool                    Write                       ( NetBitStreamInterface& BitStream ) const;
@@ -36,7 +36,6 @@ public:
     CVector                 m_vecTarget;
     CVector                 m_vecRotation;
     CVector                 m_vecMoveSpeed;
-    unsigned short          m_usModel;
 };
 
 #endif

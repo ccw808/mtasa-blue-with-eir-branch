@@ -28,7 +28,7 @@ class CClientStreamer
 {
     friend class CClientStreamElement;
 public:
-                                            CClientStreamer             ( StreamerLimitReachedFunction* pLimitReachedFunc, float fMaxDistance, float fSectorSize, float fRowSize );
+                                            CClientStreamer             ( StreamerLimitReachedFunction* pLimitReachedFunc, float fMaxDistance );
                                             ~CClientStreamer            ( void );
 
     
@@ -57,7 +57,7 @@ private:
     void                                    SetExpDistances             ( std::list < CClientStreamElement * > * pList );
     void                                    AddToSortedList             ( std::list < CClientStreamElement * > * pList, CClientStreamElement * pElement );
     
-    void                                    Restream                    ( bool bMovedFar );
+    void                                    Restream                    ( void );
     bool                                    ReachedLimit                ( void )    { return m_pLimitReachedFunc (); }
 
     void                                    OnEnterSector               ( CClientStreamSector * pSector );
@@ -66,8 +66,6 @@ private:
     void                                    OnElementForceStreamOut     ( CClientStreamElement * pElement );
     void                                    OnElementDimension          ( CClientStreamElement * pElement );
 
-    const float                             m_fSectorSize;
-    const float                             m_fRowSize;
     float                                   m_fMaxDistanceExp;
     float                                   m_fMaxDistanceThreshold;
     StreamerLimitReachedFunction*           m_pLimitReachedFunc;

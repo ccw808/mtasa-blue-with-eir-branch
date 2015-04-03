@@ -42,23 +42,17 @@ public:
     void                        SetReadOnly                 ( bool bReadonly );
 
     void                        SetSelectionHandler         ( GUI_CALLBACK Callback );
-    void                        SetDropListRemoveHandler    ( GUI_CALLBACK Callback );
-
-    void                        ShowDropList                ( void );
-    void                        HideDropList                ( void );
 
     #include "CGUIElement_Inc.h"
 
 protected:
 
-    CFastHashMap < CEGUI::ListboxItem*, CGUIListItem_Impl* > m_Items;
+    google::dense_hash_map < CEGUI::ListboxItem*, CGUIListItem_Impl* > m_Items;
 
     bool                                Event_OnSelectionAccepted  ( const CEGUI::EventArgs& e );
-    bool                                Event_OnDropListRemoved    ( const CEGUI::EventArgs& e );
-    CGUIListItem_Impl*                  GetListItem                ( CEGUI::ListboxItem* pItem );
+    CGUIListItem_Impl*                  GetListItem               ( CEGUI::ListboxItem* pItem );
     CEGUI::String                       storedCaption;
     GUI_CALLBACK                        m_OnSelectChange;
-    GUI_CALLBACK                        m_OnDropListRemoved;
 };
 
 #endif

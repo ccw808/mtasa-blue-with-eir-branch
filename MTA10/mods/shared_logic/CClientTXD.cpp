@@ -5,15 +5,23 @@
 *  LICENSE:     See LICENSE in the top level directory
 *  FILE:        mods/shared_logic/CClientTXD.cpp
 *  PURPOSE:     TXD manager class
+*  DEVELOPERS:  Christian Myhre Lundheim <>
+*               Cecill Etheredge <ijsf@gmx.net>
+*               arc_
 *
 *****************************************************************************/
 
 #include <StdInc.h>
 
-CClientTXD::CClientTXD ( class CClientManager* pManager, ElementID ID ) : ClassInit ( this ), CClientEntity ( ID )
+std::map < unsigned short, std::list < RwTexture* > > CClientTXD::ms_ReplacedTXDTextures;
+std::map < unsigned short, std::list < RwTexture* > > CClientTXD::ms_AddedTXDTextures;
+
+CClientTXD::CClientTXD ( class CClientManager* pManager, ElementID ID ) : CClientEntity ( ID )
 {
     // Init
     m_pManager = pManager;
+    m_usMainModel = 0xFFFF;
+
     SetTypeName ( "txd" );
 }
 
@@ -21,114 +29,191 @@ CClientTXD::CClientTXD ( class CClientManager* pManager, ElementID ID ) : ClassI
 CClientTXD::~CClientTXD ( void )
 {
     // Remove us from all the models
-    g_pGame->GetRenderWare ()->ModelInfoTXDRemoveTextures ( &m_ReplacementTextures );
+    RemoveAll ();
 
-    // Restream affected models
-    for ( uint i = 0 ; i < m_ReplacementTextures.usedInModelIds.size () ; i++ )
+    // Destroy all our textures
+    std::list < RwTexture* >::iterator it;
+    for ( it = m_Textures.begin (); it != m_Textures.end (); it++ )
     {
-        Restream ( m_ReplacementTextures.usedInModelIds[i] );
+        g_pGame->GetRenderWare ()->DestroyTexture ( *it );
     }
-
-    // Remove us from all the clothes replacement doo dah
-    g_pGame->GetRenderWare ()->ClothesRemoveReplacementTxd( m_FileData.GetData() );
+    m_Textures.clear ();
 }
 
 
-bool CClientTXD::LoadTXD ( const SString& strFile, bool bFilteringEnabled, bool bIsRawData )
+bool CClientTXD::LoadTXD ( const char* szFile, bool bFilteringEnabled )
 {
-    // Do load here to check for errors.
-    m_bFilteringEnabled = bFilteringEnabled;
-    m_bIsRawData = bIsRawData;
-
-    if( !m_bIsRawData )
+    // Are we not already loaded?
+    if ( m_Textures.empty () )
     {
-        m_strFilename = strFile;
-        CBuffer buffer;
-        if ( !LoadFileData( buffer ) )
-            return false;
-        return g_pGame->GetRenderWare()->ModelInfoTXDLoadTextures( &m_ReplacementTextures, buffer, m_bFilteringEnabled );
-    }
-    else
-    {
-        m_FileData = CBuffer( strFile, strFile.length() );
-        if ( !g_pCore->GetNetwork()->CheckFile( "txd", "", m_FileData ) )
-            return false;
+        // Try to load it
+        RwTexDictionary* pTXD = g_pGame->GetRenderWare ()->ReadTXD ( szFile );
+        if ( pTXD )
+        {
+            // Get the list of textures into our own list
+            RwListEntry* pSentinel = &pTXD->textures.root;
+            RwListEntry* pTexLink = pSentinel->next;
+            while ( pTexLink != pSentinel )
+            {
+                RwTexture* pTex = (RwTexture *)( (BYTE *)pTexLink - offsetof(RwTexture, TXDList) );
+                m_Textures.push_back ( pTex );
+                pTex->txd = NULL;
+                if ( bFilteringEnabled )
+                    pTex->flags = 0x1102;       // Enable filtering (otherwise textures are pixely)
 
-        return g_pGame->GetRenderWare()->ModelInfoTXDLoadTextures( &m_ReplacementTextures, m_FileData, m_bFilteringEnabled );
+                pTexLink = pTexLink->next;
+            }
+
+            // Make the txd forget it has any textures and destroy it
+            pTXD->textures.root.next = &pTXD->textures.root;
+            pTXD->textures.root.prev = &pTXD->textures.root;
+            g_pGame->GetRenderWare ()->DestroyTXD ( pTXD );
+            pTXD = NULL;
+
+            // We succeeded if we got any textures
+            return m_Textures.size () > 0;
+        }
     }
+
+    // Failed
+    return false;
 }
-
 
 bool CClientTXD::Import ( unsigned short usModelID )
 {
-    if ( usModelID >= CLOTHES_TEX_ID_FIRST && usModelID <= CLOTHES_TEX_ID_LAST )
+    // Have we got textures and haven't already imported into this model?
+    if ( !m_Textures.empty () && !IsImported ( usModelID ) && g_pGame->GetModelInfo ( usModelID ) )
     {
-        if ( m_FileData.IsEmpty() && m_bIsRawData )
-            return false;   // Raw data has been freed already because texture was first used as non-clothes
+        // Grab the lists of replaced and added textures for the model's TXD
+        unsigned short usTxdID = g_pGame->GetModelInfo ( usModelID )->GetTextureDictionaryID ();
+        std::list < RwTexture* >& replacedTextures = ms_ReplacedTXDTextures.insert (
+            make_pair ( usTxdID, std::list < RwTexture* > () )
+        ).first->second;
+        std::list < RwTexture* >& addedTextures = ms_AddedTXDTextures.insert (
+            make_pair ( usTxdID, std::list < RwTexture* > () )
+        ).first->second;
 
-        // If using for clothes only, unload 'replacing model textures' stuff to save memory
-        if ( !m_ReplacementTextures.textures.empty() && m_ReplacementTextures.usedInModelIds.empty() )
-        {
-            g_pGame->GetRenderWare ()->ModelInfoTXDRemoveTextures ( &m_ReplacementTextures );
-            m_ReplacementTextures = SReplacementTextures();
-        }
-        // Load txd file data if not already done
-        if ( m_FileData.IsEmpty() )
-        {
-            if ( !LoadFileData( m_FileData ) )
-                return false;
-        }
-        m_bUsingFileDataForClothes = true;
-        g_pGame->GetRenderWare ()->ClothesAddReplacementTxd( m_FileData.GetData(), usModelID - CLOTHES_MODEL_ID_FIRST );
+        // If we already used our main textures in a model, we need to make copies now
+        // for this new model.
+        bool bMakeCopy = ( m_usMainModel != 0xFFFF );
+
+        // Add the textures.
+        g_pGame->GetRenderWare ()->ModelInfoTXDAddTextures ( m_Textures, usModelID, bMakeCopy, &replacedTextures, &addedTextures );
+
+        // Add the id to the list over which models we've imported ourselves into.
+        m_ImportedModels.push_back ( usModelID );
+        if ( m_usMainModel == 0xFFFF )
+            m_usMainModel = usModelID;
+
+        Restream ( usModelID );
         return true;
-    }
-    else
-    {
-        // Ensure loaded for replacing model textures
-        if ( m_ReplacementTextures.textures.empty () )
-        {
-            if( !m_bIsRawData )
-            {
-                CBuffer buffer;
-                if ( !LoadFileData( buffer ) )
-                    return false;
-                g_pGame->GetRenderWare()->ModelInfoTXDLoadTextures( &m_ReplacementTextures, buffer, m_bFilteringEnabled );
-                if ( m_ReplacementTextures.textures.empty() )
-                    return false;
-            }
-            else
-            {
-                g_pGame->GetRenderWare()->ModelInfoTXDLoadTextures( &m_ReplacementTextures, m_FileData, m_bFilteringEnabled );
-                if ( m_ReplacementTextures.textures.empty() )
-                    return false;
-            }
-        }
-
-        // If raw data and not used as clothes textures yet, then free raw data buffer to save RAM
-        if ( m_bIsRawData && !m_bUsingFileDataForClothes )
-        {
-            // This means the texture can't be used for clothes now
-            m_FileData.Clear();
-        }
-
-        // Have we got textures and haven't already imported into this model?
-        if ( g_pGame->GetRenderWare ()->ModelInfoTXDAddTextures ( &m_ReplacementTextures, usModelID ) )
-        {
-            Restream ( usModelID );
-            return true;
-        }
     }
 
     return false;
 }
+
+
+bool CClientTXD::IsImported ( unsigned short usModelID )
+{
+    return std::find ( m_ImportedModels.begin (), m_ImportedModels.end (), usModelID ) != m_ImportedModels.end ();
+}
+
+
+void CClientTXD::Remove ( unsigned short usModelID )
+{
+    if ( IsImported ( usModelID ) )
+    {
+        // Remove the model
+        InternalRemove ( usModelID );
+
+        // Remove it from the list
+        m_ImportedModels.remove ( usModelID );
+
+        // If we just removed ourselves from our main model, we are free again to use our main
+        // textures in a model directly
+        if ( usModelID == m_usMainModel )
+            m_usMainModel = 0xFFFF;
+    }
+}
+
+
+void CClientTXD::RemoveAll ( void )
+{
+    std::list < unsigned short > ::iterator it;
+    for ( it = m_ImportedModels.begin (); it != m_ImportedModels.end (); it++ )
+    {
+        InternalRemove ( *it );
+    }
+
+    m_ImportedModels.clear ();
+    m_usMainModel = 0xFFFF;
+}
+
 
 bool CClientTXD::IsImportableModel ( unsigned short usModelID )
 {
     // Currently we work on vehicles and objects
     return CClientObjectManager::IsValidModel ( usModelID ) ||
            CClientVehicleManager::IsValidModel ( usModelID ) ||
-           CClientPlayerManager::IsValidModel( usModelID ) ||
-            ( usModelID >= CLOTHES_TEX_ID_FIRST && usModelID <= CLOTHES_TEX_ID_LAST );
+           CClientPlayerManager::IsValidModel( usModelID );
+}
+
+
+void CClientTXD::InternalRemove ( unsigned short usModelID )
+{
+    // If this is not our main model, we added copies in there and we need to destroy them now
+    bool bDestroy = ( usModelID != m_usMainModel );
+
+    // Remove the textures
+    g_pGame->GetRenderWare ()->ModelInfoTXDRemoveTextures ( m_Textures, usModelID, bDestroy, true );
+
+    // Re-add any replaced textures
+    unsigned short usTxdID = g_pGame->GetModelInfo ( usModelID )->GetTextureDictionaryID ();
+    std::map < unsigned short, std::list < RwTexture* > >::iterator it;
+    it = ms_ReplacedTXDTextures.find ( usTxdID );
+    if ( it != ms_ReplacedTXDTextures.end () )
+    {
+        std::list < RwTexture* >::iterator myIt;
+        std::list < RwTexture* > replacedTextures;
+        for ( myIt = m_Textures.begin (); myIt != m_Textures.end (); myIt++ )
+        {
+            RwTexture* pReplacedTexture = FindNamedTextureInList ( it->second, (*myIt)->name );
+            if ( pReplacedTexture )
+            {
+                replacedTextures.push_back ( pReplacedTexture );
+                it->second.remove ( pReplacedTexture );
+            }
+        }
+        g_pGame->GetRenderWare ()->ModelInfoTXDAddTextures ( replacedTextures, usModelID, false, NULL, NULL, false );
+        if ( it->second.empty () )
+            ms_ReplacedTXDTextures.erase ( it );
+    }
+
+    // Remove any added textures from the list
+    it = ms_AddedTXDTextures.find ( usTxdID );
+    if ( it != ms_AddedTXDTextures.end () )
+    {
+        std::list < RwTexture* >::iterator myIt;
+        for ( myIt = m_Textures.begin (); myIt != m_Textures.end (); myIt++ )
+        {
+            it->second.remove ( *myIt );
+        }
+        if ( it->second.empty () )
+            ms_AddedTXDTextures.erase ( it );
+    }
+
+    Restream ( usModelID );
+}
+
+RwTexture* CClientTXD::FindNamedTextureInList ( std::list < RwTexture* >& list, const char* szTexName )
+{
+    std::list < RwTexture* >::iterator it;
+    for ( it = list.begin (); it != list.end (); it++ )
+    {
+        if ( !stricmp ( szTexName, (*it)->name ) )
+            return *it;
+    }
+    return NULL;
 }
 
 void CClientTXD::Restream ( unsigned short usModelID )
@@ -139,30 +224,7 @@ void CClientTXD::Restream ( unsigned short usModelID )
     }
     else if ( CClientObjectManager::IsValidModel ( usModelID ) )
     {
-        if ( CClientPedManager::IsValidWeaponModel ( usModelID ) )
-        {
-            m_pManager->GetPedManager ()->RestreamWeapon ( usModelID );
-            m_pManager->GetPickupManager ()->RestreamPickups ( usModelID );
-        }
         m_pManager->GetObjectManager ()->RestreamObjects ( usModelID );
-        g_pGame->GetModelInfo ( usModelID )->RestreamIPL ();
     }
-    else if ( CClientPlayerManager::IsValidModel ( usModelID ) )
-    {
-        m_pManager->GetPedManager ()->RestreamPeds ( usModelID );
-    }
-}
-
-// Load file contents into supplied buffer
-bool CClientTXD::LoadFileData( CBuffer& buffer )
-{
-    buffer.LoadFromFile( m_strFilename );
-    g_pClientGame->GetResourceManager()->ValidateResourceFile( m_strFilename, buffer );
-    return g_pCore->GetNetwork()->CheckFile( "txd", m_strFilename, buffer );
-}
-
-// Return true if data looks like TXD file contents
-bool CClientTXD::IsTXDData ( const SString& strData )
-{
-    return strData.length() > 32 && memcmp( strData, "\x16\x00\x00\x00", 4 ) == 0;
+    g_pGame->GetModelInfo ( usModelID )->RestreamIPL ();
 }

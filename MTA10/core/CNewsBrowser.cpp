@@ -56,7 +56,7 @@ void CNewsBrowser::InitNewsItemList ( void )
     m_NewsitemList.clear ();
 
     // Find all sub-directories in 'news' directory
-    SString strAllNewsDir = PathJoin ( GetMTADataPath (), "news" );
+    SString strAllNewsDir = PathJoin ( GetMTALocalAppDataPath (), "news" );
     std::vector < SString > directoryList = FindFiles ( strAllNewsDir + "\\*", false, true );
     std::sort ( directoryList.begin (), directoryList.end () );
 
@@ -171,7 +171,6 @@ void CNewsBrowser::CreateGUI ( void )
     //  OK button
     m_pButtonOK = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( m_pWindow, "OK" ) );
     m_pButtonOK->SetPosition ( CVector2D ( 560.0f - 60, 480.0f - 30 ) );
-    m_pButtonOK->SetZOrderingEnabled ( false );
 
     // Set up the events
     m_pWindow->SetEnterKeyHandler ( GUI_CALLBACK ( &CNewsBrowser::OnOKButtonClick, this ) );
@@ -249,7 +248,8 @@ void CNewsBrowser::AddNewsTab ( const SNewsItem& newsItem )
     m_pScrollPane->SetVerticalScrollBar ( true );
 
     // Switch cwd
-    pManager->PushGuiWorkingDirectory ( newsItem.strContentFullDir );
+    SString cwd = GetCurrentWorkingDirectory ();
+    SetCurrentDirectory ( newsItem.strContentFullDir );
 
     // Load files
     CGUIWindow* pWindow = LoadLayoutAndImages ( m_pScrollPane, newsItem );
@@ -264,7 +264,7 @@ void CNewsBrowser::AddNewsTab ( const SNewsItem& newsItem )
     }
 
     // Restore cwd
-    pManager->PopGuiWorkingDirectory ( newsItem.strContentFullDir );
+    SetCurrentDirectory ( cwd );
 }
 
 

@@ -18,35 +18,6 @@
 
 #include "StdInc.h"
 
-//
-// Temporary helper functions for fixing crashes on pre r6459 clients.
-// Cause of #IND numbers should be handled before it gets here. (To avoid desync)
-//
-bool IsIndeterminate( float fValue )
-{
-    return fValue - fValue != 0;
-}
-
-void SilentlyFixIndeterminate( float& fValue )
-{
-    if ( IsIndeterminate( fValue ) )
-        fValue = 0;
-}
-
-void SilentlyFixIndeterminate( CVector& vecValue )
-{
-    SilentlyFixIndeterminate( vecValue.fX );
-    SilentlyFixIndeterminate( vecValue.fY );
-    SilentlyFixIndeterminate( vecValue.fZ );
-}
-
-void SilentlyFixIndeterminate( CVector2D& vecValue )
-{
-    SilentlyFixIndeterminate( vecValue.fX );
-    SilentlyFixIndeterminate( vecValue.fY );
-}
-
-
 void CEntityAddPacket::Add ( CElement * pElement )
 {
     // Only add it if it has a parent.
@@ -81,17 +52,16 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
     if ( m_Entities.size () > 0 )
     {
         // Write the number of entities
-        unsigned int NumElements = m_Entities.size ();
-        BitStream.WriteCompressed ( NumElements );
+        BitStream.WriteCompressed ( ( ElementID ) m_Entities.size () );
 
         // For each entity ...
         CVector vecTemp;
         vector < CElement* > ::const_iterator iter = m_Entities.begin ();
-        for ( ; iter != m_Entities.end (); ++iter )
+        for ( ; iter != m_Entities.end (); iter++ )
         {
             // Entity id
             CElement* pElement = *iter;
-            BitStream.Write ( pElement->GetID () );
+            BitStream.WriteCompressed ( pElement->GetID () );
 
             // Entity type id
             unsigned char ucEntityTypeID = static_cast < unsigned char > ( pElement->GetType () );
@@ -102,7 +72,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
             ElementID ParentID = INVALID_ELEMENT_ID;
             if ( pParent )
                 ParentID = pParent->GetID ();
-            BitStream.Write ( ParentID );
+            BitStream.WriteCompressed ( ParentID );
 
             // Entity interior
             BitStream.Write ( pElement->GetInterior () );
@@ -115,7 +85,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
             if ( pElementAttachedTo )
             {
                 BitStream.WriteBit ( true );
-                BitStream.Write ( pElementAttachedTo->GetID () );
+                BitStream.WriteCompressed ( pElementAttachedTo->GetID () );
 
                 // Attached position and rotation
                 SPositionSync attachedPosition ( false );
@@ -140,7 +110,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     break;
                 }
                 case CElement::OBJECT:
-                case CElement::WEAPON:
                 {
                     CObject* pObject = static_cast < CObject* > ( pElement );
                     bCollisionsEnabled = pObject->GetCollisionEnabled ( );
@@ -153,21 +122,16 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     bCollisionsEnabled = pPed->GetCollisionEnabled ( );
                     break;
                 }
-                default:
-                    break;
             }
 
             BitStream.WriteBit ( bCollisionsEnabled );
-
-            if ( BitStream.Version() >= 0x56 )
-                BitStream.WriteBit ( pElement->IsCallPropagationEnabled() );
-
+            
             // Write custom data
             CCustomData* pCustomData = pElement->GetCustomDataPointer ();
             assert ( pCustomData );
             BitStream.WriteCompressed ( pCustomData->CountOnlySynchronized () );
-            map < string, SCustomData > :: const_iterator iter = pCustomData->SyncedIterBegin ();
-            for ( ; iter != pCustomData->SyncedIterEnd (); ++iter )
+            map < string, SCustomData > :: const_iterator iter = pCustomData->IterBegin ();
+            for ( ; iter != pCustomData->IterEnd (); iter++ )
             {
                 const char* szName = iter->first.c_str ();
                 const CLuaArgument* pArgument = &iter->second.Variable;
@@ -194,7 +158,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
             BitStream.WriteCompressed ( usNameLength );
             if ( usNameLength > 0 )
             {
-                BitStream.Write ( szName, usNameLength );    
+                BitStream.Write ( const_cast < char * > ( szName ), usNameLength );    
             }
 
             // Write the sync time context
@@ -204,13 +168,11 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
             switch ( ucEntityTypeID )
             {
                 case CElement::OBJECT:
-                case CElement::WEAPON:
                 {
                     CObject* pObject = static_cast < CObject* > ( pElement );
 
                     // Position
                     position.data.vecPosition = pObject->GetPosition ();
-                    SilentlyFixIndeterminate( position.data.vecPosition );      // Crash fix for pre r6459 clients
                     BitStream.Write ( &position );
 
                     // Rotation
@@ -225,14 +187,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     SEntityAlphaSync alpha;
                     alpha.data.ucAlpha = pObject->GetAlpha ();
                     BitStream.Write ( &alpha );
-
-                    // Low LOD stuff
-                    bool bIsLowLod = pObject->IsLowLod ();
-                    BitStream.WriteBit ( bIsLowLod );
-
-                    CObject* pLowLodObject = pObject->GetLowLodObject ();
-                    ElementID LowLodObjectID = pLowLodObject ? pLowLodObject->GetID () : INVALID_ELEMENT_ID;
-                    BitStream.Write ( LowLodObjectID );
 
                     // Double sided
                     bool bIsDoubleSided = pObject->IsDoubleSided ();
@@ -251,29 +205,8 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     }
 
                     // Scale
-                    const CVector& vecScale = pObject->GetScale ();
-                    if ( BitStream.Version() >= 0x41 )
-                    {
-                        bool bIsUniform = ( vecScale.fX == vecScale.fY && vecScale.fX == vecScale.fZ );
-                        BitStream.WriteBit( bIsUniform );
-                        if ( bIsUniform )
-                        {
-                            bool bIsUnitSize = ( vecScale.fX == 1.0f );
-                            BitStream.WriteBit( bIsUnitSize );
-                            if ( !bIsUnitSize )
-                                BitStream.Write( vecScale.fX );
-                        }
-                        else
-                        {
-                            BitStream.Write( vecScale.fX );
-                            BitStream.Write( vecScale.fY );
-                            BitStream.Write( vecScale.fZ );
-                        }
-                    }
-                    else
-                    {
-                        BitStream.Write( vecScale.fX );
-                    }
+                    float fScale = pObject->GetScale ();
+                    BitStream.Write ( fScale );
 
                     // Static
                     bool bStatic = pObject->IsStatic ();
@@ -284,84 +217,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     health.data.fValue = pObject->GetHealth ();
                     BitStream.Write ( &health );
 
-                    if ( ucEntityTypeID == CElement::WEAPON )
-                    {
-                        CCustomWeapon* pWeapon = static_cast < CCustomWeapon* > ( pElement );
-                        unsigned char targetType = pWeapon->GetTargetType ( );
-                        BitStream.WriteBits ( &targetType, 3 ); // 3 bits = 4 possible values.
-
-                        switch ( targetType )
-                        {
-                            case TARGET_TYPE_FIXED:
-                            {
-                                break;
-                            }
-                            case TARGET_TYPE_ENTITY:
-                            {
-                                CElement * pTarget = pWeapon->GetElementTarget ( );
-                                ElementID targetID = pTarget->GetID ( );
-
-                                BitStream.Write ( targetID );
-                                if ( IS_PED ( pTarget ) )
-                                {
-                                    // Send full unsigned char... bone documentation looks scarce.
-                                    unsigned char ucSubTarget = pWeapon->GetTargetBone ( );
-                                    BitStream.Write ( ucSubTarget ); // Send the entire unsigned char as there are a lot of bones.
-                                }
-                                else if ( IS_VEHICLE ( pTarget ) )
-                                {
-                                    unsigned char ucSubTarget = pWeapon->GetTargetWheel ( );
-                                    BitStream.WriteBits ( &ucSubTarget, 4 ); // 4 bits = 8 possible values.
-                                }
-                                break;
-                            }
-                            case TARGET_TYPE_VECTOR:
-                            {
-                                CVector vecTarget = pWeapon->GetVectorTarget ( );
-                                BitStream.WriteVector ( vecTarget.fX, vecTarget.fY, vecTarget.fZ );
-                                break;
-                            }
-                        }
-                        bool bChanged = false;
-                        BitStream.WriteBit ( bChanged );
-                        if ( bChanged )
-                        {
-                            CWeaponStat * pWeaponStat = pWeapon->GetWeaponStat ( );
-                            unsigned short usDamage = pWeaponStat->GetDamagePerHit ( );
-                            float fAccuracy = pWeaponStat->GetAccuracy ( );
-                            float fTargetRange = pWeaponStat->GetTargetRange ( );
-                            float fWeaponRange = pWeaponStat->GetWeaponRange ( );
-                            BitStream.WriteBits ( &usDamage, 12 ); // 12 bits = 2048 values... plenty.
-                            BitStream.Write ( fAccuracy );
-                            BitStream.Write ( fTargetRange );
-                            BitStream.Write ( fWeaponRange );
-                        }
-                        SWeaponConfiguration weaponConfig = pWeapon->GetFlags ( );
-                        
-                        BitStream.WriteBit ( weaponConfig.bDisableWeaponModel );
-                        BitStream.WriteBit ( weaponConfig.bInstantReload );
-                        BitStream.WriteBit ( weaponConfig.bShootIfTargetBlocked );
-                        BitStream.WriteBit ( weaponConfig.bShootIfTargetOutOfRange );
-                        BitStream.WriteBit ( weaponConfig.flags.bCheckBuildings );
-                        BitStream.WriteBit ( weaponConfig.flags.bCheckCarTires );
-                        BitStream.WriteBit ( weaponConfig.flags.bCheckDummies );
-                        BitStream.WriteBit ( weaponConfig.flags.bCheckObjects );
-                        BitStream.WriteBit ( weaponConfig.flags.bCheckPeds );
-                        BitStream.WriteBit ( weaponConfig.flags.bCheckVehicles );
-                        BitStream.WriteBit ( weaponConfig.flags.bIgnoreSomeObjectsForCamera );
-                        BitStream.WriteBit ( weaponConfig.flags.bSeeThroughStuff );
-                        BitStream.WriteBit ( weaponConfig.flags.bShootThroughStuff );
-
-                        unsigned short usAmmo = pWeapon->GetAmmo ( );
-                        unsigned short usClipAmmo = pWeapon->GetAmmo ( );
-                        ElementID OwnerID = pWeapon->GetOwner ( ) == NULL ? INVALID_ELEMENT_ID : pWeapon->GetOwner ( )->GetID ( );
-                        unsigned char ucWeaponState = pWeapon->GetWeaponState ( );
-                        BitStream.WriteBits ( &ucWeaponState, 4 ); // 4 bits = 8 possible values for weapon state
-                        BitStream.Write ( usAmmo );
-                        BitStream.Write ( usClipAmmo );
-                        BitStream.Write ( OwnerID );
-                    }
-
                     break;
                 }
 
@@ -371,7 +226,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
 
                     // Position
                     position.data.vecPosition = pPickup->GetPosition ();
-                    SilentlyFixIndeterminate( position.data.vecPosition );      // Crash fix for pre r6459 clients
                     BitStream.Write ( &position );
 
                     // Grab the model and write it
@@ -464,17 +318,11 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
 
                     // Write the damage model
                     SVehicleDamageSync damage ( true, true, true, true, false );
-                    damage.data.ucDoorStates = pVehicle->m_ucDoorStates;
-                    damage.data.ucWheelStates = pVehicle->m_ucWheelStates;
-                    damage.data.ucPanelStates = pVehicle->m_ucPanelStates;
-                    damage.data.ucLightStates = pVehicle->m_ucLightStates;
+                    memcpy ( damage.data.ucDoorStates,  pVehicle->m_ucDoorStates,  MAX_DOORS );
+                    memcpy ( damage.data.ucWheelStates, pVehicle->m_ucWheelStates, MAX_WHEELS );
+                    memcpy ( damage.data.ucPanelStates, pVehicle->m_ucPanelStates, MAX_PANELS );
+                    memcpy ( damage.data.ucLightStates, pVehicle->m_ucLightStates, MAX_LIGHTS );
                     BitStream.Write ( &damage );
-                    
-                    unsigned char ucVariant = pVehicle->GetVariant();
-                    BitStream.Write ( ucVariant );
-
-                    unsigned char ucVariant2 = pVehicle->GetVariant2();
-                    BitStream.Write ( ucVariant2 );
 
                     // If the vehicle has a turret, send its position too
                     unsigned short usModel = pVehicle->GetModel ();
@@ -506,7 +354,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     // Write all the upgrades
                     CVehicleUpgrades* pUpgrades = pVehicle->GetUpgrades ();
                     unsigned char ucNumUpgrades = pUpgrades->Count ();
-                    const SSlotStates& usSlotStates = pUpgrades->GetSlotStates ();
+                    unsigned short* usSlotStates = pUpgrades->GetSlotStates ();
                     BitStream.Write ( ucNumUpgrades );
 
                     if ( ucNumUpgrades > 0 )
@@ -612,53 +460,13 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                         //handling.data.ucHeadLight                   = pEntry->GetHeadLight ();
                         //handling.data.ucTailLight                   = pEntry->GetTailLight ();
                         handling.data.ucAnimGroup                   = pEntry->GetAnimGroup ();
-
-                        // Lower and Upper limits cannot match or LSOD (unless boat)
-                        //if ( pVehicle->GetModel() != VEHICLE_BOAT )     // Commented until fully tested
-                        {
-                            float fSuspensionLimitSize = handling.data.fSuspensionUpperLimit - handling.data.fSuspensionLowerLimit;
-                            if ( fSuspensionLimitSize > -0.1f && fSuspensionLimitSize < 0.1f )
-                            {
-                                if ( fSuspensionLimitSize >= 0.f )
-                                    handling.data.fSuspensionUpperLimit = handling.data.fSuspensionLowerLimit + 0.1f;
-                                else
-                                    handling.data.fSuspensionUpperLimit = handling.data.fSuspensionLowerLimit - 0.1f;
-                            }
-                        }
                         BitStream.Write ( &handling );
                     }
                     else
                         BitStream.WriteBit ( false );
 
-                    if ( BitStream.Version ( ) >= 0x02B )
-                    {
-                        unsigned char ucSirenCount = pVehicle->m_tSirenBeaconInfo.m_ucSirenCount;
-                        unsigned char ucSirenType = pVehicle->m_tSirenBeaconInfo.m_ucSirenType;
-                        bool bSync = pVehicle->m_tSirenBeaconInfo.m_bOverrideSirens;
-                        BitStream.WriteBit ( bSync );
-                        if ( bSync )
-                        {
-                            BitStream.Write ( ucSirenCount );
-                            BitStream.Write ( ucSirenType );
-
-                            for ( int i = 0; i < ucSirenCount; i++ )
-                            {
-                                SVehicleSirenSync syncData;
-                                syncData.data.m_bOverrideSirens = true;
-                                syncData.data.m_b360Flag = pVehicle->m_tSirenBeaconInfo.m_b360Flag;
-                                syncData.data.m_bDoLOSCheck = pVehicle->m_tSirenBeaconInfo.m_bDoLOSCheck;
-                                syncData.data.m_bUseRandomiser = pVehicle->m_tSirenBeaconInfo.m_bUseRandomiser;
-                                syncData.data.m_bEnableSilent = pVehicle->m_tSirenBeaconInfo.m_bSirenSilent;
-                                syncData.data.m_ucSirenID = i;
-                                syncData.data.m_vecSirenPositions = pVehicle->m_tSirenBeaconInfo.m_tSirenInfo[i].m_vecSirenPositions;
-                                syncData.data.m_colSirenColour = pVehicle->m_tSirenBeaconInfo.m_tSirenInfo[i].m_RGBBeaconColour;
-                                syncData.data.m_dwSirenMinAlpha = pVehicle->m_tSirenBeaconInfo.m_tSirenInfo[i].m_dwMinSirenAlpha;
-                                BitStream.Write ( &syncData );
-                            }
-                        }
-                    }
                     break;
-                }
+                }                
 
                 case CElement::MARKER:
                 {
@@ -666,7 +474,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
 
                     // Position
                     position.data.vecPosition = pMarker->GetPosition ();
-                    SilentlyFixIndeterminate( position.data.vecPosition );      // Crash fix for pre r6459 clients
                     BitStream.Write ( &position );
 
                     // Type
@@ -712,8 +519,8 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     // Write the ordering id
                     BitStream.WriteCompressed ( pBlip->m_sOrdering );
 
-                    // Write the visible distance - 14 bits allows 16383.
-                    SIntegerSync < unsigned short, 14 > visibleDistance ( Min ( pBlip->m_usVisibleDistance, (unsigned short)16383 ) );
+                    // Write the visible distance
+                    SIntegerSync < unsigned short, 14 > visibleDistance ( pBlip->m_usVisibleDistance );
                     BitStream.Write ( &visibleDistance );
 
                     // Write the icon
@@ -741,13 +548,11 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     // Write the position
                     SPosition2DSync position2D ( false );
                     position2D.data.vecPosition = pArea->GetPosition ();
-                    SilentlyFixIndeterminate( position2D.data.vecPosition );    // Crash fix for pre r6459 clients
                     BitStream.Write ( &position2D );
 
                     // Write the size
                     SPosition2DSync size2D ( false );
                     size2D.data.vecPosition = pArea->GetSize ();
-                    SilentlyFixIndeterminate( size2D.data.vecPosition );        // Crash fix for pre r6459 clients
                     BitStream.Write ( &size2D );
 
                     // And the color
@@ -764,7 +569,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     break;
                 }
 
-                case CElement::WORLD_MESH_UNUSED:
+                case CElement::WORLD_MESH:
                 {
                     /*
                     CWorldMesh* pMesh = static_cast < CWorldMesh* > ( pElement );
@@ -795,7 +600,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     CTeam* pTeam = static_cast < CTeam* > ( pElement );
 
                     // Write the name
-                    const char* szTeamName = pTeam->GetTeamName ();
+                    char* szTeamName = pTeam->GetTeamName ();
                     unsigned short usNameLength = static_cast < unsigned short > ( strlen ( szTeamName ) );
                     unsigned char ucRed, ucGreen, ucBlue;
                     pTeam->GetColor ( ucRed, ucGreen, ucBlue );
@@ -806,9 +611,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     BitStream.Write ( ucGreen );
                     BitStream.Write ( ucBlue );
                     BitStream.WriteBit ( bFriendlyFire );
-                    BitStream.Write ( pTeam->CountPlayers () );
-                    for ( list < CPlayer* >::const_iterator iter = pTeam->PlayersBegin (); iter != pTeam->PlayersEnd (); ++iter )
-                        BitStream.Write ( ( *iter )->GetID () );
 
                     break;
                 }
@@ -845,7 +647,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     if ( pVehicle )
                     {
                         BitStream.WriteBit ( true );
-                        BitStream.Write ( pVehicle->GetID () );
+                        BitStream.WriteCompressed ( pVehicle->GetID () );
 
                         SOccupiedSeatSync seat;
                         seat.data.ucSeat = pPed->GetOccupiedVehicleSeat ();
@@ -865,19 +667,12 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     alpha.data.ucAlpha = pPed->GetAlpha ();
                     BitStream.Write ( &alpha );
 
-                    // Move anim
-                    if ( BitStream.Version() > 0x4B )
-                    {
-                        uchar ucMoveAnim = pPed->GetMoveAnim();
-                        BitStream.Write ( ucMoveAnim );
-                    }
-
                     // clothes
                     unsigned char ucNumClothes = 0;
                     CPlayerClothes* pClothes = pPed->GetClothes ( );
                     for ( unsigned char ucType = 0 ; ucType < PLAYER_CLOTHING_SLOTS ; ucType++ )
                     {
-                        const SPlayerClothing* pClothing = pClothes->GetClothing ( ucType );
+                        SPlayerClothing* pClothing = pClothes->GetClothing ( ucType );
                         if ( pClothing )
                         {
                             ucNumClothes++;
@@ -886,7 +681,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     BitStream.Write ( ucNumClothes );
                     for ( unsigned char ucType = 0 ; ucType < PLAYER_CLOTHING_SLOTS ; ucType++ )
                     {
-                        const SPlayerClothing* pClothing = pClothes->GetClothing ( ucType );
+                        SPlayerClothing* pClothing = pClothes->GetClothing ( ucType );
                         if ( pClothing )
                         {
                             unsigned char ucTextureLength = strlen ( pClothing->szTexture );
@@ -910,7 +705,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     const char* szTypeName = pDummy->GetTypeName ().c_str ();
                     unsigned short usTypeNameLength = static_cast < unsigned short > ( strlen ( szTypeName ) );
                     BitStream.WriteCompressed ( usTypeNameLength );
-                    BitStream.Write ( szTypeName, usTypeNameLength );                      
+                    BitStream.Write ( const_cast < char* > ( szTypeName ), usTypeNameLength );                      
 
                     // Position
                     position.data.vecPosition = pDummy->GetPosition();
@@ -998,7 +793,7 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                             CColPolygon* pPolygon = static_cast < CColPolygon* > ( pColShape );
                             BitStream.WriteCompressed ( pPolygon->CountPoints() );
                             std::vector < CVector2D > ::const_iterator iter = pPolygon->IterBegin();
-                            for ( ; iter != pPolygon->IterEnd () ; ++iter )
+                            for ( ; iter != pPolygon->IterEnd () ; iter++ )
                             {
                                 SPosition2DSync vertex ( false );
                                 vertex.data.vecPosition = *iter;

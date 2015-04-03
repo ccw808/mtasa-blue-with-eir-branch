@@ -49,7 +49,6 @@ public:
 
 class CClientProjectile : public CClientEntity
 {
-    DECLARE_CLASS( CClientProjectile, CClientEntity )
     friend class CClientProjectileManager;
     friend class CClientPed;
     friend class CClientVehicle;
@@ -73,24 +72,22 @@ public:
 
 
     void                                DoPulse                 ( void );
-    void                                Initiate                ( CVector& vecPosition, CVector& vecRotation, CVector& vecVelocity, unsigned short usModel );
-    void                                Destroy                 ( bool bBlow = true );
+    void                                Initiate                ( CVector * pvecPosition, CVector * pvecRotation, CVector * pvecVelocity, unsigned short usModel );
+    void                                Destroy                 ( void );
 
     bool                                IsActive                ( void );
-    bool                                GetMatrix               ( CMatrix & matrix ) const;
+    bool                                GetMatrix               ( CMatrix & matrix );
     bool                                SetMatrix               ( const CMatrix & matrix );
     void                                GetPosition             ( CVector & vecPosition ) const;
     void                                SetPosition             ( const CVector & vecPosition );
-    void                                GetRotationRadians      ( CVector & vecRotation ) const;
-    void                                GetRotationDegrees      ( CVector & vecRotation ) const;
-    void                                SetRotationRadians      ( const CVector & vecRotation );
-    void                                SetRotationDegrees      ( const CVector & vecRotation );
+    void                                GetRotation             ( CVector & vecRotation );
+    void                                GetRotationDegrees      ( CVector & vecRotation );
+    void                                SetRotation             ( CVector & vecRotation );
+    void                                SetRotationDegrees      ( CVector & vecRotation );
     void                                GetVelocity             ( CVector & vecVelocity );
     void                                SetVelocity             ( CVector & vecVelocity );
-    unsigned short                      GetModel                ( void );
     void                                SetModel                ( unsigned short usModel );
-    void                                SetCounter              ( DWORD dwCounter );
-    DWORD                               GetCounter              ( void );
+
     inline CClientEntity *              GetCreator              ( void )        { return m_pCreator; }
     inline CClientEntity *              GetTargetEntity         ( void )        { return m_pTarget; }
     inline eWeaponType                  GetWeaponType           ( void )        { return m_weaponType; }
@@ -98,7 +95,6 @@ public:
     inline CVector *                    GetTarget               ( void )        { return m_pvecTarget; }
     inline float                        GetForce                ( void )        { return m_fForce; }
     inline bool                         IsLocal                 ( void )        { return m_bLocal; }
-    CClientEntity*                      GetSatchelAttachedTo    ( void );
     
 protected:
     CClientProjectileManager*           m_pProjectileManager;
@@ -107,8 +103,8 @@ protected:
     CProjectile *                       m_pProjectile;
     CProjectileInfo *                   m_pProjectileInfo;
 
-    CClientEntityPtr                    m_pCreator;
-    CClientEntityPtr                    m_pTarget;
+    CClientEntity *                     m_pCreator;
+    CClientEntity *                     m_pTarget;
     eWeaponType                         m_weaponType;
     CVector *                           m_pvecOrigin;
     CVector *                           m_pvecTarget;
@@ -118,7 +114,6 @@ protected:
 
     bool                                m_bInitiate;
     CProjectileInitiateData *           m_pInitiateData;
-    bool                                m_bCorrected;
 };
 
 #endif

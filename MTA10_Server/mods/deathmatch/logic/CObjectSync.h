@@ -13,8 +13,6 @@
 #ifndef __COBJECTSYNC_H
 #define __COBJECTSYNC_H
 
-#ifdef WITH_OBJECT_SYNC
-
 #include "CPlayerManager.h"
 #include "CObjectManager.h"
 #include "packets/CObjectSyncPacket.h"
@@ -43,9 +41,7 @@ private:
     CPlayerManager*         m_pPlayerManager;
     CObjectManager*         m_pObjectManager;
 
-    CElapsedTime            m_UpdateTimer;
+    unsigned long           m_ulLastSweepTime;
 };
-
-#endif
 
 #endif

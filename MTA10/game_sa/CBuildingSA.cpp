@@ -166,7 +166,7 @@ CBuildingSA::~CBuildingSA( )
         DWORD dwInterface = (DWORD)this->GetInterface();
         
         CWorldSA * world = (CWorldSA *)pGame->GetWorld();
-        world->Remove(this->GetInterface(), CBuilding_Destructor);
+        world->Remove(this->GetInterface());
     
         DWORD dwThis = (DWORD)this->GetInterface();
         DWORD dwFunc = this->GetInterface()->vtbl->SCALAR_DELETING_DESTRUCTOR; // we use the vtbl so we can be type independent

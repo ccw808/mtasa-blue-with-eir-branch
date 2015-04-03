@@ -20,6 +20,22 @@
 using namespace std;
 
 
+bool DoesFileExist ( const char* szFilename )
+{
+    // Check that the file exists
+    WIN32_FIND_DATA wFind;
+    HANDLE hFind = FindFirstFile ( szFilename, &wFind );
+    if ( hFind == INVALID_HANDLE_VALUE )
+    {
+        return false;
+    }
+
+    // Clean up
+    FindClose ( hFind );
+    return true;
+}
+
+
 char* ReplaceAnyStringOccurrence ( char* szBuffer, const char* szWhat, const char* szWith, size_t sizeMax )
 {
     // TODO: Check for max size
@@ -147,12 +163,10 @@ void RaiseFatalError ( unsigned int uiCode )
 #endif
 
     // Populate the message and show the box
-    SString strBuffer ( _("Fatal error (%u). If this problem persists, please check out mtasa.com for support."), uiCode );
-    SString strTroubleLink( SString( "fatal-error&code=%d", uiCode ) );
-    g_pCore->ShowErrorMessageBox ( _("Fatal error")+_E("CD62"), strBuffer, strTroubleLink );
+    SString strBuffer ( "Fatal error (%u). If this problem persists, please check out mtasa.com for support.", uiCode );
+    g_pCore->ShowMessageBox ( "Fatal error", strBuffer, MB_BUTTON_OK | MB_ICON_ERROR );
 
     // Request the mod unload
-    AddReportLog( 7108, SString( "Game - RaiseFatalError %d", uiCode ) );
     g_pCore->GetModManager ()->RequestUnload ();
 }
 
@@ -164,13 +178,11 @@ void RaiseProtocolError ( unsigned int uiCode )
 //#endif
 
     // Populate the message and show the box
-    SString strBuffer ( _("Protocol error (%u). If this problem persists, please check out mtasa.com for support."), uiCode );
-    SString strTroubleLink( SString( "protocol-error&code=%d", uiCode ) );
-    g_pCore->ShowErrorMessageBox ( _("Connection error")+_E("CD63"), strBuffer, strTroubleLink ); // Protocol error
+    SString strBuffer ( "Protocol error (%u). If this problem persists, please check out mtasa.com for support.", uiCode );
+    g_pCore->ShowMessageBox ( "Connection error", strBuffer, MB_BUTTON_OK | MB_ICON_ERROR );
 
     // Request the mod unload
     g_pCore->GetModManager ()->RequestUnload ();
-    AddReportLog( 7109, SString( "Game - RaiseProtocolError %d", uiCode ) );
 }
 
 
@@ -203,16 +215,24 @@ void RotateVector ( CVector& vecLine, const CVector& vecRotation )
     vecLine.fX = cos ( vecRotation.fZ ) * fLineX  + sin ( vecRotation.fZ ) * vecLine.fY;
     vecLine.fY = -sin ( vecRotation.fZ ) * fLineX + cos ( vecRotation.fZ ) * vecLine.fY;
 }
+void AttachedMatrix ( CMatrix & matrix, CMatrix & returnMatrix, CVector vecDirection, CVector vecRotation )
+{    
+    CVector vecMatRotation;
+    g_pMultiplayer->ConvertMatrixToEulerAngles ( matrix, vecMatRotation );
 
-void AttachedMatrix ( const CMatrix& matrix, CMatrix& returnMatrix, const CVector& vecPosition, const CVector& vecRotation )
-{
-    returnMatrix = CMatrix( vecPosition, vecRotation ) * matrix;
+    RotateVector ( vecDirection, vecMatRotation );
+
+    returnMatrix.vPos = matrix.vPos + vecDirection;
+   
+    vecMatRotation += vecRotation;
+    g_pMultiplayer->ConvertEulerAnglesToMatrix ( returnMatrix, vecMatRotation );
 }
+
 
 void LongToDottedIP ( unsigned long ulIP, char* szDottedIP )
 {
     in_addr in;
-    in.s_addr = ulIP;
+    in.s_addr = ulIP;;
     char* szTemp = inet_ntoa ( in );
     if ( szTemp )
     {
@@ -245,15 +265,15 @@ unsigned int GetRandom ( unsigned int uiLow, unsigned int uiHigh )
 }
 
 
-SString GetDataUnit ( unsigned long long ullInput )
+SString GetDataUnit ( unsigned int uiInput )
 {
     // Convert it to a float
-    float fInput = static_cast < float > ( ullInput );
+    float fInput = static_cast < float > ( uiInput );
 
     // Bytes per sec?
     if ( fInput < 1024 )
     {
-        return SString ( "%u B", (uint)ullInput );
+        return SString ( "%u B", uiInput );
     }
 
     // Kilobytes per sec?
@@ -516,6 +536,88 @@ bool XMLColorToInt ( const char* szColor, unsigned char& ucRed, unsigned char& u
     return true;
 }
 
+unsigned int HashString ( const char* szString )
+{
+    // Implementation of Bob Jenkin's awesome hash function
+    // Ref: http://burtleburtle.net/bob/hash/doobs.html
+
+    register const char* k;             //< pointer to the string data to be hashed
+    register unsigned int a, b, c;      //< temporary variables
+    register unsigned int len;          //< length of the string left
+
+    unsigned int length = (unsigned int) strlen ( szString );
+
+    k = szString;
+    len = length;
+    a = b = 0x9e3779b9;
+    c = 0xabcdef89;                     // initval, arbitrarily set
+
+    while ( len >= 12 )
+    {
+        a += ( k[0] + ((unsigned int)k[1]<<8) + ((unsigned int)k[2]<<16)  + ((unsigned int)k[3]<<24) );
+        b += ( k[4] + ((unsigned int)k[5]<<8) + ((unsigned int)k[6]<<16)  + ((unsigned int)k[7]<<24) );
+        c += ( k[8] + ((unsigned int)k[9]<<8) + ((unsigned int)k[10]<<16) + ((unsigned int)k[11]<<24) );
+
+        // Mix
+        a -= b; a -= c; a ^= ( c >> 13 );
+        b -= c; b -= a; b ^= ( a << 8 );
+        c -= a; c -= b; c ^= ( b >> 13 );
+        a -= b; a -= c; a ^= ( c >> 12 );
+        b -= c; b -= a; b ^= ( a << 16 );
+        c -= a; c -= b; c ^= ( b >> 5 );
+        a -= b; a -= c; a ^= ( c >> 3 );
+        b -= c; b -= a; b ^= ( a << 10 );
+        c -= a; c -= b; c ^= ( b >> 15 );
+
+        k += 12;
+        len -= 12;
+    }
+
+    // Handle the last 11 remaining bytes
+    // Note: All cases fall through
+
+    c += length;        // Lower byte of c gets used for length
+
+    switch ( len )
+    {
+    case 11: 
+        c += ((unsigned int)k[10]<<24);
+    case 10: 
+        c += ((unsigned int)k[9]<<16);
+    case 9: 
+        c += ((unsigned int)k[8]<<8);
+    case 8: 
+        b += ((unsigned int)k[7]<<24);
+    case 7: 
+        b += ((unsigned int)k[6]<<16);
+    case 6: 
+        b += ((unsigned int)k[5]<<8);
+    case 5: 
+        b += k[4];
+    case 4: 
+        a += ((unsigned int)k[3]<<24);
+    case 3: 
+        a += ((unsigned int)k[2]<<16);
+    case 2: 
+        a += ((unsigned int)k[1]<<8);
+    case 1: 
+        a += k[0];
+    }
+
+    // Mix
+    a -= b; a -= c; a ^= ( c >> 13 );
+    b -= c; b -= a; b ^= ( a << 8 );
+    c -= a; c -= b; c ^= ( b >> 13 );
+    a -= b; a -= c; a ^= ( c >> 12 );
+    b -= c; b -= a; b ^= ( a << 16 );
+    c -= a; c -= b; c ^= ( b >> 5 );
+    a -= b; a -= c; a ^= ( c >> 3 );
+    b -= c; b -= a; b ^= ( a << 10 );
+    c -= a; c -= b; c ^= ( b >> 15 );
+
+    return c;
+}
+
 
 //
 // Safely read a ushort sized string from a NetBitStreamInterface
@@ -550,6 +652,26 @@ bool BitStreamReadUsString( class NetBitStreamInterface& bitStream, SString& str
     return bResult;
 }
 
+eEulerRotationOrder	EulerRotationOrderFromString(const char* szString)
+{
+    // We don't provide a conversion for EULER_MINUS_ZYZ since it's only meant to be used internally, not via scripts
+    if ( stricmp ( szString, "default" ) == 0)
+    {
+        return EULER_DEFAULT;
+    }
+    else if ( stricmp ( szString, "ZXY" ) == 0 )
+    {
+        return EULER_ZXY;
+    }
+    else if ( stricmp ( szString, "ZYX" ) == 0 )
+    {
+        return EULER_ZYX;
+    }
+    else
+    {
+        return EULER_INVALID;
+    }
+}
 
 // RX(theta)
 // | 1              0               0       |
@@ -643,7 +765,9 @@ CVector    ConvertEulerRotationOrder    ( const CVector& a_vRotation, eEulerRota
 {
     if (a_eSrcOrder == a_eDstOrder      ||
         a_eSrcOrder == EULER_DEFAULT    ||
-        a_eDstOrder == EULER_DEFAULT)
+        a_eSrcOrder == EULER_INVALID    ||
+        a_eDstOrder == EULER_DEFAULT    ||
+        a_eDstOrder == EULER_INVALID)
     {
         return a_vRotation;
     }

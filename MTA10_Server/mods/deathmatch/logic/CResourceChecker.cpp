@@ -11,9 +11,7 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#include "CResourceChecker.Data.h"
-#include <clocale>
-extern CNetServer* g_pRealNetServer;
+
 
 ///////////////////////////////////////////////////////////////
 //
@@ -24,11 +22,6 @@ extern CNetServer* g_pRealNetServer;
 ///////////////////////////////////////////////////////////////
 void CResourceChecker::CheckResourceForIssues( CResource* pResource, const string& strResourceZip )
 {
-    m_strReqClientVersion = "";
-    m_strReqServerVersion = "";
-    m_strReqClientReason = "";
-    m_strReqServerReason = "";
-
     m_ulDeprecatedWarningCount = 0;
     m_upgradedFullPathList.clear ();
 
@@ -43,42 +36,8 @@ void CResourceChecker::CheckResourceForIssues( CResource* pResource, const strin
             string strPath;
             if ( pResource->GetFilePath ( pResourceFile->GetName(), strPath ) )
             {
-                CResourceFile::eResourceType type = pResourceFile->GetType ();
-
-                bool bScript;
-                bool bClient;
-                if ( type == CResourceFile::RESOURCE_FILE_TYPE_SCRIPT )
-                {
-                    bScript = true;
-                    bClient = false;
-                }
-                else
-                if ( type == CResourceFile::RESOURCE_FILE_TYPE_CLIENT_SCRIPT )
-                {
-                    bScript = true;
-                    bClient = true;
-                }
-                else
-                if ( type == CResourceFile::RESOURCE_FILE_TYPE_CLIENT_FILE )
-                {
-                    bScript = false;
-                    bClient = true;
-                }
-                else
-                    continue;
-
-                CheckFileForIssues ( strPath, pResourceFile->GetName(), pResource->GetName (), bScript, bClient, false );
+                CheckFileForIssues ( strPath, pResourceFile->GetName(), pResource->GetName (), pResourceFile->GetType () == CResourceFile::RESOURCE_FILE_TYPE_CLIENT_SCRIPT );
             }
-        }
-    }
-
-    // Also check meta.xml
-    {
-        SString strFilename = "meta.xml";
-        string strPath;
-        if ( pResource->GetFilePath ( strFilename, strPath ) )
-        {
-            CheckFileForIssues ( strPath, strFilename, pResource->GetName (), false, false, true );
         }
     }
 
@@ -132,12 +91,6 @@ void CResourceChecker::CheckResourceForIssues( CResource* pResource, const strin
             remove( strTempZip.c_str () );
         }
     }
-
-    // Check LC_COLLATE is correct
-    if ( strcoll( "a", "B" ) < 0 )
-    {
-        CLogger::LogPrintf ( "ERROR: LC_COLLATE is not set correctly\n" );
-    }
 }
 
 
@@ -148,30 +101,23 @@ void CResourceChecker::CheckResourceForIssues( CResource* pResource, const strin
 // Check one file for any issues that may need to be logged at the server.
 //
 ///////////////////////////////////////////////////////////////
-void CResourceChecker::CheckFileForIssues ( const string& strPath, const string& strFileName, const string& strResourceName, bool bScript, bool bClient, bool bMeta )
+void CResourceChecker::CheckFileForIssues ( const string& strPath, const string& strFileName, const string& strResourceName, bool bClientScript )
 {
-    if ( bScript )
-    {
-        CheckLuaFileForIssues( strPath, strFileName, strResourceName, bClient );
-    }
-    else
-    if ( bMeta )
-    {
-        CheckMetaFileForIssues( strPath, strFileName, strResourceName );
-    }
-    else
-    {
-        const char* szExt = strPath.c_str () + max < long > ( 0, strPath.length () - 4 );
+    const char* szExt   = strPath.c_str () + max<long>( 0, strPath.length () - 4 );
 
-        if ( stricmp ( szExt, ".PNG" ) == 0 )
-        {
-            CheckPngFileForIssues( strPath, strFileName, strResourceName );
-        }
-        else
-        if ( stricmp ( szExt, ".TXD" ) == 0 || stricmp ( szExt, ".DFF" ) == 0 )
-        {
-            CheckRwFileForIssues( strPath, strFileName, strResourceName );
-        }
+    if ( stricmp ( szExt, ".PNG" ) == 0 )
+    {
+        CheckPngFileForIssues( strPath, strFileName, strResourceName );
+    }
+    else
+    if ( stricmp ( szExt, ".TXD" ) == 0 || stricmp ( szExt, ".DFF" ) == 0 )
+    {
+        CheckRwFileForIssues( strPath, strFileName, strResourceName );
+    }
+    else
+    if ( stricmp ( szExt, ".LUA" ) == 0 )
+    {
+        CheckLuaFileForIssues( strPath, strFileName, bClientScript );
     }
 }
 
@@ -227,9 +173,9 @@ void CResourceChecker::CheckRwFileForIssues ( const string& strPath, const strin
     if ( FILE* pFile = fopen ( strPath.c_str (), "rb" ) )
     {
         struct {
-            int id;
-            int size;
-            int ver;
+            long id;
+            long size;
+            long ver;
         } header = {0,0,0};
 
         // Load the first header
@@ -263,149 +209,43 @@ void CResourceChecker::CheckRwFileForIssues ( const string& strPath, const strin
 
 ///////////////////////////////////////////////////////////////
 //
-// CResourceChecker::CheckMetaFileForIssues
-//
-//
-//
-///////////////////////////////////////////////////////////////
-void CResourceChecker::CheckMetaFileForIssues ( const string& strPath, const string& strFileName, const string& strResourceName )
-{
-    // Load the meta file
-    CXMLFile* metaFile = g_pServerInterface->GetXML ()->CreateXML ( strPath.c_str() );
-    if ( !metaFile )
-        return;
-
-    CXMLNode* pRootNode = metaFile->Parse () ? metaFile->GetRootNode () : NULL;
-    if ( !pRootNode )
-    {
-        delete metaFile;
-        return;
-    }
-
-    // Ouput warnings...
-    if ( m_bUpgradeScripts == false )
-    {
-        CheckMetaSourceForIssues ( pRootNode, strFileName, strResourceName, ECheckerMode::WARNINGS );
-    }
-    else
-    // ..or do an upgrade
-    if ( m_bUpgradeScripts == true )
-    {
-        bool bHasChanged = false;
-        CheckMetaSourceForIssues ( pRootNode, strFileName, strResourceName, ECheckerMode::UPGRADE, &bHasChanged );
-
-        // Has contents changed?
-        if ( bHasChanged )
-        {
-            // Rename original to xml.old
-            if( !RenameBackupFile( strPath, ".old" ) )
-                return;
-
-            // Save new content
-            metaFile->Write ();
-            CLogger::LogPrintf ( "Upgrading %s:%s ...........done\n", strResourceName.c_str (), strFileName.c_str () );
-
-            m_upgradedFullPathList.push_back( strPath );
-        }
-    }
-
-    delete metaFile;
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CResourceChecker::CheckMetaSourceForIssues
-//
-//
-//
-///////////////////////////////////////////////////////////////
-void CResourceChecker::CheckMetaSourceForIssues ( CXMLNode* pRootNode, const string& strFileName, const string& strResourceName, ECheckerModeType checkerMode, bool* pbOutHasChanged )
-{
-    // Find the client and server version requirements
-    SString strMinClientReqFromMetaXml = "";
-    SString strMinServerReqFromMetaXml = "";
-    CXMLNode* pNodeMinMtaVersion = pRootNode->FindSubNode ( "min_mta_version", 0 );
-
-    if ( pNodeMinMtaVersion )
-    {
-        if ( CXMLAttribute* pAttr = pNodeMinMtaVersion->GetAttributes ().Find ( "server" ) )
-            strMinServerReqFromMetaXml = pAttr->GetValue ();
-        if ( CXMLAttribute* pAttr = pNodeMinMtaVersion->GetAttributes ().Find ( "client" ) )
-            strMinClientReqFromMetaXml = pAttr->GetValue ();
-        if ( CXMLAttribute* pAttr = pNodeMinMtaVersion->GetAttributes ().Find ( "both" ) )
-            strMinServerReqFromMetaXml = strMinClientReqFromMetaXml = pAttr->GetValue ();
-    }
-
-    // Is it right?
-    if ( m_strReqClientVersion > strMinClientReqFromMetaXml || m_strReqServerVersion > strMinServerReqFromMetaXml )
-    {
-        // It's not right. What to do?
-        if ( checkerMode == ECheckerMode::WARNINGS )
-        {
-            SString strTemp = "<min_mta_version> section in the meta.xml is incorrect or missing (expected at least ";
-            if ( m_strReqClientVersion > strMinClientReqFromMetaXml )
-                strTemp += SString ( "client %s because of '%s')", *m_strReqClientVersion, *m_strReqClientReason );
-            else
-            if ( m_strReqServerVersion > strMinServerReqFromMetaXml )
-                strTemp += SString ( "server %s because of '%s')", *m_strReqServerVersion, *m_strReqServerReason );
-
-            CLogger::LogPrint ( SString ( "WARNING: %s %s\n", strResourceName.c_str (), *strTemp ) );
-        }
-        else
-        if ( checkerMode == ECheckerMode::UPGRADE )
-        {
-            // Create min_mta_version node if required
-            if ( !pNodeMinMtaVersion )
-                pNodeMinMtaVersion = pRootNode->CreateSubNode ( "min_mta_version" );
-
-            CXMLAttributes& attributes = pNodeMinMtaVersion->GetAttributes ();
-            attributes.Delete ( "server" );
-            attributes.Delete ( "client" );
-            attributes.Delete ( "both" );
-
-            if ( !m_strReqServerVersion.empty () )
-            {
-                CXMLAttribute* pAttr = attributes.Create ( "server" );
-                pAttr->SetValue ( m_strReqServerVersion );
-            }
-
-            if ( !m_strReqClientVersion.empty () )
-            {
-                CXMLAttribute* pAttr = attributes.Create ( "client" );
-                pAttr->SetValue ( m_strReqClientVersion );
-            }
-
-            if ( pbOutHasChanged )
-                *pbOutHasChanged = true;
-        }
-    }
-}
-
-
-///////////////////////////////////////////////////////////////
-//
 // CResourceChecker::CheckLuaFileForIssues
 //
 //
 //
 ///////////////////////////////////////////////////////////////
-void CResourceChecker::CheckLuaFileForIssues ( const string& strPath, const string& strFileName, const string& strResourceName, bool bClientScript )
+void CResourceChecker::CheckLuaFileForIssues ( const string& strPath, const string& strFileName, bool bClientScript )
 {
     // Load the original file into a string
-    SString strFileContents;
+    string strFileContents;
 
     // Open the file
-    FileLoad ( strPath, strFileContents );
+    if ( FILE* pFile = fopen ( strPath.c_str (), "rb" ) )
+    {
+        // Get the file size,
+        unsigned long ulLength = 0;
+        fseek( pFile, 0, SEEK_END );
+        ulLength = ftell( pFile );
+        fseek( pFile, 0, SEEK_SET );
+
+        // Load file into a buffer
+        char* pBuffer  = new char[ ulLength + 1 ];
+        memset ( pBuffer, 0, ulLength + 1 );
+        pBuffer[ ulLength ] = 0;
+
+        if ( fread ( pBuffer, 1, ulLength, pFile ) == ulLength )
+        {
+            // assign to the string
+            strFileContents.assign ( pBuffer, ulLength );
+        }
+
+        // Clean up
+        fclose ( pFile );
+        delete [] pBuffer;
+    }
+
     if ( strFileContents.length () == 0 )
         return;
-
-    // Update decrypt version requirements, and do no more checking if encrypted
-    if ( CheckLuaDecryptRequirements( strFileContents, strFileName, strResourceName, bClientScript ) )
-        return;
-
-    // Check if a compiled script
-    bool bCompiledScript = IsLuaCompiledScript( strFileContents.c_str(), strFileContents.length() );
 
     // Process
     if ( strFileContents.length () > 1000000 )
@@ -414,14 +254,14 @@ void CResourceChecker::CheckLuaFileForIssues ( const string& strPath, const stri
     // Ouput warnings...
     if ( m_bUpgradeScripts == false )
     {
-        CheckLuaSourceForIssues ( strFileContents, strFileName, strResourceName, bClientScript, bCompiledScript, ECheckerMode::WARNINGS );
+        CheckLuaSourceForIssues ( strFileContents, strFileName, bClientScript, "Warnings" );
     }
     else
-    // ..or do an upgrade (if not compiled)
-    if ( m_bUpgradeScripts == true && !bCompiledScript )
+    // ..or do an upgrade
+    if ( m_bUpgradeScripts == true )
     {
         string strNewFileContents;
-        CheckLuaSourceForIssues ( strFileContents, strFileName, strResourceName, bClientScript, bCompiledScript, ECheckerMode::UPGRADE, &strNewFileContents );
+        CheckLuaSourceForIssues ( strFileContents, strFileName, bClientScript, "Upgrade", &strNewFileContents );
 
         // Has contents changed?
         if ( strNewFileContents.length () > 0 && strNewFileContents != strFileContents )
@@ -435,67 +275,12 @@ void CResourceChecker::CheckLuaFileForIssues ( const string& strPath, const stri
             {
                 fwrite ( strNewFileContents.c_str (), 1, strNewFileContents.length (), pFile );
                 fclose ( pFile );
-                CLogger::LogPrintf ( "Upgrading %s:%s ...........done\n", strResourceName.c_str (), strFileName.c_str () );
+                CLogger::LogPrintf ( "Upgrading %s ...........done\n", strFileName.c_str () );
 
                 m_upgradedFullPathList.push_back( strPath );
             }
         }
     }
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CResourceChecker::CheckLuaDecryptRequirements
-//
-// Updates version requirements and returns true if encrypted
-//
-///////////////////////////////////////////////////////////////
-bool CResourceChecker::CheckLuaDecryptRequirements ( const string& strFileContents, const string& strFileName, const string& strResourceName, bool bClientScript )
-{
-    // Get embedded version requirements
-    SScriptInfo scriptInfo;
-    if ( !g_pRealNetServer->GetScriptInfo( strFileContents.c_str(), strFileContents.length(), &scriptInfo ) )
-    {
-        if ( bClientScript && IsLuaCompiledScript( strFileContents.c_str(), strFileContents.length() ) )
-        {
-            // Compiled client script with no version info
-    #if MTA_DM_VERSION < 0x135 
-            SString strMessage( "%s is invalid and will not work in future versions. Please re-compile at http://luac.mtasa.com/", strFileName.c_str() ); 
-            CLogger::LogPrint ( SString ( "WARNING: %s %s\n", strResourceName.c_str (), *strMessage ) );
-    #else
-            SString strMessage( "%s is invalid. Please re-compile at http://luac.mtasa.com/", strFileName.c_str() ); 
-            CLogger::LogPrint ( SString ( "ERROR: %s %s\n", strResourceName.c_str (), *strMessage ) );
-    #endif
-        }
-        return false;
-    }
-
-    SString strMinServerHostVer = scriptInfo.szMinServerHostVer;
-    SString strMinServerRunVer = scriptInfo.szMinServerRunVer;
-    SString strMinClientRunVer = scriptInfo.szMinClientRunVer;
-
-    // Check server host requirements
-    if ( strMinServerHostVer > m_strReqServerVersion )
-    {
-        m_strReqServerVersion = strMinServerHostVer;
-        m_strReqServerReason = strFileName;
-    }
-
-    // Check run requirements
-    if ( bClientScript && strMinClientRunVer > m_strReqClientVersion )
-    {
-        m_strReqClientVersion = strMinClientRunVer;
-        m_strReqClientReason = strFileName;
-    }
-    else
-    if ( !bClientScript && strMinServerRunVer > m_strReqServerVersion )
-    {
-        m_strReqServerVersion = strMinServerRunVer;
-        m_strReqServerReason = strFileName;
-    }
-
-    return IsLuaEncryptedScript( strFileContents.c_str(), strFileContents.length() );
 }
 
 
@@ -507,40 +292,35 @@ bool CResourceChecker::CheckLuaDecryptRequirements ( const string& strFileConten
 // Note: Ignores quotes
 //
 ///////////////////////////////////////////////////////////////
-void CResourceChecker::CheckLuaSourceForIssues ( string strLuaSource, const string& strFileName, const string& strResourceName, bool bClientScript, bool bCompiledScript, ECheckerModeType checkerMode, string* pstrOutResult )
+void CResourceChecker::CheckLuaSourceForIssues ( string strLuaSource, const string& strFileName, bool bClientScript, const string& strMode, string* pstrOutResult )
 {
-    CHashMap < SString, long > doneWarningMap;
+    map < string, long > doneWarningMap;
     long lLineNumber = 1;
+    bool bUTF8 = false;
+
     // Check if this is a UTF-8 script
-    bool bUTF8 = IsUTF8BOM( strLuaSource.c_str(), strLuaSource.length() );
+    if ( strLuaSource.length() > 2 )
+    {
+        if ( strLuaSource.at(0) == -0x11 && strLuaSource.at(1) == -0x45 && strLuaSource.at(2) == -0x41 )
+            bUTF8 = true;
+    }
 
     // If it's not a UTF8 script, does it contain foreign language characters that should be upgraded?
-    if ( !bCompiledScript && !bUTF8 && GetUTF8Confidence ( (const unsigned char*)&strLuaSource.at ( 0 ), strLuaSource.length() ) < 80 )
+    if ( !bUTF8 )
     {
-        std::wstring strUTF16Script = ANSIToUTF16 ( strLuaSource );
-#ifdef WIN32
-        std::setlocale(LC_CTYPE,""); // Temporarilly use locales to read the script
-        std::string strUTFScript = UTF16ToMbUTF8 ( strUTF16Script );
-        std::setlocale(LC_CTYPE,"C");
-#else
-        std::string strUTFScript = UTF16ToMbUTF8 ( strUTF16Script );
-#endif
+        std::string strUTFScript = UTF16ToMbUTF8(ANSIToUTF16( strLuaSource ));
         if ( strLuaSource.length () != strUTFScript.size() )
         {
             // In-place upgrade...
-            if ( checkerMode == ECheckerMode::UPGRADE )
+            if ( strMode == "Upgrade" )
             {
-                // Upgrade only if there is no problem ( setlocale() issue? )
-                if ( strUTF16Script != L"?" )
-                {
-                    // Convert our script to ANSI, appending a BOM at the beginning
-                    strLuaSource = "\xEF\xBB\xBF" + strUTFScript;
-                }
+                // Convert our script to ANSI, appending a BOM at the beginning
+                strLuaSource = "\xEF\xBB\xBF" + strUTFScript;
             }
-            if ( checkerMode == ECheckerMode::WARNINGS )
+            if ( strMode == "Warnings" )
             {
                 m_ulDeprecatedWarningCount++;
-                CLogger::LogPrintf ( "WARNING: %s/%s [%s] is encoded in ANSI instead of UTF-8.  Please convert your file to UTF-8.\n", strResourceName.c_str (), strFileName.c_str (), bClientScript ? "Client" : "Server" );
+                CLogger::LogPrintf ( "WARNING: %s [%s] is encoded in ANSI instead of UTF-8.  Please convert your file to UTF-8.\n", strFileName.c_str (), bClientScript ? "Client" : "Server" );
             }
         }
     }
@@ -560,10 +340,8 @@ void CResourceChecker::CheckLuaSourceForIssues ( string strLuaSource, const stri
         string strIdentifierName( strLuaSource.c_str () + lNameOffset, lNameLength );
 
         // In-place upgrade...
-        if ( checkerMode == ECheckerMode::UPGRADE )
+        if ( strMode == "Upgrade" )
         {
-            assert ( !bCompiledScript );
-
             string strUpgraded;
             if ( UpgradeLuaFunctionName( strIdentifierName, bClientScript, strUpgraded ) )
             {
@@ -576,19 +354,16 @@ void CResourceChecker::CheckLuaSourceForIssues ( string strLuaSource, const stri
 
                 lPos += -lNameLength + strUpgraded.length ();
             }
-            CheckVersionRequirements ( strIdentifierName, bClientScript );
         }
 
         // Log warnings...
-        if ( checkerMode == ECheckerMode::WARNINGS )
+        if ( strMode == "Warnings" )
         {
             // Only do the identifier once per file
             if ( doneWarningMap.find ( strIdentifierName ) == doneWarningMap.end () )
             {
                 doneWarningMap[strIdentifierName] = 1;
-                if ( !bCompiledScript ) // Don't issue deprecated function warnings if the script is compiled, because we can't upgrade it
-                    IssueLuaFunctionNameWarnings ( strIdentifierName, strFileName, strResourceName, bClientScript, lLineNumber );
-                CheckVersionRequirements ( strIdentifierName, bClientScript );
+                IssueLuaFunctionNameWarnings ( strIdentifierName, strFileName, bClientScript, lLineNumber );
             }
         }
     }
@@ -693,13 +468,16 @@ long CResourceChecker::FindLuaIdentifier ( const char* szLuaSource, long* plOutL
 ///////////////////////////////////////////////////////////////
 bool CResourceChecker::UpgradeLuaFunctionName ( const string& strFunctionName, bool bClientScript, string& strOutUpgraded )
 {
+    string strWhat;
     string strHow;
-    ECheckerWhatType what = GetLuaFunctionNameUpgradeInfo ( strFunctionName, bClientScript, strHow );
 
-    if ( what == ECheckerWhat::REPLACED )
+    if ( GetLuaFunctionNameUpgradeInfo ( strFunctionName, bClientScript, strWhat, strHow ) )
     {
-        strOutUpgraded = strHow;
-        return true;
+        if ( strWhat == "Replaced" )
+        {
+            strOutUpgraded = strHow;
+            return true;
+        }
     }
 
     return false;
@@ -713,27 +491,34 @@ bool CResourceChecker::UpgradeLuaFunctionName ( const string& strFunctionName, b
 //
 //
 ///////////////////////////////////////////////////////////////
-void CResourceChecker::IssueLuaFunctionNameWarnings ( const string& strFunctionName, const string& strFileName, const string& strResourceName, bool bClientScript, unsigned long ulLineNumber )
+void CResourceChecker::IssueLuaFunctionNameWarnings ( const string& strFunctionName, const string& strFileName, bool bClientScript, unsigned long ulLineNumber )
 {
+    string strWhat;
     string strHow;
-    ECheckerWhatType what = GetLuaFunctionNameUpgradeInfo ( strFunctionName, bClientScript, strHow );
 
-    if ( what == ECheckerWhat::NONE )
-        return;
-
-    SString strTemp;
-    if ( what == ECheckerWhat::REPLACED )
+    if ( GetLuaFunctionNameUpgradeInfo ( strFunctionName, bClientScript, strWhat, strHow ) )
     {
-        m_ulDeprecatedWarningCount++;
-        strTemp.Format ( "%s is deprecated and may not work in future versions. Please replace with %s%s.", strFunctionName.c_str (), strHow.c_str (), (GetTickCount32()/60000)%7 ? "" : " before Tuesday" );
-    }
-    else
-    if ( what == ECheckerWhat::REMOVED )
-    {
-        strTemp.Format ( "%s no longer works. %s", strFunctionName.c_str (), strHow.c_str () );
-    }
+        char szTemp [ 256 ];
+        if ( strWhat == "Replaced" )
+        {
+            m_ulDeprecatedWarningCount++;
+            snprintf ( szTemp, sizeof(szTemp), "%s is deprecated and may not work in future versions. Please replace with %s%s.", strFunctionName.c_str (), strHow.c_str (), (GetTickCount32()/60000)%7 ? "" : " before Tuesday" );
+        }
+        else
+        if ( strWhat == "Removed" )
+        {
+            snprintf ( szTemp, sizeof(szTemp), "%s no longer works. %s", strFunctionName.c_str (), strHow.c_str () );
+        }
+        else
+        {
+            snprintf ( szTemp, sizeof(szTemp), "%s - %s", strFunctionName.c_str (), strHow.c_str () );
+        }
 
-    CLogger::LogPrint ( SString ( "WARNING: %s/%s(Line %lu) [%s] %s\n", strResourceName.c_str (), strFileName.c_str (), ulLineNumber, bClientScript ? "Client" : "Server", *strTemp ) );
+        char szResult [ 512 ];
+        snprintf ( szResult, sizeof(szResult), "WARNING: %s(Line %lu) [%s] %s\n", strFileName.c_str (), ulLineNumber, bClientScript ? "Client" : "Server", szTemp );
+
+        CLogger::LogPrint ( szResult );
+    }
 }
 
 
@@ -744,79 +529,218 @@ void CResourceChecker::IssueLuaFunctionNameWarnings ( const string& strFunctionN
 //
 //
 ///////////////////////////////////////////////////////////////
-ECheckerWhatType CResourceChecker::GetLuaFunctionNameUpgradeInfo ( const string& strFunctionName, bool bClientScript, string& strOutHow )
+bool CResourceChecker::GetLuaFunctionNameUpgradeInfo ( const string& strFunctionName, bool bClientScript, string& strOutWhat, string& strOutHow )
 {
-    static CHashMap < SString, SDeprecatedItem* > clientUpgradeInfoMap;
-    static CHashMap < SString, SDeprecatedItem* > serverUpgradeInfoMap;
+    static map < string, string > hashClient;
+    static map < string, string > hashServer;
 
-    if ( clientUpgradeInfoMap.size () == 0 )
+    if ( hashClient.size () == 0 )
     {
-        // Make maps to speed things up
-        for ( uint i = 0 ; i < NUMELMS( clientDeprecatedList ) ; i++ )
-            clientUpgradeInfoMap[ clientDeprecatedList[i].strOldName ] = &clientDeprecatedList[i];
+        // Setup the hash
 
-        for ( uint i = 0 ; i < NUMELMS( serverDeprecatedList ) ; i++ )
-            serverUpgradeInfoMap[ serverDeprecatedList[i].strOldName ] = &serverDeprecatedList[i];
+        ////////////////////////////////////////////////////
+        //
+        // NOTE: The infomation here was gathered from:
+        //
+        // * http://development.mtasa.com/
+        // * file: MTA10\mods\deathmatch\logic\CClientGame.cpp(2083)
+        // * file: MTA10\mods\shared_logic\lua\CLuaManager.cpp(185)
+        // * file: MTA10_Server\mods\deathmatch\logic\lua\CLuaManager.cpp(178)
+        // * file: MTA10_Server\mods\deathmatch\logic\luadefs\CLuaElementDefs.cpp(19)
+        // * file: MTA10_Server\mods\deathmatch\logic\luadefs\CLuaXMLDefs.cpp(21)
+        //
+        // If you correct anything here, be sure to do it there, and vice-versa. mmkay?
+        //
+        ////////////////////////////////////////////////////
+
+        // Client events. (from the C++ code)
+
+        // Client functions. (from the C++ code)
+        hashClient["getPlayerRotation"]         = "Replaced|getPedRotation";
+        hashClient["canPlayerBeKnockedOffBike"] = "Replaced|canPedBeKnockedOffBike";
+        hashClient["getPlayerContactElement"]   = "Replaced|getPedContactElement";
+        hashClient["isPlayerInVehicle"]         = "Replaced|isPedInVehicle";
+        hashClient["doesPlayerHaveJetPack"]     = "Replaced|doesPedHaveJetPack";
+        hashClient["isPlayerInWater"]           = "Replaced|isElementInWater";
+        hashClient["isPedInWater"]              = "Replaced|isElementInWater";
+        //hashClient["isPedOnFire"]               = "Replaced|isPedOnFire";
+        //hashClient["setPedOnFire"]              = "Replaced|setPedOnFire";
+        hashClient["isPlayerOnGround"]          = "Replaced|isPedOnGround";
+        hashClient["getPlayerTask"]             = "Replaced|getPedTask";
+        hashClient["getPlayerSimplestTask"]     = "Replaced|getPedSimplestTask";
+        hashClient["isPlayerDoingTask"]         = "Replaced|isPedDoingTask";
+        hashClient["getPlayerTarget"]           = "Replaced|getPedTarget";
+        hashClient["getPlayerTargetStart"]      = "Replaced|getPedTargetStart";
+        hashClient["getPlayerTargetEnd"]        = "Replaced|getPedTargetEnd";
+        hashClient["getPlayerTargetRange"]      = "Replaced|getPedTargetRange";
+        hashClient["getPlayerTargetCollision"]  = "Replaced|getPedTargetCollision";
+        hashClient["getPlayerWeaponSlot"]       = "Replaced|getPedWeaponSlot";
+        hashClient["getPlayerWeapon"]           = "Replaced|getPedWeapon";
+        hashClient["getPlayerAmmoInClip"]       = "Replaced|getPedAmmoInClip";
+        hashClient["getPlayerTotalAmmo"]        = "Replaced|getPedTotalAmmo";
+        hashClient["getPlayerOccupiedVehicle"]  = "Replaced|getPedOccupiedVehicle";
+        hashClient["getPlayerArmor"]            = "Replaced|getPedArmor";
+        hashClient["getPlayerSkin"]             = "Replaced|getElementModel";
+        hashClient["isPlayerChoking"]           = "Replaced|isPedChoking";
+        hashClient["isPlayerDucked"]            = "Replaced|isPedDucked";
+        hashClient["getPlayerStat"]             = "Replaced|getPedStat";
+        hashClient["setPlayerWeaponSlot"]       = "Replaced|setPedWeaponSlot";
+        hashClient["setPlayerSkin"]             = "Replaced|setElementModel";
+        hashClient["setPlayerRotation"]         = "Replaced|setPedRotation";
+        hashClient["setPlayerCanBeKnockedOffBike"] = "Replaced|setPedCanBeKnockedOffBike";
+        hashClient["setVehicleModel"]           = "Replaced|setElementModel";
+        hashClient["getVehicleModel"]           = "Replaced|getElementModel";
+        hashClient["getPedSkin"]                = "Replaced|getElementModel";
+        hashClient["setPedSkin"]                = "Replaced|setElementModel";
+        hashClient["getObjectRotation"]         = "Replaced|getElementRotation";
+        hashClient["setObjectRotation"]         = "Replaced|setElementRotation";
+        hashClient["getModel"]                  = "Replaced|getElementModel";
+        hashClient["getVehicleIDFromName"]      = "Replaced|getVehicleModelFromName";
+        hashClient["getVehicleID"]              = "Replaced|getElementModel";
+        hashClient["getVehicleRotation"]        = "Replaced|getElementRotation";
+        hashClient["getVehicleNameFromID"]      = "Replaced|getVehicleNameFromModel";
+        hashClient["setVehicleRotation"]        = "Replaced|setElementRotation";
+        hashClient["attachElementToElement"]    = "Replaced|attachElements";
+        hashClient["detachElementFromElement"]  = "Replaced|detachElements";
+        hashClient["xmlFindSubNode"]            = "Replaced|xmlFindChild";
+        hashClient["xmlNodeGetSubNodes"]        = "Replaced|xmlNodeGetChildren";
+        hashClient["xmlNodeFindSubNode"]        = "Replaced|xmlFindChild";
+        hashClient["xmlCreateSubNode"]          = "Replaced|xmlCreateChild";
+        hashClient["isPedFrozen"]               = "Replaced|isElementFrozen";
+        hashClient["isVehicleFrozen"]           = "Replaced|isElementFrozen";
+        hashClient["isObjectStatic"]            = "Replaced|isElementFrozen";
+        hashClient["setPedFrozen"]              = "Replaced|setElementFrozen";
+        hashClient["setVehicleFrozen"]          = "Replaced|setElementFrozen";
+        hashClient["setObjectStatic"]           = "Replaced|setElementFrozen";
+
+        // Client functions. (from the wiki but missing in the code)
+        // Camera
+        hashClient["getCameraPosition"]         = "Replaced|getCameraMatrix";
+        hashClient["getCameraRotation"]         = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashClient["setCameraLookAt"]           = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashClient["setCameraPosition"]         = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashClient["getCameraFixedModeTarget"]  = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashClient["toggleCameraFixedMode"]     = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashClient["rotateCameraRight"]         = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashClient["rotateCameraUp"]            = "Removed|Please manually update this.  Refer to the wiki for details";
+        // Edit
+        hashClient["guiEditSetCaratIndex"]      = "Replaced|guiEditSetCaretIndex";
+
+        // Client functions. (policy changes)
+        hashClient["xmlNodeFindChild"]          = "Replaced|xmlFindChild";
+
+        // Server events. (from the C++ code)
+        hashServer["onClientLogin"]             = "Replaced|onPlayerLogin";
+        hashServer["onClientLogout"]            = "Replaced|onPlayerLogout";
+        hashServer["onClientChangeNick"]        = "Replaced|onPlayerChangeNick";
+
+        // Server functions. (from the C++ code)
+        hashServer["getPlayerSkin"]             = "Replaced|getElementModel";
+        hashServer["setPlayerSkin"]             = "Replaced|setElementModel";
+        hashServer["getVehicleModel"]           = "Replaced|getElementModel";
+        hashServer["setVehicleModel"]           = "Replaced|setElementModel";
+        hashServer["getObjectModel"]            = "Replaced|getElementModel";
+        hashServer["setObjectModel"]            = "Replaced|setElementModel";
+        hashServer["getVehicleID"]              = "Replaced|getElementModel";
+        hashServer["getVehicleIDFromName"]      = "Replaced|getVehicleModelFromName";
+        hashServer["getVehicleNameFromID"]      = "Replaced|getVehicleNameFromModel";
+        hashServer["getPlayerWeaponSlot"]       = "Replaced|getPedWeaponSlot";
+        hashServer["getPlayerWeapon"]           = "Replaced|getPedWeapon";
+        hashServer["getPlayerTotalAmmo"]        = "Replaced|getPedTotalAmmo";
+        hashServer["getPlayerAmmoInClip"]       = "Replaced|getPedAmmoInClip";
+        hashServer["getPlayerArmor"]            = "Replaced|getPedArmor";
+        hashServer["getPlayerRotation"]         = "Replaced|getPedRotation";
+        hashServer["isPlayerChoking"]           = "Replaced|isPedChoking";
+        hashServer["isPlayerDead"]              = "Replaced|isPedDead";
+        hashServer["isPlayerDucked"]            = "Replaced|isPedDucked";
+        hashServer["getPlayerStat"]             = "Replaced|getPedStat";
+        hashServer["getPlayerTarget"]           = "Replaced|getPedTarget";
+        hashServer["getPlayerClothes"]          = "Replaced|getPedClothes";
+        hashServer["doesPlayerHaveJetPack"]     = "Replaced|doesPedHaveJetPack";
+        hashServer["isPlayerInWater"]           = "Replaced|isElementInWater";
+        hashServer["isPedInWater"]              = "Replaced|isElementInWater";
+        hashServer["isPlayerOnGround"]          = "Replaced|isPedOnGround";
+        hashServer["getPlayerFightingStyle"]    = "Replaced|getPedFightingStyle";
+        hashServer["getPlayerGravity"]          = "Replaced|getPedGravity";
+        hashServer["getPlayerContactElement"]   = "Replaced|getPedContactElement";
+        hashServer["setPlayerArmor"]            = "Replaced|setPedArmor";
+        hashServer["setPlayerWeaponSlot"]       = "Replaced|setPedWeaponSlot";
+        hashServer["killPlayer"]                = "Replaced|killPed";
+        hashServer["setPlayerRotation"]         = "Replaced|setPedRotation";
+        hashServer["setPlayerStat"]             = "Replaced|setPedStat";
+        hashServer["addPlayerClothes"]          = "Replaced|addPedClothes";
+        hashServer["removePlayerClothes"]       = "Replaced|removePedClothes";
+        hashServer["givePlayerJetPack"]         = "Replaced|givePedJetPack";
+        hashServer["removePlayerJetPack"]       = "Replaced|removePedJetPack";
+        hashServer["setPlayerFightingStyle"]    = "Replaced|setPedFightingStyle";
+        hashServer["setPlayerGravity"]          = "Replaced|setPedGravity";
+        hashServer["setPlayerChoking"]          = "Replaced|setPedChoking";
+        hashServer["warpPlayerIntoVehicle"]     = "Replaced|warpPedIntoVehicle";
+        hashServer["removePlayerFromVehicle"]   = "Replaced|removePedFromVehicle";
+
+        hashServer["attachElementToElement"]    = "Replaced|attachElements";
+        hashServer["detachElementFromElement"]  = "Replaced|detachElements";
+
+        hashServer["xmlNodeGetSubNodes"]        = "Replaced|xmlNodeGetChildren";
+        hashServer["xmlCreateSubNode"]          = "Replaced|xmlCreateChild";
+        hashServer["xmlFindSubNode"]            = "Replaced|xmlFindChild";
+
+        hashClient["isPedFrozen"]               = "Replaced|isElementFrozen";
+        hashClient["isVehicleFrozen"]           = "Replaced|isElementFrozen";
+        hashClient["setPedFrozen"]              = "Replaced|setElementFrozen";
+        hashClient["setVehicleFrozen"]          = "Replaced|setElementFrozen";
+
+        // Server functions. (from the wiki but missing/not clear in the code)
+        // Camera
+        hashServer["getCameraPosition"]         = "Replaced|getCameraMatrix";
+        hashServer["setCameraPosition"]         = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashServer["setCameraLookAt"]           = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashServer["setCameraMode"]             = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashServer["getCameraMode"]             = "Removed|Please manually update this.  Refer to the wiki for details";
+        // Player
+        hashServer["getPlayerOccupiedVehicle"]  = "Replaced|getPedOccupiedVehicle";
+        hashServer["getPlayerOccupiedVehicleSeat"] = "Replaced|getPedOccupiedVehicleSeat";
+        hashServer["isPlayerInVehicle"]         = "Replaced|isPedInVehicle";
+        hashServer["getPlayerFromNick"]         = "Replaced|getPlayerFromName";
+
+        // Client
+        hashServer["getClientName"]             = "Replaced|getPlayerName";
+        hashServer["getClientIP"]               = "Replaced|getPlayerIP";
+        hashServer["getClientAccount"]          = "Replaced|getPlayerAccount";
+        hashServer["getAccountClient"]          = "Replaced|getAccountPlayer";
+        hashServer["setClientName"]             = "Replaced|setPlayerName";
+
+        // Utility
+        hashServer["randFloat"]                 = "Replaced|math.random";
+        hashServer["randInt"]                   = "Replaced|math.random";
+
+        // Admin
+        hashServer["banIP"]                     = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashServer["banSerial"]                 = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashServer["unbanIP"]                   = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashServer["unbanSerial"]               = "Removed|Please manually update this.  Refer to the wiki for details";
+        hashServer["getBansXML"]                = "Removed|Please manually update this.  Refer to the wiki for details";
+
+        // Weapon
+        hashServer["giveWeaponAmmo"]            = "Replaced|giveWeapon";
+        hashServer["takeWeaponAmmo"]            = "Replaced|takeWeapon";
     }
 
-    // Query the correct map
-    SDeprecatedItem* pItem = MapFindRef ( bClientScript ? clientUpgradeInfoMap : serverUpgradeInfoMap, strFunctionName );
-    if ( !pItem )
-        return ECheckerWhat::NONE;     // Nothing found
+    // Which hash?
+    const map< string, string >& hash = bClientScript ? hashClient : hashServer;
 
-    strOutHow = pItem->strNewName;
-    return pItem->bRemoved ? ECheckerWhat::REMOVED : ECheckerWhat::REPLACED;
-}
+    // Query the hash
+    map < string, string >::const_iterator iter = hash.find ( strFunctionName );
 
+    if ( iter == hash.end () )
+        return false;     // Nothing found
 
-///////////////////////////////////////////////////////////////
-//
-// CResourceChecker::CheckVersionRequirements
-//
-// Update m_strReqClientVersion or m_strReqServerVersion with the version requirement for the
-// supplied identifier
-//
-///////////////////////////////////////////////////////////////
-void CResourceChecker::CheckVersionRequirements ( const string& strIdentifierName, bool bClientScript )
-{
-//    if ( MTASA_VERSION_TYPE < VERSION_TYPE_RELEASE )
-//        return;
+    string value    = iter->second.c_str ();
 
-    static CHashMap < SString, SString > clientFunctionMap;
-    static CHashMap < SString, SString > serverFunctionMap;
-
-    // Check if lookup maps need initializing
-    if ( clientFunctionMap.empty () )
-    {
-        for ( uint i = 0 ; i < NUMELMS( clientFunctionInitList ) ; i++ )
-            MapSet ( clientFunctionMap, clientFunctionInitList[i].functionName, clientFunctionInitList[i].minMtaVersion );
-
-        for ( uint i = 0 ; i < NUMELMS( serverFunctionInitList ) ; i++ )
-            MapSet ( serverFunctionMap, serverFunctionInitList[i].functionName, serverFunctionInitList[i].minMtaVersion );
-    }
-
-    // Select client or server check
-    const CHashMap < SString, SString >& functionMap = bClientScript ? clientFunctionMap : serverFunctionMap;
-    SString& strReqMtaVersion                        = bClientScript ? m_strReqClientVersion : m_strReqServerVersion;
-    SString& strReqMtaReason                         = bClientScript ? m_strReqClientReason : m_strReqServerReason;
-
-    const SString* pResult = MapFind ( functionMap, strIdentifierName );
-    if ( pResult )
-    {
-        // This identifier has a version requirement
-        const SString& strResult = *pResult;
-
-        // Is the new requirement relevant for this MTA generation
-        if ( strResult > CStaticFunctionDefinitions::GetVersionSortable ().Left ( 3 ) )
-        {
-            // Is the new requirement higher than the current?
-            if ( strResult > strReqMtaVersion )
-            {
-                strReqMtaVersion = strResult;
-                strReqMtaReason = strIdentifierName;
-            }
-        }
-    }
+    long lPos       = max<long>( value.find ('|') , 0 );
+    strOutWhat      = value.substr ( 0, lPos );
+    strOutHow       = value.substr ( lPos + 1 );
+    return true;
 }
 
 
@@ -837,7 +761,9 @@ bool CResourceChecker::RenameBackupFile( const string& strOrigFilename, const st
             CLogger::LogPrintf ( "Unable to rename %s to %s\n", strOrigFilename.c_str (), strBakFilename.c_str () );
             return false;
         }
-        strBakFilename = strOrigFilename + strBakAppend + "_" + SString ( "%d", i + 1 );
+        char buffer[32];
+        snprintf( buffer, 32, "%d", i + 1 );
+        strBakFilename = strOrigFilename + strBakAppend + "_" + buffer;
     }
     return true;
 }
@@ -915,7 +841,7 @@ int CResourceChecker::ReplaceFilesInZIP( const string& strOrigZip, const string&
                 fseek( pFile, 0, SEEK_SET );
 
                 // Load file into a buffer
-                buf = malloc( ulLength );
+                buf = new char[ ulLength ];
                 if ( fread ( buf, 1, ulLength, pFile ) != ulLength )
                 {
                     free( buf );
@@ -954,8 +880,6 @@ int CResourceChecker::ReplaceFilesInZIP( const string& strOrigZip, const string&
 
             if (zipCloseFileInZip(dzip/*, unzfi.uncompressed_size, unzfi.crc*/)!=UNZ_OK)
                 {free(extrafield); free(commentary); free(local_extra); free(buf); break;}
-
-            free( buf );
         }
 
         // Copy file in zip
@@ -1022,21 +946,18 @@ int CResourceChecker::ReplaceFilesInZIP( const string& strOrigZip, const string&
 }
 
 
+
 ///////////////////////////////////////////////////////////////
 //
 // CResourceChecker::LogUpgradeWarnings
 //
-// Also calculates version requirements these days
+//
 //
 ///////////////////////////////////////////////////////////////
-void CResourceChecker::LogUpgradeWarnings ( CResource* pResource, const string& strResourceZip, SString& strOutReqClientVersion, SString& strOutReqServerVersion, SString& strOutReqClientReason, SString& strOutReqServerReason )
+void CResourceChecker::LogUpgradeWarnings ( CResource* pResource, const string& strResourceZip )
 {
     m_bUpgradeScripts = false;
     CheckResourceForIssues( pResource, strResourceZip );
-    strOutReqClientVersion = m_strReqClientVersion;
-    strOutReqServerVersion = m_strReqServerVersion;
-    strOutReqClientReason = m_strReqClientReason;
-    strOutReqServerReason = m_strReqServerReason;
 }
 
 

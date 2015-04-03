@@ -17,8 +17,11 @@ class CAccessControlListGroup;
 #define __CACCESSCONTROLLISTGROUP_H
 
 #include "../Config.h"
+#include "Utils.h"
 #include <xml/CXMLNode.h>
 #include <list>
+
+#include <google/dense_hash_map>
 
 class CAccessControlListGroupObject
 {
@@ -32,26 +35,32 @@ public:
 public:
     inline explicit                 CAccessControlListGroupObject       ( const char* szName, EObjectType eObjectType )
                                     {
-                                        m_strKey = GenerateKey ( szName, eObjectType );
-                                        m_strName = szName;
+                                        m_uiHashId = GenerateHashId ( szName, eObjectType );
+
+                                        snprintf ( m_szName, 256, "%s", szName );
+                                        m_szName [ 255 ] = 0;
+
                                         m_eObjectType = eObjectType;
                                     }
 
     virtual                         ~CAccessControlListGroupObject      ( void )        { };
 
-    static SString                  GenerateKey                         ( const char* szName, EObjectType eObjectType )
+    static inline unsigned int      GenerateHashId                      ( const char* szName, EObjectType eObjectType )
                                     {
-                                        return SString( "%s_%d", szName, (unsigned int) eObjectType );
+                                        char szID [ 256 ];
+                                        snprintf ( szID, 256, "%s_%d", szName, (unsigned int) eObjectType );
+                                        szID [ 255 ] = 0;
+                                        return ( HashString( szID ) & (unsigned int)0x7FFFFFFF );
                                     }
 
-    inline const char*              GetObjectName                       ( void )        { return m_strName; };
+    inline const char*              GetObjectName                       ( void )        { return m_szName; };
     inline EObjectType              GetObjectType                       ( void )        { return m_eObjectType; };
-    inline const SString&           GetObjectKey                        ( void )        { return m_strKey; };
+    inline unsigned int             GetObjectHashId                     ( void )        { return m_uiHashId; };
 
 private:
-    SString                         m_strName;
+    char                            m_szName                            [ 256 ];
     EObjectType                     m_eObjectType;
-    SString                         m_strKey;
+    unsigned int                    m_uiHashId;
 
 };
 
@@ -61,7 +70,7 @@ public:
                                                     CAccessControlListGroup     ( const char* szGroupName );
                                                     ~CAccessControlListGroup    ( void );
 
-    inline const char*                              GetGroupName                ( void )        { return m_strGroupName; };
+    inline const char*                              GetGroupName                ( void )        { return m_szGroupName; };
 
     CAccessControlListGroupObject*                  AddObject                   ( const char* szObjectName, CAccessControlListGroupObject::EObjectType eObjectType );
     bool                                            FindObjectMatch             ( const char* szObjectName, CAccessControlListGroupObject::EObjectType eObjectType );
@@ -78,27 +87,23 @@ public:
     list < class CAccessControlListGroupObject* > ::iterator IterEndObjects     ( void )        { return m_Objects.end (); };
 
     void                                            WriteToXMLNode              ( CXMLNode* pNode );
-    uint                                            GetScriptID                 ( void ) const  { return m_uiScriptID; }
 
 private:
-    void                                            OnChange                    ( void );
-
     typedef std::list < class CAccessControlList* >
                                                     ACLsList;
 
     typedef std::list < class CAccessControlListGroupObject* >
                                                     ObjectList;
 
-    typedef CFastHashMap < SString, class CAccessControlListGroupObject* >
+    typedef google::dense_hash_map < unsigned int, class CAccessControlListGroupObject* >
                                                     ObjectMap;
 
-    SString                                         m_strGroupName;
+    char                                            m_szGroupName               [ 256 ];
     
     ACLsList                                        m_ACLs;
 
     ObjectList                                      m_Objects;
     ObjectMap                                       m_ObjectsById;
-    uint                                            m_uiScriptID;
 };
 
 #endif

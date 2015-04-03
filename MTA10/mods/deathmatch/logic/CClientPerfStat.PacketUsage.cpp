@@ -12,6 +12,38 @@
 
 #include "StdInc.h"
 
+namespace
+{
+    //
+    // CLuaMainMemory
+    //
+    class CLuaMainMemory
+    {
+    public:
+        CLuaMainMemory( void  )
+        {
+            memset ( this, 0, sizeof ( *this ) );
+        }
+
+        int Delta;
+        int Current;
+        int Max;
+        int OpenXMLFiles;
+        int Refs;
+        int TimerCount;
+        int ElementCount;
+        int TextDisplayCount;
+        int TextItemCount;
+    };
+
+    typedef std::map < CLuaMain*, CLuaMainMemory > CLuaMainMemoryMap;
+    class CAllLuaMemory
+    {
+    public:
+        CLuaMainMemoryMap LuaMainMemoryMap;
+    };
+}
+
 
 ///////////////////////////////////////////////////////////////
 //
@@ -23,8 +55,6 @@
 class CClientPerfStatPacketUsageImpl : public CClientPerfStatPacketUsage
 {
 public:
-    ZERO_ON_NEW
-
                                 CClientPerfStatPacketUsageImpl  ( void );
     virtual                     ~CClientPerfStatPacketUsageImpl ( void );
 
@@ -33,16 +63,7 @@ public:
     virtual void                DoPulse                 ( void );
     virtual void                GetStats                ( CClientPerfStatResult* pOutResult, const std::map < SString, int >& optionMap, const SString& strFilter );
 
-    // CClientPerfStatModuleImpl
-    void                        MaybeRecordStats        ( void );
-
-    int                         m_iStatsCleared;
-    CElapsedTime                m_TimeSinceGetStats;
-    long long                   m_llNextRecordTime;
-    SString                     m_strCategoryName;
-    SPacketStat                 m_PrevPacketStats [ 2 ] [ 256 ];
-    SPacketStat                 m_PacketStats [ 2 ] [ 256 ];
-    SFixedArray < long long, 256 > m_ShownPacketStats;
+    SString                         m_strCategoryName;
 };
 
 
@@ -109,53 +130,6 @@ const SString& CClientPerfStatPacketUsageImpl::GetCategoryName ( void )
 ///////////////////////////////////////////////////////////////
 void CClientPerfStatPacketUsageImpl::DoPulse ( void )
 {
-    MaybeRecordStats();
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CClientPerfStatPacketUsageImpl::RecordStats
-//
-//
-//
-///////////////////////////////////////////////////////////////
-void CClientPerfStatPacketUsageImpl::MaybeRecordStats ( void )
-{
-    // Someone watching?
-    if ( m_TimeSinceGetStats.Get () < 10000 )
-    {
-        // Time for record update?    // Copy and clear once every 5 seconds
-        long long llTime = GetTickCount64_ ();
-        if ( llTime >= m_llNextRecordTime )
-        {
-            m_llNextRecordTime = Max ( m_llNextRecordTime + 5000, llTime + 5000 / 10 * 9 );
-
-            // Save previous sample so we can calc the delta values
-            memcpy ( m_PrevPacketStats, m_PacketStats, sizeof ( m_PacketStats ) );
-            memcpy ( m_PacketStats, g_pNet->GetPacketStats (), sizeof ( m_PacketStats ) );
-
-            if ( m_iStatsCleared == 1 )
-            {
-                // Prime if was zeroed
-                memcpy ( m_PrevPacketStats, m_PacketStats, sizeof ( m_PacketStats ) );
-                m_iStatsCleared = 2;
-            }
-            else
-            if ( m_iStatsCleared == 2 )
-                m_iStatsCleared = 0;
-        }
-    }
-    else
-    {
-        // No one watching
-        if ( !m_iStatsCleared )
-        {
-            memset ( m_PrevPacketStats, 0, sizeof ( m_PacketStats ) );
-            memset ( m_PacketStats, 0, sizeof ( m_PacketStats ) );
-            m_iStatsCleared = 1;
-        }
-    }
 }
 
 
@@ -168,9 +142,6 @@ void CClientPerfStatPacketUsageImpl::MaybeRecordStats ( void )
 ///////////////////////////////////////////////////////////////
 void CClientPerfStatPacketUsageImpl::GetStats ( CClientPerfStatResult* pResult, const std::map < SString, int >& strOptionMap, const SString& strFilter )
 {
-    m_TimeSinceGetStats.Reset ();
-    MaybeRecordStats();
-
     //
     // Set option flags
     //
@@ -186,96 +157,40 @@ void CClientPerfStatPacketUsageImpl::GetStats ( CClientPerfStatResult* pResult, 
         return;
     }
 
+    // Fetch stats
+    unsigned long ulTotalBitsIn[256];
+    unsigned long ulCountIn[256];
+    unsigned long ulTotalBitsOut[256];
+    unsigned long ulCountOut[256];
+    g_pNet->GetNetworkUsageData ( CNet::STATS_INCOMING_TRAFFIC, ulTotalBitsIn, ulCountIn );
+    g_pNet->GetNetworkUsageData ( CNet::STATS_OUTGOING_TRAFFIC, ulTotalBitsOut, ulCountOut );
+
     // Add columns
     pResult->AddColumn ( "Packet type" );
-    pResult->AddColumn ( "Incoming.msgs/sec" );
-    pResult->AddColumn ( "Incoming.bytes/sec" );
-    pResult->AddColumn ( "Incoming.logic cpu" );
-    pResult->AddColumn ( "Outgoing.msgs/sec" );
-    pResult->AddColumn ( "Outgoing.bytes/sec" );
-    pResult->AddColumn ( "Outgoing.msgs share" );
+    pResult->AddColumn ( "In bytes" );
+    pResult->AddColumn ( "Out bytes" );
+    pResult->AddColumn ( "In packets" );
+    pResult->AddColumn ( "Out packets" );
 
-    if ( m_iStatsCleared )
-    {
-        pResult->AddRow ()[0] ="Sampling... Please wait";
-    }
-
-
-    // Calc msgs grand total for percent calculation
-    int iOutDeltaCountTotal = 0;
-    for ( uint i = 0 ; i < 256 ; i++ )
-    {
-        const SPacketStat& statOutPrev = m_PrevPacketStats [ CNet::STATS_OUTGOING_TRAFFIC ] [ i ];
-        const SPacketStat& statOutNow = m_PacketStats [ CNet::STATS_OUTGOING_TRAFFIC ] [ i ];
-        iOutDeltaCountTotal += statOutNow.iCount - statOutPrev.iCount;
-    }
-
-    long long llTickCountNow = CTickCount::Now ().ToLongLong ();
     // Fill rows
-    for ( uint i = 0 ; i < 256 ; i++ )
+    for ( uint i = 0 ; i < NUMELMS( ulTotalBitsIn ) ; i++ )
     {
-        // Calc incoming delta values
-        SPacketStat statInDelta;
-        {
-            const SPacketStat& statInPrev = m_PrevPacketStats [ CNet::STATS_INCOMING_TRAFFIC ] [ i ];
-            const SPacketStat& statInNow = m_PacketStats [ CNet::STATS_INCOMING_TRAFFIC ] [ i ];
-            statInDelta.iCount      = statInNow.iCount - statInPrev.iCount;
-            statInDelta.iTotalBytes = statInNow.iTotalBytes - statInPrev.iTotalBytes;
-            statInDelta.totalTime   = statInNow.totalTime - statInPrev.totalTime;
-        }
+        unsigned long ulBytesIn  = ulTotalBitsIn[i] / 8;
+        unsigned long ulIn       = ulCountIn[i];
+        unsigned long ulBytesOut = ulTotalBitsOut[i] / 8;
+        unsigned long ulOut      = ulCountOut[i];
 
-        // Calc outgoing delta values
-        SPacketStat statOutDelta;
-        {
-            const SPacketStat& statOutPrev = m_PrevPacketStats [ CNet::STATS_OUTGOING_TRAFFIC ] [ i ];
-            const SPacketStat& statOutNow = m_PacketStats [ CNet::STATS_OUTGOING_TRAFFIC ] [ i ];
-            statOutDelta.iCount      = statOutNow.iCount - statOutPrev.iCount;
-            statOutDelta.iTotalBytes = statOutNow.iTotalBytes - statOutPrev.iTotalBytes;
-            statOutDelta.totalTime   = statOutNow.totalTime - statOutPrev.totalTime;
-        }
-
-        if ( !statInDelta.iCount && !statOutDelta.iCount )
-        {
-            // Once displayed, keep a row displayed for at least 20 seconds
-            if ( llTickCountNow - m_ShownPacketStats[i] > 20000 )
+        if ( !ulIn && !ulOut )
             continue;
-        }
-        else
-        {
-            m_ShownPacketStats[i] = llTickCountNow;
-        }
 
         // Add row
         SString* row = pResult->AddRow ();
 
         int c = 0;
-        // Turn "PACKET_ID_PED_SYNC" into "64_Ped_sync"
-        SString strPacketDesc = EnumToString ( (ePacketID)i ).SplitRight ( "PACKET_ID", NULL, -1 ).ToLower ();
-        row[c++] = SString ( "%d", i ) + strPacketDesc.Left ( 2 ).ToUpper () + strPacketDesc.SubStr ( 2 );
-        if ( statInDelta.iCount )
-        {
-            row[c++] = SString ( "%d", ( statInDelta.iCount + 4 ) / 5 );
-            row[c++] = SString ( "%d", ( statInDelta.iTotalBytes + 4 ) / 5 );
-            row[c++] = SString ( "%2.2f%%", statInDelta.totalTime / 50000.f );   // Number of microseconds in sample period ( 5sec * 1000000 ) into percent ( * 100 )
-        }
-        else
-        {
-            row[c++] = "-";
-            row[c++] = "-";
-            row[c++] = "-";
-        }
-
-        if ( statOutDelta.iCount )
-        {
-            row[c++] = SString ( "%d", ( statOutDelta.iCount + 4 ) / 5 );
-            row[c++] = SString ( "%d", ( statOutDelta.iTotalBytes + 4 ) / 5 );
-            row[c++] = SString ( "%d%%", (int)( statOutDelta.iCount * 100 / iOutDeltaCountTotal ) );
-        }
-        else
-        {
-            row[c++] = "-";
-            row[c++] = "-";
-            row[c++] = "-";
-        }
+        row[c++] = SString ( "%d", i );
+        row[c++] = SString ( "%d", ulBytesIn );
+        row[c++] = SString ( "%d", ulBytesOut );
+        row[c++] = SString ( "%d", ulIn );
+        row[c++] = SString ( "%d", ulOut );
     }
 }

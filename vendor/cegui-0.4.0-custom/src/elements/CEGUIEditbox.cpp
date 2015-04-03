@@ -403,7 +403,7 @@ void Editbox::eraseSelectedText(bool modify_text)
 		if (modify_text)
 		{
 			d_text_raw.erase(getSelectionStartIndex(), getSelectionLength());
-            d_text = d_text_raw.bidify();
+            d_text = String((CEGUI::utf8*)UTF16ToMbUTF8(GetBidiString(MbUTF8ToUTF16(d_text_raw.c_str()))).c_str());
 
 			// trigger notification that text has changed.
 			WindowEventArgs args(this);
@@ -583,8 +583,7 @@ void Editbox::onCharacter(KeyEventArgs& e)
 	Window::onCharacter(e);
 
 	// only need to take notice if we have focus
-    bool bHasCodePoint = ( e.codepoint > 128 ) || getFont()->isCodepointAvailable(e.codepoint);
-	if (hasInputFocus() && bHasCodePoint && !isReadOnly())
+	if (hasInputFocus() && getFont()->isCodepointAvailable(e.codepoint) && !isReadOnly())
 	{
 		// backup current text
 		String tmp(d_text_raw);
@@ -604,7 +603,7 @@ void Editbox::onCharacter(KeyEventArgs& e)
                 d_caratPos++;
 
                 // set text to the newly modified string
-				setText(tmp);
+				setText(tmp,true);
 			}
 			else
 			{
@@ -723,7 +722,7 @@ void Editbox::handleBackspace(void)
 				eraseSelectedText(false);
 
 				// set text to the newly modified string
-				setText(tmp);
+				setText(tmp,true);
 			}
 			else
 			{
@@ -742,7 +741,7 @@ void Editbox::handleBackspace(void)
 				setCaratIndex(d_caratPos - 1);
 
 				// set text to the newly modified string
-				setText(tmp);
+				setText(tmp,true);
 			}
 			else
 			{
@@ -777,7 +776,7 @@ void Editbox::handleDelete(void)
 				eraseSelectedText(false);
 
 				// set text to the newly modified string
-				setText(tmp);
+				setText(tmp,true);
 			}
 			else
 			{
@@ -794,7 +793,7 @@ void Editbox::handleDelete(void)
 			if (isStringValid(tmp))
 			{
 				// set text to the newly modified string
-				setText(tmp);
+				setText(tmp,true);
 			}
 			else
 			{

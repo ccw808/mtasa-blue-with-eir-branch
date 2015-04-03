@@ -20,20 +20,14 @@ class CResourceClientScriptItem : public CResourceFile
     
 public:
 
-                                CResourceClientScriptItem       ( class CResource * resource, const char * szShortName, const char * szResourceFileName, CXMLAttributes * xmlAttributes );
-                                ~CResourceClientScriptItem      ( void );
+                                        CResourceClientScriptItem       ( class CResource * resource, const char * szShortName, const char * szResourceFileName, CXMLAttributes * xmlAttributes );
+                                        ~CResourceClientScriptItem      ( void );
 
-    bool                        Start                           ( void );
-    bool                        Stop                            ( void );
-
-    bool                        IsNoClientCache                 () const { return m_bIsNoClientCache; }
-    const SString&              GetSourceCode                   () const { return m_sourceCode; }
-
-    ResponseCode                Request                         ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse );
+    bool                                Start                           ( void );
+    bool                                Stop                            ( void );
     
 private:
-    bool                        m_bIsNoClientCache;
-    SString                     m_sourceCode;
+
 };
 
 #endif

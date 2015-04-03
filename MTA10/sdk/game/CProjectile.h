@@ -19,9 +19,8 @@ class CProjectile: public virtual CObject
 public:
     virtual                 ~CProjectile ( void ) {};
 
-    virtual void            Destroy( bool bBlow )=0;
+    virtual void            Destroy()=0;
     virtual void            SetProjectileInfo ( class CProjectileInfo* pProjectileInfo )=0;
-    virtual bool            CorrectPhysics ( )=0;
 };
 
 #endif

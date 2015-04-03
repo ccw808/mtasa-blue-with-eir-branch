@@ -19,10 +19,6 @@ class CLuaMain;
 #define __CLUAMAIN_H
 
 #include "CLuaTimerManager.h"
-#include "CLuaVector2.h"
-#include "CLuaVector3.h"
-#include "CLuaVector4.h"
-#include "CLuaMatrix.h"
 
 #include "CLuaFunctionDefs.h"
 
@@ -32,19 +28,35 @@ class CLuaMain;
 
 #include <list>
 
-struct CRefInfo
-{
-    unsigned long int ulUseCount;
-    int iFunction;
-};
-
 class CLuaMain //: public CClient
 {
 public:
-    ZERO_ON_NEW
-                                    CLuaMain                ( class CLuaManager* pLuaManager, CResource* pResourceOwner, bool bEnableOOP );
+    enum
+    {
+        OWNER_SERVER,
+        OWNER_MAP,
+    };
+
+public:
+                                    CLuaMain                ( class CLuaManager* pLuaManager, CResource* pResourceOwner /*,
+                                                              CObjectManager* pObjectManager,
+                                                              CPlayerManager* pPlayerManager,
+                                                              CVehicleManager* pVehicleManager,
+                                                              CBlipManager* pBlipManager,
+                                                              CRadarAreaManager* pRadarAreaManager,
+                                                              CMapManager* pMapManager*/ );
                                     ~CLuaMain               ( void );
 
+    int                             GetClientType           ( void ) { /*return CClient::CLIENT_SCRIPT;*/ };
+    const char*                     GetNickPointer          ( void ) { return m_szScriptName; };
+
+    void                            SendEcho                ( const char* szEcho ) {};
+    void                            SendConsole             ( const char* szEcho ) {};
+
+    inline int                      GetOwner                ( void )                        { return m_iOwner; };
+    inline void                     SetOwner                ( int iOwner )                  { m_iOwner = iOwner; };
+
+    bool                            LoadScriptFromFile      ( const char* szLUAScript );
     bool                            LoadScriptFromBuffer    ( const char* cpBuffer, unsigned int uiSize, const char* szFileName );
     bool                            LoadScript              ( const char* szLUAScript );
     void                            UnloadScript            ( void );
@@ -53,8 +65,9 @@ public:
 
     void                            DoPulse                 ( void );
 
-    const char*                     GetScriptName           ( void ) const                  { return m_strScriptName; }
-    void                            SetScriptName           ( const char* szName )          { m_strScriptName.AssignLeft ( szName, MAX_SCRIPTNAME_LENGTH ); }
+    void                            GetScriptName           ( char* szLuaScript ) const     { strcpy ( szLuaScript, m_szScriptName ); };
+    inline const char*              GetScriptNamePointer    ( void ) const                  { return m_szScriptName; };
+    void                            SetScriptName           ( const char* szName )          { strncpy ( m_szScriptName, szName, MAX_SCRIPTNAME_LENGTH ); };
 
     void                            RegisterFunction        ( const char* szFunction, lua_CFunction function );
 
@@ -73,102 +86,26 @@ public:
     void                            DestroyXML              ( CXMLNode* pRootNode );
     void                            SaveXML                 ( CXMLNode * pRootNode );
     bool                            XMLExists               ( CXMLFile* pFile );
-    unsigned long                   GetXMLFileCount         ( void ) const                  { return m_XMLFiles.size (); };
-    unsigned long                   GetTimerCount           ( void ) const                  { return m_pLuaTimerManager ? m_pLuaTimerManager->GetTimerCount () : 0; };
-    unsigned long                   GetElementCount         ( void ) const;
 
-    void                            AddElementClass         ( lua_State* luaVM );
-    void                            AddVehicleClass         ( lua_State* luaVM );
-    void                            AddPedClass             ( lua_State* luaVM );
-    void                            AddPlayerClass          ( lua_State* luaVM );
-    void                            AddObjectClass          ( lua_State* luaVM );
-    void                            AddMarkerClass          ( lua_State* luaVM );
-    void                            AddBlipClass            ( lua_State* luaVM );
-    void                            AddPickupClass          ( lua_State* luaVM );
-    void                            AddColShapeClass        ( lua_State* luaVM );
-    void                            AddProjectileClass      ( lua_State* luaVM );
-    void                            AddRadarAreaClass       ( lua_State* luaVM );
-    void                            AddTeamClass            ( lua_State* luaVM );
-    void                            AddWaterClass           ( lua_State* luaVM );
-    void                            AddSoundClass           ( lua_State* luaVM );
-    void                            AddWeaponClass          ( lua_State* luaVM );
-    void                            AddEffectClass          ( lua_State* luaVM );
-    void                            AddPointLightsClass     ( lua_State* luaVM );
-
-    void                            AddGuiElementClass      ( lua_State* luaVM );
-    void                            AddGuiFontClass         ( lua_State* luaVM );
-    void                            AddGuiWindowClass       ( lua_State* luaVM );
-    void                            AddGuiButtonClass       ( lua_State* luaVM );
-    void                            AddGuiEditClass         ( lua_State* luaVM );
-    void                            AddGuiLabelClass        ( lua_State* luaVM );
-    void                            AddGuiMemoClass         ( lua_State* luaVM );
-    void                            AddGuiImageClass        ( lua_State* luaVM );
-    void                            AddGuiComboBoxClass     ( lua_State* luaVM );
-    void                            AddGuiCheckBoxClass     ( lua_State* luaVM );
-    void                            AddGuiRadioButtonClass  ( lua_State* luaVM );
-    void                            AddGuiScrollPaneClass   ( lua_State* luaVM );
-    void                            AddGuiScrollBarClass    ( lua_State* luaVM );
-    void                            AddGuiProgressBarClass  ( lua_State* luaVM );
-    void                            AddGuiGridlistClass     ( lua_State* luaVM );
-    void                            AddGuiTabPanelClass     ( lua_State* luaVM );
-    void                            AddGuiTabClass          ( lua_State* luaVM );
-
-    void                            AddResourceClass        ( lua_State* luaVM );
-    void                            AddTimerClass           ( lua_State* luaVM );
-    void                            AddFileClass            ( lua_State* luaVM );
-    void                            AddXMLClass             ( lua_State* luaVM );
-
-    void                            AddEngineClass          ( lua_State* luaVM );
-    void                            AddEngineColClass       ( lua_State* luaVM );
-    void                            AddEngineTxdClass       ( lua_State* luaVM );
-    void                            AddEngineDffClass       ( lua_State* luaVM );
-    
-    void                            AddCameraClass          ( lua_State* luaVM );
-
-    void                            AddVector4DClass        ( lua_State* luaVM );
-    void                            AddVector3DClass        ( lua_State* luaVM );
-    void                            AddVector2DClass        ( lua_State* luaVM );
-    void                            AddMatrixClass          ( lua_State* luaVM );
-
-    void                            AddDxMaterialClass      ( lua_State* luaVM );
-    void                            AddDxTextureClass       ( lua_State* luaVM );
-    void                            AddDxFontClass          ( lua_State* luaVM );
-    void                            AddDxShaderClass        ( lua_State* luaVM );
-    void                            AddDxScreenSourceClass  ( lua_State* luaVM );
-    void                            AddDxRenderTargetClass  ( lua_State* luaVM );
-    void                            AddBrowserClass         ( lua_State* luaVM );
-    
-    void                            InitClasses             ( lua_State* luaVM );
     void                            InitVM                  ( void );
-    const SString&                  GetFunctionTag          ( int iLuaFunction );
-    int                             PCall                   ( lua_State *L, int nargs, int nresults, int errfunc );
-    static int                      LuaLoadBuffer           ( lua_State *L, const char *buff, size_t sz, const char *name );
-    static int                      OnUndump                ( const char* p, size_t n );
-
-    bool                            IsOOPEnabled            ( void )                        { return m_bEnableOOP; }
 private:
     void                            InitSecurity            ( void );
 
     static void                     InstructionCountHook    ( lua_State* luaVM, lua_Debug* pDebug );
 
-    SString                         m_strScriptName;
+    char                            m_szScriptName [MAX_SCRIPTNAME_LENGTH + 1];
+    int                             m_iOwner;
 
     lua_State*                      m_luaVM;
     CLuaTimerManager*               m_pLuaTimerManager;
 
     bool                            m_bBeingDeleted; // prevent it being deleted twice
 
-    CElapsedTime                    m_FunctionEnterTimer;
+    unsigned long                   m_ulFunctionEnterTime;
 
     class CResource*                m_pResource;
 
     std::list < CXMLFile* >         m_XMLFiles;
-    static SString                  ms_strExpectedUndumpHash;
-
-    bool                            m_bEnableOOP;
-public:
-    CFastHashMap < const void*, CRefInfo >  m_CallbackTable;
-    std::map < int, SString >               m_FunctionTagMap;
 };
 
 #endif

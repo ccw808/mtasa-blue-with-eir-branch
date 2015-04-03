@@ -17,7 +17,7 @@
 #include <ctime>
 #include <gui/CGUI.h>
 #include <xfire.h>
-#include "CServerInfo.h"
+#include "CServerQueue.h"
 
 class CConnectManager
 {
@@ -25,26 +25,18 @@ public:
                     CConnectManager     ( void );
                     ~CConnectManager    ( void );
 
-    bool            Connect             ( const char* szHost, unsigned short usPort, const char* szNick, const char* szPassword, bool bNotifyServerBrowser = false, bool bForceInternalHTTPServer = false );
-    bool            Reconnect           ( const char* szHost, unsigned short usPort, const char* szPassword, bool bSave = true, bool bForceInternalHTTPServer = false );
+    bool            Connect             ( const char* szHost, unsigned short usPort, const char* szNick, const char* szPassword );
+    bool            Reconnect           ( const char* szHost, unsigned short usPort, const char* szPassword );
 
     bool            Abort               ( void );
 
     void            DoPulse             ( void );
 
-    void            OnServerExists      ( void );
-
-    bool            ShouldUseInternalHTTPServer ( void )    { return m_bForceInternalHTTPServer; }
-
     static bool     StaticProcessPacket ( unsigned char ucPacketID, class NetBitStreamInterface& bitStream );
 
-    std::string     m_strLastHost;
-    unsigned short  m_usLastPort;
-    std::string     m_strLastPassword;
 private:
     bool            Event_OnCancelClick ( CGUIElement * pElement );
 
-    in_addr         m_Address;
     std::string     m_strHost;
     unsigned short  m_usPort;
     std::string     m_strNick;
@@ -52,14 +44,11 @@ private:
     bool            m_bIsDetectingVersion;
     bool            m_bIsConnecting;
     bool            m_bReconnect;
-    bool            m_bSave;
-    bool            m_bForceInternalHTTPServer;
     time_t          m_tConnectStarted;
 
     GUI_CALLBACK*   m_pOnCancelClick;
 
     CServerListItem* m_pServerItem;
-    bool            m_bNotifyServerBrowser;
 
     bool CheckNickProvided ( const char* szNick );
 };

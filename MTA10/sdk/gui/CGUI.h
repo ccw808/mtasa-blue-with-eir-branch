@@ -43,7 +43,6 @@ class CGUI;
 #define CGUI_ICON_MESSAGEBOX_WARNING    "cgui\\images\\warning.png"
 #define CGUI_ICON_MESSAGEBOX_ERROR      "cgui\\images\\error.png"
 #define CGUI_ICON_SERVER_PASSWORD       "cgui\\images\\locked.png"
-#define CGUI_GetMaxTextExtent(...) GetMaxTextExtent(__VA_ARGS__, SString())
 
 // Message box types
 enum CMessageBoxFlag
@@ -72,6 +71,7 @@ enum eInputMode
     INPUTMODE_ALLOW_BINDS = 0,
     INPUTMODE_NO_BINDS = 1,
     INPUTMODE_NO_BINDS_ON_EDIT = 2,
+    INPUTMODE_INVALID = 0xFF,
 };
 
 #define CHECK_CHANNEL(channel) assert ( channel >= 0 && channel < INPUT_CHANNEL_COUNT )
@@ -79,9 +79,6 @@ enum eInputMode
 class CGUI
 {
 public:
-
-    virtual void                SetSkin                 ( const char* szName ) = 0;
-    virtual void                SetBidiEnabled          ( bool bEnabled ) = 0;
 
     virtual void                Draw                    ( void ) = 0;
     virtual void                Invalidate              ( void ) = 0;
@@ -97,6 +94,8 @@ public:
     virtual bool                GetGUIInputEnabled      ( void ) = 0;
     virtual void                SetGUIInputMode         ( eInputMode a_eMode ) = 0;
     virtual eInputMode          GetGUIInputMode         ( void ) = 0;
+    virtual eInputMode          GetInputModeFromString  ( const std::string& a_rstrMode ) const = 0;
+    virtual bool                GetStringFromInputMode  ( eInputMode a_eMode, std::string& a_rstrResult ) const = 0;
 
     //
     virtual CGUIMessageBox*     CreateMessageBox        ( const char* szTitle, const char* szMessage, unsigned int uiFlags ) = 0;
@@ -130,13 +129,11 @@ public:
     virtual CGUIStaticImage*    CreateStaticImage       ( CGUIGridList* pParent ) = 0;
     virtual CGUIStaticImage*    CreateStaticImage       ( void ) = 0;
 
-    virtual CGUITabPanel*       CreateTabPanel          ( CGUIElement* pParent ) = 0;
-    virtual CGUITabPanel*       CreateTabPanel          ( CGUITab* pParent ) = 0;
-    virtual CGUITabPanel*       CreateTabPanel          ( void ) = 0;
+    virtual CGUITabPanel*       CreateTabPanel          ( CGUIElement* pParent = NULL ) = 0;
+    virtual CGUITabPanel*       CreateTabPanel          ( CGUITab* pParent = NULL ) = 0;
 
-    virtual CGUIScrollPane*     CreateScrollPane        ( CGUIElement* pParent ) = 0;
-    virtual CGUIScrollPane*     CreateScrollPane        ( CGUITab* pParent ) = 0;
-    virtual CGUIScrollPane*     CreateScrollPane        ( void ) = 0;
+    virtual CGUIScrollPane*     CreateScrollPane        ( CGUIElement* pParent = NULL ) = 0;
+    virtual CGUIScrollPane*     CreateScrollPane        ( CGUITab* pParent = NULL ) = 0;
 
     virtual CGUIScrollBar*      CreateScrollBar         ( bool bHorizontal, CGUIElement* pParent = NULL ) = 0;
     virtual CGUIScrollBar*      CreateScrollBar         ( bool bHorizontal, CGUITab* pParent = NULL ) = 0;
@@ -152,8 +149,6 @@ public:
 
     virtual void                SetCursorEnabled        ( bool bEnabled ) = 0;
     virtual bool                IsCursorEnabled         ( void ) = 0;
-    virtual void                SetCursorAlpha          ( float fAlpha, bool bOnlyCurrentServer = false ) = 0;
-    virtual float               GetCurrentServerCursorAlpha ( void ) = 0;
 
     virtual CVector2D           GetResolution           ( void ) = 0;
     virtual void                SetResolution           ( float fWidth, float fHeight ) = 0;
@@ -165,11 +160,7 @@ public:
     virtual CGUIFont*           GetSansFont             ( void ) = 0;
     virtual bool                IsFontPresent           ( const char* szFont ) = 0;
 
-    virtual float               GetTextExtent           ( const char* szText, const char* szFont = "default-normal" ) = 0;
-    virtual float               GetMaxTextExtent        ( SString strFont, SString arg, ... ) = 0;
-
-    virtual void                PushGuiWorkingDirectory ( const SString& strDir ) = 0;
-    virtual void                PopGuiWorkingDirectory  ( const SString& strDirCheck = "" ) = 0;
+    virtual void                SetWorkingDirectory     ( const char * szDir ) = 0;
 
     virtual void                SetCharacterKeyHandler      ( eInputChannel channel, const GUI_CALLBACK_KEY & Callback ) = 0;
     virtual void                SetKeyDownHandler           ( eInputChannel channel, const GUI_CALLBACK_KEY & Callback ) = 0;

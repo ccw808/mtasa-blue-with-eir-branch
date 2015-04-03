@@ -318,7 +318,7 @@ void TabControl::removeTab(const String& name)
 
     Window* wnd = d_tabContentPane->getChild(name);
     // Was this selected?
-    bool reselect = wnd->isVisible(true);
+    bool reselect = wnd->isVisible();
     // Tab buttons are the 2nd onward children
     d_tabContentPane->removeChildWindow(name);
 
@@ -442,7 +442,7 @@ void TabControl::calculateTabButtonSizePosition(TabButton* btn, uint targetIndex
     // Width is based on font size (expressed as absolute)
     const Font* fnt = btn->getFont();
     btn->setWidth(Absolute, 
-        fnt->getTextExtent(btn->getText(true)) + getAbsoluteTabTextPadding()*2);
+        fnt->getTextExtent(btn->getText()) + getAbsoluteTabTextPadding()*2);
     btn->requestRedraw();
 }
 /*************************************************************************
@@ -597,14 +597,10 @@ void TabControl::performChildWindowLayout()
         TabButtonIndexMap::iterator i, iend;
         iend = d_tabButtonIndexMap.end();
         uint x = 0;
-        for (i = d_tabButtonIndexMap.begin(); i != iend; ++i)
+        for (i = d_tabButtonIndexMap.begin(); i != iend; ++i, ++x)
         {
             TabButton* btn = i->second;
-            if ( btn->isVisible ( true ) )
-            {
-                calculateTabButtonSizePosition(btn, x);
-                ++x;
-            }
+            calculateTabButtonSizePosition(btn, x);
         }
     }
     if (d_tabContentPane)

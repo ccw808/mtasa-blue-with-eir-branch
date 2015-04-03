@@ -15,71 +15,79 @@
 
 void CWaterRPCs::LoadFunctions ( void )
 {
-    AddHandler ( SET_WORLD_WATER_LEVEL, SetWorldWaterLevel, "SetWorldWaterLevel" );
-    AddHandler ( RESET_WORLD_WATER_LEVEL, ResetWorldWaterLevel, "ResetWorldWaterLevel" );
-    AddHandler ( SET_ELEMENT_WATER_LEVEL, SetElementWaterLevel, "SetElementWaterLevel" );
-    AddHandler ( SET_ALL_ELEMENT_WATER_LEVEL, SetAllElementWaterLevel, "SetAllElementWaterLevel" );
+    AddHandler ( SET_WATER_LEVEL, SetWaterLevel, "SetWaterLevel" );
     AddHandler ( SET_WATER_VERTEX_POSITION, SetWaterVertexPosition, "SetWaterVertexPosition" );
     AddHandler ( SET_WATER_COLOR, SetWaterColor, "SetWaterColor" );
     AddHandler ( RESET_WATER_COLOR, ResetWaterColor, "ResetWaterColor" );
 }
 
-void CWaterRPCs::SetWorldWaterLevel ( NetBitStreamInterface& bitStream )
+void CWaterRPCs::SetWaterLevel ( NetBitStreamInterface& bitStream )
 {
     float fLevel;
-    bool bIncludeWorldNonSeaLevel;
+    unsigned char ucWhat;
 
-    if ( bitStream.Read ( fLevel )
-            && bitStream.ReadBit ( bIncludeWorldNonSeaLevel ) )
+    if ( bitStream.Read ( fLevel ) && bitStream.Read ( ucWhat ) )
     {
-        m_pWaterManager->SetWorldWaterLevel ( fLevel, NULL, bIncludeWorldNonSeaLevel );
-    }
-}
-
-void CWaterRPCs::ResetWorldWaterLevel ( NetBitStreamInterface& bitStream )
-{
-    m_pWaterManager->ResetWorldWaterLevel ();
-}
-
-void CWaterRPCs::SetElementWaterLevel ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
-{
-    float fLevel;
-
-    if ( bitStream.Read ( fLevel ) )
-    {
-        // (water, level)
-        CClientWater* pWater = m_pWaterManager->Get ( pSource->GetID () );
-        if ( pWater )
+        switch ( ucWhat )
         {
-            m_pWaterManager->SetElementWaterLevel ( pWater, fLevel, NULL );
+            case 0:
+            {
+                // (x, y, z, level)
+                short sX, sY;
+                CVector vecPos;
+                if ( bitStream.Read ( sX ) && bitStream.Read ( sY ) && bitStream.Read ( vecPos.fZ ) )
+                {
+                    vecPos.fX = sX;
+                    vecPos.fY = sY;
+                    m_pWaterManager->SetWaterLevel ( &vecPos, fLevel );
+                }
+                break;
+            }
+            case 1:
+            {
+                // (water, level)
+                ElementID waterID;
+                if ( bitStream.Read ( waterID ) )
+                {
+                    CClientWater* pWater = m_pWaterManager->Get ( waterID );
+                    if ( pWater )
+                    {
+                        CVector vecVertexPos;
+                        for ( int i = 0; i < pWater->GetNumVertices (); i++ )
+                        {
+                            pWater->GetVertexPosition ( i, vecVertexPos );
+                            vecVertexPos.fZ = fLevel;
+                            pWater->SetVertexPosition ( i, vecVertexPos );
+                        }
+                    }
+                }
+                break;
+            }
+            case 2:
+            {
+                // (level)
+                m_pWaterManager->SetWaterLevel ( (CVector *)NULL, fLevel );
+                break;
+            }
         }
     }
 }
 
-void CWaterRPCs::SetAllElementWaterLevel ( NetBitStreamInterface& bitStream )
+void CWaterRPCs::SetWaterVertexPosition ( NetBitStreamInterface& bitStream )
 {
-    float fLevel;
-
-    if ( bitStream.Read ( fLevel ) )
-    {
-        m_pWaterManager->SetAllElementWaterLevel ( fLevel, NULL );
-    }
-}
-
-
-void CWaterRPCs::SetWaterVertexPosition ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
-{
+    ElementID waterID;
     unsigned char ucVertexID;
     short sX;
     short sY;
     float fZ;
 
-    if ( bitStream.Read ( ucVertexID ) &&
+    if ( bitStream.Read ( waterID ) &&
+         bitStream.Read ( ucVertexID ) &&
          bitStream.Read ( sX ) &&
          bitStream.Read ( sY ) &&
          bitStream.Read ( fZ ) )
     {
-        CClientWater* pWater = m_pWaterManager->Get ( pSource->GetID () );
+        CClientWater* pWater = m_pWaterManager->Get ( waterID );
         if ( pWater && ucVertexID < pWater->GetNumVertices () )
         {
             CVector vecPosition ( sX, sY, fZ );

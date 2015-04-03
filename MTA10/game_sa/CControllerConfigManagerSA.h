@@ -27,28 +27,18 @@ class CControllerConfigManagerSA : public CControllerConfigManager
 {
 public:
                             CControllerConfigManagerSA();
-        // CControllerConfigManager
         void                SetControllerKeyAssociatedWithAction ( eControllerAction action, int iKey, eControllerType controllerType );
         int                 GetControllerKeyAssociatedWithAction ( eControllerAction action, eControllerType controllerType );
         int                 GetNumOfSettingsForAction ( eControllerAction action );
         void                ClearSettingsAssociatedWithAction ( eControllerAction action, eControllerType controllerType );
-        void                SetClassicControls ( bool bClassicControls );
+        unsigned char       GetInputType ( void );
+        void                SetInputType ( unsigned char ucInputType );
+        bool                IsMouseInverted ( void );
         void                SetMouseInverted ( bool bInverted );
+        bool                GetFlyWithMouse ( void );
         void                SetFlyWithMouse ( bool bFlyWithMouse );
-        void                SetSteerWithMouse ( bool bSteerWithMouse );
-        void                SuspendSteerAndFlyWithMouse ( bool bSuspend );
-        float               GetVerticalAimSensitivity         ( void );
-        void                SetVerticalAimSensitivity         ( float fSensitivity );
-        float               GetVerticalAimSensitivityRawValue ( void );
-        void                SetVerticalAimSensitivityRawValue ( float fRawValue );
-
-        // CControllerConfigManagerSA
-        void                ApplySteerAndFlyWithMouseSettings ( void );
-
-protected:
-        bool                m_bSteerWithMouse;
-        bool                m_bFlyWithMouse;
-        bool                m_bSuspendSteerAndFlyWithMouse;
+        bool                GetSteerWithMouse ( void );
+        void                SetSteerWithMouse ( bool bFlyWithMouse );
 };
 
 #endif

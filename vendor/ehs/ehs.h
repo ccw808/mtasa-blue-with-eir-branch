@@ -52,6 +52,7 @@
 #include <windows.h>
 
 #include <time.h>
+#include <assert.h>
 
 // make stricmp sound like strcasecmp
 #define strcasecmp stricmp
@@ -72,6 +73,8 @@
 #endif // end platform headers   //
 ///////////////////////////////////
 
+#include "SharedUtil.h"
+
 // STL headers
 #include <algorithm>
 #include <cctype>
@@ -83,6 +86,7 @@
 #include <typeinfo>
 
 // C headers
+#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <stdarg.h>
@@ -291,7 +295,7 @@ class EHS {
 		UnregisterEHS ( const char * ipsRegisterPath );
 
 	/// this is responsible for routing a request through the EHS tree and sending the request to the final destination.  It returns the HttpResponse object to be sent back to the client
-	virtual HttpResponse * RouteRequest ( HttpRequest * ipoHttpRequest );
+	HttpResponse * RouteRequest ( HttpRequest * ipoHttpRequest );
 
 	/// This function should be defined by the subclass
 	virtual ResponseCode HandleRequest ( HttpRequest * ipoHttpRequest,
@@ -332,8 +336,6 @@ class EHS {
 	/// This looks for incoming connections in EHSServer.
 	void HandleData ( int inTimeoutMilliseconds = 0 );
 
-    static long long StaticGetTotalBytesSent ( void );    // For stats
-    static void StaticGetAllocationStats ( SAllocationStats& outAllocationStats );
 };
 
 

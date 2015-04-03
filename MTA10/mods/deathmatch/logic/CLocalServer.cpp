@@ -14,20 +14,12 @@
 
 using std::list;
 
+#ifndef snprintf
+#define snprintf _snprintf
+#endif
+
 extern CCoreInterface* g_pCore;
-extern CLocalizationInterface* g_pLocalization;
 extern CClientGame* g_pClientGame;
-
-// SResInfo - Item in list of potential resources - Used in GetResourceNameList()
-struct SResInfo
-{
-    SString strAbsPath;
-    SString strName;
-    bool bIsDir;
-    bool bPathIssue;
-    SString strAbsPathDup;
-};
-
 
 CLocalServer::CLocalServer ( const char* szConfig )
 {
@@ -36,7 +28,7 @@ CLocalServer::CLocalServer ( const char* szConfig )
 
     m_pGUI = g_pCore->GetGUI();
 
-    m_pWindow = reinterpret_cast < CGUIWindow* > ( m_pGUI->CreateWnd ( NULL, _("HOST GAME") ) );
+    m_pWindow = reinterpret_cast < CGUIWindow* > ( m_pGUI->CreateWnd ( NULL, "HOST GAME" ) );
     m_pWindow->SetMovable ( true );
 
     CVector2D resolution = m_pGUI->GetResolution();
@@ -50,46 +42,46 @@ CLocalServer::CLocalServer ( const char* szConfig )
     m_pTabs = reinterpret_cast < CGUITabPanel* > ( m_pGUI->CreateTabPanel ( m_pWindow ) );
     m_pTabs->SetPosition ( CVector2D ( 0.0f, 0.06f ), true );
     m_pTabs->SetSize ( CVector2D ( 1.0f, 0.85f ), true );
-    m_pTabGeneral = m_pTabs->CreateTab ( _("General") );
+    m_pTabGeneral = m_pTabs->CreateTab ( "General" );
     //m_pTabs->CreateTab ( "Gamemode" );
-    m_pTabResources = m_pTabs->CreateTab ( _("Resources") );
+    m_pTabResources = m_pTabs->CreateTab ( "Resources" );
 
-    m_pLabelName = reinterpret_cast < CGUILabel* > ( m_pGUI->CreateLabel ( m_pTabGeneral, _("Server name:") ) );
+    m_pLabelName = reinterpret_cast < CGUILabel* > ( m_pGUI->CreateLabel ( m_pTabGeneral, "Server name:" ) );
     m_pLabelName->SetPosition ( CVector2D ( 0.03f, 0.07f ), true );
-    m_pLabelName->AutoSize ( _("Server name:") );
+    m_pLabelName->AutoSize ( "Server name:" );
 
     m_pEditName = reinterpret_cast < CGUIEdit* > ( m_pGUI->CreateEdit ( m_pTabGeneral, "Default MTA Server" ) );
     m_pEditName->SetPosition ( CVector2D ( 0.4f, 0.06f ), true );
     m_pEditName->SetSize ( CVector2D ( 0.57f, 0.06f ), true );
     m_pEditName->SetMaxLength ( 64 );
 
-    m_pLabelPass = reinterpret_cast < CGUILabel* > ( m_pGUI->CreateLabel ( m_pTabGeneral, _("Password:") ) );
+    m_pLabelPass = reinterpret_cast < CGUILabel* > ( m_pGUI->CreateLabel ( m_pTabGeneral, "Password:" ) );
     m_pLabelPass->SetPosition ( CVector2D ( 0.03f, 0.14f ), true );
-    m_pLabelPass->AutoSize ( _("Password:") );
+    m_pLabelPass->AutoSize ( "Password:" );
 
     m_pEditPass = reinterpret_cast < CGUIEdit* > ( m_pGUI->CreateEdit ( m_pTabGeneral ) );
     m_pEditPass->SetPosition ( CVector2D ( 0.4f, 0.13f ), true );
     m_pEditPass->SetSize ( CVector2D ( 0.57f, 0.06f ), true );
     m_pEditPass->SetMaxLength ( 8 );
 
-    m_pLabelPlayers = reinterpret_cast < CGUILabel* > ( m_pGUI->CreateLabel ( m_pTabGeneral, _("Max players:") ) );
+    m_pLabelPlayers = reinterpret_cast < CGUILabel* > ( m_pGUI->CreateLabel ( m_pTabGeneral, "Max players:" ) );
     m_pLabelPlayers->SetPosition ( CVector2D ( 0.03f, 0.21f ), true );
-    m_pLabelPlayers->AutoSize ( _("Max players:") );
+    m_pLabelPlayers->AutoSize ( "Max players:" );
 
     m_pEditPlayers = reinterpret_cast < CGUIEdit* > ( m_pGUI->CreateEdit ( m_pTabGeneral ) );
     m_pEditPlayers->SetPosition ( CVector2D ( 0.4f, 0.20f ), true );
     m_pEditPlayers->SetSize ( CVector2D ( 0.17f, 0.06f ), true );
     m_pEditPlayers->SetMaxLength ( 3 );
 
-    m_pLabelBroadcast = reinterpret_cast < CGUILabel* > ( m_pGUI->CreateLabel ( m_pTabGeneral, _("Broadcast:") ) );
+    m_pLabelBroadcast = reinterpret_cast < CGUILabel* > ( m_pGUI->CreateLabel ( m_pTabGeneral, "Broadcast:" ) );
     m_pLabelBroadcast->SetPosition ( CVector2D ( 0.03f, 0.35f ), true );
-    m_pLabelBroadcast->AutoSize ( _("Broadcast:") );
+    m_pLabelBroadcast->AutoSize ( "Broadcast:" );
 
-    m_pBroadcastLan = reinterpret_cast < CGUICheckBox* > ( m_pGUI->CreateCheckBox ( m_pTabGeneral, _("LAN"), true ) );
+    m_pBroadcastLan = reinterpret_cast < CGUICheckBox* > ( m_pGUI->CreateCheckBox ( m_pTabGeneral, "LAN", true ) );
     m_pBroadcastLan->SetPosition ( CVector2D ( 0.4f, 0.33f ), true );
     m_pBroadcastLan->SetSize ( CVector2D ( 0.45f, 0.08f ), true );
 
-    m_pBroadcastInternet = reinterpret_cast < CGUICheckBox* > ( m_pGUI->CreateCheckBox ( m_pTabGeneral, _("Internet"), true ) );
+    m_pBroadcastInternet = reinterpret_cast < CGUICheckBox* > ( m_pGUI->CreateCheckBox ( m_pTabGeneral, "Internet", true ) );
     m_pBroadcastInternet->SetPosition ( CVector2D ( 0.4f, 0.38f ), true );
     m_pBroadcastInternet->SetSize ( CVector2D ( 0.45f, 0.08f ), true );
 
@@ -97,35 +89,31 @@ CLocalServer::CLocalServer ( const char* szConfig )
     m_pResourcesCur->SetPosition ( CVector2D ( 0.03f, 0.06f ), true );
     m_pResourcesCur->SetSize ( CVector2D ( 0.45f, 0.5f ), true );
     m_pResourcesCur->SetSorting ( false );
-    m_pResourcesCur->SetSelectionMode ( SelectionModes::CellSingle );
-    m_hResourcesCur = m_pResourcesCur->AddColumn ( _("Selected"), 0.80f );
+    m_pResourcesCur->SetSelectionMode ( CGUIGridList::SelectionMode::CellSingle );
+    m_hResourcesCur = m_pResourcesCur->AddColumn ( "Selected", 0.80f );
 
     m_pResourceDel = reinterpret_cast < CGUIButton* > ( m_pGUI->CreateButton ( m_pTabResources, ">" ) );
     m_pResourceDel->SetPosition ( CVector2D ( 0.03f, 0.65f ), true );
     m_pResourceDel->SetSize ( CVector2D ( 0.45f, 0.05f ), true );
-    m_pResourceDel->SetZOrderingEnabled ( false );
 
     m_pResourceAdd = reinterpret_cast < CGUIButton* > ( m_pGUI->CreateButton ( m_pTabResources, "<" ) );
     m_pResourceAdd->SetPosition ( CVector2D ( 0.03f, 0.58f ), true );
     m_pResourceAdd->SetSize ( CVector2D ( 0.45f, 0.05f ), true );
-    m_pResourceAdd->SetZOrderingEnabled ( false );
 
     m_pResourcesAll = reinterpret_cast < CGUIGridList* > ( m_pGUI->CreateGridList ( m_pTabResources, false ) );
     m_pResourcesAll->SetPosition ( CVector2D ( 0.52f, 0.06f ), true );
     m_pResourcesAll->SetSize ( CVector2D ( 0.45f, 0.9f ), true );
     m_pResourcesAll->SetSorting ( false );
-    m_pResourcesAll->SetSelectionMode ( SelectionModes::CellSingle );
-    m_hResourcesAll = m_pResourcesAll->AddColumn ( _("All"), 0.80f );
+    m_pResourcesAll->SetSelectionMode ( CGUIGridList::SelectionMode::CellSingle );
+    m_hResourcesAll = m_pResourcesAll->AddColumn ( "All", 0.80f );
 
-    m_pButtonStart = reinterpret_cast < CGUIButton* > ( m_pGUI->CreateButton ( m_pWindow, _("Start") ) );
+    m_pButtonStart = reinterpret_cast < CGUIButton* > ( m_pGUI->CreateButton ( m_pWindow, "Start" ) );
     m_pButtonStart->SetPosition ( CVector2D ( 0.33f, 0.93f ), true );
     m_pButtonStart->SetSize ( CVector2D ( 0.3f, 0.05f ), true );
-    m_pButtonStart->SetZOrderingEnabled ( false );
 
-    m_pButtonCancel = reinterpret_cast < CGUIButton* > ( m_pGUI->CreateButton ( m_pWindow, _("Cancel") ) );
+    m_pButtonCancel = reinterpret_cast < CGUIButton* > ( m_pGUI->CreateButton ( m_pWindow, "Cancel" ) );
     m_pButtonCancel->SetPosition ( CVector2D ( 0.65f, 0.93f ), true );
     m_pButtonCancel->SetSize ( CVector2D ( 0.3f, 0.05f ), true );
-    m_pButtonCancel->SetZOrderingEnabled ( false );
 
     m_pResourceAdd->SetClickHandler ( GUI_CALLBACK ( &CLocalServer::OnAddButtonClick, this ) );
     m_pResourceDel->SetClickHandler ( GUI_CALLBACK ( &CLocalServer::OnDelButtonClick, this ) );
@@ -173,7 +161,7 @@ bool CLocalServer::OnStartButtonClick ( CGUIElement *pElement )
     Save();
     // Connect
 
-    g_pClientGame->StartLocalGame ( CClientGame::SERVER_TYPE_LOCAL, m_pEditPass->GetText().c_str() );
+    g_pClientGame->StartLocalGame ( m_strConfig.c_str(), m_pEditPass->GetText().c_str() );
 
     return true;
 }
@@ -188,9 +176,11 @@ bool CLocalServer::OnCancelButtonClick ( CGUIElement *pElement )
 bool CLocalServer::Load ( void )
 {
     // Get server module root
-    SString strServerPath = CalcMTASAPath( PathJoin ( "server", "mods", "deathmatch" ) );
+    SString strServerPath = g_pCore->GetInstallRoot ();
+    strServerPath += "/server/mods/deathmatch";
 
-    m_pConfig = g_pCore->GetXML ()->CreateXML ( PathJoin ( strServerPath, m_strConfig ) );
+    SString strConfigPath ( "%s/%s", strServerPath.c_str (), m_strConfig.c_str () );
+    m_pConfig = g_pCore->GetXML ()->CreateXML ( strConfigPath );
     if ( m_pConfig && m_pConfig->Parse() )
     {
         CXMLNode* pRoot = m_pConfig->GetRootNode();
@@ -203,7 +193,7 @@ bool CLocalServer::Load ( void )
 
         // Read the startup resources
         list < CXMLNode* > ::const_iterator iter = pRoot->ChildrenBegin ();
-        for ( ; iter != pRoot->ChildrenEnd (); ++iter )
+        for ( ; iter != pRoot->ChildrenEnd (); iter++ )
         {
             CXMLNode* pNode = reinterpret_cast < CXMLNode* > ( *iter );
             if ( pNode->GetTagName ().compare ( "resource" ) == 0 )
@@ -216,129 +206,108 @@ bool CLocalServer::Load ( void )
             }
         }
     }
+    //
 
-    // Get list of resource names
-    std::vector < SString > resourceNameList;
-    GetResourceNameList ( resourceNameList, strServerPath );
+    SString strResourceDirectoryPath ( "%s/resources/*", strServerPath.c_str () );
 
-    // Put resource names into the GUI
-    for ( std::vector < SString >::iterator iter = resourceNameList.begin () ; iter != resourceNameList.end () ; ++iter )
-        HandleResource ( *iter );
+    unsigned int uiCount = 0;
 
-    return true;
-}
+    #ifdef WIN32
 
-
-//
-// Scan resource directories
-//
-void CLocalServer::GetResourceNameList ( std::vector < SString >& outResourceNameList, const SString& strModPath )
-{
-    // Make list of potential active resources
-    std::map < SString, SResInfo > resInfoMap;
-
-    // Initial search dir
-    std::vector < SString > resourcesPathList;
-    resourcesPathList.push_back ( "resources" );
-
-    //SString strModPath = g_pServerInterface->GetModManager ()->GetModPath ();
-    for ( uint i = 0 ; i < resourcesPathList.size () ; i++ )
-    {
-        // Enumerate all files and directories
-        SString strResourcesRelPath = resourcesPathList[i];
-        SString strResourcesAbsPath = PathJoin ( strModPath, strResourcesRelPath, "/" );
-        std::vector < SString > itemList = FindFiles ( strResourcesAbsPath, true, true );
-
-        // Check each item
-        for ( uint i = 0 ; i < itemList.size () ; i++ )
+        // Find all .map files in the maps folder
+        WIN32_FIND_DATA FindData;
+        HANDLE hFind = FindFirstFile ( strResourceDirectoryPath, &FindData );
+        if ( hFind != INVALID_HANDLE_VALUE )
         {
-            SString strName = itemList[i];
-
-            // Ignore items that start with a dot
-            if ( strName[0] == '.' )
-                continue;
-
-            bool bIsDir = DirectoryExists ( PathJoin ( strResourcesAbsPath, strName ) );
-
-            // Recurse into [directories]
-            if ( bIsDir && ( strName.BeginsWith( "#" ) || ( strName.BeginsWith( "[" ) && strName.EndsWith( "]" ) ) ) )
+            // Remove the extension and store the time
+            FindData.cFileName [ strlen ( FindData.cFileName ) - 4 ] = 0;
+            // Add each file
+            do
             {
-                resourcesPathList.push_back ( PathJoin ( strResourcesRelPath, strName ) );
-                continue;
-            }
-
-            // Extract file extension
-            SString strExt;
-            if ( !bIsDir )
-                ExtractExtension ( strName, &strName, &strExt );
-
-            // Ignore files that are not .zip
-            if ( !bIsDir && strExt != "zip" )
-                continue;
-
-            // Ignore items that have dot or space in the name
-            if ( strName.Contains ( "." ) || strName.Contains ( " " ) )
-            {
-                CLogger::LogPrintf ( "WARNING: Not loading resource '%s' as it contains illegal characters\n", *strName );
-                continue;
-            }
-
-            // Ignore dir items with no meta.xml (assume it's the result of saved files from a zipped resource)
-            if ( bIsDir && !FileExists ( PathJoin ( strResourcesAbsPath, strName, "meta.xml" ) ) )
-                continue;
-
-            // Add potential resource to list
-            SResInfo newInfo;
-            newInfo.strAbsPath = strResourcesAbsPath;
-            newInfo.strName = strName;
-            newInfo.bIsDir = bIsDir;
-            newInfo.bPathIssue = false;
-
-            // Check for duplicate
-            if ( SResInfo* pDup = MapFind ( resInfoMap, strName ) )
-            {
-                // Is path the same?
-                if ( newInfo.strAbsPath == pDup->strAbsPath )
+                if ( strcmp ( FindData.cFileName, ".." ) != 0 && strcmp ( FindData.cFileName, "." ) != 0 )
                 {
-                    if ( newInfo.bIsDir )
+                    char * extn = NULL;
+                    if ( ( FindData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY ) != FILE_ATTRIBUTE_DIRECTORY )
                     {
-                        // If non-zipped item, replace already existing zipped item on the same path
-                        assert ( !pDup->bIsDir );
-                        *pDup = newInfo;
+                        extn = &FindData.cFileName [ strlen ( FindData.cFileName ) - 3 ];
+                        FindData.cFileName [ strlen ( FindData.cFileName ) - 4 ] = 0;
+                    }
+
+                    if ( extn == NULL || strcmp ( extn, "zip" ) == 0 )
+                    {
+                        // Add the resource
+                        HandleResource ( FindData.cFileName );
+
+                        // Increment the counter
+                        uiCount++;
                     }
                 }
-                else
-                {
-                    // Don't load resource if there are duplicates on different paths
-                    pDup->bPathIssue = true;
-                    pDup->strAbsPathDup = newInfo.strAbsPath;
-                }
-            }
-            else
+            } while ( FindNextFile ( hFind, &FindData ) );
+
+            // Close the search
+            FindClose ( hFind );
+        }
+    #else
+        DIR *Dir;
+        struct dirent *DirEntry;
+        time_t llHighestTime = 0;
+        char szPath[MAX_PATH] = {0};
+
+        if ( ( Dir = opendir ( strResourceDirectoryPath ) ) )
+        {
+            while ( ( DirEntry = readdir ( Dir ) ) != NULL )
             {
-                // No duplicate found
-                MapSet ( resInfoMap, strName, newInfo );
+                // Skip . and .. entry
+                if ( strcmp ( DirEntry->d_name, "." ) != 0 && 
+                     strcmp ( DirEntry->d_name, ".." ) != 0 )
+                {
+                    struct stat Info;
+                    bool bDir = false;
+
+                    // Get the path
+                    if ( strlen(szBuffer) + strlen(DirEntry->d_name) < MAX_PATH )
+                    {
+                        strcpy ( szPath, szBuffer );
+                        unsigned long ulPathLength = strlen ( szPath );
+
+                        if ( szPath [ ulPathLength-1 ] != '/') strcat ( szPath, "/" );
+
+                        strcat ( szPath, DirEntry->d_name );
+
+                        // Determine the file stats
+                        if ( lstat ( szPath, &Info ) != -1 )
+                            bDir = S_ISDIR ( Info.st_mode );
+                        else
+                            CLogger::ErrorPrintf ( "Unable to stat %s\n", szPath );
+
+                        // Chop off the extension if it's not a dir
+                        char * extn = NULL;
+                        if ( !bDir )
+                        {
+                            extn = &(DirEntry->d_name [ strlen ( DirEntry->d_name ) - 3 ]);
+                            DirEntry->d_name [ strlen ( DirEntry->d_name ) - 4 ] = 0;
+                        }
+                        if ( extn == NULL || strcmp ( extn, "zip" ) == 0 )
+                        {
+                            // Add the resource
+                            HandleResource ( DirEntry->d_name );
+
+                            // Increment the counter
+                            uiCount++;
+                        }
+
+                    }
+                }
+
+
             }
-        }
-    }
 
-    // Print important errors
-    for ( std::map < SString, SResInfo >::const_iterator iter = resInfoMap.begin () ; iter != resInfoMap.end () ; ++iter )
-    {
-        const SResInfo& info = iter->second;
-        if ( info.bPathIssue )
-        {
-            CLogger::ErrorPrintf ( "Not processing resource '%s' as it has duplicates on different paths:\n", *info.strName );
-            CLogger::LogPrintfNoStamp ( "                  Path #1: \"%s\"\n", *PathJoin ( PathMakeRelative ( strModPath, info.strAbsPath ), info.strName ) );
-            CLogger::LogPrintfNoStamp ( "                  Path #2: \"%s\"\n", *PathJoin ( PathMakeRelative ( strModPath, info.strAbsPathDup ), info.strName ) );
+            // Close the directory handle
+            closedir ( Dir );
         }
-        else
-        {
-            outResourceNameList.push_back ( info.strName );
-        }
-    }
+    #endif
+    return true;
 }
-
 
 bool CLocalServer::Save ( void )
 {
@@ -353,7 +322,7 @@ bool CLocalServer::Save ( void )
         // Remove old resources from the config
         CXMLNode* pRoot = m_pConfig->GetRootNode();
         list < CXMLNode* > ::const_iterator iter = pRoot->ChildrenBegin ();
-        for ( ; iter != pRoot->ChildrenEnd (); ++iter )
+        for ( ; iter != pRoot->ChildrenEnd (); iter++ )
         {
             CXMLNode* pNode = reinterpret_cast < CXMLNode* > ( *iter );
             if ( pNode->GetTagName().compare ( "resource" ) == 0 )
@@ -392,7 +361,7 @@ void CLocalServer::StoreConfigValue ( const char* szNode, const char* szValue )
     }
 }
 
-void CLocalServer::HandleResource ( const char* szResource )
+void CLocalServer::HandleResource ( char* szResource )
 {
     for ( int i = 0; i < m_pResourcesCur->GetRowCount(); i++ )
     {

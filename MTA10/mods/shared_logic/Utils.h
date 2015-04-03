@@ -17,7 +17,11 @@
 
 #ifndef __UTILS_H
 #define __UTILS_H
-extern CLocalizationInterface* g_pLocalization;
+
+#ifndef PI
+#define PI 3.14159265358979323846264338327950f
+#endif
+
 
 // Vector math
 inline float DistanceBetweenPoints2D ( const CVector& vecPosition1, const CVector& vecPosition2 )
@@ -27,16 +31,6 @@ inline float DistanceBetweenPoints2D ( const CVector& vecPosition1, const CVecto
 
     return sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY );
 }
-
-// Vector math
-inline float DistanceBetweenPoints2D ( const CVector2D& vecPosition1, const CVector2D& vecPosition2 )
-{
-    float fDistanceX = vecPosition2.fX - vecPosition1.fX;
-    float fDistanceY = vecPosition2.fY - vecPosition1.fY;
-
-    return sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY );
-}
-
 inline float HorizontalAngleBetweenPoints3D ( const CVector &vecPosition1, const CVector &vecPosition2 )
 {
     CVector zeroVec;
@@ -199,15 +193,8 @@ inline float GetOffsetDegrees ( float a, float b )
     return c;
 }
 
-// Assuming fValue is the result of a difference calculation, calculate
-// the shortest positive distance after wrapping
-inline float GetSmallestWrapUnsigned ( float fValue, float fHigh )
-{
-    float fWrapped =  fValue - ( fHigh * floor ( static_cast < float > ( fValue / fHigh ) ) );
-    if ( fWrapped > fHigh / 2 )
-        fWrapped = fHigh - fWrapped;
-    return fWrapped;
-}
+
+bool            DoesFileExist               ( const char* szFilename );
 
 // Misc utility functions
 char*           ReplaceAnyStringOccurrence  ( char* szBuffer, const char* szWhat, const char* szWith, size_t sizeMax );
@@ -222,13 +209,15 @@ void            RaiseFatalError             ( unsigned int uiCode );
 void            RaiseProtocolError          ( unsigned int uiCode );
 
 void            RotateVector                ( CVector& vecLine, const CVector& vecRotation );
-void            AttachedMatrix              ( const CMatrix& matrix, CMatrix& returnMatrix, const CVector& vecPosition, const CVector& vecRotation );
+void            AttachedMatrix              ( CMatrix & matrix, CMatrix & returnMatrix, CVector vecDirection, CVector vecRotation );
 
 unsigned int    GetRandom                   ( unsigned int uiLow, unsigned int uiHigh );
 double          GetRandomDouble             ( void );
 float           GetRandomFloat              ( void );
 
-SString         GetDataUnit                 ( unsigned long long ullInput );
+unsigned int    HashString                  ( const char* szString );
+
+SString         GetDataUnit                 ( unsigned int uiInput );
 
 unsigned int    HexToInt                    ( const char* szHex );
 bool            XMLColorToInt               ( const char* szColor, unsigned long& ulColor );
@@ -240,6 +229,16 @@ void            LongToDottedIP              ( unsigned long ulIP, char* szDotted
 bool            BitStreamReadUsString       ( class NetBitStreamInterface& bitStream, SString& strOut );
 
 // Maths utility functions
+enum eEulerRotationOrder
+{	
+    EULER_DEFAULT,
+    EULER_ZXY,
+    EULER_ZYX,
+    EULER_MINUS_ZYX,
+    EULER_INVALID = 0xFF,
+};
+
+eEulerRotationOrder EulerRotationOrderFromString(const char* szString);
 CVector             ConvertEulerRotationOrder   ( const CVector& a_vRotation, eEulerRotationOrder a_eSrcOrder, eEulerRotationOrder a_eDstOrder );
 
 // for debug

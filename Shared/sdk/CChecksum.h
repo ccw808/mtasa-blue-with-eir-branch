@@ -21,14 +21,14 @@ public:
     CChecksum ()
     {
         ulCRC = 0;
-        memset ( md5.data, 0, sizeof ( md5.data ) );
+        memset ( mD5, 0, sizeof ( mD5 ) );
     }
 
     // Comparison operators
     bool operator == ( const CChecksum& other ) const
     {
         return ulCRC == other.ulCRC
-            && memcmp ( md5.data, other.md5.data, sizeof ( md5.data ) ) == 0;
+            && memcmp ( &ulCRC, &other.ulCRC, sizeof ( CChecksum ) ) == 0;
     }
 
     bool operator != ( const CChecksum& other ) const
@@ -36,12 +36,22 @@ public:
         return !operator == ( other );
     }
 
+    // If other MD5 is 0, only compare the CRC portions
+    bool CompareWithLegacy ( const CChecksum& other ) const
+    {
+        if ( operator == ( other ) )
+            return true;
+        CChecksum legacy = CChecksum ();
+        legacy.ulCRC = ulCRC;
+        return legacy.operator == ( other );
+    }
+
     // static generators
     static CChecksum GenerateChecksumFromFile ( const SString& strFilename )
     {
         CChecksum result;
         result.ulCRC = CRCGenerator::GetCRCFromFile ( strFilename );
-        CMD5Hasher ().Calculate ( strFilename, result.md5 );
+        CMD5Hasher ().Calculate ( strFilename, (MD5&)result.mD5 );
         return result;
     }
 
@@ -49,12 +59,12 @@ public:
     {
         CChecksum result;
         result.ulCRC = CRCGenerator::GetCRCFromBuffer ( cpBuffer, ulLength );
-        CMD5Hasher ().Calculate ( cpBuffer, ulLength, result.md5 );
+        CMD5Hasher ().Calculate ( cpBuffer, ulLength, (MD5&)result.mD5 );
         return result;
     }
 
     unsigned long ulCRC;
-    MD5 md5;
+    unsigned char mD5 [16];
 };
 
 #endif

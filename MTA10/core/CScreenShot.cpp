@@ -21,36 +21,31 @@ static bool bIsDebugVisible = false;
 
 // Variables used for saving the screen shot file on a separate thread
 static bool     ms_bIsSaving        = false;
-static uint     ms_uiWidth          = 0;
-static uint     ms_uiHeight         = 0;
-static void*    ms_pData            = NULL;
-static uint     ms_uiDataSize       = 0;
-static bool     ms_bHideChatBox     = false;        // TODO - Make setting
+static RECT     ms_ScreenSize       = { 0, 0, 0, 0 };
+static void*    ms_pBits            = NULL;
+static DWORD    ms_ulPitch          = 0;
 static SString  ms_strFileName;
 
 
 SString CScreenShot::PreScreenShot ()
 {
+
     bIsChatVisible = g_pCore->IsChatVisible ();
     bIsDebugVisible = g_pCore->IsDebugVisible ();
 
     // make the chat and debug windows invisible
-    if ( ms_bHideChatBox )
-    {
-        g_pCore->SetChatVisible ( false );
-        g_pCore->SetDebugVisible ( false );
-    }
+    g_pCore->SetChatVisible ( false );
+    g_pCore->SetDebugVisible ( false );
 
     SString strScreenShotName = GetValidScreenshotFilename();
 
     return strScreenShotName;
 }
 
-void CScreenShot::PostScreenShot ( const SString& strFileName )
+void CScreenShot::PostScreenShot ( const char *szFileName )
 {
     // print a notice
-    if ( !strFileName.empty () )
-        g_pCore->GetConsole()->Printf ( _("Screenshot taken: '%s'"), *strFileName );
+    g_pCore->GetConsole()->Printf ( "Screenshot taken: '%s'", szFileName );
 
     // make the chat and debug windows visible again
     g_pCore->SetChatVisible ( bIsChatVisible );
@@ -69,16 +64,16 @@ int CScreenShot::GetScreenShots ( void )
 {
     int iNumberOfFiles = 0;
     HANDLE hFind;
-    WIN32_FIND_DATAW fdFindData;
+    WIN32_FIND_DATA fdFindData;
     //Create a search string
     SString strScreenShotName ( "%s\\mta-screen*.png", &szScreenShotPath[0] );
     // Find the first match
-    hFind = FindFirstFileW(FromUTF8( strScreenShotName ), &fdFindData); 
+    hFind = FindFirstFile(strScreenShotName, &fdFindData); 
     // Check if the first match failed
     if ( hFind != INVALID_HANDLE_VALUE) {
         iNumberOfFiles++;
         //Loop through and count the files
-        while (FindNextFileW(hFind, &fdFindData)) { 
+        while (FindNextFile(hFind, &fdFindData)) { 
             //Keep going until we find the last file
             iNumberOfFiles++;
         }
@@ -102,10 +97,10 @@ SString CScreenShot::GetScreenShotPath ( int iNumber )
     SString strScreenShotName ( "%s\\mta-screen*.png", &szScreenShotPath[0] );
     HANDLE hFind;
     SString strReturn = "";
-    WIN32_FIND_DATAW fdFindData;
+    WIN32_FIND_DATA fdFindData;
     int i = 1;
     //Find the first match
-    hFind = FindFirstFileW(FromUTF8( strScreenShotName ), &fdFindData);
+    hFind = FindFirstFile(strScreenShotName, &fdFindData);
     //Check if the first match failed
     if ( hFind != INVALID_HANDLE_VALUE) {
         if (iNumber == 1) {
@@ -115,7 +110,7 @@ SString CScreenShot::GetScreenShotPath ( int iNumber )
         else
         {
             //Loop through and find all occurences of the file
-            while (FindNextFileW(hFind, &fdFindData)) { 
+            while (FindNextFile(hFind, &fdFindData)) { 
                 //Keep going until we find the last file
                 i++;
                 if (iNumber == i) {
@@ -135,16 +130,8 @@ SString CScreenShot::GetScreenShotPath ( int iNumber )
 // Static function
 DWORD CScreenShot::ThreadProc ( LPVOID lpdwThreadParam )
 {
-    unsigned long ulScreenHeight = ms_uiHeight;
-    unsigned long ulScreenWidth = ms_uiWidth;
-    uint uiReqDataSize = ulScreenHeight * ulScreenWidth * 4;
-    uint uiLinePitch = ulScreenWidth * 4;
-
-    if ( uiReqDataSize != ms_uiDataSize )
-    {
-        ms_bIsSaving = false;
-        return 0;
-    }
+    unsigned long ulScreenHeight = ms_ScreenSize.bottom - ms_ScreenSize.top;
+    unsigned long ulScreenWidth = ms_ScreenSize.right - ms_ScreenSize.left;
 
     // Create the screen data buffer
     BYTE** ppScreenData = NULL;
@@ -157,16 +144,13 @@ DWORD CScreenShot::ThreadProc ( LPVOID lpdwThreadParam )
     #define BYTESPERPIXEL 4
     unsigned long ulLineWidth = ulScreenWidth * 4;
     for ( unsigned int i = 0; i < ulScreenHeight; i++ ) {
-        memcpy ( ppScreenData[i], (BYTE*) ms_pData + i* uiLinePitch, ulLineWidth );
+        memcpy ( ppScreenData[i], (BYTE*) ms_pBits + i* ms_ulPitch, ulLineWidth );
         for ( unsigned int j = 3; j < ulLineWidth; j += BYTESPERPIXEL ) {
             ppScreenData[i][j] = 0xFF;
         }
     }
 
-    MakeSureDirExists( ms_strFileName );
     FILE *file = fopen (ms_strFileName, "wb");
-    if ( file )
-    {
         png_struct* png_ptr = png_create_write_struct ( PNG_LIBPNG_VER_STRING, NULL, NULL, NULL );
         png_info* info_ptr = png_create_info_struct ( png_ptr );
         png_init_io ( png_ptr, file );
@@ -177,12 +161,7 @@ DWORD CScreenShot::ThreadProc ( LPVOID lpdwThreadParam )
         png_write_png ( png_ptr, info_ptr, PNG_TRANSFORM_BGR | PNG_TRANSFORM_STRIP_ALPHA, NULL );
         png_write_end ( png_ptr, info_ptr );
         png_destroy_write_struct ( &png_ptr, &info_ptr );
-        fclose(file);
-    }
-    else
-    {
-        CCore::GetSingleton ().GetConsole ()->Printf ( "Could not create screenshot file '%s'", *ms_strFileName );
-    }
+    fclose(file);
 
     // Clean up the screen data buffer
     if ( ppScreenData ) {
@@ -197,16 +176,15 @@ DWORD CScreenShot::ThreadProc ( LPVOID lpdwThreadParam )
 }
 
 // Static function
-void CScreenShot::BeginSave ( const char *szFileName, void* pData, uint uiDataSize, uint uiWidth, uint uiHeight )
+void CScreenShot::BeginSave ( const char *szFileName, void* pBits, unsigned long ulPitch, RECT ScreenSize )
 {
     if ( ms_bIsSaving )
         return;
 
     ms_strFileName = szFileName;
-    ms_pData = pData;
-    ms_uiDataSize = uiDataSize;
-    ms_uiWidth = uiWidth;
-    ms_uiHeight = uiHeight;
+    ms_pBits = pBits;
+    ms_ulPitch = ulPitch;
+    ms_ScreenSize = ScreenSize;
 
     HANDLE hThread = CreateThread ( NULL, 0, (LPTHREAD_START_ROUTINE)CScreenShot::ThreadProc, NULL, CREATE_SUSPENDED, NULL );
     if ( !hThread )

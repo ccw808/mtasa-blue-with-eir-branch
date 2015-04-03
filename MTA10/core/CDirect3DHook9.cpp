@@ -20,7 +20,7 @@ CDirect3DHook9::CDirect3DHook9 (  )
     WriteDebugEvent ( "CDirect3DHook9::CDirect3DHook9" );
 
     m_pfnDirect3DCreate9 = NULL;
-    m_bDirect3DCreate9Suspended = false;
+    m_bHookingEnabled = true;
 }
 
 CDirect3DHook9::~CDirect3DHook9 ( )
@@ -32,78 +32,75 @@ CDirect3DHook9::~CDirect3DHook9 ( )
 
 bool CDirect3DHook9::ApplyHook ( )
 {
-    if ( UsingAltD3DSetup() )
-        return true;
-
     // Hook Direct3DCreate9.
-    if ( !m_pfnDirect3DCreate9 )
-    {
-        m_pfnDirect3DCreate9 = reinterpret_cast < pDirect3DCreate > ( DetourFunction ( DetourFindFunction ( "D3D9.DLL", "Direct3DCreate9" ), 
-                                                                      reinterpret_cast < PBYTE > ( API_Direct3DCreate9 ) ) );
+    m_pfnDirect3DCreate9 = reinterpret_cast < pDirect3DCreate > ( DetourFunction ( DetourFindFunction ( "D3D9.DLL", "Direct3DCreate9" ), 
+                                                                  reinterpret_cast < PBYTE > ( API_Direct3DCreate9 ) ) );
 
-        WriteDebugEvent ( SString( "Direct3D9 hook applied %08x", m_pfnDirect3DCreate9 ) );
-    }
-    else
-    {
-        WriteDebugEvent ( "Direct3D9 hook resumed." );
-        m_bDirect3DCreate9Suspended = false;
-    }
+    WriteDebugEvent ( "Direct3D9 hook applied" );
+
     return true;
 }
 
 bool CDirect3DHook9::RemoveHook ( )
 {
-    if ( UsingAltD3DSetup() )
-        return true;
+    // Make sure we should be doing this.
+    if ( m_pfnDirect3DCreate9 != NULL )
+    {
+        // Unhook Direct3DCreate9.
+        DetourRemove ( reinterpret_cast < PBYTE > ( m_pfnDirect3DCreate9 ), 
+                       reinterpret_cast < PBYTE > ( API_Direct3DCreate9  ) );
 
-    m_bDirect3DCreate9Suspended = true;
-    WriteDebugEvent ( "Direct3D9 hook suspended." );
+        // Unset our hook variable.
+        m_pfnDirect3DCreate9 = NULL;
+    }
+
+    WriteDebugEvent ( "Direct3D9 hook removed." );
+
     return true;
 }
 
-IDirect3D9* CDirect3DHook9::API_Direct3DCreate9 ( UINT SDKVersion )
+IUnknown * CDirect3DHook9::API_Direct3DCreate9 ( UINT SDKVersion )
 {
-    // Get our self instance.
-    CDirect3DHook9* pThis = CDirect3DHook9::GetSingletonPtr ( );
-    assert( pThis && "API_Direct3DCreate9: No CDirect3DHook9" );
+    CDirect3DHook9 *    pThis;
+    CProxyDirect3D9 *   pNewProxy;
+    static bool         bLoadedModules;
 
-    if ( pThis->m_bDirect3DCreate9Suspended )
-        return pThis->m_pfnDirect3DCreate9( SDKVersion );
+    // Get our self instance.
+    pThis = CDirect3DHook9::GetSingletonPtr ( );
+
+    if ( pThis->m_bHookingEnabled == false ) {
+        // Use the original function
+        pThis->m_pDevice = pThis->m_pfnDirect3DCreate9 ( SDKVersion );
+        return pThis->m_pDevice;
+    }
 
     // A little hack to get past the loading time required to decrypt the gta 
     // executable into memory...
-    if ( !CCore::GetSingleton ( ).AreModulesLoaded ( ) )
+    if ( !bLoadedModules )
     {
-        CCore::GetSingleton ( ).SetModulesLoaded ( true );
-        CCore::GetSingleton ( ).CreateNetwork ( );
         CCore::GetSingleton ( ).CreateGame ( );
         CCore::GetSingleton ( ).CreateMultiplayer ( );
+        CCore::GetSingleton ( ).CreateNetwork ( );
         CCore::GetSingleton ( ).CreateXML ( );
         CCore::GetSingleton ( ).CreateGUI ( );
+        bLoadedModules = true;
     }
 
     // Create our interface.
-    WriteDebugEvent ( "Calling Direct3DCreate9" );
-    IDirect3D9* pDirect3D9 = pThis->m_pfnDirect3DCreate9 ( SDKVersion );
+    pThis->m_pDevice = pThis->m_pfnDirect3DCreate9 ( SDKVersion );
 
-    if ( !pDirect3D9 )
+    if ( !pThis->m_pDevice )
     {
-        WriteDebugEvent ( "Direct3DCreate9 failed" );
-
-        MessageBoxUTF8 ( NULL, _("Could not initialize Direct3D9.\n\n"
+        MessageBox ( NULL, "Could not initialize Direct3D9.\n\n"
                            "Please ensure the DirectX End-User Runtime and\n"
-                           "latest Windows Service Packs are installed correctly.")
-                           , _("Error")+_E("CC50"), MB_OK | MB_ICONEXCLAMATION | MB_TOPMOST  ); // Could not initialize Direct3D9.  Please ensure the DirectX End-User Runtime and latest Windows Service Packs are installed correctly.
+                           "latest Windows Service Packs are installed correctly."
+                           , "Error", MB_OK|MB_ICONEXCLAMATION );
         return NULL;
     }
 
-    WriteDebugEvent ( "Direct3DCreate9 succeded" );
-
-    GetServerCache ();
-
     // Create a proxy device.
-    CProxyDirect3D9* pProxyDirect3D9 = new CProxyDirect3D9 ( pDirect3D9 );
+    pNewProxy = new CProxyDirect3D9 ( static_cast < IDirect3D9 * > ( pThis->m_pDevice ) );
 
-    return pProxyDirect3D9;
+    return pNewProxy;
 }
 

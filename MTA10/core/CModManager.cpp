@@ -12,10 +12,15 @@
 
 #include "StdInc.h"
 #include <game/CGame.h>
-#define DECLARE_PROFILER_SECTION_CModManager
-#include "profiler/SharedUtil.Profiler.h"
+#include <shellapi.h>
 
 using SharedUtil::CalcMTASAPath;
+
+typedef BOOL (WINAPI *MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD dwPid, HANDLE hFile, MINIDUMP_TYPE DumpType,
+                                    CONST PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
+                                    CONST PMINIDUMP_USER_STREAM_INFORMATION UserStreamParam,
+                                    CONST PMINIDUMP_CALLBACK_INFORMATION CallbackParam
+                                    );
 
 template<> CModManager * CSingleton < CModManager > ::m_pSingleton = NULL;
 
@@ -31,6 +36,11 @@ CModManager::CModManager ( void )
 
     // Load the modlist from the folders in "mta/mods"
     InitializeModList ( CalcMTASAPath( "mods\\" ) );
+
+    // Set up our exception handler
+    #ifndef MTA_DEBUG
+    SetCrashHandlerFilter ( HandleExceptionGlobal );
+    #endif
 }
 
 CModManager::~CModManager ( void )
@@ -101,8 +111,6 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
     // Make sure we haven't already loaded a mod
     Unload ();
 
-    CMessageLoopHook::GetSingleton ().SetRefreshMsgQueueEnabled( false );
-
     // Get the entry for the given name
     std::map < std::string, std::string >::iterator itMod = m_ModDLLFiles.find ( szName );
     if ( itMod == m_ModDLLFiles.end () )
@@ -112,10 +120,11 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
     }
 
     // Ensure DllDirectory has not been changed
-    SString strDllDirectory = GetSystemDllDirectory();
-    if ( CalcMTASAPath ( "mta" ).CompareI ( strDllDirectory ) == false )
+    char szDllDirectory[ MAX_PATH + 1 ] = {'\0'};
+    GetDllDirectory( sizeof ( szDllDirectory ), szDllDirectory );
+    if ( stricmp( CalcMTASAPath ( "mta" ), szDllDirectory ) != 0 )
     {
-        AddReportLog ( 3119, SString ( "DllDirectory wrong:  DllDirectory:'%s'  Path:'%s'", *strDllDirectory, *CalcMTASAPath ( "mta" ) ) );
+        AddReportLog ( 3119, SString ( "DllDirectory wrong:  DllDirectory:'%s'  Path:'%s'", szDllDirectory, *CalcMTASAPath ( "mta" ) ) );
         SetDllDirectory( CalcMTASAPath ( "mta" ) );
     }
     
@@ -172,9 +181,7 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
 
     // Tell chat to start handling input
     CLocalGUI::GetSingleton ().GetChat ()->OnModLoad ();
-
-    CMessageLoopHook::GetSingleton ().SetRefreshMsgQueueEnabled( true );
-
+ 
     // Return the interface
     return m_pClientBase;
 }
@@ -182,8 +189,6 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
 
 void CModManager::Unload ( void )
 {
-    CMessageLoopHook::GetSingleton ().SetRefreshMsgQueueEnabled( false );
-
     // If a mod is loaded, we call m_pClientBase->ClientShutdown and then free the library
     if ( m_hClientDLL != NULL )
     {
@@ -196,9 +201,6 @@ void CModManager::Unload ( void )
 
         // Unregister the commands it had registered
         CCore::GetSingleton ().GetCommands ()->DeleteAll ();
-
-        // Stop all screen grabs
-        CGraphics::GetSingleton ().GetScreenGrabber ()->ClearScreenShotQueue ();
 
         // Free the Client DLL
         FreeLibrary ( m_hClientDLL );
@@ -223,9 +225,6 @@ void CModManager::Unload ( void )
         CCore::GetSingleton ().SetClientMessageProcessor ( NULL );
         CCore::GetSingleton ().GetCommands ()->SetExecuteHandler ( NULL );
 
-        // Reset cursor alpha
-        CCore::GetSingleton ().GetGUI ()->SetCursorAlpha ( 1.0f, true );
-
         // Reset the modules
         CCore::GetSingleton ().GetGame ()->Reset ();
         CCore::GetSingleton ().GetMultiplayer ()->Reset ();
@@ -245,7 +244,6 @@ void CModManager::Unload ( void )
             XfireSetCustomGameData ( 0, NULL, NULL ); 
         }
     }
-    CMessageLoopHook::GetSingleton ().SetRefreshMsgQueueEnabled( true );
 }
 
 
@@ -254,15 +252,6 @@ void CModManager::DoPulsePreFrame ( void )
     if ( m_pClientBase )
     {
         m_pClientBase->PreFrameExecutionHandler ();
-    }
-}
-
-
-void CModManager::DoPulsePreHUDRender ( bool bDidUnminimize, bool bDidRecreateRenderTargets )
-{
-    if ( m_pClientBase )
-    {
-        m_pClientBase->PreHUDRenderExecutionHandler ( bDidUnminimize, bDidRecreateRenderTargets );
     }
 }
 
@@ -290,16 +279,6 @@ void CModManager::DoPulsePostFrame ( void )
     {
         m_pClientBase->PostFrameExecutionHandler ();
     }
-    else
-    {
-        CCore::GetSingleton ().GetNetwork ()->DoPulse ();
-    }
-
-    // Make sure frame rate limit gets applied
-    if ( m_pClientBase )
-        CCore::GetSingleton ().EnsureFrameRateLimitApplied ();  // Catch missed frames
-    else
-        CCore::GetSingleton ().ApplyFrameRateLimit ( 88 );      // Limit when not connected
 
     // Load/unload requested?
     if ( m_bUnloadRequested )
@@ -332,10 +311,269 @@ void CModManager::RefreshMods ( void )
 }
 
 
+long WINAPI CModManager::HandleExceptionGlobal ( _EXCEPTION_POINTERS* pException )
+{
+    // Create the exception information class
+    CExceptionInformation_Impl* pExceptionInformation = new CExceptionInformation_Impl;
+    pExceptionInformation->Set ( pException->ExceptionRecord->ExceptionCode, pException );
+
+    // Grab the mod manager
+    CModManager* pModManager = CModManager::GetSingletonPtr ();
+    if ( pModManager )
+    {
+        // Got a client?
+        if ( pModManager->m_pClientBase )
+        {
+            // Protect us from "double-faults"
+            try
+            {
+                // Let the client handle it. If it could, continue the execution
+                if ( pModManager->m_pClientBase->HandleException ( pExceptionInformation ) )
+                {
+                    // Delete the exception record and continue to search the exception stack
+                    delete pExceptionInformation;
+                    return EXCEPTION_CONTINUE_SEARCH;
+                }
+
+                // The client wants us to terminate the process
+                DumpCoreLog ( pExceptionInformation );
+                DumpMiniDump ( pException, pExceptionInformation );
+                RunErrorTool ( pExceptionInformation );
+                TerminateProcess ( GetCurrentProcess (), 1 );
+            }
+            catch ( ... )
+            {
+                // Double-fault, terminate the process
+                DumpCoreLog ( pExceptionInformation );
+                DumpMiniDump ( pException, pExceptionInformation );
+                RunErrorTool ( pExceptionInformation );
+                TerminateProcess ( GetCurrentProcess (), 1 );
+            }
+        }
+        else
+        {
+            // Continue if we're in debug mode, if not terminate
+            #ifdef MTA_DEBUG
+                return EXCEPTION_CONTINUE_SEARCH;
+            #endif
+        }
+    }
+
+    // Terminate the process
+    DumpCoreLog ( pExceptionInformation );
+    DumpMiniDump ( pException, pExceptionInformation );
+    RunErrorTool ( pExceptionInformation );
+    TerminateProcess ( GetCurrentProcess (), 1 );
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+
+
+void CModManager::DumpCoreLog ( CExceptionInformation* pExceptionInformation )
+{
+    // Write a log with the generic exception information
+    FILE* pFile = fopen ( CalcMTASAPath ( "mta\\core.log" ), "a+" );
+    if ( pFile )
+    {
+        // Header
+        fprintf ( pFile, "%s", "** -- Unhandled exception -- **\n\n" );
+
+        // Write the time
+        time_t timeTemp;
+        time ( &timeTemp );
+
+        SString strMTAVersionFull = SString ( "%s.%s", MTA_DM_BUILDTAG_LONG, *GetApplicationSetting ( "mta-version-ext" ).SplitRight ( ".", NULL, -2 ) );
+
+        SString strInfo;
+        strInfo += SString ( "Version = %s\n", strMTAVersionFull.c_str () );
+        strInfo += SString ( "Time = %s", ctime ( &timeTemp ) );
+
+        strInfo += SString ( "Module = %s\n", pExceptionInformation->GetModulePathName () );
+
+        // Write the basic exception information
+        strInfo += SString ( "Code = 0x%08X\n", pExceptionInformation->GetCode () );
+        strInfo += SString ( "Offset = 0x%08X\n\n", pExceptionInformation->GetAddressModuleOffset () );
+
+        // Write the register info
+        strInfo += SString ( "EAX=%08X  EBX=%08X  ECX=%08X  EDX=%08X  ESI=%08X\n" \
+                         "EDI=%08X  EBP=%08X  ESP=%08X  EIP=%08X  FLG=%08X\n" \
+                         "CS=%04X   DS=%04X  SS=%04X  ES=%04X   " \
+                         "FS=%04X  GS=%04X\n\n",
+                         pExceptionInformation->GetEAX (),
+                         pExceptionInformation->GetEBX (),
+                         pExceptionInformation->GetECX (),
+                         pExceptionInformation->GetEDX (),
+                         pExceptionInformation->GetESI (),
+                         pExceptionInformation->GetEDI (),
+                         pExceptionInformation->GetEBP (),
+                         pExceptionInformation->GetESP (),
+                         pExceptionInformation->GetEIP (),
+                         pExceptionInformation->GetEFlags (),
+                         pExceptionInformation->GetCS (),
+                         pExceptionInformation->GetDS (),
+                         pExceptionInformation->GetSS (),
+                         pExceptionInformation->GetES (),
+                         pExceptionInformation->GetFS (),
+                         pExceptionInformation->GetGS () );
+
+
+        fprintf ( pFile, "%s", strInfo.c_str () );
+
+        // End of unhandled exception
+        fprintf ( pFile, "%s", "** -- End of unhandled exception -- **\n\n\n" );
+        
+        // Close the file
+        fclose ( pFile );
+
+        // For the crash dialog
+        SetApplicationSetting ( "diagnostics", "last-crash-info", strInfo );
+    }
+}
+
+
+void CModManager::DumpMiniDump ( _EXCEPTION_POINTERS* pException, CExceptionInformation* pExceptionInformation )
+{
+    // Try to load the DLL in our directory
+    HMODULE hDll = NULL;
+    char szDbgHelpPath [MAX_PATH];
+    if ( GetModuleFileName ( NULL, szDbgHelpPath, MAX_PATH ) )
+    {
+        char* pSlash = _tcsrchr ( szDbgHelpPath, '\\' );
+        if ( pSlash )
+        {
+            _tcscpy ( pSlash + 1, "DBGHELP.DLL" );
+            hDll = LoadLibrary ( szDbgHelpPath );
+        }
+    }
+
+    // If we couldn't load the one in our dir, load any version available
+    if ( !hDll )
+    {
+        hDll = LoadLibrary( "DBGHELP.DLL" );
+    }
+
+    // We could load a dll?
+    if ( hDll )
+    {
+        // Grab the MiniDumpWriteDump proc address
+        MINIDUMPWRITEDUMP pDump = reinterpret_cast < MINIDUMPWRITEDUMP > ( GetProcAddress( hDll, "MiniDumpWriteDump" ) );
+        if ( pDump )
+        {
+            // Create the file
+            HANDLE hFile = CreateFile ( CalcMTASAPath ( "mta\\core.dmp" ), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
+            if ( hFile != INVALID_HANDLE_VALUE )
+            {
+                // Create an exception information struct
+                _MINIDUMP_EXCEPTION_INFORMATION ExInfo;
+                ExInfo.ThreadId = GetCurrentThreadId ();
+                ExInfo.ExceptionPointers = pException;
+                ExInfo.ClientPointers = FALSE;
+
+                // Write the dump
+                pDump ( GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, &ExInfo, NULL, NULL );
+
+                // Close the dumpfile
+                CloseHandle ( hFile );
+
+                // Grab the current time
+                // Ask windows for the system time.
+                SYSTEMTIME SystemTime;
+                GetLocalTime ( &SystemTime );
+
+                // Create the dump directory
+                CreateDirectory ( CalcMTASAPath ( "mta\\dumps" ), 0 );
+
+                SString strModuleName = pExceptionInformation->GetModuleBaseName ();
+                strModuleName = strModuleName.ReplaceI ( ".dll", "" ).Replace ( ".exe", "" ).Replace ( "_", "" ).Replace ( ".", "" ).Replace ( "-", "" );
+                if ( strModuleName.length () == 0 )
+                    strModuleName = "unknown";
+
+                SString strMTAVersionFull = SString ( "%s.%s", MTA_DM_BUILDTAG_LONG, *GetApplicationSetting ( "mta-version-ext" ).SplitRight ( ".", NULL, -2 ) );
+                SString strSerialPart = GetApplicationSetting ( "serial" ).substr ( 0, 8 );
+
+                SString strFilename ( "mta\\dumps\\client_%s_%s_%06x_%x_%s_%04d%02d%02d_%02d%02d.dmp",
+                                             strMTAVersionFull.c_str (),
+                                             strModuleName.c_str (),
+                                             pExceptionInformation->GetAddressModuleOffset (),
+                                             pExceptionInformation->GetCode () & 0xffff,
+                                             strSerialPart.c_str (),
+                                             SystemTime.wYear,
+                                             SystemTime.wDay,
+                                             SystemTime.wMonth,
+                                             SystemTime.wHour,
+                                             SystemTime.wMinute
+                                           );
+
+                // Copy the file
+                CopyFile ( CalcMTASAPath ( "mta\\core.dmp" ), CalcMTASAPath ( strFilename ), false );
+
+                // For the dump uploader
+                SetApplicationSetting ( "diagnostics", "last-dump-save", CalcMTASAPath ( strFilename ) );
+            }
+        }
+
+        // Free the DLL again
+        FreeLibrary ( hDll );
+    }
+}
+
+void CModManager::RunErrorTool ( CExceptionInformation* pExceptionInformation )
+{
+// MTA Error Reporter is now integrated into the launcher
+
+    // Only do once
+    static bool bDoneReport = false;
+    if ( bDoneReport )
+        return;
+    bDoneReport = false;
+
+    // Log the basic exception information
+    SString strMessage ( "Crash 0x%08X 0x%08X %s"
+                         " EAX=%08X EBX=%08X ECX=%08X EDX=%08X ESI=%08X"
+                         " EDI=%08X EBP=%08X ESP=%08X EIP=%08X FLG=%08X"
+                         " CS=%04X DS=%04X SS=%04X ES=%04X"
+                         " FS=%04X GS=%04X",
+                         pExceptionInformation->GetCode (),
+                         pExceptionInformation->GetAddressModuleOffset (),
+                         pExceptionInformation->GetModulePathName (),
+                         pExceptionInformation->GetEAX (),
+                         pExceptionInformation->GetEBX (),
+                         pExceptionInformation->GetECX (),
+                         pExceptionInformation->GetEDX (),
+                         pExceptionInformation->GetESI (),
+                         pExceptionInformation->GetEDI (),
+                         pExceptionInformation->GetEBP (),
+                         pExceptionInformation->GetESP (),
+                         pExceptionInformation->GetEIP (),
+                         pExceptionInformation->GetEFlags (),
+                         pExceptionInformation->GetCS (),
+                         pExceptionInformation->GetDS (),
+                         pExceptionInformation->GetSS (),
+                         pExceptionInformation->GetES (),
+                         pExceptionInformation->GetFS (),
+                         pExceptionInformation->GetGS ()
+                        );
+
+    AddReportLog ( 3120, strMessage );
+
+    // Try relaunch with crashed flag
+    SString strMTASAPath = GetMTASABaseDir ();
+    SetCurrentDirectory ( strMTASAPath );
+    SetDllDirectory( strMTASAPath );
+
+#ifdef MTA_DEBUG
+    #define MTA_EXE_NAME            "Multi Theft Auto_d.exe"
+#else
+    #define MTA_EXE_NAME            "Multi Theft Auto.exe"
+#endif
+    SString strFile = strMTASAPath + "\\" + MTA_EXE_NAME;
+    ShellExecute( NULL, "open", strFile, "install_stage=crashed", NULL, SW_SHOWNORMAL );
+}
+
+
 void CModManager::InitializeModList ( const char* szModFolderPath )
 {
     // Variables used to search the mod directory
-    WIN32_FIND_DATAW FindData;
+    WIN32_FIND_DATAA FindData;
     HANDLE hFind;
 
     // Allocate a string with length of path + 5 letters to store searchpath plus "\*.*"
@@ -346,18 +584,18 @@ void CModManager::InitializeModList ( const char* szModFolderPath )
     filePathTranslator.SetCurrentWorkingDirectory ( "mta" );
 
     // Create a search
-    hFind = FindFirstFileW ( FromUTF8( strPathWildchars), &FindData );
+    hFind = FindFirstFile ( strPathWildchars, &FindData );
 
     // If we found a first file ...
     if ( hFind != INVALID_HANDLE_VALUE )
     {
         // Add it to the list
-        VerifyAndAddEntry ( szModFolderPath, ToUTF8( FindData.cFileName ) );
+        VerifyAndAddEntry ( szModFolderPath, FindData.cFileName );
 
         // Search until there aren't any files left
-        while ( FindNextFileW ( hFind, &FindData ) == TRUE )
+        while ( FindNextFile ( hFind, &FindData ) == TRUE )
         {
-            VerifyAndAddEntry ( szModFolderPath, ToUTF8( FindData.cFileName ) );
+            VerifyAndAddEntry ( szModFolderPath, FindData.cFileName );
         }
 
         // End the search
@@ -399,7 +637,7 @@ void CModManager::VerifyAndAddEntry ( const char* szModFolderPath, const char* s
             }
             else
             {
-                WriteErrorEvent( SString( "Unknown mod DLL: %s", szName ) );
+                CLogger::GetSingleton ().ErrorPrintf ( "Unknown mod DLL: %s", szName );
             }
 
             // Free the DLL
@@ -407,7 +645,7 @@ void CModManager::VerifyAndAddEntry ( const char* szModFolderPath, const char* s
         }
         else
         {
-            WriteErrorEvent( SString( "Invalid mod DLL: %s (reason: %d)", szName, GetLastError() ) );
+            CLogger::GetSingleton ().ErrorPrintf ( "Invalid mod DLL: %s (reason: %d)", szName, GetLastError() );
         }
     }
 }

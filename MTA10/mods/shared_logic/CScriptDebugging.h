@@ -29,45 +29,29 @@ class CScriptDebugging
 {
 public:
                                     CScriptDebugging                ( CLuaManager* pLuaManager );
-                                    ~CScriptDebugging               ( void );
+
+    void                            OutputDebugInfo                 ( lua_State* luaVM, int iLevel, unsigned char ucRed = 255, unsigned char ucGreen = 255, unsigned char ucBlue = 255 );
 
     void                            LogCustom                       ( lua_State* luaVM, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue, const char* szFormat, ... );
     void                            LogInformation                  ( lua_State* luaVM, const char* szFormat, ... );
     void                            LogWarning                      ( lua_State* luaVM, const char* szFormat, ... );
     void                            LogError                        ( lua_State* luaVM, const char* szFormat, ... );
-    void                            LogBadPointer                   ( lua_State* luaVM, const char* szArgumentType, unsigned int uiArgument );
-    void                            LogBadType                      ( lua_State* luaVM );
-    void                            LogBadLevel                     ( lua_State* luaVM, unsigned int uiRequiredLevel );
+    void                            LogError                        ( SString strFile, int iLine, SString strMsg );
+    void                            LogBadPointer                   ( lua_State* luaVM, const char* szFunction, const char* szArgumentType, unsigned int uiArgument );
+    void                            LogBadType                      ( lua_State* luaVM, const char* szFunction );
+    void                            LogBadLevel                     ( lua_State* luaVM, const char* szFunction, unsigned int uiRequiredLevel );
     void                            LogCustom                       ( lua_State* luaVM, const char* szMessage );
-    void                            LogWarning                      ( const SLuaDebugInfo& luaDebugInfo, const char* szFormat, ... );
-    void                            LogError                        ( const SLuaDebugInfo& luaDebugInfo, const char* szFormat, ... );
-    void                            LogPCallError                   ( lua_State* luaVM, const SString& strRes, bool bInitialCall = false );
 
     bool                            SetLogfile                      ( const char* szFilename, unsigned int uiLevel );
 
-    const SLuaDebugInfo&            GetLuaDebugInfo                 ( lua_State* luaVM );
-    void                            SaveLuaDebugInfo                ( const SLuaDebugInfo& luaDebugInfo ) { m_SavedLuaDebugInfo = luaDebugInfo; }
-
-    void                            PushLuaMain                     ( CLuaMain* pLuaMain );
-    void                            PopLuaMain                      ( CLuaMain* pLuaMain );
-    void                            OnLuaMainDestroy                ( CLuaMain* pLuaMain );
-    CLuaMain*                       GetTopLuaMain                   ( void );
-
 private:
-    SString                         ComposeErrorMessage             ( const char* szPrePend, const SLuaDebugInfo& luaDebugInfo, const char* szMessage );
-    void                            LogString                       ( const char* szPrePend, const SLuaDebugInfo& luaDebugInfo, const char* szMessage, unsigned int uiMinimumDebugLevel, unsigned char ucRed = 255, unsigned char ucGreen = 255, unsigned char ucBlue = 255 );
+    void                            LogString                       ( const char* szPrePend, lua_State* luaVM, const char* szMessage, unsigned int uiMinimumDebugLevelunsigned, unsigned char ucRed = 255, unsigned char ucGreen = 255, unsigned char ucBlue = 255 );
     void                            PrintLog                        ( const char* szText );
  
-public:
-    static FILE*                    m_pLogFile;
-
-private:
     CLuaManager*                    m_pLuaManager;
     unsigned int                    m_uiLogFileLevel;
+    FILE*                           m_pLogFile;
     bool                            m_bTriggeringOnClientDebugMessage;
-    SLuaDebugInfo                   m_SavedLuaDebugInfo;
-    std::list < CLuaMain* >         m_LuaMainStack;
-    HANDLE                          m_flushTimerHandle;
 };
 
 #endif

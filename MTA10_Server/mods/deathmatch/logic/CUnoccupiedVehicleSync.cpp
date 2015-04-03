@@ -14,21 +14,26 @@
 
 #include "StdInc.h"
 
+extern CGame * g_pGame;
+
+#define MAX_PLAYER_SYNC_DISTANCE 130.0f // Vehicle explosions don't happen further than ~140.0
 
 CUnoccupiedVehicleSync::CUnoccupiedVehicleSync ( CPlayerManager* pPlayerManager, CVehicleManager* pVehicleManager )
 {
     m_pPlayerManager = pPlayerManager;
     m_pVehicleManager = pVehicleManager;
+    m_ulLastSweepTime = 0;
 }
 
 
 void CUnoccupiedVehicleSync::DoPulse ( void )
 {
     // Time to check for players that should no longer be syncing a vehicle or vehicles that should be synced?
-    if ( m_UpdateTimer.Get() > 500 )
+    unsigned long ulCurrentTime = GetTime ();
+    if ( ulCurrentTime >= m_ulLastSweepTime + 500 )
     {
-        m_UpdateTimer.Reset();
-        Update ();
+        m_ulLastSweepTime = ulCurrentTime;
+        Update ( ulCurrentTime );
     }
 }
 
@@ -38,11 +43,6 @@ bool CUnoccupiedVehicleSync::ProcessPacket ( CPacket& Packet )
     if ( Packet.GetPacketID () == PACKET_ID_UNOCCUPIED_VEHICLE_SYNC )
     {
         Packet_UnoccupiedVehicleSync ( static_cast < CUnoccupiedVehicleSyncPacket& > ( Packet ) );
-        return true;
-    }
-    if ( Packet.GetPacketID () == PACKET_ID_VEHICLE_PUSH_SYNC )
-    {
-        Packet_UnoccupiedVehiclePushSync ( static_cast < CUnoccupiedVehiclePushPacket& > ( Packet ) );
         return true;
     }
 
@@ -61,18 +61,20 @@ void CUnoccupiedVehicleSync::OverrideSyncer ( CVehicle* pVehicle, CPlayer* pPlay
         StopSync ( pVehicle );
     }
 
-    if ( pPlayer && !pVehicle->IsBeingDeleted () )
+    if ( pPlayer )
         StartSync ( pPlayer, pVehicle );
 }
 
 
-void CUnoccupiedVehicleSync::Update ( void )
+void CUnoccupiedVehicleSync::Update ( unsigned long ulCurrentTime )
 {
+    // TODO: needs speeding up (no good looping through thousands of vehicles each frame)
+
     // Update all the vehicle's sync states
     list < CVehicle* > ::const_iterator iter = m_pVehicleManager->IterBegin ();
-    for ( ; iter != m_pVehicleManager->IterEnd (); )
+    for ( ; iter != m_pVehicleManager->IterEnd (); iter++ )
     {
-        UpdateVehicle ( *( iter++ ) );
+        UpdateVehicle ( *iter );
     }
 }
 
@@ -98,15 +100,11 @@ void CUnoccupiedVehicleSync::UpdateVehicle ( CVehicle* pVehicle )
     // If someones driving it, or its being towed by someone driving (and not just entering/exiting)
     if ( pController && IS_PLAYER ( pController ) && pController->GetVehicleAction () == CPlayer::VEHICLEACTION_NONE )
     {
-        // if we need to change syncer to the controller
-        if ( pSyncer != pController )
+        // Got a syncer too?
+        if ( pSyncer )
         {
-            // Tell old syncer to stop syncing
-            if ( pSyncer )
-                StopSync ( pVehicle );
-
-            // Set the controlling player as syncer (for 'ElementSyncer' scripting functions/events)
-            StartSync ( static_cast < CPlayer* > ( pController ), pVehicle );
+            // Tell the syncer to stop syncing
+            StopSync ( pVehicle );
         }
     }
     else
@@ -115,43 +113,20 @@ void CUnoccupiedVehicleSync::UpdateVehicle ( CVehicle* pVehicle )
         if ( pSyncer )
         {
             // He isn't close enough to the vehicle and in the right dimension?
-            if ( ( !IsPointNearPoint3D ( pSyncer->GetPosition (), pVehicle->GetPosition (), (float)g_TickRateSettings.iUnoccupiedVehicleSyncerDistance ) ) ||
+            if ( ( !IsPointNearPoint3D ( pSyncer->GetPosition (), pVehicle->GetPosition (), MAX_PLAYER_SYNC_DISTANCE ) ) ||
                  ( pVehicle->GetDimension () != pSyncer->GetDimension () ) )
             {
                 // Stop him from syncing it
                 StopSync ( pVehicle );
 
-                if ( !pVehicle->IsBeingDeleted () )
-                {
-                    // Find a new syncer for it
-                    FindSyncer ( pVehicle );
-                }
+                // Find a new syncer for it
+                FindSyncer ( pVehicle );
             }
         }
         else
         {
             // Try to find a syncer for it
             FindSyncer ( pVehicle );
-        }
-    }
-
-    pVehicle->HandleDimensionResync();
-}
-
-
-// Resync all unoccupied vehicles with same dimension as player
-// Called when a player changes dimension
-void CUnoccupiedVehicleSync::ResyncForPlayer ( CPlayer* pPlayer )
-{
-    list < CVehicle* > ::const_iterator iter = m_pVehicleManager->IterBegin ();
-    for ( ; iter != m_pVehicleManager->IterEnd (); ++iter )
-    {
-        CVehicle* pVehicle = *iter;
-        if ( pVehicle->GetDimension() == pPlayer->GetDimension()
-          && !pVehicle->GetFirstOccupant()
-          && pVehicle->IsUnoccupiedSyncable() )
-        {
-            pPlayer->Send ( CVehicleResyncPacket( pVehicle ) );
         }
     }
 }
@@ -171,7 +146,7 @@ void CUnoccupiedVehicleSync::FindSyncer ( CVehicle* pVehicle )
     else
     {
         // Find a player close enough to him
-        CPlayer* pPlayer = FindPlayerCloseToVehicle ( pVehicle, g_TickRateSettings.iUnoccupiedVehicleSyncerDistance - 20.0f );
+        CPlayer* pPlayer = FindPlayerCloseToVehicle ( pVehicle, MAX_PLAYER_SYNC_DISTANCE - 20.0f );
         if ( pPlayer )
         {
             // Tell him to start syncing it
@@ -224,7 +199,7 @@ CPlayer* CUnoccupiedVehicleSync::FindPlayerCloseToVehicle ( CVehicle* pVehicle, 
     CPlayer* pLastPlayerSyncing = NULL;
     CPlayer* pPlayer = NULL;
     list < CPlayer* > ::const_iterator iter = m_pPlayerManager->IterBegin ();
-    for ( ; iter != m_pPlayerManager->IterEnd (); ++iter )
+    for ( ; iter != m_pPlayerManager->IterEnd (); iter++ )
     {
         pPlayer = *iter;
         // Is he joined?
@@ -259,7 +234,7 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
     {
         // Apply the data for each vehicle in the packet
         vector < CUnoccupiedVehicleSyncPacket::SyncData > ::iterator iter = Packet.IterBegin ();
-        for ( ; iter != Packet.IterEnd (); ++iter )
+        for ( ; iter != Packet.IterEnd (); iter++ )
         {
             CUnoccupiedVehicleSyncPacket::SyncData& data = *iter;
             SUnoccupiedVehicleSync& vehicle = data.syncStructure;
@@ -281,48 +256,16 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
                     if ( !pOccupant || !IS_PLAYER ( pOccupant ) )
                     {
                         // Apply the data to the vehicle
-                        if ( vehicle.data.bSyncPosition ) 
-                        {
-                            const CVector& vecLastPosition = pVehicle->GetPosition ( );
-                            if ( fabs ( vecLastPosition.fX - vehicle.data.vecPosition.fX ) <= FLOAT_EPSILON &&
-                                fabs ( vecLastPosition.fY - vehicle.data.vecPosition.fY ) <= FLOAT_EPSILON &&
-                                fabs ( vecLastPosition.fZ - vehicle.data.vecPosition.fZ ) <= 0.1f )
-                            {
-                                vehicle.data.bSyncPosition = false;
-                            }
-                            pVehicle->SetPosition ( vehicle.data.vecPosition );
-                        }
-                        if ( vehicle.data.bSyncRotation )
-                        {
-                            CVector vecLastRotation;
-                            pVehicle->GetRotation ( vecLastRotation );
-                            if ( GetSmallestWrapUnsigned ( vecLastRotation.fX - vehicle.data.vecRotation.fX, 360 ) <= MIN_ROTATION_DIFF &&
-                                GetSmallestWrapUnsigned ( vecLastRotation.fY - vehicle.data.vecRotation.fY, 360 ) <= MIN_ROTATION_DIFF &&
-                                GetSmallestWrapUnsigned ( vecLastRotation.fZ - vehicle.data.vecRotation.fZ, 360 ) <= MIN_ROTATION_DIFF )
-                            {
-                                vehicle.data.bSyncRotation = false;
-                            }
-                            pVehicle->SetRotationDegrees ( vehicle.data.vecRotation );
-                        }
-                        if ( vehicle.data.bSyncVelocity )
-                        {
-                            if ( fabs ( vehicle.data.vecVelocity.fX ) <= FLOAT_EPSILON &&
-                                fabs ( vehicle.data.vecVelocity.fY ) <= FLOAT_EPSILON &&
-                                fabs ( vehicle.data.vecVelocity.fZ ) <= 0.1f )
-                            {
-                                vehicle.data.bSyncVelocity = false;
-                            }
-                            pVehicle->SetVelocity ( vehicle.data.vecVelocity );
-                        }
-                        if ( vehicle.data.bSyncTurnVelocity ) 
-                        {
-                            pVehicle->SetTurnSpeed ( vehicle.data.vecTurnVelocity );
-                        }
+                        if ( vehicle.data.bSyncPosition ) pVehicle->SetPosition ( vehicle.data.vecPosition );
+                        if ( vehicle.data.bSyncRotation ) pVehicle->SetRotationDegrees ( vehicle.data.vecRotation );
+                        if ( vehicle.data.bSyncVelocity ) pVehicle->SetVelocity ( vehicle.data.vecVelocity );
+                        if ( vehicle.data.bSyncTurnVelocity ) pVehicle->SetTurnSpeed ( vehicle.data.vecTurnVelocity );
 
                         // Less health than last time?
                         if ( vehicle.data.bSyncHealth )
                         {
-                            float fPreviousHealth = pVehicle->GetLastSyncedHealth ();
+                            float fPreviousHealth = pVehicle->GetHealth ();
+                            pVehicle->SetHealth ( vehicle.data.fHealth );
 
                             if ( vehicle.data.fHealth < fPreviousHealth )
                             {
@@ -337,15 +280,18 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
                                     pVehicle->CallEvent ( "onVehicleDamage", Arguments );
                                 }
                             }
-                            pVehicle->SetHealth ( vehicle.data.fHealth );
-                            // Stops sync + fixVehicle/setElementHealth conflicts triggering onVehicleDamage by having a seperate stored float keeping track of ONLY what comes in via sync
-                            // - Caz
-                            pVehicle->SetLastSyncedHealth( vehicle.data.fHealth );
                         }
 
                         if ( vehicle.data.bSyncTrailer )
                         {
-                            CVehicle* pTrailer = GetElementFromId < CVehicle >( vehicle.data.trailer );
+                            CVehicle* pTrailer = NULL;
+                            ElementID TrailerID = vehicle.data.trailer;
+                            if ( TrailerID != INVALID_ELEMENT_ID )
+                            {
+                                CElement* pElement = CElementIDs::GetElement ( TrailerID );
+                                if ( pElement )
+                                    pTrailer = static_cast < CVehicle* > ( pElement );
+                            }
                             // Trailer attach/detach
                             if ( pTrailer )
                             {
@@ -358,8 +304,8 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
                                     if ( pCurrentTrailer )
                                     {
                                         // Tell everyone to detach them
-                                        CVehicleTrailerPacket DetachPacket ( pVehicle, pCurrentTrailer, false );
-                                        m_pPlayerManager->BroadcastOnlyJoined ( DetachPacket );
+                                        CVehicleTrailerPacket AttachPacket ( pVehicle, pCurrentTrailer, false );
+                                        m_pPlayerManager->BroadcastOnlyJoined ( AttachPacket );
 
                                         // Execute the attach trailer script function
                                         CLuaArguments Arguments;
@@ -375,8 +321,8 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
                                     if ( pCurrentVehicle )
                                     {
                                         // Tell everyone to detach them
-                                        CVehicleTrailerPacket DetachPacket ( pCurrentVehicle, pTrailer, false );
-                                        m_pPlayerManager->BroadcastOnlyJoined ( DetachPacket );
+                                        CVehicleTrailerPacket AttachPacket ( pCurrentVehicle, pTrailer, false );
+                                        m_pPlayerManager->BroadcastOnlyJoined ( AttachPacket );
 
                                         // Execute the attach trailer script function
                                         CLuaArguments Arguments;
@@ -421,8 +367,8 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
                                     pCurrentTrailer->SetTowedByVehicle ( NULL );
 
                                     // Tell everyone else to detach them
-                                    CVehicleTrailerPacket DetachPacket ( pVehicle, pCurrentTrailer, false );
-                                    m_pPlayerManager->BroadcastOnlyJoined ( DetachPacket );
+                                    CVehicleTrailerPacket AttachPacket ( pVehicle, pCurrentTrailer, false );
+                                    m_pPlayerManager->BroadcastOnlyJoined ( AttachPacket );
 
                                     // Execute the detach trailer script function
                                     CLuaArguments Arguments;
@@ -431,10 +377,6 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
                                 }
                             }
                         }
-                        bool bEngineOn = pVehicle->IsEngineOn ( );
-                        bool bDerailed = pVehicle->IsDerailed ( );
-                        bool bInWater = pVehicle->IsInWater ( );
-
                         // Turn the engine on if it's on
                         pVehicle->SetEngineOn ( vehicle.data.bEngineOn );
 
@@ -445,52 +387,16 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
                         pVehicle->SetInWater ( vehicle.data.bIsInWater );
 
                         // Run colpoint checks on vehicle
-                        g_pGame->GetColManager()->DoHitDetection ( pVehicle->GetPosition (), pVehicle );
+                        g_pGame->GetColManager()->DoHitDetection ( pVehicle->GetLastPosition (), pVehicle->GetPosition (), 0.0f, pVehicle );
 
-                        // Send this sync if something important changed or one of the flags has changed since last sync.
-                        data.bSend = vehicle.HasChanged ( ) || ( bEngineOn != vehicle.data.bEngineOn || bDerailed != vehicle.data.bDerailed || bInWater != vehicle.data.bIsInWater );
-
-                        if ( data.bSend )
-                        {
-                            pVehicle->OnRelayUnoccupiedSync();
-                        }
+                        // Send this sync
+                        data.bSend = true;
                     }
                 }
             }
         }
 
-        // Tell everyone in the same dimension
-       m_pPlayerManager->BroadcastDimensionOnlyJoined ( Packet, pPlayer->GetDimension(), pPlayer );
-    }
-}
-
-
-void CUnoccupiedVehicleSync::Packet_UnoccupiedVehiclePushSync ( CUnoccupiedVehiclePushPacket& Packet )
-{
-    // Grab the player
-    CPlayer* pPlayer = Packet.GetSourcePlayer ();
-    if ( pPlayer && pPlayer->IsJoined () )
-    {
-        // Grab the vehicle this packet is for
-        CElement* pVehicleElement = CElementIDs::GetElement ( Packet.vehicle.data.vehicleID );
-        if ( pVehicleElement && IS_VEHICLE ( pVehicleElement ) )
-        {
-            // Convert to a CVehicle
-            CVehicle* pVehicle = static_cast < CVehicle* > ( pVehicleElement );
-            // Is the player syncing this vehicle and there is no driver? Also only process
-            // this packet if the time context matches.
-            if ( pVehicle->GetSyncer () != pPlayer && pVehicle->GetTimeSinceLastPush ( ) >= MIN_PUSH_ANTISPAM_RATE )
-            {
-                // Is there no player driver?
-                CPed * pOccupant = pVehicle->GetOccupant ( 0 );
-                if ( !pOccupant || !IS_PLAYER ( pOccupant ) )
-                {
-                    // Change our syncer
-                    OverrideSyncer ( pVehicle, pPlayer );
-                    // Reset our push time
-                    pVehicle->ResetLastPushTime ( );
-                }
-            }
-        }
+        // Tell everyone
+        m_pPlayerManager->BroadcastOnlyJoined ( Packet, pPlayer );
     }
 }

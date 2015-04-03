@@ -15,16 +15,18 @@
 
 CLuaEventPacket::CLuaEventPacket ( void )
 {
+    m_szName [ 0 ] = 0;
     m_ElementID = INVALID_ELEMENT_ID;
-    m_pArguments = &m_ArgumentsStore;
 }
 
 
-CLuaEventPacket::CLuaEventPacket ( const char* szName, ElementID ID, CLuaArguments* pArguments )
+CLuaEventPacket::CLuaEventPacket ( const char* szName, ElementID ID, CLuaArguments& Arguments )
 {
-    m_strName.AssignLeft ( szName, MAX_EVENT_NAME_LENGTH );
+    strncpy ( m_szName, szName, MAX_EVENT_NAME_LENGTH );
+    if ( MAX_EVENT_NAME_LENGTH )
+        m_szName [ MAX_EVENT_NAME_LENGTH - 1 ] = 0;
     m_ElementID = ID;
-    m_pArguments = pArguments;  // Use a pointer to save copying the arguments
+    m_Arguments = Arguments;
 }
 
 
@@ -33,12 +35,10 @@ bool CLuaEventPacket::Read ( NetBitStreamInterface& BitStream )
     unsigned short usNameLength;
     if ( BitStream.ReadCompressed ( usNameLength ) )
     {
-        if ( usNameLength < (MAX_EVENT_NAME_LENGTH - 1) && BitStream.ReadStringCharacters ( m_strName, usNameLength ) && BitStream.Read ( m_ElementID ) )
+        if ( usNameLength < (MAX_EVENT_NAME_LENGTH - 1) && BitStream.Read ( m_szName, usNameLength ) && BitStream.ReadCompressed ( m_ElementID ) )
         {
-            // Faster than using a constructor
-            m_ArgumentsStore.DeleteArguments ();
-            m_ArgumentsStore.ReadFromBitStream ( BitStream );
-            m_pArguments = &m_ArgumentsStore;
+            m_szName [ usNameLength ] = 0;
+            m_Arguments = CLuaArguments ( BitStream );
 
             return true;
         }
@@ -50,11 +50,11 @@ bool CLuaEventPacket::Read ( NetBitStreamInterface& BitStream )
 
 bool CLuaEventPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
-    unsigned short usNameLength = static_cast < unsigned short > ( m_strName.length () );
+    unsigned short usNameLength = static_cast < unsigned short > ( strlen ( m_szName ) );
     BitStream.WriteCompressed ( usNameLength );
-    BitStream.WriteStringCharacters ( m_strName, usNameLength );
-    BitStream.Write ( m_ElementID );
-    m_pArguments->WriteToBitStream ( BitStream );
+    BitStream.Write ( const_cast < char* > ( m_szName ), usNameLength );
+    BitStream.WriteCompressed ( m_ElementID );
+    m_Arguments.WriteToBitStream ( BitStream );
 
     return true;
 }

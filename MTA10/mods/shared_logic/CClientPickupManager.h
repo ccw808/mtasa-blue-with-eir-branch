@@ -45,7 +45,6 @@ public:
     inline static unsigned short                            GetArmorModel               ( void )                    { return 1242; };
 
     static bool                                             IsPickupLimitReached        ( void );
-    void                                                    RestreamPickups             ( unsigned short usModel );
 
 private:
                                                     CClientPickupManager        ( CClientManager* pManager );

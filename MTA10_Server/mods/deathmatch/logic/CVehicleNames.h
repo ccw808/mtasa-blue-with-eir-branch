@@ -15,6 +15,12 @@
 #ifndef __CVEHICLENAMES_H
 #define __CVEHICLENAMES_H
 
+struct SVehicleName
+{
+    char szName [32];
+    char szName_replaced [32]; //Compatability
+};
+
 class CVehicleNames
 {
 public:

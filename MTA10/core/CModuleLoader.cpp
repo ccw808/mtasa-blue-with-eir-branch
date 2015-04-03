@@ -40,15 +40,10 @@ bool CModuleLoader::LoadModule ( const string& ModuleName )
     if ( m_hLoadedModule != NULL )
     {
         m_bStatus = true;
-        m_strLastError = "";
     }
     else
     {
         m_bStatus = false;
-        DWORD dwError = GetLastError ();
-        char szError [ 2048 ] = { 0 };
-        FormatMessage ( FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, dwError, LANG_NEUTRAL, szError, sizeof ( szError ), NULL );
-        m_strLastError = szError;
     }
 
     return m_bStatus;
@@ -59,7 +54,6 @@ void CModuleLoader::UnloadModule ( )
     FreeLibrary ( m_hLoadedModule );
     m_hLoadedModule = 0;
     m_bStatus = false;
-    m_strLastError = "";
 }
 
 PVOID CModuleLoader::GetFunctionPointer ( const string& FunctionName )
@@ -74,9 +68,4 @@ PVOID CModuleLoader::GetFunctionPointer ( const string& FunctionName )
     }
     else
         return NULL;
-}
-
-const SString& CModuleLoader::GetLastErrorMessage ( void ) const
-{
-    return m_strLastError;
 }

@@ -20,7 +20,7 @@
 #include "StdInc.h"
 
 CResourceFile::CResourceFile ( CResource * resource, const char* szShortName, const char* szResourceFileName, CXMLAttributes * xmlAttributes ) 
-{
+{ 
     m_strResourceFileName = szResourceFileName; 
 
     // Stupid hack to automatically change all forward slashes to back slashes to get around internal http sub dir issue
@@ -58,10 +58,26 @@ CResourceFile::~CResourceFile ( void )
 }
 
 
+double CResourceFile::GetApproxSize ( void )
+{
+    double dSize = 0.0;
+
+    FILE * file = fopen ( m_strResourceFileName.c_str (), "rb" );
+    if ( file )
+    {
+        fseek ( file, 0, SEEK_END );
+        dSize = ftell ( file );
+        fclose ( file );
+    }
+
+    return dSize;
+}
+
+
 ResponseCode CResourceFile::Request ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse )
 {
     // HACK - Use http-client-files if possible as the resources directory may have been changed since the resource was loaded.
-    SString strDstFilePath = GetCachedPathFilename ();
+    SString strDstFilePath = string ( g_pServerInterface->GetServerModPath () ) + "/resource-cache/http-client-files/" + m_resource->GetName() + "/" + this->GetName();
 
     FILE * file = fopen ( strDstFilePath.c_str (), "rb" );
     if ( !file )
@@ -95,11 +111,3 @@ ResponseCode CResourceFile::Request ( HttpRequest * ipoHttpRequest, HttpResponse
     }
 }
 
-
-SString CResourceFile::GetCachedPathFilename ( bool bForceClientCachePath )
-{
-    if ( IsNoClientCache() == false || bForceClientCachePath )
-        return PathJoin ( g_pServerInterface->GetServerModPath (), "resource-cache", "http-client-files", m_resource->GetName(), GetName () );
-    else
-        return PathJoin ( g_pServerInterface->GetServerModPath (), "resource-cache", "http-client-files-no-client-cache", m_resource->GetName(), GetName () );
-}

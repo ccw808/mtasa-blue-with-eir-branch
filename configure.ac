@@ -28,7 +28,6 @@ AC_PROG_LN_S
 AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
-m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES])
 AM_INIT_AUTOMAKE
 AM_PROG_CC_C_O
 AC_PROG_MAKE_SET
@@ -53,17 +52,15 @@ AC_ARG_ENABLE(debug,
 
 # Checks for libraries.
 
-PKG_PROG_PKG_CONFIG
-
 # pcre (for bundled pme.h)
 AC_ARG_ENABLE([system-pcre], 
 	[AS_HELP_STRING([--disable-system-pcre],
 	                [don't use system PCRE])])
 
 AC_DEFUN([USE_BUNDLED_PCRE], [
-	HAVE_BUNDLED_PCRE=yes
 	PCRE_CFLAGS="-I\$(top_builddir)/vendor/pcre"
-	PCRE_LIBS="\$(top_builddir)/vendor/pcre/libpcrecpp.la"
+	PCRE_LIBS="\$(top_builddir)/vendor/pcre/libpcre.la"
+	# probably include a check if it was already built
 ])
 
 if test "x$enable_system_pcre" != "xno" ; then
@@ -113,16 +110,31 @@ CPPFLAGS="$save_CPPFLAGS"
 
 # sqlite3 (for mods/deathmatch)
 # bundled version seems to be for windows
-#PKG_CHECK_MODULES([SQLITE3], [sqlite3]) ** Compiling sqlite3.c now
+PKG_CHECK_MODULES([SQLITE3], [sqlite3])
 
 # curses (for MTA10_Server/{core,sdk})
-AC_ARG_VAR([CURSES_LIB], [linker flags for curses])
+AC_ARG_VAR([CURSES_CFLAGS], [C compiler flags for curses])
+AC_ARG_VAR([CURSES_LIBS], [linker flags for curses])
 
-AX_WITH_CURSES
+save_CPPFLAGS="$CPPFLAGS"
+save_LIBS="$LIBS"
+CPPFLAGS="$CPPFLAGS $CURSES_CFLAGS"
+LIBS="$LIBS $CURSES_LIBS"
 
-if test "x$ax_cv_ncursesw" != "xyes" ; then
-	AC_MSG_ERROR([can't find ncursesw])
+if test -z "$CURSES_CFLAGS" ; then
+	AC_CHECK_HEADER([curses.h],
+		[],
+		[AC_MSG_ERROR([can't find curses headers])])
 fi
+
+if test -z "$CURSES_LIBS" ; then
+	AC_CHECK_LIB([curses], [stdscr],
+		[CURSES_LIBS=-lcurses],
+		[AC_MSG_ERROR([can't find curses libraries])])
+fi
+
+CPPFLAGS="$save_CPPFLAGS"
+LIBS="$save_LIBS"
 
 # Checking for a 64-bit system
 AC_MSG_CHECKING([uname -m for detecting host operating system architecture])
@@ -199,40 +211,22 @@ AC_CONFIG_SUBDIRS([vendor/json-c])
 if test "x$HAVE_BUNDLED_SPARSEHASH" = "xyes" ; then
 	AC_CONFIG_SUBDIRS([vendor/sparsehash/current])
 fi
-AM_CONDITIONAL([WANT_SPARSEHASH], [test "x$HAVE_BUNDLED_SPARSEHASH" = "xyes"])
-
-if test "x$HAVE_BUNDLED_PCRE" = "xyes" ; then
-	AC_CONFIG_SUBDIRS([vendor/pcre])
-fi
-AM_CONDITIONAL([WANT_PCRE], [test "x$HAVE_BUNDLED_PCRE" = "xyes"])
-
-AC_ARG_ENABLE([enable-ircbots],
-	[AS_HELP_STRING([--enable-ircbots], [build the irc bots])])
-
-if test "x$enable_ircbots" = "xyes" ; then
-	AC_CONFIG_SUBDIRS([irc/mantisbot irc/wikibot irc/rsl])
-fi
-
-AM_CONDITIONAL([WANT_IRCBOTS], [test "x$enable_ircbots" = "xyes"])
 
 # Generate makefiles
 AC_CONFIG_FILES([
 	Makefile
-	irc/Makefile
+	vendor/Makefile
+	vendor/tinyxml/Makefile
+	vendor/pme/Makefile
+	vendor/ehs/Makefile
+	Shared/Makefile
+	Shared/XML/Makefile
 	MTA10_Server/Makefile
+	MTA10_Server/sdk/Makefile
 	MTA10_Server/core/Makefile
-	MTA10_Server/dbconmy/Makefile
-	MTA10_Server/launcher/Makefile
 	MTA10_Server/mods/Makefile
 	MTA10_Server/mods/deathmatch/Makefile
-	MTA10_Server/sdk/Makefile
-	Shared/Makefile
-	Shared/publicsdk/Makefile
-	Shared/XML/Makefile
-	vendor/Makefile
-	vendor/ehs/Makefile
-	vendor/pme/Makefile
-	vendor/tinyxml/Makefile
+	MTA10_Server/launcher/Makefile
 ])
 
 AC_OUTPUT

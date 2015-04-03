@@ -85,7 +85,7 @@ bool CVehicleInOutPacket::Read ( NetBitStreamInterface& BitStream )
 {
     // Read out the vehicle id
     m_ID = INVALID_ELEMENT_ID;
-    BitStream.Read ( m_ID );
+    BitStream.ReadCompressed ( m_ID );
     if ( m_ID == INVALID_ELEMENT_ID )
     {
         return false;
@@ -99,40 +99,34 @@ bool CVehicleInOutPacket::Read ( NetBitStreamInterface& BitStream )
     // If the action is requesting to get in, read out the "passenger" flag too
     if ( m_ucAction == CGame::VEHICLE_REQUEST_IN )
     {
-        return BitStream.ReadBits ( &m_ucSeat, 4 ) &&
+        return BitStream.ReadBits ( &m_ucSeat, 3 ) &&
                BitStream.ReadBit  ( m_bOnWater ) &&
                BitStream.ReadBits ( &m_ucDoor, 3 );
     }
     else if ( m_ucAction == CGame::VEHICLE_NOTIFY_JACK_ABORT )
     {
-        SDoorOpenRatioSync door;
+        SDoorAngleSync door;
         bool bStartedJacking;
         if ( BitStream.ReadBits ( &m_ucDoor, 3 ) &&
              BitStream.Read ( &door ) &&
              BitStream.ReadBit ( bStartedJacking ) )
         {
             m_ucStartedJacking = bStartedJacking;
-            m_fDoorAngle = door.data.fRatio;
+            m_fDoorAngle = door.data.fAngle;
         }
         else
             return false;
     }
     else if ( m_ucAction == CGame::VEHICLE_NOTIFY_IN_ABORT )
     {
-        SDoorOpenRatioSync door;
+        SDoorAngleSync door;
         if ( BitStream.ReadBits ( &m_ucDoor, 3 ) &&
              BitStream.Read ( &door ) )
         {
-            m_fDoorAngle = door.data.fRatio;
+            m_fDoorAngle = door.data.fAngle;
         }
         else
             return false;
-    }
-    else if ( m_ucAction == CGame::VEHICLE_REQUEST_OUT )
-    {
-        m_ucDoor = 0;
-        if ( !BitStream.ReadBits ( &m_ucDoor, 2 ) )
-            m_ucDoor = 0xFF;
     }
     return true;
 }
@@ -140,13 +134,13 @@ bool CVehicleInOutPacket::Read ( NetBitStreamInterface& BitStream )
 
 bool CVehicleInOutPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
-    if ( m_pSourceElement && m_ID != INVALID_ELEMENT_ID )
+    if ( m_pSourceElement && m_ID )
     {
         ElementID ID = m_pSourceElement->GetID ();
-        BitStream.Write ( ID );
+        BitStream.WriteCompressed ( ID );
 
-        BitStream.Write ( m_ID );
-        BitStream.WriteBits ( &m_ucSeat, 4 );
+        BitStream.WriteCompressed ( m_ID );
+        BitStream.WriteBits ( &m_ucSeat, 3 );
         BitStream.WriteBits ( &m_ucAction, 4 );
 
         if ( m_ucAction == CGame::VEHICLE_REQUEST_IN_CONFIRMED || m_ucAction == CGame::VEHICLE_REQUEST_JACK_CONFIRMED )
@@ -156,8 +150,8 @@ bool CVehicleInOutPacket::Write ( NetBitStreamInterface& BitStream ) const
         // If the action id is VEHICLE_NOTIFY_JACK_RETURN, send the in/out player chars aswell
         if ( m_ucAction == CGame::VEHICLE_NOTIFY_JACK_RETURN )
         {
-            BitStream.Write ( m_PlayerIn );
-            BitStream.Write ( m_PlayerOut );
+            BitStream.WriteCompressed ( m_PlayerIn );
+            BitStream.WriteCompressed ( m_PlayerOut );
         }
 
         if ( m_ucAction == 9 /*VEHICLE_ATTEMPT_FAILED*/ )
@@ -174,15 +168,9 @@ bool CVehicleInOutPacket::Write ( NetBitStreamInterface& BitStream ) const
         if ( m_ucAction == CGame::VEHICLE_NOTIFY_IN_ABORT_RETURN )
         {
             BitStream.WriteBits ( &m_ucDoor, 3 );
-            SDoorOpenRatioSync door;
-            door.data.fRatio = m_fDoorAngle;
+            SDoorAngleSync door;
+            door.data.fAngle = m_fDoorAngle;
             BitStream.Write ( &door );
-        }
-
-        if ( m_ucAction == CGame::VEHICLE_REQUEST_OUT_CONFIRMED )
-        {
-            if ( m_ucDoor < 4 )
-                BitStream.WriteBits ( &m_ucDoor, 2 );
         }
 
         return true;

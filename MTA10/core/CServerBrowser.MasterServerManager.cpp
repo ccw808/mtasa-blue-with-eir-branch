@@ -31,7 +31,6 @@ protected:
 
     CElapsedTime                                    m_ElapsedTime;
     std::vector < CRemoteMasterServerInterface* >   m_MasterServerList;
-    uint                                            m_iActiveAmount;
 };
 
 
@@ -57,7 +56,6 @@ CMasterServerManagerInterface* NewMasterServerManager ( void )
 ///////////////////////////////////////////////////////////////
 CMasterServerManager::CMasterServerManager ( void )
 {
-    m_ElapsedTime.SetMaxIncrement ( 500 );
 }
 
 
@@ -71,7 +69,7 @@ CMasterServerManager::CMasterServerManager ( void )
 CMasterServerManager::~CMasterServerManager ( void )
 {
     for ( uint i = 0 ; i < m_MasterServerList.size () ; i++ )
-        SAFE_RELEASE( m_MasterServerList[i] );
+        delete m_MasterServerList[i];
 
     m_MasterServerList.clear ();
 }
@@ -96,12 +94,11 @@ void CMasterServerManager::Refresh ( void )
             m_MasterServerList.push_back ( NewRemoteMasterServer ( resultList[i] ) );
     }
 
-    // Pass on refresh request to first two servers
-    m_iActiveAmount = Min < uint > ( 2, m_MasterServerList.size () );
-    for ( uint i = 0 ; i < m_MasterServerList.size () && i < m_iActiveAmount ; i++ )
+    // Pass on refresh request
+    for ( uint i = 0 ; i < m_MasterServerList.size () ; i++ )
         m_MasterServerList[i]->Refresh ();
 
-    m_ElapsedTime.Reset ();
+    m_ElapsedTime = CElapsedTime ();
 }
 
 
@@ -117,7 +114,7 @@ bool CMasterServerManager::HasData ( void )
     // Count how many server have responded
     uint uiHasDataCount = 0;
 
-    for ( uint i = 0 ; i < m_MasterServerList.size () && i < m_iActiveAmount ; i++ )
+    for ( uint i = 0 ; i < m_MasterServerList.size () ; i++ )
         if ( m_MasterServerList[i]->HasData () )
             uiHasDataCount++;
 
@@ -125,17 +122,8 @@ bool CMasterServerManager::HasData ( void )
     if ( uiHasDataCount >= 2 )
         return true;
 
-    // If less than 2 servers responded, and it's been 2.5 seconds, try to add a new server
-    if ( uiHasDataCount < 2 && m_ElapsedTime.Get () > 2500 )
-    {
-        if ( m_iActiveAmount <= 2 && m_MasterServerList.size () > m_iActiveAmount )
-        {
-            m_MasterServerList[ m_iActiveAmount++ ]->Refresh ();
-        }
-    }
-
-    // If one server responded, and it's been 5 seconds, then success
-    if ( uiHasDataCount >= 1 && m_ElapsedTime.Get () > 5000 )
+    // If one server responded, and it's been 4 seconds, then success
+    if ( uiHasDataCount >= 1 && m_ElapsedTime.Get () > 4000 )
         return true;
 
     return false;
@@ -153,7 +141,7 @@ bool CMasterServerManager::ParseList ( CServerListItemList& itemList )
 {
     uint uiParsedCount = 0;
 
-    for ( uint i = 0 ; i < m_MasterServerList.size () && i < m_iActiveAmount ; i++ )
+    for ( uint i = 0 ; i < m_MasterServerList.size () ; i++ )
         if ( m_MasterServerList[i]->HasData () )
             if ( m_MasterServerList[i]->ParseList ( itemList ) )
                 uiParsedCount++;

@@ -13,7 +13,7 @@
 #ifndef __CCONNECTHISTORY_H
 #define __CCONNECTHISTORY_H
 
-typedef CFastHashMap < SString, struct CConnectHistoryItem > HistoryItemMap;
+typedef std::map < std::string, struct CConnectHistoryItem > HistoryItemMap;
 typedef std::vector < long long > JoinTimesMap;
 
 struct CConnectHistoryItem
@@ -32,19 +32,14 @@ public:
     bool                                AddConnect              ( const std::string& strIP );
     bool                                IsFlooding              ( const std::string& strIP );
     CConnectHistoryItem&                GetHistoryItem          ( const std::string& strIP );
-    uint                                GetTotalFloodingCount   ( void );
-    SString                             DebugDump               ( long long llTickCountAdd );
 
 private:
     void                                RemoveExpired           ( void );
-    long long                           GetModuleTickCount64    ( void );
 
     unsigned long                       m_ulSamplePeriod;
     unsigned long                       m_ulMaxConnections;
     unsigned long                       m_ulBanLength;
     HistoryItemMap                      m_HistoryItemMap;
-    long long                           m_llTimeLastRemoveExpired;
-    long long                           m_llDebugTickCountOffset;
 };
 
 #endif

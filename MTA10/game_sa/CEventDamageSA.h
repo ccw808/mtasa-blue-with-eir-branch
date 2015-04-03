@@ -68,7 +68,6 @@ private:
     CEventDamageSAInterface *           m_pInterface;
     CPedDamageResponse *                m_pDamageResponse;
     bool                                m_bDestroyInterface;
-    EDamageReasonType                   m_DamageReason;
 public:
                                         CEventDamageSA      ( CEntity * pEntity, unsigned int i_1, eWeaponType weaponType, ePedPieceTypes hitZone, unsigned char uc_2, bool b_3, bool b_4 );
                                         CEventDamageSA      ( CEventDamageSAInterface * pInterface );
@@ -100,8 +99,6 @@ public:
     void                                ComputeDeathAnim    ( CPed * pPed, bool bUnk );
     void                                ComputeDamageAnim   ( CPed * pPed, bool bUnk );
     bool                                AffectsPed          ( CPed * pPed );
-    void                                SetDamageReason     ( EDamageReasonType damageReason )          { m_DamageReason = damageReason; }
-    EDamageReasonType                   GetDamageReason     ( void )                                    { return m_DamageReason; }
 };
 
 #endif

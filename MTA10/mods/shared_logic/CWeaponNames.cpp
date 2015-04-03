@@ -13,19 +13,19 @@
 
 using namespace std;
 
-const char* szWeaponNameEmpty = "";
+char szWeaponNameEmpty [] = "";
 
 struct SWeaponName
 {
-    const char* szName;
+    char szName [32];
 };
 struct SWeaponSlot
 {
     char cSlot;
 };
 
-static const SWeaponName _WeaponNames [] =
-{ {"Fist"}, {"Brassknuckle"}, {"Golfclub"}, {"Nightstick"}, {"Knife"},
+SWeaponName WeaponNames [] =
+{ {"Melee"}, {"Brassknuckle"}, {"Golfclub"}, {"Nightstick"}, {"Knife"},
 {"Bat"}, {"Shovel"}, {"Poolstick"}, {"Katana"}, {"Chainsaw"}, 
 {"Dildo"}, {"Dildo"}, {"Vibrator"}, {"Vibrator"}, {"Flower"},
 {"Cane"}, {"Grenade"}, {"Teargas"}, {"Molotov"}, {"Rocket"},
@@ -36,13 +36,12 @@ static const SWeaponName _WeaponNames [] =
 {"Bomb"}, {"Spraycan"}, {"Fire Extinguisher"}, {"Camera"}, {"Nightvision"}, {"Infrared"},
 {"Parachute"}, {"Last Weapon"}, {"Armour"}, {"Rammed"}, {"Ranover"}, {"Explosion"}, {"Driveby"}, 
 {"Drowned"}, {"Fall"}, {"Unknown"}, {"Melee"}, {"Weapon"}, {"Flare"}, { "Tank Grenade" } };
-static const IMPLEMENT_FIXED_ARRAY( SWeaponName, WeaponNames );
 
-static const SWeaponSlot _WeaponIDs [] =
-{{0},{0},{1},{1},{1},{1},{1},{1},{1},{1},{10},{10},{10},{-1},{10},{10},{8},{8},
+SWeaponSlot WeaponIDs [] =
+{{0},{0},{1},{1},{1},{1},{1},{1},{1},{1},{10},{10},{10},{-1},{10},{1},{8},{8},
 {8},{-1},{-1},{-1},{2},{2},{2},{3},{3},{3},{4},{4},{5},{5},{4},{6},{6},{7},
 {7},{7},{7},{8},{12},{9},{9},{9},{11},{11},{11},{-1}};
-static const IMPLEMENT_FIXED_ARRAY( SWeaponSlot, WeaponIDs );
+
 
 unsigned char CWeaponNames::GetWeaponID ( const char* szName )
 {

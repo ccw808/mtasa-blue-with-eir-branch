@@ -20,10 +20,9 @@ class CGUIStaticImage : public CGUIElement
 public:
     virtual                             ~CGUIStaticImage        ( void ) {};
 
-    virtual bool                        LoadFromFile            ( const char* szFilename ) = 0;
+    virtual bool                        LoadFromFile            ( const char* szFilename, const char* szDirectory = NULL ) = 0;
     virtual bool                        LoadFromTexture         ( CGUITexture* pTexture ) = 0;
     virtual void                        Clear                   ( void ) = 0;
-    virtual bool                        GetNativeSize           ( CVector2D &vecSize ) = 0;
 
     virtual void                        SetFrameEnabled         ( bool bFrameEnabled ) = 0;
     virtual bool                        IsFrameEnabled          ( void ) = 0;

@@ -13,461 +13,298 @@
 
 #include "StdInc.h"
 #include "CClientPlayerVoice.h"
-#include "CBassAudio.h"
-#include <process.h>
-#include <tags.h>
-#include <bassmix.h>
-#include <basswma.h>
-#include <bass_fx.h>
-
-void CALLBACK BPMCallback ( int handle, float bpm, void* user );
-void CALLBACK BeatCallback ( DWORD chan, double beatpos, void *user );
-
-#define INVALID_FX_HANDLE (-1)  // Hope that BASS doesn't use this as a valid Fx handle
 
 CClientPlayerVoice::CClientPlayerVoice( CClientPlayer* pPlayer, CVoiceRecorder* pVoiceRecorder )
 {
     m_pPlayer = pPlayer;
     m_pVoiceRecorder = pVoiceRecorder;
-    m_bVoiceActive = false;
-    m_SampleRate = SAMPLERATE_WIDEBAND;
+
+    m_bEnabled = false;
+
+    m_bUsingVoice = false;
+
+    m_SampleRate = CVoiceRecorder::SAMPLERATE_WIDEBAND;
+
+    m_pPlaybackStream = NULL;
+
     m_pSpeexDecoderState = NULL;
+
+    m_bBufferOutput = false;
+    m_bCopiedOutputBufferToBufferedOutput = false;
+
+    m_pIncomingBuffer = NULL;
     m_iSpeexIncomingFrameSampleCount = 0;
+    m_uiIncomingReadIndex = 0;
+    m_uiIncomingWriteIndex = 0;
 
-    // Get initial voice volume
-    m_fVolume = 1.0f;
-    g_pCore->GetCVars ()->Get ( "voicevolume", m_fVolumeScale );
+    m_uiBufferSizeBytes = 0;
+    m_pBufferedOutput = NULL;
+    m_uiBufferedOutputCount = 0;
+    m_bZeroBufferedOutput = false;
+    m_bCopiedOutgoingBufferToBufferedOutput = false;
 
-    m_fVolume = m_fVolume * m_fVolumeScale;
-
-    if ( pPlayer->IsLocalPlayer ( ) == true )
-    {
-        m_fVolume = 0.0f;
-    }
-    m_fPlaybackSpeed = 1.0f;
-    Init ();
+    Init ( true );
 }
+
 CClientPlayerVoice::~CClientPlayerVoice( void )
 {
     DeInit();
 }
 
-void CALLBACK BASS_VoiceStateChange ( HSYNC handle, DWORD channel, DWORD data, void* user )
+// TODO: Replace this with BASS
+static int PAPlaybackCallback( void *inputBuffer, void *outputBuffer, unsigned long framesPerBuffer, PaTimestamp outTime, void *userData )
 {
-    if ( data == 0 ) 
+    g_pCore->DebugEcho("CALLBACK");
+    CClientPlayerVoice* pVoice = static_cast < CClientPlayerVoice* > ( userData );
+
+    //if ( pVoice->IsEnabled() )
     {
-        CClientPlayerVoice* pVoice = static_cast < CClientPlayerVoice* > ( user );
-        pVoice->m_CS.Lock ();
-
-        if ( pVoice->m_bVoiceActive )
-        {
-            pVoice->m_EventQueue.push_back ( "onClientPlayerVoiceStop" );
-            pVoice->m_bVoiceActive = false;
-        }
-
-        pVoice->m_CS.Unlock ();
+        pVoice->ReceiveFrame(outputBuffer);
     }
+
+    return 0;
 }
 
-
-void CClientPlayerVoice::Init( void )
+void CClientPlayerVoice::Init( bool bEnabled )
 {
-    m_CS.Lock ();
+    m_bEnabled = bEnabled;
 
-    // Grab our sample rate and quality
+    if ( !bEnabled ) // If we aren't enabled, don't bother continuing
+        return;
+
+    // Grab our sample rate
     m_SampleRate = m_pVoiceRecorder->GetSampleRate();
-    unsigned char ucQuality = m_pVoiceRecorder->GetSampleQuality();
 
-    // Setup our BASS playback device
-    m_pBassPlaybackStream = BASS_StreamCreate ( m_SampleRate/VOICE_SAMPLE_SIZE, 2, BASS_STREAM_AUTOFREE, STREAMPROC_PUSH, NULL );
-    BASS_ChannelSetSync ( m_pBassPlaybackStream, BASS_SYNC_STALL, 0, &BASS_VoiceStateChange, this );
+    // Calculate how many frames we are storing and then the buffer size in bytes
+    unsigned int iFramesPerBuffer = ( 2048 / ( 32000 / m_SampleRate ));
+    m_uiBufferSizeBytes = iFramesPerBuffer * sizeof(short);
 
-    BASS_ChannelPlay( m_pBassPlaybackStream, false );
-    BASS_ChannelSetAttribute( m_pBassPlaybackStream, BASS_ATTRIB_VOL, m_fVolume * m_fVolumeScale );
+    // Create our buffered output buffer
+    m_uiBufferedOutputCount = m_uiBufferSizeBytes / VOICE_SAMPLE_SIZE;
+    m_pBufferedOutput = (float*) malloc(sizeof(float)*m_uiBufferedOutputCount);
+
+    // Zero our buffered output
+    for ( unsigned i = 0; i < m_uiBufferedOutputCount; i++ )
+        m_pBufferedOutput[i] = 0.0f;
+
+    m_bZeroBufferedOutput = false;
 
     // Get the relevant speex mode for the servers sample rate
     const SpeexMode* speexMode = m_pVoiceRecorder->getSpeexModeFromSampleRate();
     m_pSpeexDecoderState = speex_decoder_init(speexMode);
 
-    // Initialize our speex decoder
-    speex_decoder_ctl(m_pSpeexDecoderState, SPEEX_GET_FRAME_SIZE, &m_iSpeexIncomingFrameSampleCount);
-    speex_decoder_ctl(m_pSpeexDecoderState, SPEEX_SET_QUALITY, &ucQuality );
+    Pa_Initialize();
+    //Pa_OpenStream( &m_pPlaybackStream, NULL, 0, paInt16, NULL, Pa_GetDefaultOutputDeviceID(), 1, paInt16, NULL, m_SampleRate, iFramesPerBuffer, 0, 0, PAPlaybackCallback, this );
+    //Pa_OpenStream( &m_pPlaybackStream, paNoDevice, 0, paInt16, NULL, Pa_GetDefaultOutputDeviceID(), 1, paInt16, NULL, m_SampleRate, iFramesPerBuffer, 0, 0, PAPlaybackCallback, this ); 
 
-    m_CS.Unlock ();
+    Pa_OpenDefaultStream( &m_pPlaybackStream,
+				0,
+				2,
+				paInt16,
+				m_SampleRate,
+				iFramesPerBuffer,
+				1,
+				PAPlaybackCallback,
+				this );
+
+    Pa_StartStream( m_pPlaybackStream );
+
+    m_bBufferOutput = true;
+    m_bCopiedOutgoingBufferToBufferedOutput = false;
+
+    // Iniitalize our incoming buffer
+    speex_decoder_ctl(m_pSpeexDecoderState, SPEEX_GET_FRAME_SIZE, &m_iSpeexIncomingFrameSampleCount);
+    m_pIncomingBuffer = (char*) malloc(m_uiBufferSizeBytes * FRAME_INCOMING_BUFFER_COUNT);
+    m_uiIncomingReadIndex=0;
+    m_uiIncomingWriteIndex=0;
 }
 
 void CClientPlayerVoice::DeInit( void )
 {
-    BASS_ChannelStop( m_pBassPlaybackStream );
-    BASS_StreamFree( m_pBassPlaybackStream );
+    if ( m_bEnabled )
+    {
+        m_bEnabled = false;
 
-    m_pBassPlaybackStream = NULL;
+        Pa_CloseStream( m_pPlaybackStream );
+        Pa_Terminate();
+        m_pPlaybackStream = NULL;
 
-    speex_decoder_destroy(m_pSpeexDecoderState);
-    m_pSpeexDecoderState = NULL;
+        speex_decoder_destroy(m_pSpeexDecoderState);
+        m_pSpeexDecoderState = NULL;
 
-    m_SampleRate = SAMPLERATE_WIDEBAND;
+        free(m_pIncomingBuffer);
+        m_pIncomingBuffer = NULL;
 
+        free(m_pBufferedOutput);
+        m_pBufferedOutput = NULL;
+
+        m_SampleRate = CVoiceRecorder::SAMPLERATE_WIDEBAND;
+
+        m_pPlaybackStream = NULL;
+
+        m_bBufferOutput = false;
+        m_bCopiedOutputBufferToBufferedOutput = false;
+        m_iSpeexIncomingFrameSampleCount = 0;
+        m_uiIncomingReadIndex = 0;
+        m_uiIncomingWriteIndex = 0;
+        m_uiBufferSizeBytes = 0;
+        m_uiBufferedOutputCount = 0;
+        m_bZeroBufferedOutput = false;
+    }
 }
 
 
 void CClientPlayerVoice::DoPulse( void )
 {
-    // Dispatch queued events
-    ServiceEventQueue ();
+    unsigned int uiTotalBufferSize = m_uiBufferSizeBytes * FRAME_OUTGOING_BUFFER_COUNT;
 
-    m_CS.Lock ();
-    float fPreviousVolume = 0.0f;
-    g_pCore->GetCVars ()->Get ( "voicevolume", fPreviousVolume );
-    m_CS.Unlock ();
-
-    if ( fPreviousVolume != m_fVolumeScale && m_pPlayer->IsLocalPlayer() == false )
+    if ( m_bZeroBufferedOutput )
     {
-        m_fVolumeScale = fPreviousVolume;
-        float fScaledVolume = m_fVolume * m_fVolumeScale;
-        BASS_ChannelSetAttribute( m_pBassPlaybackStream, BASS_ATTRIB_VOL, fScaledVolume );
+        for (unsigned int i = 0; i < m_uiBufferedOutputCount; i++)
+            m_pBufferedOutput[i] = 0.0f;
+
+        m_bCopiedOutgoingBufferToBufferedOutput = false;
+        m_bZeroBufferedOutput = false;
+
+        if ( m_bUsingVoice )
+        {
+            CLuaArguments Arguments;
+            m_pPlayer->CallEvent ( "onClientPlayerVoiceStop", Arguments, true );
+            m_bUsingVoice = false;
+        }
+    }
+
+    // Buffer our output
+    if (m_bCopiedOutgoingBufferToBufferedOutput == false)
+    {
+        unsigned int uiBytesWaitingToReturn = 0;
+
+        // Calculate how many bytes we have spare
+        if (m_uiIncomingReadIndex <= m_uiIncomingWriteIndex)
+            uiBytesWaitingToReturn = m_uiIncomingWriteIndex - m_uiIncomingReadIndex;
+        else
+            uiBytesWaitingToReturn = uiTotalBufferSize-m_uiIncomingReadIndex + m_uiIncomingWriteIndex;
+
+        // If we have none...
+        if (uiBytesWaitingToReturn == 0)
+        {
+            // Start buffering the output
+            m_bBufferOutput=true;
+        }
+        else if ( m_bBufferOutput==false || uiBytesWaitingToReturn > m_uiBufferSizeBytes*2 )
+        {
+            // Don't process call this function againn until we have recieved data
+            m_bCopiedOutgoingBufferToBufferedOutput = true;
+
+            // Stop buffering output
+            m_bBufferOutput = false;
+
+            // Make sure we don't exceed the buffer size, we can have less and fill the rest of the buffer with silence
+            if (uiBytesWaitingToReturn > m_uiBufferSizeBytes)
+            {
+                uiBytesWaitingToReturn = m_uiBufferSizeBytes;
+            }
+            else
+            {
+                // Align the write index
+                m_uiIncomingWriteIndex = m_uiIncomingReadIndex + m_uiBufferSizeBytes;
+
+                // If we are at the end of the circular buffer, go back to the start
+                if (m_uiIncomingWriteIndex == uiTotalBufferSize)
+                    m_uiIncomingWriteIndex = 0;
+            }
+
+            // Get our input buffer ( buffer + read offset )
+            short *pBufInput = (short *)(m_pIncomingBuffer + m_uiIncomingReadIndex);
+            for (unsigned int j = 0; j < uiBytesWaitingToReturn / VOICE_SAMPLE_SIZE; j++)
+            {
+                // Write clamped to buffered output
+                m_pBufferedOutput[j] += pBufInput[ j % (uiTotalBufferSize/VOICE_SAMPLE_SIZE) ];
+            }
+
+            // Align our read index
+            m_uiIncomingReadIndex += m_uiBufferSizeBytes;
+
+            // If we are at the end of the circular buffer, go back to the start
+            if (m_uiIncomingReadIndex == uiTotalBufferSize)
+                m_uiIncomingReadIndex=0;
+        }
     }
 }
 
+void CClientPlayerVoice::ReceiveFrame( void* outputBuffer )
+{
+    // Cast our output buffer to short
+    short *pOutBuffer = (short*)outputBuffer;
+
+    // Clamp floats to short
+    for (unsigned int i = 0; i < m_uiBufferSizeBytes / VOICE_SAMPLE_SIZE; i++)
+    {
+        if (m_pBufferedOutput[i] > 32767.0f)
+            pOutBuffer[i] = 32767;
+        else if (m_pBufferedOutput[i]<-32768.0f)
+            pOutBuffer[i] =- 32768;
+        else
+            pOutBuffer[i] = (short)m_pBufferedOutput[i];
+    }
+
+    // Zero all data
+    m_bZeroBufferedOutput=true;
+}
 
 void CClientPlayerVoice::DecodeAndBuffer(char* pBuffer, unsigned int bytesWritten )
 {
-    m_CS.Lock ();
-    CLuaArguments Arguments;
-    if ( !m_bVoiceActive )
+    //if ( m_bEnabled )
     {
-        m_CS.Unlock ();
-        ServiceEventQueue ();
-        if ( !m_pPlayer->CallEvent ( "onClientPlayerVoiceStart", Arguments, true ) )
-            return;
+        g_pCore->DebugEcho("DECODE");
+        char pTempBuffer[2048];
+        SpeexBits speexBits;
+        speex_bits_init(&speexBits);
 
-        m_CS.Lock ();
-        m_bVoiceActive = true;
-    }
+        speex_bits_read_from(&speexBits, (char*)(pBuffer), bytesWritten);
+        speex_decode_int(m_pSpeexDecoderState, &speexBits, (spx_int16_t*)pTempBuffer);
 
-    char pTempBuffer[2048];
-    SpeexBits speexBits;
-    speex_bits_init(&speexBits);
+        speex_bits_destroy(&speexBits);
 
-    speex_bits_read_from(&speexBits, (char*)(pBuffer), bytesWritten);
-    speex_decode_int(m_pSpeexDecoderState, &speexBits, (spx_int16_t*)pTempBuffer);
+        unsigned int remainingBufferSize = 0;
 
-    speex_bits_destroy(&speexBits);
-
-    unsigned int uiSpeexBlockSize = m_iSpeexIncomingFrameSampleCount * VOICE_SAMPLE_SIZE;
-
-    BASS_StreamPutData ( m_pBassPlaybackStream, (void*)pTempBuffer, uiSpeexBlockSize );
-
-    m_CS.Unlock ();
-}
-
-
-void CClientPlayerVoice::ServiceEventQueue ( void )
-{
-    m_CS.Lock ();
-    while ( !m_EventQueue.empty () )
-    {
-        SString strEvent = m_EventQueue.front ();
-        m_EventQueue.pop_front ();
-
-        m_CS.Unlock ();
-
-        CLuaArguments Arguments;
-        m_pPlayer->CallEvent ( strEvent, Arguments, true );
-
-        m_CS.Lock ();
-    }
-    m_CS.Unlock ();
-}
-
-////////////////////////////////////////////////////////////
-//
-// CClientPlayerVoice:: Sea of sets 'n' gets
-//
-//
-//
-////////////////////////////////////////////////////////////
-void CClientPlayerVoice::SetPlayPosition ( double dPosition )
-{
-    // Only relevant for non-streams, which are always ready if valid
-    if ( m_pBassPlaybackStream )
-    {
-        // Make sure position is in range
-        QWORD bytePosition = BASS_ChannelSeconds2Bytes( m_pBassPlaybackStream, dPosition );
-        QWORD byteLength = BASS_ChannelGetLength( m_pBassPlaybackStream, BASS_POS_BYTE );
-        BASS_ChannelSetPosition( m_pBassPlaybackStream, Clamp < QWORD > ( 0, bytePosition, byteLength - 1 ), BASS_POS_BYTE );
-    }
-}
-
-double CClientPlayerVoice::GetPlayPosition ( void )
-{
-    if ( m_pBassPlaybackStream )
-    {
-        QWORD pos = BASS_ChannelGetPosition( m_pBassPlaybackStream, BASS_POS_BYTE );
-        if ( pos != -1 )
-            return BASS_ChannelBytes2Seconds( m_pBassPlaybackStream, pos );
-    }
-    return 0.0;
-}
-
-double CClientPlayerVoice::GetLength ( bool bAvoidLoad )
-{
-    if ( m_pBassPlaybackStream )
-    {
-        QWORD length = BASS_ChannelGetLength( m_pBassPlaybackStream, BASS_POS_BYTE );
-        if ( length != -1 )
-            return BASS_ChannelBytes2Seconds( m_pBassPlaybackStream, length );
-    }
-    return 0;
-}
-
-float CClientPlayerVoice::GetVolume ( void )
-{
-    return m_fVolume;
-}
-
-void CClientPlayerVoice::SetVolume ( float fVolume, bool bStore )
-{
-    m_fVolume = fVolume;
-
-    if ( m_pBassPlaybackStream && m_pPlayer->IsLocalPlayer ( ) == false )
-    {
-        float fScaledVolume = m_fVolume * m_fVolumeScale;
-        BASS_ChannelSetAttribute( m_pBassPlaybackStream, BASS_ATTRIB_VOL, fScaledVolume );
-    }
-}
-
-float CClientPlayerVoice::GetPlaybackSpeed ( void )
-{
-    return m_fPlaybackSpeed;
-}
-
-void CClientPlayerVoice::SetPlaybackSpeed ( float fSpeed )
-{
-    m_fPlaybackSpeed = fSpeed;
-
-    if ( m_pBassPlaybackStream )
-        BASS_ChannelSetAttribute ( m_pBassPlaybackStream, BASS_ATTRIB_FREQ, fSpeed * m_fDefaultFrequency );
-}
-
-void CClientPlayerVoice::ApplyFXModifications ( float fSampleRate, float fTempo, float fPitch, bool bReversed )
-{
-    m_fSampleRate = fSampleRate;
-    m_fTempo = fTempo;
-    m_fPitch = fPitch;
-    if ( m_pBassPlaybackStream )
-    {
-        if ( fTempo != m_fTempo )
-        {
-            m_fTempo = fTempo;
-        }
-        if ( fPitch != m_fPitch )
-        {
-            m_fPitch = fPitch;
-        }
-        if ( fSampleRate != m_fSampleRate )
-        {
-            m_fSampleRate = fSampleRate;
-        }
-
-        // Update our attributes
-        BASS_ChannelSetAttribute ( m_pBassPlaybackStream, BASS_ATTRIB_TEMPO, m_fTempo );
-        BASS_ChannelSetAttribute ( m_pBassPlaybackStream, BASS_ATTRIB_TEMPO_PITCH, m_fPitch );
-        BASS_ChannelSetAttribute ( m_pBassPlaybackStream, BASS_ATTRIB_TEMPO_FREQ, m_fSampleRate );
-    }
-}
-
-void CClientPlayerVoice::GetFXModifications ( float &fSampleRate, float &fTempo, float &fPitch, bool &bReversed )
-{
-    if ( m_pBassPlaybackStream )
-    {
-        GetTempoValues ( fSampleRate, fTempo, fPitch, bReversed );
-    }
-}
-
-float* CClientPlayerVoice::GetFFTData ( int iLength )
-{
-    if ( m_pBassPlaybackStream )
-    {
-        long lFlags = BASS_DATA_FFT256;
-        if ( iLength == 256 )
-            lFlags = BASS_DATA_FFT256;
-        else if ( iLength == 512 )
-            lFlags = BASS_DATA_FFT512;
-        else if ( iLength == 1024 )
-            lFlags = BASS_DATA_FFT1024;
-        else if ( iLength == 2048 )
-            lFlags = BASS_DATA_FFT2048;
-        else if ( iLength == 4096 )
-            lFlags = BASS_DATA_FFT4096;
-        else if ( iLength == 8192 )
-            lFlags = BASS_DATA_FFT8192;
-        else if ( iLength == 16384 )
-            lFlags = BASS_DATA_FFT16384;
-        else 
-            return NULL;
-
-        float* pData = new float[ iLength ];
-        if ( BASS_ChannelGetData ( m_pBassPlaybackStream, pData, lFlags ) != -1 )
-            return pData;
+        unsigned int uiTotalBufferSize=m_uiBufferSizeBytes * FRAME_INCOMING_BUFFER_COUNT;
+        if (m_uiIncomingWriteIndex >= m_uiIncomingReadIndex)
+            remainingBufferSize = uiTotalBufferSize - (m_uiIncomingWriteIndex-m_uiIncomingReadIndex);
         else
+            remainingBufferSize = m_uiIncomingReadIndex - m_uiIncomingWriteIndex;
+
+        unsigned int uiSpeexBlockSize = m_iSpeexIncomingFrameSampleCount * VOICE_SAMPLE_SIZE;
+
+        // Will it fit directly into the buffer? Otherwise wrap it
+        if (m_uiIncomingWriteIndex + uiSpeexBlockSize <= uiTotalBufferSize)
         {
-            delete [] pData;
-            return NULL;
-        }
-    }
-    return NULL;
-}
-
-
-float* CClientPlayerVoice::GetWaveData ( int iLength )
-{
-    if ( m_pBassPlaybackStream )
-    {
-        long lFlags = 0;
-        if ( iLength == 128 || iLength == 256 || iLength == 512 || iLength == 1024 || iLength == 2048 || iLength == 4096 || iLength == 8192 || iLength == 16384 )
-        {
-            lFlags = 4*iLength|BASS_DATA_FLOAT;
-        }
-        else 
-            return NULL;
-
-        float* pData = new float [ iLength ];
-        if ( BASS_ChannelGetData ( m_pBassPlaybackStream, pData, lFlags ) != -1 )
-            return pData;
-        else
-        {
-            delete [] pData;
-            return NULL;
-        }
-    }
-    return NULL;
-}
-
-DWORD CClientPlayerVoice::GetLevelData ( void )
-{
-    if ( m_pBassPlaybackStream )
-    {
-        DWORD dwData = BASS_ChannelGetLevel ( m_pBassPlaybackStream );
-        if ( dwData != 0 )
-            return dwData;
-    }
-    return 0;
-}
-
-////////////////////////////////////////////////////////////
-//
-// CClientSound::SetFxEffect
-//
-//
-//
-////////////////////////////////////////////////////////////
-bool CClientPlayerVoice::SetFxEffect ( uint uiFxEffect, bool bEnable )
-{
-    if ( uiFxEffect >= NUMELMS( m_EnabledEffects ) )
-        return false;
-
-    m_EnabledEffects[uiFxEffect] = bEnable;
-
-    // Apply if active
-    if ( m_pBassPlaybackStream )
-        ApplyFxEffects ();
-
-    return true;
-}
-
-//
-// Copy state stored in m_EnabledEffects to actual BASS sound
-//
-void CClientPlayerVoice::ApplyFxEffects ( void )
-{
-    for ( uint i = 0 ; i < NUMELMS(m_FxEffects) && NUMELMS(m_EnabledEffects) ; i++ )
-    {
-        if ( m_EnabledEffects[i] && !m_FxEffects[i] )
-        {
-            // Switch on
-            m_FxEffects[i] = BASS_ChannelSetFX ( m_pBassPlaybackStream, i, 0 );
-            if ( !m_FxEffects[i] )
-                m_FxEffects[i] = INVALID_FX_HANDLE;
+            memcpy(m_pIncomingBuffer + m_uiIncomingWriteIndex, pTempBuffer, uiSpeexBlockSize);
         }
         else
         {
-            if ( !m_EnabledEffects[i] && m_FxEffects[i] )
-            {
-                // Switch off
-                if ( m_FxEffects[i] != INVALID_FX_HANDLE )
-                    BASS_ChannelRemoveFX ( m_pBassPlaybackStream, m_FxEffects[i] );
-                m_FxEffects[i] = 0;
-            }
+            memcpy(m_pIncomingBuffer + m_uiIncomingWriteIndex, pTempBuffer, uiTotalBufferSize-m_uiIncomingWriteIndex);
+            memcpy(m_pIncomingBuffer, pTempBuffer, uiSpeexBlockSize - ( uiTotalBufferSize - m_uiIncomingWriteIndex ));
         }
-    }
-}
+        m_uiIncomingWriteIndex=(m_uiIncomingWriteIndex+uiSpeexBlockSize) % uiTotalBufferSize;
 
-bool CClientPlayerVoice::IsFxEffectEnabled ( uint uiFxEffect )
-{
-    if ( uiFxEffect >= NUMELMS( m_EnabledEffects ) )
-        return false;
-
-    return m_EnabledEffects[uiFxEffect] ? true : false;
-}
-
-bool CClientPlayerVoice::GetPan ( float& fPan )
-{
-    fPan = 0.0f;
-    if ( m_pBassPlaybackStream )
-    {
-        BASS_ChannelGetAttribute( m_pBassPlaybackStream, BASS_ATTRIB_PAN, &fPan );
-        return true;
-    }
-    return false;
-}
-
-
-bool CClientPlayerVoice::SetPan ( float fPan )
-{
-    if ( m_pBassPlaybackStream )
-    {
-        BASS_ChannelSetAttribute( m_pBassPlaybackStream, BASS_ATTRIB_PAN, fPan );
-
-        return true;
-    }
-
-    return false;
-}
-
-void CClientPlayerVoice::SetPaused ( bool bPaused )
-{
-    if ( m_bPaused != bPaused )
-    {
-        if ( bPaused )
+        // Will we over run the buffer space available?
+        if (m_uiBufferSizeBytes >= remainingBufferSize)
         {
-            // call onClientPlayerVoicePause
+            // Increment our read index by one block
+            m_uiIncomingReadIndex += m_uiBufferSizeBytes;
+
+            // If we have reached the end of the circular buffer, go back to the start
+            if (m_uiIncomingReadIndex == uiTotalBufferSize)
+                m_uiIncomingReadIndex=0;
+        }
+
+        if ( !m_bUsingVoice )
+        {
+            //Trigger our lua voice event
             CLuaArguments Arguments;
-            Arguments.PushString ( "paused" );     // Reason
-            m_pPlayer->CallEvent ( "onClientPlayerVoicePause", Arguments, false );
-        }
-        else
-        {
-            // call onClientPlayerVoiceResumed
-            CLuaArguments Arguments;
-            Arguments.PushString ( "resumed" );     // Reason
-            m_pPlayer->CallEvent ( "onClientPlayerVoiceResumed", Arguments, false );
+            m_pPlayer->CallEvent ( "onClientPlayerVoiceStart", Arguments, true );
+            m_bUsingVoice = true;
         }
     }
-
-    m_bPaused = bPaused;
-
-
-    if ( m_pBassPlaybackStream )
-    {
-        if ( bPaused )
-            BASS_ChannelPause ( m_pBassPlaybackStream );
-        else
-            BASS_ChannelPlay ( m_pBassPlaybackStream, false );
-    }
-}
-
-bool CClientPlayerVoice::IsPaused ( void )
-{
-    return m_bPaused;
 }

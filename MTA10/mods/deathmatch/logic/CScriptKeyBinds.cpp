@@ -17,8 +17,8 @@
 
 using std::list;
 
-static const SFixedArray < SScriptBindableKey, 107 > g_bkKeys = 
-{ {
+SScriptBindableKey g_bkKeys [ NUMBER_OF_KEYS ] = 
+{ 
     { "mouse1" }, { "mouse2" }, { "mouse3" }, { "mouse_wheel_up" }, { "mouse_wheel_down" },
     { "mouse4" }, { "mouse5" }, { "backspace" }, { "tab" }, { "lshift" }, { "rshift" },
     { "lctrl" }, { "rctrl" }, { "lalt" }, { "ralt" }, { "pause" }, { "capslock" },
@@ -29,17 +29,17 @@ static const SFixedArray < SScriptBindableKey, 107 > g_bkKeys =
     { "j" }, { "k" }, { "l" }, { "m" }, { "n" }, { "o" }, { "p" }, { "q" }, { "r" }, 
     { "s" }, { "t" }, { "u" }, { "v" }, { "w" }, { "x" }, { "y" }, { "z" }, { "num_0" }, 
     { "num_1" }, { "num_2" }, { "num_3" }, { "num_4" }, { "num_5" }, { "num_6" },
-    { "num_7" }, { "num_8" }, { "num_9" }, { "num_mul" }, { "num_add" }, { "num_enter" },
+    { "num_7" }, { "num_8" }, { "num_9" }, { "num_mul" }, { "num_add" },
     { "num_sep" }, { "num_sub" }, { "num_dec" }, { "num_div" }, { "F1" }, { "F2" }, 
     { "F3" }, { "F4" }, { "F5" }, { "F6" }, { "F7" }, /* { "F8" },  * Used for console */
     { "F9" }, { "F10" }, { "F11" }, { "F12" }, { "scroll" }, { ";" }, { "=" }, { "," }, { "-" },
     { "." }, { "/" }, { "'" }, { "[" }, { "\\" }, { "]" },  { "#" },
     { "" }
-} };
+};
 
 
-static const SFixedArray < SScriptBindableGTAControl, 45 > g_bcControls = 
-{ {
+SScriptBindableGTAControl g_bcControls[] =
+{
     { "fire" }, { "next_weapon" }, { "previous_weapon" }, { "forwards" }, { "backwards" },
     { "left" }, { "right" }, { "zoom_in" }, { "zoom_out" }, { "enter_exit" },
     { "change_camera" }, { "jump" }, { "sprint" }, { "look_behind" }, { "crouch" },
@@ -52,7 +52,7 @@ static const SFixedArray < SScriptBindableGTAControl, 45 > g_bcControls =
     { "special_control_down" }, { "special_control_up" }, { "aim_weapon" },
     { "conversation_yes" }, { "conversation_no" }, { "group_control_forwards" },
     { "group_control_back" }, { "" }
-} };
+};
 
 
 CScriptKeyBinds::~CScriptKeyBinds ( void )
@@ -61,11 +61,11 @@ CScriptKeyBinds::~CScriptKeyBinds ( void )
 }
 
 
-const SScriptBindableKey* CScriptKeyBinds::GetBindableFromKey ( const char* szKey )
+SScriptBindableKey* CScriptKeyBinds::GetBindableFromKey ( const char* szKey )
 {
     for ( int i = 0 ; *g_bkKeys [ i ].szKey != NULL ; i++ )
     {
-        const SScriptBindableKey* temp = &g_bkKeys [ i ];
+        SScriptBindableKey* temp = &g_bkKeys [ i ];
         if ( !stricmp ( temp->szKey, szKey ) )
         {
             return temp;
@@ -76,11 +76,11 @@ const SScriptBindableKey* CScriptKeyBinds::GetBindableFromKey ( const char* szKe
 }
 
 
-const SScriptBindableGTAControl* CScriptKeyBinds::GetBindableFromControl ( const char* szControl )
+SScriptBindableGTAControl* CScriptKeyBinds::GetBindableFromControl ( const char* szControl )
 {
     for ( int i = 0 ; *g_bcControls [ i ].szControl != NULL ; i++ )
     {
-        const SScriptBindableGTAControl* temp = &g_bcControls [ i ];
+        SScriptBindableGTAControl* temp = &g_bcControls [ i ];
         if ( !stricmp ( temp->szControl, szControl ) )
         {
             return temp;
@@ -115,7 +115,7 @@ void CScriptKeyBinds::Clear ( eScriptKeyBindType bindType )
                 continue;
             }
         }
-        ++iter;
+        iter++;
     }
 }
 
@@ -129,7 +129,7 @@ void CScriptKeyBinds::Call ( CScriptKeyBind* pKeyBind )
             case SCRIPT_KEY_BIND_FUNCTION:
             {
                 CScriptKeyFunctionBind* pBind = static_cast < CScriptKeyFunctionBind* > ( pKeyBind );
-                if ( pBind->luaMain && VERIFY_FUNCTION( pBind->m_iLuaFunction ) )
+                if ( pBind->luaMain && pBind->m_iLuaFunction )
                 {
                     CLuaArguments Arguments;
                     Arguments.PushString ( pBind->boundKey->szKey );
@@ -142,7 +142,7 @@ void CScriptKeyBinds::Call ( CScriptKeyBind* pKeyBind )
             case SCRIPT_KEY_BIND_CONTROL_FUNCTION:
             {
                 CScriptControlFunctionBind* pBind = static_cast < CScriptControlFunctionBind* > ( pKeyBind );
-                if ( pBind->luaMain && VERIFY_FUNCTION( pBind->m_iLuaFunction ) )
+                if ( pBind->luaMain && pBind->m_iLuaFunction )
                 {
                     CLuaArguments Arguments;
                     Arguments.PushString ( pBind->boundControl->szControl );
@@ -160,8 +160,8 @@ void CScriptKeyBinds::Call ( CScriptKeyBind* pKeyBind )
 bool CScriptKeyBinds::ProcessKey ( const char* szKey, bool bHitState, eScriptKeyBindType bindType )
 {
     m_bProcessingKey = true;
-    const SScriptBindableKey * pKey = NULL;
-    const SScriptBindableGTAControl * pControl = NULL;
+    SScriptBindableKey * pKey = NULL;
+    SScriptBindableGTAControl * pControl = NULL;
     if ( bindType == SCRIPT_KEY_BIND_FUNCTION )
     {
         pKey = GetBindableFromKey ( szKey );
@@ -223,12 +223,12 @@ bool CScriptKeyBinds::ProcessKey ( const char* szKey, bool bHitState, eScriptKey
 }
 
 
-bool CScriptKeyBinds::AddKeyFunction ( const char* szKey, bool bHitState, CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFunction, CLuaArguments& Arguments )
+bool CScriptKeyBinds::AddKeyFunction ( const char* szKey, bool bHitState, CLuaMain* pLuaMain, int iLuaFunction, CLuaArguments& Arguments )
 {
     if ( szKey == NULL )
         return false;
 
-    const SScriptBindableKey* pKey = GetBindableFromKey ( szKey );
+    SScriptBindableKey* pKey = GetBindableFromKey ( szKey );
     if ( pKey )
     {
         CScriptKeyFunctionBind* pBind = new CScriptKeyFunctionBind;
@@ -246,7 +246,7 @@ bool CScriptKeyBinds::AddKeyFunction ( const char* szKey, bool bHitState, CLuaMa
 }
 
 
-bool CScriptKeyBinds::AddKeyFunction ( const SScriptBindableKey* pKey, bool bHitState, CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFunction, CLuaArguments& Arguments )
+bool CScriptKeyBinds::AddKeyFunction ( SScriptBindableKey* pKey, bool bHitState, CLuaMain* pLuaMain, int iLuaFunction, CLuaArguments& Arguments )
 {
     if ( pKey )
     {
@@ -265,9 +265,9 @@ bool CScriptKeyBinds::AddKeyFunction ( const SScriptBindableKey* pKey, bool bHit
 }
 
 
-bool CScriptKeyBinds::RemoveKeyFunction ( const char* szKey, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, const CLuaFunctionRef& iLuaFunction )
+bool CScriptKeyBinds::RemoveKeyFunction ( const char* szKey, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, int iLuaFunction )
 {
-    const SScriptBindableKey * pKey = GetBindableFromKey ( szKey );
+    SScriptBindableKey * pKey = GetBindableFromKey ( szKey );
     if ( pKey )
     {
         return RemoveKeyFunction ( pKey, pLuaMain, bCheckHitState, bHitState, iLuaFunction );
@@ -276,7 +276,7 @@ bool CScriptKeyBinds::RemoveKeyFunction ( const char* szKey, CLuaMain* pLuaMain,
 }
 
 
-bool CScriptKeyBinds::RemoveKeyFunction ( const SScriptBindableKey* pKey, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, const CLuaFunctionRef& iLuaFunction )
+bool CScriptKeyBinds::RemoveKeyFunction ( SScriptBindableKey* pKey, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, int iLuaFunction )
 {
     bool bFound = false;
     CScriptKeyFunctionBind* pBind = NULL;
@@ -293,7 +293,7 @@ bool CScriptKeyBinds::RemoveKeyFunction ( const SScriptBindableKey* pKey, CLuaMa
                 {
                     if ( !bCheckHitState || pBind->bHitState == bHitState )
                     {
-                        if ( IS_REFNIL ( iLuaFunction ) || pBind->m_iLuaFunction == iLuaFunction )
+                        if ( iLuaFunction == 0 || pBind->m_iLuaFunction == iLuaFunction )
                         {
                             bFound = true;
 
@@ -310,15 +310,15 @@ bool CScriptKeyBinds::RemoveKeyFunction ( const SScriptBindableKey* pKey, CLuaMa
                 }
             }
         }
-        ++iter;
+        iter++;
     }
     return bFound;
 }
 
 
-bool CScriptKeyBinds::KeyFunctionExists ( const char* szKey, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, const CLuaFunctionRef& iLuaFunction )
+bool CScriptKeyBinds::KeyFunctionExists ( const char* szKey, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, int iLuaFunction )
 {
-    const SScriptBindableKey * pKey = GetBindableFromKey ( szKey );
+    SScriptBindableKey * pKey = GetBindableFromKey ( szKey );
     if ( pKey )
     {
         return KeyFunctionExists ( pKey, pLuaMain, bCheckHitState, bHitState, iLuaFunction );
@@ -327,7 +327,7 @@ bool CScriptKeyBinds::KeyFunctionExists ( const char* szKey, CLuaMain* pLuaMain,
 }
 
 
-bool CScriptKeyBinds::KeyFunctionExists ( const SScriptBindableKey* pKey, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, const CLuaFunctionRef& iLuaFunction )
+bool CScriptKeyBinds::KeyFunctionExists ( SScriptBindableKey* pKey, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, int iLuaFunction )
 {
     bool bFound = false;
     list < CScriptKeyBind* > cloneList = m_List;
@@ -343,7 +343,7 @@ bool CScriptKeyBinds::KeyFunctionExists ( const SScriptBindableKey* pKey, CLuaMa
                 {
                     if ( !bCheckHitState || pBind->bHitState == bHitState )
                     {
-                        if ( IS_REFNIL( iLuaFunction ) || pBind->m_iLuaFunction == iLuaFunction )
+                        if ( iLuaFunction == 0 || pBind->m_iLuaFunction == iLuaFunction )
                         {
                             bFound = true;
                         }
@@ -380,12 +380,12 @@ void CScriptKeyBinds::RemoveAllKeys ( CLuaMain* pLuaMain )
 }
 
 
-bool CScriptKeyBinds::AddControlFunction ( const char* szControl, bool bHitState, CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFunction, CLuaArguments& Arguments )
+bool CScriptKeyBinds::AddControlFunction ( const char* szControl, bool bHitState, CLuaMain* pLuaMain, int iLuaFunction, CLuaArguments& Arguments )
 {
     if ( szControl == NULL )
         return false;
 
-    const SScriptBindableGTAControl* pControl = GetBindableFromControl ( szControl );
+    SScriptBindableGTAControl* pControl = GetBindableFromControl ( szControl );
     if ( pControl )
     {
         CScriptControlFunctionBind* pBind = new CScriptControlFunctionBind;
@@ -404,7 +404,7 @@ bool CScriptKeyBinds::AddControlFunction ( const char* szControl, bool bHitState
 }
 
 
-bool CScriptKeyBinds::AddControlFunction ( const SScriptBindableGTAControl* pControl, bool bHitState, CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFunction, CLuaArguments& Arguments )
+bool CScriptKeyBinds::AddControlFunction ( SScriptBindableGTAControl* pControl, bool bHitState, CLuaMain* pLuaMain, int iLuaFunction, CLuaArguments& Arguments )
 {
     if ( pControl )
     {
@@ -424,9 +424,9 @@ bool CScriptKeyBinds::AddControlFunction ( const SScriptBindableGTAControl* pCon
 }
 
 
-bool CScriptKeyBinds::RemoveControlFunction ( const char* szControl, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, const CLuaFunctionRef& iLuaFunction )
+bool CScriptKeyBinds::RemoveControlFunction ( const char* szControl, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, int iLuaFunction )
 {
-    const SScriptBindableGTAControl * pControl = GetBindableFromControl ( szControl );
+    SScriptBindableGTAControl * pControl = GetBindableFromControl ( szControl );
     if ( pControl )
     {
         return RemoveControlFunction ( pControl, pLuaMain, bCheckHitState, bHitState, iLuaFunction );
@@ -435,7 +435,7 @@ bool CScriptKeyBinds::RemoveControlFunction ( const char* szControl, CLuaMain* p
 }
 
 
-bool CScriptKeyBinds::RemoveControlFunction ( const SScriptBindableGTAControl* pControl, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, const CLuaFunctionRef& iLuaFunction )
+bool CScriptKeyBinds::RemoveControlFunction ( SScriptBindableGTAControl* pControl, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, int iLuaFunction )
 {
     bool bFound = false;
     CScriptControlFunctionBind* pBind = NULL;
@@ -452,7 +452,7 @@ bool CScriptKeyBinds::RemoveControlFunction ( const SScriptBindableGTAControl* p
                 {
                     if ( !bCheckHitState || pBind->bHitState == bHitState )
                     {
-                        if ( IS_REFNIL ( iLuaFunction ) || pBind->m_iLuaFunction == iLuaFunction )
+                        if ( iLuaFunction == 0 || pBind->m_iLuaFunction == iLuaFunction )
                         {
                             bFound = true;
                             if ( m_bProcessingKey ) (*iter)->beingDeleted = true;
@@ -474,9 +474,9 @@ bool CScriptKeyBinds::RemoveControlFunction ( const SScriptBindableGTAControl* p
 }
 
 
-bool CScriptKeyBinds::ControlFunctionExists ( const char* szControl, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, const CLuaFunctionRef& iLuaFunction )
+bool CScriptKeyBinds::ControlFunctionExists ( const char* szControl, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, int iLuaFunction )
 {
-    const SScriptBindableGTAControl * pControl = GetBindableFromControl ( szControl );
+    SScriptBindableGTAControl * pControl = GetBindableFromControl ( szControl );
     if ( pControl )
     {
         return ControlFunctionExists ( pControl, pLuaMain, bCheckHitState, bHitState, iLuaFunction );
@@ -485,7 +485,7 @@ bool CScriptKeyBinds::ControlFunctionExists ( const char* szControl, CLuaMain* p
 }
 
 
-bool CScriptKeyBinds::ControlFunctionExists ( const SScriptBindableGTAControl* pControl, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, const CLuaFunctionRef& iLuaFunction )
+bool CScriptKeyBinds::ControlFunctionExists ( SScriptBindableGTAControl* pControl, CLuaMain* pLuaMain, bool bCheckHitState, bool bHitState, int iLuaFunction )
 {
     bool bFound = false;
     list < CScriptKeyBind* > cloneList = m_List;
@@ -501,7 +501,7 @@ bool CScriptKeyBinds::ControlFunctionExists ( const SScriptBindableGTAControl* p
                 {
                     if ( !bCheckHitState || pBind->bHitState == bHitState )
                     {                    
-                        if ( IS_REFNIL ( iLuaFunction ) || pBind->m_iLuaFunction == iLuaFunction )
+                        if ( iLuaFunction == 0 || pBind->m_iLuaFunction == iLuaFunction )
                         {
                             bFound = true;
                         }
@@ -529,7 +529,7 @@ void CScriptKeyBinds::RemoveDeletedBinds ( void )
     }
 }
 
-bool CScriptKeyBinds::IsMouse ( const SScriptBindableKey* pKey )
+bool CScriptKeyBinds::IsMouse ( SScriptBindableKey* pKey )
 {
     if ( !pKey )
         return false;

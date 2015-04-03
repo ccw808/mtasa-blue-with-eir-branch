@@ -89,13 +89,13 @@ void CGUIMemo_Impl::EnsureCaratIsVisible ( void )
 }
 
 
-unsigned int CGUIMemo_Impl::GetCaretIndex ( void )
+unsigned int CGUIMemo_Impl::GetCaratIndex ( void )
 {
     return static_cast < unsigned int > ( reinterpret_cast < CEGUI::MultiLineEditbox* > ( m_pWindow )->getCaratIndex () );
 }
 
 
-void CGUIMemo_Impl::SetCaretIndex ( unsigned int uiIndex )
+void CGUIMemo_Impl::SetCaratIndex ( unsigned int uiIndex )
 {
     reinterpret_cast < CEGUI::MultiLineEditbox* > ( m_pWindow )->setCaratIndex ( uiIndex );
 }
@@ -153,7 +153,7 @@ bool CGUIMemo_Impl::ActivateOnTab ( void )
     if ( IsVisible () && !IsReadOnly () )
     {
         Activate ();
-        SetCaretIndex ( GetText().length () );
+        SetCaratIndex ( GetText().length () );
         return true;
     }
     return false;
@@ -176,7 +176,7 @@ bool CGUIMemo_Impl::Event_TextChanged ( const CEGUI::EventArgs& e )
 bool CGUIMemo_Impl::Event_OnKeyDown ( const CEGUI::EventArgs& e )
 {
     const CEGUI::KeyEventArgs& KeyboardArgs = reinterpret_cast < const CEGUI::KeyEventArgs& > ( e );
-    if( KeyboardArgs.scancode == CGUIKeys::Tab )
+    if( KeyboardArgs.scancode == CGUIKeys::Scan::Tab )
     {
         // tab pressed, if we are in a window with tab enabled, just switch to the next element
         if ( GetParent () == NULL )

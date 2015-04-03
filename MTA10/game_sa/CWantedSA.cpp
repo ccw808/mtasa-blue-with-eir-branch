@@ -18,7 +18,7 @@ CWantedSA::CWantedSA ( void )
     // TODO: Call GTA's new operator for CWanted. Lack of proper initialization might be causing crashes.
 
     internalInterface = new CWantedSAInterface;
-    MemSetFast ( internalInterface, 0, sizeof ( CWantedSAInterface ) );
+    memset ( internalInterface, 0, sizeof ( CWantedSAInterface ) );
 
     m_bDontDelete = false;
 }
@@ -60,12 +60,6 @@ void CWantedSA::SetWantedLevel ( DWORD dwWantedLevel )
         push    dwWantedLevel
         call    dwFunc
     }
-}
-void CWantedSA::SetWantedLevelNoFlash ( DWORD dwWantedLevel )
-{
-    DWORD dwLastTimeChanged = internalInterface->m_LastTimeWantedLevelChanged;
-    SetWantedLevel( dwWantedLevel );
-    internalInterface->m_LastTimeWantedLevelChanged = dwLastTimeChanged;
 }
 
 void CWantedSA::SetWantedLevelNoDrop ( DWORD dwWantedLevel )

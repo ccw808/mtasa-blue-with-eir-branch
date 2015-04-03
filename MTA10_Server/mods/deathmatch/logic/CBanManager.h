@@ -14,6 +14,7 @@
 #ifndef __CBANMANAGER_H
 #define __CBANMANAGER_H
 
+#include "CBan.h"
 #include "CClient.h"
 #include "CPlayerManager.h"
 
@@ -36,28 +37,28 @@ public:
 
     CBan*               AddBan                  ( const SString& strBanner = "Console", const SString& strReason = "", time_t tTimeOfUnban = 0 );
 
-    CBan*               GetBanFromScriptID      ( uint uiScriptID );
+    bool                Exists                  ( CBan* pBan );
 
+    bool                IsBanned                ( const char* szIP );
     bool                IsSpecificallyBanned    ( const char* szIP );
     bool                IsSerialBanned          ( const char* szSerial );
     bool                IsAccountBanned         ( const char* szAccount );
-    CBan*               GetBanFromAccount       ( const char* szAccount );
     void                RemoveBan               ( CBan* pBan );
+    void                RemoveAllBans           ( bool bPermanentDelete = false );
 
+    CBan*               GetBan                  ( const char* szIP );
+    CBan*               GetBan                  ( const char* szNick, unsigned int uiOccurrance );
     CBan*               GetBanFromSerial        ( const char* szSerial );
-    CBan*               GetBanFromIP            ( const char* szIP );
 
     unsigned int        GetBansWithNick         ( const char* szNick );
     unsigned int        GetBansWithBanner       ( const char* szBanner );
 
     bool                LoadBanList             ( void );
-    bool                ReloadBanList           ( void );
     void                SaveBanList             ( void );
     void                SafeSetValue            ( CXMLNode* pNode, const char* szKey, const std::string& strValue );
     void                SafeSetValue            ( CXMLNode* pNode, const char* szKey, unsigned int );
     std::string         SafeGetValue            ( CXMLNode* pNode, const char* szKey );
     bool                IsValidIP               ( const char* szIP );
-    static void         SetBansModified         ( void )                            { ms_bSaveRequired = true; }
 
     inline list < CBan* > ::const_iterator  IterBegin   ( void )                    { return m_BanManager.begin (); };
     inline list < CBan* > ::const_iterator  IterEnd     ( void )                    { return m_BanManager.end (); };
@@ -71,7 +72,6 @@ private:
 
     bool                IsValidIPPart               ( const char* szIP );
     bool                m_bAllowSave;
-    static bool         ms_bSaveRequired;
 };
 
 #endif

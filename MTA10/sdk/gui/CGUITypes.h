@@ -25,8 +25,8 @@ typedef int CGUIHandle;
 typedef CVector2D CGUIPosition;
 
 struct CGUIProperty {
-    SString strKey;
-    SString strValue;
+    char    *szKey;
+    char    *szValue;
 };
 
 typedef std::list< CGUIProperty* >::const_iterator CGUIPropertyIter;

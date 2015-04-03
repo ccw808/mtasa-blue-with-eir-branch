@@ -14,15 +14,16 @@
 
 CProxyDirectInput8::CProxyDirectInput8 ( IDirectInput8* pDevice )
 {
-    WriteDebugEvent ( SString( "CProxyDirectInput8::CProxyDirectInput8 %08x", this ) );
+    WriteDebugEvent ( "CProxyDirectInput8::CProxyDirectInput8" );
 
     // Initalize our local variable.
     m_pDevice       = pDevice;
+    m_dwRefCount    = 0;
 }
 
 CProxyDirectInput8::~CProxyDirectInput8 ( )
 {
-    WriteDebugEvent ( SString( "CProxyDirectInput8::~CProxyDirectInput8 %08x", this ) );
+    WriteDebugEvent ( "CProxyDirectInput8::~CProxyDirectInput8" );
 }
 
 /*** IUnknown methods ***/
@@ -33,19 +34,37 @@ HRESULT CProxyDirectInput8::QueryInterface ( REFIID riid,  LPVOID * ppvObj )
 
 ULONG   CProxyDirectInput8::AddRef ( VOID )
 {
+    // Incrase our refcount
+    m_dwRefCount++;
+
     return m_pDevice->AddRef ( );
 }
 
 ULONG   CProxyDirectInput8::Release ( VOID )
 {
-	// Call original function
-	ULONG ulRefCount = m_pDevice->Release ();
-    if ( ulRefCount == 0 )
+    ULONG       ulRefCount;
+    IUnknown *  pDestroyedDevice;
+
+    // Determine if we should self destruct
+    if ( m_dwRefCount-- == 0 )
     {
         WriteDebugEvent ( "Releasing IDirectInput8 Proxy..." );
-		delete this;
+
+        // Save device so we can destroy it after.
+        pDestroyedDevice = m_pDevice;
+
+        delete this;
+
+        // Call the release routine and get the refcount.
+        ulRefCount = pDestroyedDevice->Release ( );
+
+        return ulRefCount;
     }
-	return ulRefCount;
+
+    // Call the release routine and get the refcount.
+    ulRefCount = m_pDevice->Release ( );
+    
+    return ulRefCount;
 }
 
 /*** IDirectInput8A methods ***/

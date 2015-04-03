@@ -73,21 +73,6 @@ struct VideoMode //RwVideoMode
                                 */
 };
 
-enum eAspectRatio
-{
-    ASPECT_RATIO_AUTO,
-    ASPECT_RATIO_4_3,
-    ASPECT_RATIO_16_10,
-    ASPECT_RATIO_16_9,
-};
-
-enum eRadarMode
-{
-    RADAR_MODE_ALL = 0,
-    RADAR_MODE_BLIPS_ONLY,
-    RADAR_MODE_NO_HUD
-};
-
 class CGameSettings
 {
 public:
@@ -97,11 +82,6 @@ public:
     virtual VideoMode *     GetVideoModeInfo        ( VideoMode * modeInfo, unsigned int modeIndex ) = 0;
     virtual unsigned int    GetCurrentVideoMode     ( void ) = 0;
     virtual void            SetCurrentVideoMode     ( unsigned int modeIndex, bool bOnRestart ) = 0;
-    virtual unsigned int    GetNumAdapters          ( void ) = 0;
-    virtual unsigned int    GetCurrentAdapter       ( void ) = 0;
-    virtual bool            HasUnsafeResolutions    ( void ) = 0;
-    virtual bool            IsUnsafeResolution      ( int iWidth, int iHeight ) = 0;
-    virtual void            SetAdapter              ( unsigned int uiAdapterIndex ) = 0;
     virtual unsigned char   GetRadioVolume          ( void ) = 0;
     virtual void            SetRadioVolume          ( unsigned char ucVolume ) = 0;
     virtual unsigned char   GetSFXVolume            ( void ) = 0;
@@ -129,23 +109,6 @@ public:
 
     virtual unsigned int    GetAntiAliasing         ( void ) = 0;
     virtual void            SetAntiAliasing         ( unsigned int uiAntiAliasing, bool bOnRestart ) = 0;
-
-    virtual bool            IsMipMappingEnabled     ( void ) = 0;
-    virtual void            SetMipMappingEnabled    ( bool bEnable ) = 0;
-
-    virtual bool            IsVolumetricShadowsEnabled     ( void ) = 0;
-    virtual void            SetVolumetricShadowsEnabled    ( bool bEnable ) = 0;
-    virtual void            SetVolumetricShadowsSuspended  ( bool bSuspended ) = 0;
-
-    virtual float           GetAspectRatioValue     ( void ) = 0;
-    virtual eAspectRatio    GetAspectRatio          ( void ) = 0;
-    virtual void            SetAspectRatio          ( eAspectRatio aspectRatio, bool bAdjustmentEnabled = true ) = 0;
-
-    virtual bool            IsGrassEnabled          ( void ) = 0;
-    virtual void            SetGrassEnabled         ( bool bEnable ) = 0;
-
-    virtual eRadarMode      GetRadarMode            ( void ) = 0;
-    virtual void            SetRadarMode            ( eRadarMode hudMode ) = 0;
 
     virtual void            Save                    ( void ) = 0;
 };

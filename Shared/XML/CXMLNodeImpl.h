@@ -53,7 +53,7 @@ public:
     bool                    GetTagContent       ( unsigned int& uiContent );
     bool                    GetTagContent       ( float& fContent );
 
-    void                    SetTagContent       ( const char* szContent, bool bCDATA = false );
+    void                    SetTagContent       ( const char* szContent );
     void                    SetTagContent       ( bool bContent );
     void                    SetTagContent       ( int iContent );
     void                    SetTagContent       ( unsigned int uiContent );
@@ -61,8 +61,7 @@ public:
     void                    SetTagContentf      ( const char* szFormat, ... );
 
     eXMLClass               GetClassType        ( void )    { return CXML_NODE; };
-    unsigned long           GetID               ( void )    { dassert ( m_pFile && m_pFile->IsUsingIDs () ); return m_ulID; };
-    bool                    IsUsingIDs          ( void )    { return m_bUsingIDs; };
+    unsigned long           GetID               ( void )    { return m_ulID; };
 
     CXMLNode*               CopyNode            ( CXMLNode* pParent = NULL );
     bool                    CopyChildrenInto    ( CXMLNode* pDestination, bool bRecursive );
@@ -74,15 +73,10 @@ public:
     void                    RemoveFromList      ( CXMLNode* pNode );
     void                    RemoveAllFromList   ( void );
 
-    bool                    IsValid             ( void ) { return !m_bUsingIDs || m_ulID != INVALID_XML_ID; };
-
-    virtual SString         GetAttributeValue   ( const SString& strAttributeName );
+    bool                    IsValid             ( void ) { return m_ulID != INVALID_XML_ID; };
 
 private:
     bool                    StringToLong        ( const char* szString, long& lValue );
-
-    unsigned long               m_ulID;
-    const bool                  m_bUsingIDs;
 
     class CXMLFileImpl*         m_pFile;
     CXMLNodeImpl*               m_pParent;
@@ -93,6 +87,8 @@ private:
     bool                        m_bCanRemoveFromList;
 
     CXMLAttributesImpl          m_Attributes;
+
+    unsigned long               m_ulID;
 };
 
 #endif

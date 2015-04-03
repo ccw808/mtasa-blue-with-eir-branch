@@ -16,11 +16,7 @@
 
 CAccount::CAccount ( CAccountManager* pManager, bool bRegistered, const std::string& strName, const std::string& strPassword, const std::string& strIP, int iUserID, const std::string& strSerial )
 {
-    m_uiScriptID = CIdArray::PopUniqueId ( this, EIdClass::ACCOUNT );
     m_pClient = NULL;
-
-    m_iUserID = 0;
-    m_bChanged = false;
 
     m_pManager = pManager;
 
@@ -29,21 +25,19 @@ CAccount::CAccount ( CAccountManager* pManager, bool bRegistered, const std::str
     m_uiNameHash = 0;
     SetName ( strName );
 
+    m_strPassword = strPassword;
     SetIP ( strIP );
     SetSerial ( strSerial );
     SetID ( iUserID );
 
     m_pManager->AddToList ( this );
-
-    m_bChanged = false;
-    if ( m_Password.SetPassword( strPassword ) )
-        m_pManager->MarkAsChanged ( this );     // Save if password upgraded
+    m_pManager->MarkAsChanged ( this );
 }
 
 
 CAccount::~CAccount ( void )
 {
-    CIdArray::PushUniqueId ( this, EIdClass::ACCOUNT, m_uiScriptID );
+    
     if ( m_pClient )
         m_pClient->SetAccount ( NULL );
 
@@ -54,9 +48,8 @@ CAccount::~CAccount ( void )
 
 void CAccount::Register ( const char* szPassword )
 {
-    SetPassword( szPassword );
+    HashPassword ( szPassword, m_strPassword );
     m_bRegistered = true;
-    m_Data.clear();
 
     m_pManager->MarkAsChanged ( this );
 }
@@ -66,8 +59,6 @@ void CAccount::SetName ( const std::string& strName )
 {
     if ( m_strName != strName )
     {
-        m_pManager->ChangingName ( this, m_strName, strName );
-
         m_strName = strName;
 
         if ( !m_strName.empty () )
@@ -78,34 +69,54 @@ void CAccount::SetName ( const std::string& strName )
 }
 
 
-void CAccount::SetClient( CClient* pClient )
+bool CAccount::IsPassword ( const char* szPassword )
 {
-    m_pClient = pClient;
-    // Clear data cache if not linked to a client
-    if ( !m_pClient )
-        m_Data.clear();
-}
-
-
-bool CAccount::IsPassword ( const SString& strPassword )
-{
-    return m_Password.IsPassword( strPassword );
-}
-
-
-void CAccount::SetPassword ( const SString& strPassword )
-{
-    if ( m_Password.CanChangePasswordTo( strPassword ) )
+    if ( szPassword )
     {
-        m_Password.SetPassword( strPassword );
+        std::string strPassword(szPassword);
+        //First check if the raw string matches the account password
+        if ( strPassword == m_strPassword )
+        {
+            //We have an unhashed password, so lets update it
+            SetPassword ( szPassword );
+            return true;
+        }
+        HashPassword ( szPassword, strPassword );
+        // Lower case, we dont need a case sensetive comparsion on hashes
+        std::transform ( strPassword.begin(), strPassword.end(), strPassword.begin(), ::tolower );
+        std::transform ( m_strPassword.begin(), m_strPassword.end(), m_strPassword.begin(), ::tolower );
+        return m_strPassword == strPassword;
+    }
+
+    return false;
+}
+
+
+void CAccount::SetPassword ( const char* szPassword )
+{
+    string strNewPassword;
+    HashPassword ( szPassword, strNewPassword );
+    if ( stricmp ( m_strPassword.c_str (), strNewPassword.c_str () ) != 0 )
+    {
+        m_strPassword = strNewPassword;
         m_pManager->MarkAsChanged ( this );
     }
 }
 
 
-SString CAccount::GetPasswordHash ( void )
+bool CAccount::HashPassword ( const char* szPassword, std::string& strHashPassword )
 {
-    return m_Password.GetPasswordHash();
+    char szHashed[33];
+    if ( szPassword && strlen ( szPassword ) > 0 )
+    {
+        MD5 Password;
+        CMD5Hasher Hasher;
+        Hasher.Calculate ( szPassword, strlen ( szPassword ), Password );
+        Hasher.ConvertToHex ( Password, szHashed );
+        strHashPassword = szHashed;
+        return true;
+    }
+    return false;
 }
 
 void CAccount::SetIP ( const std::string& strIP )
@@ -125,87 +136,10 @@ void CAccount::SetSerial ( const std::string& strSerial )
         m_pManager->MarkAsChanged ( this );
     }
 }
-
 void CAccount::SetID ( int iUserID )
 {
     if ( m_iUserID != iUserID )
     {
         m_iUserID = iUserID;
     }
-}
-
-CAccountData* CAccount::GetDataPointer ( const std::string& strKey )
-{
-    return MapFind( m_Data, strKey );
-}
-
-CLuaArgument* CAccount::GetData ( const std::string& strKey )
-{
-    CAccountData* pData = GetDataPointer ( strKey );
-    CLuaArgument* pResult = new CLuaArgument ();
-
-    if ( pData )
-    {
-        if ( pData->GetType () == LUA_TBOOLEAN )
-        {
-            pResult->ReadBool ( pData->GetStrValue () == "true" );
-        }
-        else
-        if ( pData->GetType () == LUA_TNUMBER )
-        {
-            pResult->ReadNumber ( strtod ( pData->GetStrValue ().c_str(), NULL ) );
-        }
-        else
-        {
-            pResult->ReadString ( pData->GetStrValue () );
-        }
-    }
-    else
-    {
-        pResult->ReadBool ( false );
-    }
-    return pResult;
-}
-
-// Return true if data was changed
-bool CAccount::SetData ( const std::string& strKey, const std::string& strValue, int iType )
-{
-    if ( strValue == "false" && iType == LUA_TBOOLEAN )
-    {
-        if ( HasData( strKey ) )
-        {
-            RemoveData ( strKey );
-            return true;
-        }
-    }
-    else
-    {
-        CAccountData* pData = GetDataPointer ( strKey );
-        
-        if ( pData )
-        {
-            if ( pData->GetType() != iType || pData->GetStrValue() != strValue )
-            {
-                pData->SetStrValue ( strValue );
-                pData->SetType ( iType );
-                return true;
-            }
-        }
-        else
-        {
-            MapSet ( m_Data, strKey, CAccountData ( strKey, strValue, iType ) );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CAccount::HasData ( const std::string& strKey )
-{
-    return MapContains( m_Data, strKey );
-}
-
-void CAccount::RemoveData ( const std::string& strKey )
-{
-    MapRemove( m_Data, strKey );
 }

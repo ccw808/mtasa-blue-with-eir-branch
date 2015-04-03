@@ -21,8 +21,7 @@ class CClientStreamSectorRow;
 
 class CClientStreamElement : public CClientEntity
 {
-    DECLARE_CLASS( CClientStreamElement, CClientEntity )
-    friend class CClientStreamer;
+    friend CClientStreamer;
 public:
                                 CClientStreamElement        ( CClientStreamer * pStreamer, ElementID ID );
                                 ~CClientStreamElement       ( void );
@@ -60,16 +59,13 @@ private:
     CClientStreamSector *       m_pStreamSector;
     CVector                     m_vecStreamPosition;    
     float                       m_fExpDistance;
-    unsigned short              m_usStreamReferences, m_usStreamReferencesScript;
-
-protected:
-    bool                        m_bStreamedIn;
     bool                        m_bAttemptingToStreamIn;
-    
+    bool                        m_bStreamedIn;
+    unsigned short              m_usStreamReferences, m_usStreamReferencesScript;
 public:
     float                       m_fCachedRadius;
     int                         m_iCachedRadiusCounter;
-    SFixedArray < CVector, 2 >  m_vecCachedBoundingBox;
+    CVector                     m_vecCachedBoundingBox[2];
     int                         m_iCachedBoundingBoxCounter;
 };
 

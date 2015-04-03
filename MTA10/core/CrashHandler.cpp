@@ -28,7 +28,6 @@ CONDITIONAL COMPILATION :
 #include "CrashHandler.h"
 #include <dbghelp.h>
 #include <TLHELP32.h>
-#include "detours/include/detours.h"
 
 using namespace std;
 
@@ -189,21 +188,6 @@ BOOL __stdcall SetCrashHandlerFilter ( PFNCHFILTFN pFn )
         {
             g_pfnOrigFilt =
                SetUnhandledExceptionFilter(CrashHandlerExceptionFilter);
-
-            // Stop the OS from turning off our handler
-            // Ref: http://www.codeproject.com/Articles/154686/SetUnhandledExceptionFilter-and-the-C-C-Runtime-Li
-
-            LOCAL_FUNCTION_START
-                static LONG WINAPI RedirectedSetUnhandledExceptionFilter(EXCEPTION_POINTERS * /*ExceptionInfo*/)
-                {
-                    // When the CRT calls SetUnhandledExceptionFilter with NULL parameter
-                    // our handler will not get removed.
-                    return 0;
-                }
-            LOCAL_FUNCTION_END
-
-            reinterpret_cast < LPTOP_LEVEL_EXCEPTION_FILTER > ( DetourFunction ( DetourFindFunction( "Kernel32.dll", "SetUnhandledExceptionFilter" ), 
-                                                                                  reinterpret_cast < PBYTE > ( LOCAL_FUNCTION::RedirectedSetUnhandledExceptionFilter ) ) );
         }
     }
     return ( TRUE ) ;
@@ -449,7 +433,7 @@ LPCTSTR __stdcall GetFaultReason ( EXCEPTION_POINTERS * pExPtrs )
         {
             iCurr += (FormatMessage( FORMAT_MESSAGE_IGNORE_INSERTS |
                                             FORMAT_MESSAGE_FROM_HMODULE,
-                                     GetModuleHandleA (_T("NTDLL.DLL")) ,
+                                     GetModuleHandle (_T("NTDLL.DLL")) ,
                                      pExPtrs->ExceptionRecord->
                                                           ExceptionCode,
                                      0                                 ,
@@ -496,7 +480,7 @@ LPCTSTR __stdcall GetFaultReason ( EXCEPTION_POINTERS * pExPtrs )
 
         // Start looking up the exception address.
         PIMAGEHLP_SYMBOL pSym = (PIMAGEHLP_SYMBOL)&g_stSymbol ;
-        FillMemory ( pSym, SYM_BUFF_SIZE , NULL  ) ;
+        FillMemory ( pSym , NULL , SYM_BUFF_SIZE ) ;
         pSym->SizeOfStruct = sizeof ( IMAGEHLP_SYMBOL ) ;
         pSym->MaxNameLength = SYM_BUFF_SIZE - sizeof ( IMAGEHLP_SYMBOL);
 
@@ -1328,7 +1312,7 @@ static DWORD __stdcall
 
     // This could blow the stack...
     char szBuff[ MAX_PATH + 1 ] ;
-    DWORD dwRet = GetModuleFileNameA ( hModule , szBuff , MAX_PATH ) ;
+    DWORD dwRet = GetModuleFileName ( hModule , szBuff , MAX_PATH ) ;
     ASSERT ( 0 != dwRet ) ;
     if ( 0 == dwRet )
     {
@@ -1422,7 +1406,7 @@ DWORD BUGSUTIL_DLLINTERFACE __stdcall
         for ( UINT uiCurr = 0 ; uiCurr < dwCount ; uiCurr++ )
         {
             // Get the module's filename.
-            if ( FALSE == GetModuleFileNameA ( paMods[ uiCurr ]     ,
+            if ( FALSE == GetModuleFileName ( paMods[ uiCurr ]     ,
                                               szModName            ,
                                               sizeof ( szModName )  ) )
             {

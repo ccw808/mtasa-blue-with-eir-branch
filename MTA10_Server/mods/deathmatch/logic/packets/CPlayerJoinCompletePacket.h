@@ -31,12 +31,10 @@ public:
                                                               int iHTTPMaxConnectionsPerClient,
                                                               int iEnableClientChecks, 
                                                               bool bVoiceEnabled, 
-                                                              unsigned char ucSampleRate,
-                                                              unsigned char ucVoiceQuality,
-                                                              unsigned int uiBitrate );
+                                                              unsigned int uiSampleRate );
 
     inline ePacketID        GetPacketID             ( void ) const      { return PACKET_ID_SERVER_JOINEDGAME; };
-    inline unsigned long    GetFlags                ( void ) const      { return PACKET_HIGH_PRIORITY | PACKET_RELIABLE | PACKET_SEQUENCED; };
+    inline unsigned long    GetFlags                ( void ) const      { return PACKET_RELIABLE | PACKET_SEQUENCED | PACKET_HIGH_PRIORITY; };
 
     bool                    Write                           ( NetBitStreamInterface& BitStream ) const;
 
@@ -46,13 +44,11 @@ private:
     ElementID               m_RootElementID;
     eHTTPDownloadType       m_ucHTTPDownloadType;
     unsigned short          m_usHTTPDownloadPort;
-    SString                 m_strHTTPDownloadURL;
+    char                    m_szHTTPDownloadURL [MAX_HTTP_DOWNLOAD_URL + 1];
     int                     m_iHTTPMaxConnectionsPerClient;
     int                     m_iEnableClientChecks;
     bool                    m_bVoiceEnabled;
-    unsigned char           m_ucSampleRate;
-    unsigned char           m_ucQuality;
-    unsigned int            m_uiBitrate;
+    unsigned int            m_uiSampleRate;
 };
 
 #endif

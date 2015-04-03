@@ -21,7 +21,7 @@ using std::list;
 
 extern CClientGame* g_pClientGame;
 
-#define UNOCCUPIED_VEHICLE_SYNC_RATE   ( g_TickRateSettings.iUnoccupiedVehicle )
+#define UNOCCUPIED_VEHICLE_SYNC_RATE 1000
 
 CUnoccupiedVehicleSync::CUnoccupiedVehicleSync ( CClientVehicleManager* pVehicleManager )
 {
@@ -152,7 +152,7 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleStartSync ( NetBitStreamInt
             BitStream.Read ( fHealth );
 
             // Set data for interpolation
-            pVehicle->SetTargetPosition ( vecPosition, UNOCCUPIED_VEHICLE_SYNC_RATE, true, vecMoveSpeed.fZ );
+            pVehicle->SetTargetPosition ( vecPosition, UNOCCUPIED_VEHICLE_SYNC_RATE );
             pVehicle->SetTargetRotation ( vecRotationDegrees, UNOCCUPIED_VEHICLE_SYNC_RATE );
             pVehicle->SetMoveSpeed ( vecMoveSpeed );
             pVehicle->SetTurnSpeed ( vecTurnSpeed );
@@ -165,7 +165,7 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleStartSync ( NetBitStreamInt
 
 #ifdef MTA_DEBUG
             pVehicle->m_pLastSyncer = g_pClientGame->GetLocalPlayer ();
-            pVehicle->m_ulLastSyncTime = GetTickCount32 ();
+            pVehicle->m_ulLastSyncTime = GetTickCount ();
             pVehicle->m_szLastSyncType = "unoccupied-start";
 #endif
         }
@@ -201,7 +201,7 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( NetBitStreamInterfac
             CClientVehicle* pVehicle = m_pVehicleManager->Get ( vehicle.data.vehicleID );
             if ( pVehicle && pVehicle->CanUpdateSync ( vehicle.data.ucTimeContext ) )
             {
-                if ( vehicle.data.bSyncPosition )       pVehicle->SetTargetPosition ( vehicle.data.vecPosition, UNOCCUPIED_VEHICLE_SYNC_RATE, vehicle.data.bSyncVelocity, vehicle.data.vecVelocity.fZ );
+                if ( vehicle.data.bSyncPosition )       pVehicle->SetTargetPosition ( vehicle.data.vecPosition, UNOCCUPIED_VEHICLE_SYNC_RATE );
                 if ( vehicle.data.bSyncRotation )       pVehicle->SetTargetRotation ( vehicle.data.vecRotation, UNOCCUPIED_VEHICLE_SYNC_RATE );
                 if ( vehicle.data.bSyncVelocity )       pVehicle->SetMoveSpeed ( vehicle.data.vecVelocity );
                 if ( vehicle.data.bSyncTurnVelocity )   pVehicle->SetTurnSpeed ( vehicle.data.vecTurnVelocity );
@@ -211,7 +211,7 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( NetBitStreamInterfac
                                                         pVehicle->SetDerailed ( vehicle.data.bDerailed );
 #ifdef MTA_DEBUG
                 pVehicle->m_pLastSyncer = NULL;
-                pVehicle->m_ulLastSyncTime = GetTickCount32 ();
+                pVehicle->m_ulLastSyncTime = GetTickCount ();
                 pVehicle->m_szLastSyncType = "unoccupied";
 #endif
             }
@@ -257,7 +257,7 @@ void CUnoccupiedVehicleSync::UpdateStates ( void )
 
             // Send and destroy the packet
             if ( bAnyVehicleAdded )
-                g_pNet->SendPacket ( PACKET_ID_UNOCCUPIED_VEHICLE_SYNC, pBitStream, PACKET_PRIORITY_MEDIUM, PACKET_RELIABILITY_UNRELIABLE_SEQUENCED );
+                g_pNet->SendPacket ( PACKET_ID_UNOCCUPIED_VEHICLE_SYNC, pBitStream, PACKET_PRIORITY_LOW, PACKET_RELIABILITY_UNRELIABLE_SEQUENCED );
             g_pNet->DeallocateNetBitStream ( pBitStream );
         }
     }
@@ -283,7 +283,7 @@ bool CUnoccupiedVehicleSync::WriteVehicleInformation ( NetBitStreamInterface* pB
 
     vehicle.data.fHealth = pVehicle->GetHealth ();
 
-    CClientVehicle* pTrailer = pVehicle->GetVehicleType () == CLIENTVEHICLE_TRAIN ? pVehicle->GetNextTrainCarriage () : pVehicle->GetRealTowedVehicle ();
+    CClientVehicle* pTrailer = pVehicle->GetRealTowedVehicle ();
     if ( pTrailer )
         vehicle.data.trailer = pTrailer->GetID ();
     else
@@ -305,9 +305,13 @@ bool CUnoccupiedVehicleSync::WriteVehicleInformation ( NetBitStreamInterface* pB
             pVehicle->m_LastSyncedData->vecPosition = vehicle.data.vecPosition;
         }
 
-        if ( fabs ( vehicle.data.vecVelocity.fX ) > FLOAT_EPSILON ||
-             fabs ( vehicle.data.vecVelocity.fY ) > FLOAT_EPSILON ||
-             fabs ( vehicle.data.vecVelocity.fZ ) > 0.1f
+        const CVector& vecLastVelocity = pVehicle->m_LastSyncedData->vecMoveSpeed;
+        if ( vecLastVelocity != vehicle.data.vecVelocity &&
+             (
+               fabs ( vehicle.data.vecVelocity.fX ) > FLOAT_EPSILON ||
+               fabs ( vehicle.data.vecVelocity.fY ) > FLOAT_EPSILON ||
+               fabs ( vehicle.data.vecVelocity.fZ ) > FLOAT_EPSILON
+             )
            )
         {
             bSyncVehicle = true;
@@ -317,19 +321,14 @@ bool CUnoccupiedVehicleSync::WriteVehicleInformation ( NetBitStreamInterface* pB
     }
     else
     {
-        const CVector& vecLastPosition = pVehicle->m_LastSyncedData->vecPosition;
-        if ( fabs ( vecLastPosition.fX - vehicle.data.vecPosition.fX ) > FLOAT_EPSILON ||
-             fabs ( vecLastPosition.fY - vehicle.data.vecPosition.fY ) > FLOAT_EPSILON ||
-             fabs ( vecLastPosition.fZ - vehicle.data.vecPosition.fZ ) > 0.1f  )
+        if ( pVehicle->m_LastSyncedData->vecPosition != vehicle.data.vecPosition )
         {
             bSyncVehicle = true;
             vehicle.data.bSyncPosition = true;
             pVehicle->m_LastSyncedData->vecPosition = vehicle.data.vecPosition;
         }
 
-        if ( fabs ( vehicle.data.vecVelocity.fX ) > FLOAT_EPSILON ||
-             fabs ( vehicle.data.vecVelocity.fY ) > FLOAT_EPSILON ||
-             fabs ( vehicle.data.vecVelocity.fZ ) > 0.1f )
+        if ( pVehicle->m_LastSyncedData->vecMoveSpeed != vehicle.data.vecVelocity )
         {
             bSyncVehicle = true;
             vehicle.data.bSyncVelocity = true;
@@ -337,10 +336,7 @@ bool CUnoccupiedVehicleSync::WriteVehicleInformation ( NetBitStreamInterface* pB
         }
     }
 
-    const CVector& vecLastRotation = pVehicle->m_LastSyncedData->vecRotation;
-    if ( GetSmallestWrapUnsigned ( vecLastRotation.fX - vehicle.data.vecRotation.fX, 360 ) > MIN_ROTATION_DIFF ||
-         GetSmallestWrapUnsigned ( vecLastRotation.fY - vehicle.data.vecRotation.fY, 360 ) > MIN_ROTATION_DIFF ||
-         GetSmallestWrapUnsigned ( vecLastRotation.fZ - vehicle.data.vecRotation.fZ, 360 ) > MIN_ROTATION_DIFF )
+    if ( pVehicle->m_LastSyncedData->vecRotation != vehicle.data.vecRotation )
     {
         bSyncVehicle = true;
         vehicle.data.bSyncRotation = true;
@@ -368,26 +364,23 @@ bool CUnoccupiedVehicleSync::WriteVehicleInformation ( NetBitStreamInterface* pB
         pVehicle->m_LastSyncedData->Trailer = vehicle.data.trailer;
     }
 
-    if ( pVehicle->m_LastSyncedData->bEngineOn != pVehicle->IsEngineOn () )
+    if ( pVehicle->IsEngineOn () )
     {
         bSyncVehicle = true;
-        pVehicle->m_LastSyncedData->bEngineOn = pVehicle->IsEngineOn ();
+        vehicle.data.bEngineOn = true;
     }
-    vehicle.data.bEngineOn = pVehicle->IsEngineOn ();
 
-    if ( pVehicle->m_LastSyncedData->bDerailed != pVehicle->IsDerailed () )
+    if ( pVehicle->IsDerailed () )
     {
         bSyncVehicle = true;
-        pVehicle->m_LastSyncedData->bDerailed = pVehicle->IsDerailed ();
+        vehicle.data.bDerailed = true;
     }
-    vehicle.data.bDerailed = pVehicle->IsDerailed ();
 
-    if ( pVehicle->m_LastSyncedData->bIsInWater != pVehicle->IsInWater () )
+    if ( pVehicle->IsInWater () )
     {
         bSyncVehicle = true;
-        pVehicle->m_LastSyncedData->bIsInWater = pVehicle->IsInWater ();
+        vehicle.data.bIsInWater = true;
     }
-    vehicle.data.bIsInWater = pVehicle->IsInWater ();
 
     // If nothing has changed we dont sync the vehicle
     if ( !bSyncVehicle )

@@ -2,13 +2,12 @@
 #ifndef EHSTYPES_H
 #define EHSTYPES_H
 
+#include "SharedUtil.h"
+
 #include <string>
 #include <map>
 #include <list>
 
-#ifndef DEFINED_SHARED_UTIL
-    #include "SharedUtil.h"
-#endif
 class EHSConnection;
 class EHS;
 class Datum;
@@ -47,14 +46,5 @@ typedef std::map < int, HttpResponse * > HttpResponseMap;
 typedef std::list < HttpRequest * > HttpRequestList;
 
 
-struct SAllocationStats
-{
-    unsigned int uiActiveNumRequests;
-    unsigned int uiActiveNumResponses;
-    unsigned int uiActiveKBAllocated;
-    unsigned int uiTotalNumRequests;
-    unsigned int uiTotalNumResponses;
-    unsigned int uiTotalKBAllocated;
-};
 
 #endif

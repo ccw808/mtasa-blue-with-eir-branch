@@ -17,74 +17,44 @@
 #include "net/bitstream.h"
 #include "CNetHTTPDownloadManagerInterface.h"
 
-namespace EDownloadMode
-{
-    enum EDownloadModeType
-    {
-        NONE,
-        CORE_ASE_LIST,
-        CORE_UPDATER,
-        RESOURCE_INITIAL_FILES,
-        RESOURCE_SINGULAR_FILES,
-        CALL_REMOTE,
-        WEBBROWSER_LISTS,
-    };
-}
-using EDownloadMode::EDownloadModeType;
-
-
-struct SPacketStat
-{
-    int iCount;
-    int iTotalBytes;
-    TIMEUS totalTime;
-};
-
-class CBinaryFileInterface
-{
-public:
-    virtual             ~CBinaryFileInterface   ( void ) {}
-    virtual bool        FOpen                   ( const char* szFilename, const char* szMode, bool bValidate ) = 0;
-    virtual void        FClose                  ( void ) = 0;
-    virtual bool        FEof                    ( void ) = 0;
-    virtual void        FFlush                  ( void ) = 0;
-    virtual int         FTell                   ( void ) = 0;
-    virtual void        FSeek                   ( int iOffset, int iOrigin ) = 0;
-    virtual int         FRead                   ( void* pData, uint uiSize ) = 0;
-    virtual int         FWrite                  ( const void* pData, uint uiSize ) = 0;
-};
-
 class CNet
 {
 public:
-    enum ENetworkUsageDirection
-    {
-        STATS_INCOMING_TRAFFIC = 0,
-        STATS_OUTGOING_TRAFFIC = 1
-    };
-
     virtual void                        ResetNetwork                ( void ) = 0;
-    virtual bool                        StartNetwork                ( const char* szServerHost, unsigned short usServerPort, bool bPacketTag = false ) = 0;
+    virtual bool                        StartNetwork                ( const char* szServerHost, unsigned short usServerPort, const char* szServerPassword = NULL ) = 0;
     virtual void                        StopNetwork                 ( void ) = 0;
 
-    virtual void                        SetFakeLag                  ( unsigned short usPacketLoss, unsigned short usMinExtraPing, unsigned short usExtraPingVariance, int iKBPSLimit ) = 0;
+    virtual void                        SetFakeLag                  ( unsigned short usMaxPacketsOnWire, unsigned short usMinExtraPing, unsigned short usExtraPingVariance ) = 0;
 
     virtual bool                        IsConnected                 ( void ) = 0;
 
     virtual void                        DoPulse                     ( void ) = 0;
-    virtual void                        Shutdown                    ( void ) = 0;
 
-    virtual void                        RegisterPacketHandler       ( PPACKETHANDLER pfnPacketHandler ) = 0;
+    virtual void                        RegisterPacketHandler       ( PPACKETHANDLER pfnPacketHandler, bool bIsPrimaryPacketHandler = true ) = 0;
 
     virtual NetBitStreamInterface*      AllocateNetBitStream        ( void ) = 0;
     virtual void                        DeallocateNetBitStream      ( NetBitStreamInterface* bitStream ) = 0;
-    virtual bool                        SendPacket                  ( unsigned char ucPacketID, NetBitStreamInterface* bitStream, NetPacketPriority packetPriority, NetPacketReliability packetReliability, ePacketOrdering packetOrdering = PACKET_ORDERING_DEFAULT ) = 0;
+    virtual bool                        SendPacket                  ( unsigned char ucPacketID, NetBitStreamInterface* bitStream, NetPacketPriority packetPriority = PACKET_PRIORITY_HIGH, NetPacketReliability packetReliability = PACKET_RELIABILITY_RELIABLE, NetPacketOrdering packetOrdering = PACKET_ORDERING_GAME ) = 0;
 
     virtual void                        SetClientPort               ( unsigned short usClientPort ) = 0;
-    virtual const char *                GetConnectedServer          ( bool bIncludePort = false )=0;
+    virtual char *                      GetConnectedServer          ( void )=0;
 
-    virtual bool                        GetNetworkStatistics        ( NetStatistics* pDest ) = 0;
-    virtual const SPacketStat*          GetPacketStats              ( void ) = 0;
+    virtual unsigned int                GetMessagesInSendBuffer     ( void ) = 0;
+    virtual unsigned int                GetMessagesSent             ( void ) = 0;
+    virtual unsigned int                GetMessagesWaitingAck       ( void ) = 0;
+    virtual unsigned int                GetMessagesResent           ( void ) = 0;
+    virtual unsigned int                GetAcknowledgesSent         ( void ) = 0;
+    virtual unsigned int                GetAcknowledgesPending      ( void ) = 0;
+    virtual unsigned int                GetAcknowledgesReceived     ( void ) = 0;
+    virtual unsigned int                GetPacketsSent              ( void ) = 0;
+    virtual float                       GetPacketLoss               ( void ) = 0;
+    virtual unsigned int                GetGoodPacketsReceived      ( void ) = 0;
+    virtual unsigned int                GetBadPacketsReceived       ( void ) = 0;
+    virtual unsigned int                GetBitsSent                 ( void ) = 0;
+    virtual unsigned int                GetBitsReceived             ( void ) = 0;
+    virtual float                       GetCompressionRatio         ( void ) = 0;
+    virtual float                       GetDecompressionRatio       ( void ) = 0;
+    virtual void                        GetPacketLogData            ( unsigned long* ulBytes, unsigned long* ulCount ) = 0;
 
     virtual int                         GetPing                     ( void ) = 0;
     virtual unsigned long               GetTime                     ( void ) = 0;
@@ -100,7 +70,7 @@ public:
 
     virtual void                        Reset                       ( void ) = 0;
 
-    virtual CNetHTTPDownloadManagerInterface*   GetHTTPDownloadManager          ( EDownloadModeType iMode ) = 0;
+    virtual CNetHTTPDownloadManagerInterface*   GetHTTPDownloadManager          ( void ) = 0;
 
     virtual void                        SetServerBitStreamVersion   ( unsigned short usServerBitStreamVersion ) = 0;
     virtual unsigned short              GetServerBitStreamVersion   ( void ) = 0;
@@ -111,23 +81,8 @@ public:
 
     virtual const char*                 GetNextBuffer               ( void ) = 0;
     virtual const char*                 GetDiagnosticStatus         ( void ) = 0;
-    virtual void                        UpdatePingStatus            ( const char* szStatus, ushort& usDataRef ) = 0;
 
     virtual bool                        VerifySignature             ( const char* pData, unsigned long ulSize ) = 0;
-
-    virtual void                        ResetStub                   ( DWORD dwType, ... ) = 0;
-    virtual void                        ResetStub                   ( DWORD dwType, va_list ) = 0;
-
-    virtual const char*                 GetCurrentServerId          ( bool bPreviousVer ) = 0;
-    virtual bool                        CheckFile                   ( const char* szType, const char* szFilename, const CBuffer& buffer = CBuffer() ) = 0;
-
-    virtual uint                        GetExtendedErrorCode        ( void ) = 0;
-    virtual void                        SetTimeoutTime              ( uint uiTimeoutTime ) = 0;
-
-    virtual bool                        ValidateBinaryFileName      ( const char* szFilename ) = 0;
-    virtual CBinaryFileInterface*       AllocateBinaryFile          ( void ) = 0;
-    virtual bool                        EncryptDumpfile             ( const char* szClearPathFilename, const char* szEncryptedPathFilename ) = 0;
-    virtual bool                        DecryptScript               ( const char* cpInBuffer, uint uiInSize, const char** pcpOutBuffer, uint* puiOutSize, const char* szScriptName ) = 0;
 };
 
 #endif

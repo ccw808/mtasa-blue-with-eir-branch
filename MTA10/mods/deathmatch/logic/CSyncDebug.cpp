@@ -12,6 +12,10 @@
 
 #include <StdInc.h>
 
+#ifndef snprintf
+#define snprintf _snprintf
+#endif
+
 // Debug mode only interface
 #ifdef MTA_DEBUG
 
@@ -22,14 +26,11 @@ CSyncDebug::CSyncDebug ( CClientManager* pManager )
 
     m_pPlayer = NULL;
 
-    NetStatistics stats;
-    g_pNet->GetNetworkStatistics ( &stats );
-
     m_ulLastUpdateTime = CClientTime::GetTime ();
-    m_uiLastPacketsSent = m_uiPacketsSent = stats.packetsSent;
-    m_uiLastPacketsReceived = m_uiPacketsReceived = stats.packetsReceived;
-    m_uiLastBitsReceived = m_uiBitsReceived = (uint)stats.bytesReceived * 8;//  stats.runningTotal [ NS_ACTUAL_BYTES_RECEIVED ] * 8;
-    m_uiLastBitsSent = m_uiBitsSent = (uint)stats.bytesSent * 8;//stats.runningTotal [ NS_ACTUAL_BYTES_SENT ] * 8;
+    m_uiLastPacketsSent = m_uiPacketsSent = g_pNet->GetPacketsSent ();
+    m_uiLastPacketsReceived = m_uiPacketsReceived = g_pNet->GetGoodPacketsReceived () + g_pNet->GetBadPacketsReceived ();
+    m_uiLastBitsReceived = m_uiBitsReceived = g_pNet->GetBitsReceived ();
+    m_uiLastBitsReceived = m_uiBitsSent = g_pNet->GetBitsSent ();
 
     m_usFakeLagVariance = 0;
     m_usFakeLagPing = 0;
@@ -85,9 +86,6 @@ void CSyncDebug::OnPulse ( void )
 
 void CSyncDebug::OnDraw ( void )
 {
-    NetStatistics stats;
-    g_pNet->GetNetworkStatistics ( &stats );
-
     // Grab his data
     CVector vecPosition;
     m_pPlayer->GetPosition ( vecPosition );
@@ -120,10 +118,10 @@ void CSyncDebug::OnDraw ( void )
 
     // ******* GENERAL NET DATA *******
     // Bytes sent totally
-    SString strBytesSent = GetDataUnit ( stats.bytesSent );
+    SString strBytesSent = GetDataUnit ( g_pNet->GetBitsSent () / 8 );
 
     // Bytes received totally
-    SString strBytesRecv = GetDataUnit ( stats.bytesReceived );
+    SString strBytesRecv = GetDataUnit ( g_pNet->GetBitsReceived () / 8 );
 
     // Receive rate
     SString strRecvRate  = GetDataUnit ( ( m_uiBitsReceived - m_uiLastBitsReceived ) / 8 );
@@ -134,9 +132,10 @@ void CSyncDebug::OnDraw ( void )
     // Draw the background for global stats
     float fResWidth = static_cast < float > ( g_pCore->GetGraphics ()->GetViewportWidth () );
     float fResHeight = static_cast < float > ( g_pCore->GetGraphics ()->GetViewportHeight () );
-    g_pCore->GetGraphics ()->DrawRectangle ( 
-                                        0.75f * fResWidth, 0.30f * fResHeight,
-                                        0.25f * fResWidth, 0.50f * fResHeight,
+    g_pGame->GetHud ()->Draw2DPolygon ( 0.75f * fResWidth, 0.30f * fResHeight,
+                                        1.0f * fResWidth, 0.30f * fResHeight,
+                                        0.75f * fResWidth, 0.80f * fResHeight,
+                                        1.0f * fResWidth, 0.80f * fResHeight,
                                         0x78000000 );
 
     // Populate a string to print
@@ -153,8 +152,8 @@ void CSyncDebug::OnDraw ( void )
                g_pNet->GetPing (),
                m_usFakeLagPing, m_usFakeLagVariance,
 
-               stats.packetsReceived,
-               stats.packetsSent,
+               g_pNet->GetGoodPacketsReceived () + g_pNet->GetBadPacketsReceived (),
+               g_pNet->GetPacketsSent (),
                strBytesRecv.c_str (),
                strBytesSent.c_str (),
                strRecvRate.c_str (),
@@ -169,9 +168,6 @@ void CSyncDebug::OnDraw ( void )
 
 void CSyncDebug::OnUpdate ( void )
 {
-    NetStatistics stats;
-    g_pNet->GetNetworkStatistics ( &stats );
-
     m_ulLastUpdateTime = CClientTime::GetTime ();
 
     m_uiLastPacketsSent = m_uiPacketsSent;
@@ -179,10 +175,10 @@ void CSyncDebug::OnUpdate ( void )
     m_uiLastBitsReceived = m_uiBitsReceived;
     m_uiLastBitsSent = m_uiBitsSent;
 
-    m_uiPacketsSent = stats.packetsSent;
-    m_uiPacketsReceived = stats.packetsReceived;
-    m_uiBitsReceived = (uint)stats.bytesReceived * 8;
-    m_uiBitsSent = (uint)stats.bytesSent * 8;
+    m_uiPacketsSent = g_pNet->GetPacketsSent ();
+    m_uiPacketsReceived = g_pNet->GetGoodPacketsReceived () + g_pNet->GetBadPacketsReceived ();
+    m_uiBitsReceived = g_pNet->GetBitsReceived ();
+    m_uiBitsSent = g_pNet->GetBitsSent ();
 }
 
 

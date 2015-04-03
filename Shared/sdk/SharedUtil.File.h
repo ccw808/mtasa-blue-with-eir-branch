@@ -21,8 +21,8 @@ namespace SharedUtil
     //
     // Load from a file
     //
-    bool            FileLoad                        ( const SString& strFilename, std::vector < char >& buffer, int iMaxSize = 0x7FFFFFFF );
-    bool            FileLoad                        ( const SString& strFilename, SString& strBuffer, int iMaxSize = 0x7FFFFFFF );
+    bool            FileLoad                        ( const SString& strFilename, std::vector < char >& buffer );
+    bool            FileLoad                        ( const SString& strFilename, SString& strBuffer );
 
     //
     // Save to a file
@@ -39,7 +39,7 @@ namespace SharedUtil
     //
     // Get a file size
     //
-    uint64          FileSize                        ( const SString& strFilename );
+    uint            FileSize                        ( const SString& strFilename );
 
     //
     // Ensure all directories exist to the file
@@ -47,51 +47,19 @@ namespace SharedUtil
     void            MakeSureDirExists               ( const SString& strPath );
 
     SString         PathConform                     ( const SString& strInPath );
-    SString         PathJoin                        ( const SString& str1, const SString& str2 );
-    SString         PathJoin                        ( const SString& str1, const SString& str2, const SString& str3, const SString& str4 = "", const SString& str5 = "" );
-    SString         PathMakeRelative                ( const SString& strInBasePath, const SString& strInAbsPath );
+    SString         PathJoin                        ( const SString& str1, const SString& str2, const SString& str3 = "", const SString& str4 = "", const SString& str5 = "" );
     void            ExtractFilename                 ( const SString& strPathFilename, SString* strPath, SString* strFilename );
-    bool            ExtractExtension                ( const SString& strFilename, SString* strRest, SString* strExt );
-    SString         ExtractPath                     ( const SString& strPathFilename );
-    SString         ExtractFilename                 ( const SString& strPathFilename );
-    SString         ExtractExtension                ( const SString& strPathFilename );
-    SString         ExtractBeforeExtension          ( const SString& strPathFilename );
+    bool            ExtractExtention                ( const SString& strFilename, SString* strRest, SString* strExt );
 
     bool            FileDelete                      ( const SString& strFilename, bool bForce = true );
-    bool            FileRename                      ( const SString& strFilenameOld, const SString& strFilenameNew );
     bool            DelTree                         ( const SString& strPath, const SString& strInsideHere );
     bool            MkDir                           ( const SString& strInPath, bool bTree = true );
     bool            FileCopy                        ( const SString& strSrc, const SString& strDest, bool bForce = true );
-    std::vector < SString > FindFiles               ( const SString& strMatch, bool bFiles, bool bDirectories, bool bSortByDate = false );
+    SString         GetCurrentWorkingDirectory      ( void );
+    std::vector < SString > FindFiles               ( const SString& strMatch, bool bFiles, bool bDirectories );
     SString         MakeUniquePath                  ( const SString& strPathFilename );
-    SString         ConformPathForSorting           ( const SString& strPathFilename );
-    bool            IsAbsolutePath                  ( const SString& strPath );
 
-    SString         GetSystemCurrentDirectory       ( void );
-    SString         GetSystemDllDirectory           ( void );
-    SString         GetSystemLocalAppDataPath       ( void );
-    SString         GetSystemCommonAppDataPath      ( void );
-    SString         GetSystemPersonalPath           ( void );
-    SString         GetSystemWindowsPath            ( void );
-    SString         GetSystemSystemPath             ( void );
-    SString         GetSystemTempPath               ( void );
-    SString         GetMTADataPath                  ( void );
-    SString         GetMTADataPathCommon            ( void );
+    SString         GetMTALocalAppDataPath          ( void );
     SString         GetMTATempPath                  ( void );
 
-    bool            IsShortPathName                 ( const char* szPath );
-    bool            IsShortPathName                 ( const wchar_t* szPath );
-    SString         GetSystemShortPathName          ( const SString& strPath );
-    SString         GetSystemLongPathName           ( const SString& strPath );
-
-    SString         GetLaunchPathFilename           ( void );
-    SString         GetLaunchPath                   ( void );
-    SString         GetLaunchFilename               ( void );
-
-    SString         GetPathDriveName                ( const SString& strPath );
-    uint            GetPathFreeSpaceMB              ( const SString& strPath );
-    SString         GetDriveNameWithNotEnoughSpace  ( uint uiResourcesPathMinMB = 10, uint uiDataPathMinMB = 10 );
-
-    WString         FromUTF8                        ( const SString& strPath );
-    SString         ToUTF8                          ( const WString& strPath );
 }

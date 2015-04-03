@@ -182,17 +182,14 @@ bool CTaskSA::MakeAbortable(CPed* pPed, const int iPriority, const CEvent* pEven
     return bReturn;
 }
 
-const char* CTaskSA::GetTaskName()
+char * CTaskSA::GetTaskName()
 {
     DEBUG_TRACE("char * CTaskSA::GetTaskName()");
     int iTaskType = GetTaskType();
     if ( iTaskType != NO_TASK_TYPE )
-        if ( TaskNames[iTaskType].szName )
-            return TaskNames[iTaskType].szName;
-        else
-            return "";
-
-    return sNoTaskName;
+        return TaskNames[iTaskType].szName;
+    else
+        return reinterpret_cast < char* > ( &sNoTaskName );
 }
 
 void CTaskSA::Destroy()

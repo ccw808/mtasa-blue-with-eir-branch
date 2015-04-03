@@ -42,17 +42,14 @@ CTCPManager::~CTCPManager ( )
     }
 }
 
-void CTCPManager::HandleEvent ( unsigned int uiInID, WPARAM wParam, LPARAM lType )
+void CTCPManager::HandleEvent ( unsigned int uiID, LPARAM lType )
 {
-    uint uiID = uiInID & 255;
-    bool bIsResolveEvent = ( uiInID & 256 ) != 0;
-
     // Call the CTCP socket's event handler that's associated with the uiID argument
-    if ( m_pSocket[ uiID ] != NULL )
+    if ( m_pSocket[uiID] != NULL )
     {
         // We know it's a derived class for sure.. so static_cast it without any error checking
-        CTCPClientSocketImpl* pSocket = static_cast < CTCPClientSocketImpl* > ( m_pSocket[ uiID ] );
-        pSocket->FireEvent ( bIsResolveEvent, wParam, lType );
+        CTCPClientSocketImpl* pSocket = static_cast < CTCPClientSocketImpl* > ( m_pSocket[uiID] );
+        pSocket->FireEvent ( lType );
     }
 }
 
@@ -65,6 +62,7 @@ CTCPClientSocket* CTCPManager::CreateClient ( void )
         {
             // Create the socket and initialize it
             CTCPClientSocketImpl* pSocket = new CTCPClientSocketImpl;
+            CCore::GetSingleton().GetConsole()->Printf("Async socket #%u was created.\n", i);
             if ( !pSocket->Initialize ( i ) )
             {
                 // Copy the error details, delete it and return NULL
@@ -94,6 +92,7 @@ bool CTCPManager::DestroyClient ( CTCPClientSocket* pClient )
         if ( m_pSocket[i] != NULL )
         {
             if ( m_pSocket[i] == pClient ) {
+                CCore::GetSingleton().GetConsole()->Printf("Async socket #%u was destroyed.\n", i);
                 SAFE_RELEASE( m_pSocket[i] )
                 return true;
             }

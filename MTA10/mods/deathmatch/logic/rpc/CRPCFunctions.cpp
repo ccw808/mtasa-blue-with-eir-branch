@@ -5,7 +5,6 @@
 *  FILE:        mods/deathmatch/logic/rpc/CRPCFunctions.cpp
 *  PURPOSE:     Remote procedure calls manager
 *  DEVELOPERS:  Jax <>
-*               Alberto Alonso <rydencillo@gmail.com>
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *
@@ -50,8 +49,7 @@ CBlendedWeather*            CRPCFunctions::m_pBlendedWeather;
 CClientGame*                CRPCFunctions::m_pClientGame;
 CClientWaterManager*        CRPCFunctions::m_pWaterManager;
 
-SFixedArray < CRPCFunctions::SRPCHandler, CRPCFunctions::NUM_RPC_FUNCS >           CRPCFunctions::m_RPCHandlers;
-SFixedArray < CRPCFunctions::SElementRPCHandler, CRPCFunctions::NUM_RPC_FUNCS >    CRPCFunctions::m_ElementRPCHandlers;
+CRPCFunctions::SRPCHandler  CRPCFunctions::m_RPCHandlers[];
 
 CRPCFunctions::CRPCFunctions ( CClientGame* pClientGame )
 {
@@ -106,70 +104,30 @@ void CRPCFunctions::AddHandlers ( void )
 }
 
 
-void CRPCFunctions::AddHandler ( unsigned char ucID, pfnRPCHandler Callback, const char * szName )
+void CRPCFunctions::AddHandler ( unsigned char ucID, pfnRPCHandler Callback, char * szName )
 {
     if ( ucID >= NUM_RPC_FUNCS )
         return;
 
     m_RPCHandlers [ ucID ].Callback = Callback;
-    m_RPCHandlers [ ucID ].strName = szName;
+    strncpy ( m_RPCHandlers [ ucID ].szName, szName, sizeof ( m_RPCHandlers [ ucID ].szName ) );
 }
 
-void CRPCFunctions::AddHandler ( unsigned  char ucID, pfnElementRPCHandler Callback, const char* szName )
-{
-    if ( ucID >= NUM_RPC_FUNCS )
-        return;
 
-    m_ElementRPCHandlers [ ucID ].Callback = Callback;
-    m_ElementRPCHandlers [ ucID ].strName = szName;
-}
-
-void CRPCFunctions::ProcessPacket ( unsigned char ucPacketID, NetBitStreamInterface& bitStream )
+void CRPCFunctions::ProcessPacket ( NetBitStreamInterface& bitStream )
 {
     unsigned char ucFunctionID = 255;
     if ( !bitStream.Read ( ucFunctionID ) ||
          ucFunctionID >= NUM_RPC_FUNCS )
         return;
 
-    if ( ucPacketID == PACKET_ID_LUA )
-    {
-        SRPCHandler* pHandler = &m_RPCHandlers [ ucFunctionID ];
-        if ( pHandler->Callback != NULL )
-        {
-            static bool bEnabled = ( g_pCore->GetDiagnosticDebug () == EDiagnosticDebug::LUA_TRACE_0000 );
-            if ( bEnabled )
-                g_pCore->LogEvent ( 0, "RPC", "", pHandler->strName );
-            if ( m_bShowRPCs )
-                g_pCore->GetConsole ()->Printf ( "* rpc: %s", *pHandler->strName );
-            (pHandler->Callback) ( bitStream );
-        }
-    }
-    else if ( ucPacketID == PACKET_ID_LUA_ELEMENT_RPC )
-    {
-        SElementRPCHandler* pElementHandler = &m_ElementRPCHandlers [ ucFunctionID ];
-        if ( pElementHandler->Callback != NULL )
-        {
-            static bool bEnabled = ( g_pCore->GetDiagnosticDebug () == EDiagnosticDebug::LUA_TRACE_0000 );
-            if ( bEnabled )
-                g_pCore->LogEvent ( 0, "Element RPC", "", pElementHandler->strName );
-            if ( m_bShowRPCs )
-                g_pCore->GetConsole ()->Printf ( "* element-rpc: %s", *pElementHandler->strName );
+    SRPCHandler* pHandler = &m_RPCHandlers [ ucFunctionID ];
+    if ( pHandler->Callback == NULL )
+        return;
 
-            // Grab the source entity.
-            ElementID ID;
-            bitStream.Read ( ID );
-            CClientEntity* pSource = CElementIDs::GetElement ( ID );
-            if ( pSource == NULL )
-            {
-#ifdef MTA_DEBUG
-                SString strMessage ( "CRPCFunctions::ProcessPacket - FIXME (%s)", *pElementHandler->strName );
-                OutputDebugLine ( SStringX ( "[RPC] " ) + strMessage );
-                CLogger::ErrorPrintf ( "%s", *strMessage );
-#endif
-                return;
-            }
-
-            (pElementHandler->Callback) ( pSource, bitStream );
-        }
+    if ( m_bShowRPCs )
+    {
+        g_pCore->GetConsole ()->Printf ( "* rpc: %s", pHandler->szName );
     }
+    (pHandler->Callback) ( bitStream );
 }

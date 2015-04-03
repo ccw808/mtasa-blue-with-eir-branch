@@ -7,6 +7,7 @@
 *               and miscellaneous rendering functions
 *  DEVELOPERS:  Cecill Etheredge <ijsf@gmx.net>
 *               arc_
+*               Sebas Lamers <sebasdevelopment@gmx.com>
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *  RenderWare is © Criterion Software
@@ -14,14 +15,9 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#define RWFUNC_IMPLEMENT
 #include "gamesa_renderware.h"
-#include "gamesa_renderware.hpp"
-#include "CRenderWareSA.ShaderMatching.h"
 
 extern CGameSA * pGame;
-
-
 
 // RwFrameForAllObjects struct and callback used to replace dynamic vehicle parts
 struct SReplaceParts
@@ -40,9 +36,9 @@ static RwObject* ReplacePartsCB ( RwObject * object, SReplaceParts * data )
     for ( unsigned int i = 0; i < data->uiReplacements; i++ ) {
         // get the correct atomic name based on the object # in our parent frame
         if ( data->ucIndex == 0 )
-            snprintf ( &szAtomicName[0], 16, "%s_ok", data->szName );
+            _snprintf ( &szAtomicName[0], 16, "%s_ok", data->szName );
         else
-            snprintf ( &szAtomicName[0], 16, "%s_dam", data->szName );
+            _snprintf ( &szAtomicName[0], 16, "%s_dam", data->szName );
 
         // see if we have such an atomic in our replacement atomics array
         if ( strncmp ( &data->pReplacements[i].szName[0], &szAtomicName[0], 16 ) == 0 ) {
@@ -169,39 +165,368 @@ static RpAtomic* LoadAtomicsCB (RpAtomic * atomic, SLoadAtomics * data)
     return atomic;
 }
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-//  CRenderWareSA
-//
-//
-/////////////////////////////////////////////////////////////////////////////
 CRenderWareSA::CRenderWareSA ( eGameVersion version )
 {
-    InitRwFunctions( version );
+    // Version dependant addresses
+    switch ( version )
+    {
+        // VERSION 1.0 EU ADDRESSES
+        case VERSION_EU_10:
+        {
+            RwStreamFindChunk                   = (RwStreamFindChunk_t)                     0x007ED310;
+            RpClumpStreamRead                   = (RpClumpStreamRead_t)                     0x0074B470;
+            RwErrorGet                          = (RwErrorGet_t)                            0x008088C0;
+            RwStreamOpen                        = (RwStreamOpen_t)                          0x007ECF30;
+            RwStreamClose                       = (RwStreamClose_t)                         0x007ECE60;
+            RpClumpDestroy                      = (RpClumpDestroy_t)                        0x0074A360;
+            RpClumpGetNumAtomics                = (RpClumpGetNumAtomics_t)                  0x00749930;
+            RwFrameTranslate                    = (RwFrameTranslate_t)                      0x007F0E70;
+            RpClumpForAllAtomics                = (RpClumpForAllAtomics_t)                  0x00749BC0;
+            RwFrameAddChild                     = (RwFrameAddChild_t)                       0x007F0B40;
+            RpClumpAddAtomic                    = (RpClumpAddAtomic_t)                      0x0074A4E0;
+            RpAtomicSetFrame                    = (RpAtomicSetFrame_t)                      0x0074BF70;
+            RwTexDictionaryStreamRead           = (RwTexDictionaryStreamRead_t)             0x00804C70; 
+            RwTexDictionaryGetCurrent           = (RwTexDictionaryGetCurrent_t)             0x007F3AD0;
+            RwTexDictionarySetCurrent           = (RwTexDictionarySetCurrent_t)             0x007F3AB0;
+            RwTexDictionaryForAllTextures       = (RwTexDictionaryForAllTextures_t)         0x007F3770;
+            RwTexDictionaryAddTexture           = (RwTexDictionaryAddTexture_t)             0x007F39C0;
+            RpPrtStdGlobalDataSetStreamEmbedded = (RpPrtStdGlobalDataSetStreamEmbedded_t)   0x0041B350;
+            RpClumpRemoveAtomic                 = (RpClumpRemoveAtomic_t)                   0x0074A510;
+            RpAtomicClone                       = (RpAtomicClone_t)                         0x00749EB0; 
+            RwTexDictionaryFindNamedTexture     = (RwTexDictionaryFindNamedTexture_t)       0x007F3A30;
+            RwFrameRemoveChild                  = (RwFrameRemoveChild_t)                    0x007F0D10; 
+            RwFrameForAllObjects                = (RwFrameForAllObjects_t)                  0x007F1240; 
+            RpAtomicDestroy                     = (RpAtomicDestroy_t)                       0x00749E10; 
+            RpAtomicSetGeometry                 = (RpAtomicSetGeometry_t)                   0x00749D90;
+            RpWorldAddAtomic                    = (RpWorldAddAtomic_t)                      0x00750FE0;
+            RpGeometryCreate                    = (RpGeometryCreate_t)                      0x0074CAE0;
+            RpGeometryTriangleSetVertexIndices  = (RpGeometryTriangleSetVertexIndices_t)    0x0074C6E0;
+            RpGeometryUnlock                    = (RpGeometryUnlock_t)                      0x0074C850;
+            RpGeometryLock                      = (RpGeometryLock_t)                        0x0074C820;
+            RpAtomicCreate                      = (RpAtomicCreate_t)                        0x00749CA0;
+            RwFrameCreate                       = (RwFrameCreate_t)                         0x007F0450;
+            RpGeometryTransform                 = (RpGeometryTransform_t)                   0x0074C030;
+            RwFrameSetIdentity                  = (RwFrameSetIdentity_t)                    0x007F10F0;
+            RwMatrixCreate                      = (RwMatrixCreate_t)                        0x007F2A90; 
+            RwMatrixTranslate                   = (RwMatrixTranslate_t)                     0x007F2490;
+            RwMatrixScale                       = (RwMatrixScale_t)                         0x007F2300;
+            RpGeometryTriangleSetMaterial       = (RpGeometryTriangleSetMaterial_t)         0x0074C710;
+            RpMaterialCreate                    = (RpMaterialCreate_t)                      0x0074D9E0;
+            RpGeometryDestroy                   = (RpGeometryDestroy_t)                     0x0074CD10;
+            RpMaterialDestroy                   = (RpMaterialDestroy_t)                     0x0074DA70;
+            RwV3dNormalize                      = (RwV3dNormalize_t)                        0x007ED9F0;
+            RwIm3DTransform                     = (RwIm3DTransform_t)                       0x007EF490; 
+            RwIm3DRenderIndexedPrimitive        = (RwIm3DRenderIndexedPrimitive_t)          0x007EF590;
+            RwIm3DEnd                           = (RwIm3DEnd_t)                             0x007EF560;
+            RwMatrixInvert                      = (RwMatrixInvert_t)                        0x007F20B0;
+            RpWorldAddClump                     = (RpWorldAddClump_t)                       0x00751350;
+            RwFrameScale                        = (RwFrameScale_t)                          0x007F0F10;
+            RwV3dTransformVector                = (RwV3dTransformVector_t)                  0x007EDE00;
+            RpLightCreate                       = (RpLightCreate_t)                         0x00752160;
+            RpClumpAddLight                     = (RpClumpAddLight_t)                       0x0074A540;
+            _rwObjectHasFrameSetFrame           = (_rwObjectHasFrameSetFrame_t)             0x00804F30;
+            RpLightSetRadius                    = (RpLightSetRadius_t)                      0x00751AC0;
+            RpWorldAddLight                     = (RpWorldAddLight_t)                       0x00751960;
+            RpLightSetColor                     = (RpLightSetColor_t)                       0x00751AE0;
+            RwCameraClone                       = (RwCameraClone_t)                         0x007EF3F0;
+            RpClumpClone                        = (RpClumpClone_t)                          0x00749FC0;
+            RwTexDictionaryDestroy              = (RwTexDictionaryDestroy_t)                0x007F36E0;
+            RwTextureDestroy                    = (RwTextureDestroy_t)                      0x007F3860;
+            RwRasterUnlock                      = (RwRasterUnlock_t)                        0x007FAF00;
+            RwRasterLock                        = (RwRasterLock_t)                          0x007FB310; 
+            RwRasterCreate                      = (RwRasterCreate_t)                        0x007FB270;
+            RwTextureCreate                     = (RwTextureCreate_t)                       0x007F3800;
 
-    InitTextureWatchHooks ();
-    m_pMatchChannelManager = new CMatchChannelManager ();
-    m_iRenderingEntityType = TYPE_MASK_WORLD;
-    m_GTAVertexShadersDisabledTimer.SetMaxIncrement( 1000, true );
-    m_bGTAVertexShadersEnabled = true;
+            SetTextureDict                      = (SetTextureDict_t)                        0x007319C0;
+            LoadClumpFile                       = (LoadClumpFile_t)                         0x005371F0;
+            LoadModel                           = (LoadModel_t)                             0x0040C6B0;
+            LoadCollisionModel                  = (LoadCollisionModel_t)                    0x00537580;
+            LoadCollisionModelVer2              = (LoadCollisionModelVer2_t)                0x00537EE0;
+            LoadCollisionModelVer3              = (LoadCollisionModelVer3_t)                0x00537CE0;
+            CTxdStore_LoadTxd                   = (CTxdStore_LoadTxd_t)                     0x00731DD0;
+            CTxdStore_GetTxd                    = (CTxdStore_GetTxd_t)                      0x00408340;
+            CTxdStore_RemoveTxd                 = (CTxdStore_RemoveTxd_t)                   0x00731E90;
+            CTxdStore_RemoveRef                 = (CTxdStore_RemoveRef_t)                   0x00731A30;
+            CTxdStore_AddRef                    = (CTxdStore_AddRef_t)                      0x00731A00; 
+            CClothesBuilder_CopyTexture         = (CClothesBuilder_CopyTexture_t)           0x005A5730;
+
+            break;
+        }    
+
+        // VERSION 1.0 US ADDRESSES
+        case VERSION_US_10:
+        {
+            RwStreamFindChunk                   = (RwStreamFindChunk_t)                     0x007ED2D0;
+            RpClumpStreamRead                   = (RpClumpStreamRead_t)                     0x0074B420;
+            RwErrorGet                          = (RwErrorGet_t)                            0x00808880;
+            RwStreamOpen                        = (RwStreamOpen_t)                          0x007ECEF0;
+            RwStreamClose                       = (RwStreamClose_t)                         0x007ECE20;
+            RpClumpDestroy                      = (RpClumpDestroy_t)                        0x0074A310;
+            RpClumpGetNumAtomics                = (RpClumpGetNumAtomics_t)                  0x007498E0;
+            RwFrameTranslate                    = (RwFrameTranslate_t)                      0x007F0E30;
+            RpClumpForAllAtomics                = (RpClumpForAllAtomics_t)                  0x00749B70;
+            RwFrameAddChild                     = (RwFrameAddChild_t)                       0x007F0B00;
+            RpClumpAddAtomic                    = (RpClumpAddAtomic_t)                      0x0074A490;
+            RpAtomicSetFrame                    = (RpAtomicSetFrame_t)                      0x0074BF20;
+            RwTexDictionaryStreamRead           = (RwTexDictionaryStreamRead_t)             0x00804C30;
+            RwTexDictionaryGetCurrent           = (RwTexDictionaryGetCurrent_t)             0x007F3A90;
+            RwTexDictionarySetCurrent           = (RwTexDictionarySetCurrent_t)             0x007F3A70;
+            RwTexDictionaryForAllTextures       = (RwTexDictionaryForAllTextures_t)         0x007F3730;
+            RwTexDictionaryAddTexture           = (RwTexDictionaryAddTexture_t)             0x007F3980;
+            RpPrtStdGlobalDataSetStreamEmbedded = (RpPrtStdGlobalDataSetStreamEmbedded_t)   0x0041B350;
+            RpClumpRemoveAtomic                 = (RpClumpRemoveAtomic_t)                   0x0074A4C0;
+            RpAtomicClone                       = (RpAtomicClone_t)                         0x00749E60;
+            RwTexDictionaryFindNamedTexture     = (RwTexDictionaryFindNamedTexture_t)       0x007F39F0;
+            RwFrameRemoveChild                  = (RwFrameRemoveChild_t)                    0x007F0CD0;
+            RwFrameForAllObjects                = (RwFrameForAllObjects_t)                  0x007F1200;
+            RpAtomicDestroy                     = (RpAtomicDestroy_t)                       0x00749DC0;
+            RpAtomicSetGeometry                 = (RpAtomicSetGeometry_t)                   0x00749D40;
+            RpWorldAddAtomic                    = (RpWorldAddAtomic_t)                      0x00750F90;
+            RpGeometryCreate                    = (RpGeometryCreate_t)                      0x0074CA90;
+            RpGeometryTriangleSetVertexIndices  = (RpGeometryTriangleSetVertexIndices_t)    0x0074C690;
+            RpGeometryUnlock                    = (RpGeometryUnlock_t)                      0x0074C800;
+            RpGeometryLock                      = (RpGeometryLock_t)                        0x0074C7D0;
+            RpAtomicCreate                      = (RpAtomicCreate_t)                        0x00749C50;
+            RwFrameCreate                       = (RwFrameCreate_t)                         0x007F0410;
+            RpGeometryTransform                 = (RpGeometryTransform_t)                   0x0074BFE0;
+            RwFrameSetIdentity                  = (RwFrameSetIdentity_t)                    0x007F10B0;
+            RwMatrixCreate                      = (RwMatrixCreate_t)                        0x007F2A50;
+            RwMatrixTranslate                   = (RwMatrixTranslate_t)                     0x007F2450;
+            RwMatrixScale                       = (RwMatrixScale_t)                         0x007F22C0;
+            RpGeometryTriangleSetMaterial       = (RpGeometryTriangleSetMaterial_t)         0x0074C6C0;
+            RpMaterialCreate                    = (RpMaterialCreate_t)                      0x0074D990;
+            RpGeometryDestroy                   = (RpGeometryDestroy_t)                     0x0074CCC0;
+            RpMaterialDestroy                   = (RpMaterialDestroy_t)                     0x0074DA20;
+            RwV3dNormalize                      = (RwV3dNormalize_t)                        0x007ED9B0;
+            RwIm3DTransform                     = (RwIm3DTransform_t)                       0x007EF450;
+            RwIm3DRenderIndexedPrimitive        = (RwIm3DRenderIndexedPrimitive_t)          0x007EF550;
+            RwIm3DEnd                           = (RwIm3DEnd_t)                             0x007EF520;
+            RwMatrixInvert                      = (RwMatrixInvert_t)                        0x007F2070;
+            RpWorldAddClump                     = (RpWorldAddClump_t)                       0x00751300;
+            RwFrameScale                        = (RwFrameScale_t)                          0x007F0ED0;
+            RwV3dTransformVector                = (RwV3dTransformVector_t)                  0x007EDDC0;
+            RpLightCreate                       = (RpLightCreate_t)                         0x00752110;
+            RpClumpAddLight                     = (RpClumpAddLight_t)                       0x0074A4F0;
+            _rwObjectHasFrameSetFrame           = (_rwObjectHasFrameSetFrame_t)             0x00804EF0;
+            RpLightSetRadius                    = (RpLightSetRadius_t)                      0x00751A70;
+            RpWorldAddLight                     = (RpWorldAddLight_t)                       0x00751910;
+            RpLightSetColor                     = (RpLightSetColor_t)                       0x00751A90;
+            RwCameraClone                       = (RwCameraClone_t)                         0x007EF3B0;
+            RpClumpClone                        = (RpClumpClone_t)                          0x00749F70;
+            RwTexDictionaryDestroy              = (RwTexDictionaryDestroy_t)                0x007F36A0;
+            RwTextureDestroy                    = (RwTextureDestroy_t)                      0x007F3820;
+            RwRasterUnlock                      = (RwRasterUnlock_t)                        0x007FAEC0;
+            RwRasterLock                        = (RwRasterLock_t)                          0x007FB2D0;
+            RwRasterCreate                      = (RwRasterCreate_t)                        0x007FB230;
+            RwTextureCreate                     = (RwTextureCreate_t)                       0x007F37C0;
+
+            SetTextureDict                      = (SetTextureDict_t)                        0x007319C0;
+            LoadClumpFile                       = (LoadClumpFile_t)                         0x005371F0;
+            LoadModel                           = (LoadModel_t)                             0x0040C6B0;
+            LoadCollisionModel                  = (LoadCollisionModel_t)                    0x00537580;
+            LoadCollisionModelVer2              = (LoadCollisionModelVer2_t)                0x00537EE0;
+            LoadCollisionModelVer3              = (LoadCollisionModelVer3_t)                0x00537CE0;
+            CTxdStore_LoadTxd                   = (CTxdStore_LoadTxd_t)                     0x00731DD0;
+            CTxdStore_GetTxd                    = (CTxdStore_GetTxd_t)                      0x00408340;
+            CTxdStore_RemoveTxd                 = (CTxdStore_RemoveTxd_t)                   0x00731E90;
+            CTxdStore_RemoveRef                 = (CTxdStore_RemoveRef_t)                   0x00731A30;
+            CTxdStore_AddRef                    = (CTxdStore_AddRef_t)                      0x00731A00;
+            CClothesBuilder_CopyTexture         = (CClothesBuilder_CopyTexture_t)           0x005A5730;
+
+            break;
+        }
+    }
 }
 
 
-CRenderWareSA::~CRenderWareSA ( void )
+///////////////////////////////////////////////////////////////////////////////
+
+
+
+// Adds texture into the TXD of a model, eventually making a copy of each texture first 
+void CRenderWareSA::ModelInfoTXDAddTextures ( std::list < RwTexture* >& textures, unsigned short usModelID, bool bMakeCopy, std::list < RwTexture* >* pReplacedTextures, std::list < RwTexture* >* pAddedTextures, bool bAddRef )
 {
-    SAFE_DELETE ( m_pMatchChannelManager );
+    // Get the CModelInfo's TXD ID
+    unsigned short usTxdId = ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID]->usTextureDictionary;
+
+    // Get the TXD corresponding to this ID
+    SetTextureDict ( usTxdId );
+
+    RwTexDictionary* pTXD = CTxdStore_GetTxd ( usTxdId );
+    if ( bAddRef )
+    {
+        if ( !pTXD )
+        {
+            pGame->GetModelInfo ( usModelID )->Request ( true, true );
+            CTxdStore_AddRef ( usTxdId );
+            ( (void (__cdecl *)(unsigned short))FUNC_RemoveModel )( usModelID );
+            pTXD = CTxdStore_GetTxd ( usTxdId );
+        }
+        else
+        {
+            CTxdStore_AddRef ( usTxdId );
+        }
+    }
+
+    if ( pTXD )
+    {
+        std::list < RwTexture* >::iterator it;
+        for ( it = textures.begin (); it != textures.end (); it++ )
+        {
+            // Does a texture by this name already exist?
+            RwTexture* pExistingTexture = RwTexDictionaryFindNamedTexture ( pTXD, (*it)->name );
+            if ( pExistingTexture )
+            {
+                // Is it a custom texture?
+                if ( ( pAddedTextures && ListContainsNamedTexture ( *pAddedTextures, (*it)->name ) ) ||
+                     ( pReplacedTextures && ListContainsNamedTexture ( *pReplacedTextures, (*it)->name ) ) )
+                {
+                    continue;
+                }
+                // If not, we can replace it
+                RwTexDictionaryRemoveTexture ( pTXD, pExistingTexture );
+                if ( pReplacedTextures )
+                    pReplacedTextures->push_back ( pExistingTexture );
+            }
+            else
+            {
+                if ( pAddedTextures )
+                    pAddedTextures->push_back ( *it );
+            }
+
+            RwTexture* pTex = *it;
+
+            if ( bMakeCopy )
+            {
+                // Reuse the given texture's raster
+                RwTexture* pNewTex = RwTextureCreate ( pTex->raster );
+
+                // Copy over additional properties
+                memcpy ( &pNewTex->name, &pTex->name, RW_TEXTURE_NAME_LENGTH );
+                memcpy ( &pNewTex->mask, &pTex->mask, RW_TEXTURE_NAME_LENGTH );
+                pNewTex->flags = pTex->flags;
+                
+                pTex = pNewTex;
+            }
+
+            // Add the texture
+            RwTexDictionaryAddTexture ( pTXD, pTex );
+        }
+    }
+}
+
+// Removes textures from the TXD of a model, eventually destroying each texture
+void CRenderWareSA::ModelInfoTXDRemoveTextures ( std::list < RwTexture* >& textures, unsigned short usModelID, bool bDestroy, bool bKeepRaster, bool bRemoveRef )
+{
+    // Get the CModelInfo's TXD ID
+    unsigned short usTxdId = ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID]->usTextureDictionary;
+
+    // Get the TXD corresponding to this ID
+    RwTexDictionary* pTXD = CTxdStore_GetTxd ( usTxdId );
+
+    if ( pTXD )
+    {
+        std::list < RwTexture* >::iterator it;
+        for ( it = textures.begin (); it != textures.end (); it++ )
+        {
+            // Don't remove the passed texture itself, rather any texture with the same name
+            RwTexture* pTex = RwTexDictionaryFindNamedTexture ( pTXD, (*it)->name );
+            if ( pTex )
+            {
+                if ( bDestroy )
+                {
+                    // Destroy the texture
+                    if ( bKeepRaster )
+                        pTex->raster = NULL;
+                    RwTextureDestroy ( pTex );
+                }
+                else
+                {
+                    // Only remove the texture from the txd
+                    RwTexDictionaryRemoveTexture ( pTXD, pTex );
+                }
+            }
+        }
+    }
+
+    // Delete the reference we made in ModelInfoTXDAddTextures
+    if ( bRemoveRef )
+        CTxdStore_RemoveRef ( usTxdId );
+}
+
+struct SAnimHeader {
+    char    szVersion[4]; //ANPK or ANP3
+    int     iOffsetToEOF; //Offset to end of file
+    char    szBlockName[24]; //Block name to be used for the whole file
+    int     iNumberOfAnimations; //Number of animations inside the file
+};
+
+// Reads and parses an IFP file specified by a path (szIFP)
+CAnimBlock * CRenderWareSA::ReadIFP ( const char *szIFP )
+{
+
+    //Make sure we have a file path
+    if ( !szIFP )
+        return false;
+
+    // Read the file
+    FILE* pFile = fopen ( szIFP, "rb" );
+    //Make sure the file exists
+    if ( !pFile )
+        return NULL;
+
+    SAnimHeader SHeader;
+    //Read out the header information into SHeader
+    fread ( &SHeader, sizeof(SHeader), 1, pFile );
+    // Check the Header information ANP3 Is supported ANPK is not at the moment. 
+    if ( SHeader.szVersion[0] == 'A' && SHeader.szVersion[1] == 'N' && SHeader.szVersion[2] == 'P' && SHeader.szVersion[3] == '3' )
+    {
+        CAnimBlock * pAnim;
+        //Check it doesn't exist already
+        pAnim = pGame->GetAnimManager()->GetAnimationBlock( SHeader.szBlockName );
+        if ( pAnim )
+        {
+            //Return false before the loading
+            fclose ( pFile );
+            return NULL;
+        }
+    }
+    else
+    {
+        //Invalid file type close our file and return false
+        fclose ( pFile );
+        return NULL;
+    }
+
+    //close the file
+    fclose ( pFile );
+
+    // open the stream
+    RwStream * streamModel = RwStreamOpen ( STREAM_TYPE_FILENAME, STREAM_MODE_READ, szIFP );
+
+    // check for errors
+    if ( streamModel == NULL )
+        return NULL;
+
+    //Load the animation file from the stream
+    pGame->GetAnimManager()->LoadAnimFile( streamModel, true, "" );
+
+    //Register our animation block with SA
+    //int iBlockID = pGame->GetAnimManager()->RegisterAnimBlock( SHeader.szBlockName );
+
+    // close the stream
+    RwStreamClose ( streamModel, NULL );
+    CAnimBlock * pAnim = pGame->GetAnimManager()->GetAnimationBlock( SHeader.szBlockName );
+
+    return pAnim;
 }
 
 
 // Reads and parses a TXD file specified by a path (szTXD)
-RwTexDictionary * CRenderWareSA::ReadTXD ( const CBuffer& fileData )
+RwTexDictionary * CRenderWareSA::ReadTXD ( const char *szTXD )
 {
     // open the stream
-    RwBuffer buffer;
-    buffer.ptr = (void*)fileData.GetData();
-    buffer.size = fileData.GetSize();
-    RwStream * streamTexture = RwStreamOpen ( STREAM_TYPE_BUFFER, STREAM_MODE_READ, &buffer );
+    RwStream * streamTexture = RwStreamOpen ( STREAM_TYPE_FILENAME, STREAM_MODE_READ, szTXD );
 
     // check for errors
     if ( streamTexture == NULL )
@@ -210,39 +535,24 @@ RwTexDictionary * CRenderWareSA::ReadTXD ( const CBuffer& fileData )
     // TXD header id: 0x16
     // find our txd chunk (dff loads textures, so correct loading order is: txd, dff)
     if ( RwStreamFindChunk ( streamTexture, 0x16, NULL, NULL ) == false )
-    {
-        RwStreamClose ( streamTexture, NULL );
         return NULL;
-    }
 
     // read the texture dictionary from our model (txd)
-    RwTexDictionary *pTex = RwTexDictionaryGtaStreamRead ( streamTexture );
+    RwTexDictionary *pTex = RwTexDictionaryStreamRead ( streamTexture );
 
     // close the stream
     RwStreamClose ( streamTexture, NULL );
 
-    ScriptAddedTxd ( pTex );
-
+    //return pTex;
     return pTex;
 }
 
 // Reads and parses a DFF file specified by a path (szDFF) into a CModelInfo identified by the object id (usModelID)
-// bLoadEmbeddedCollisions should be true for vehicles
-// Any custom TXD should be imported before this call
-RpClump * CRenderWareSA::ReadDFF ( const CBuffer& fileData, unsigned short usModelID, bool bLoadEmbeddedCollisions )
+// usModelID == 0 means no collisions will be loaded (be careful! seems crashy!)
+RpClump * CRenderWareSA::ReadDFF ( const char *szDFF, unsigned short usModelID )
 {
-    // Set correct TXD as materials are processed at the same time
-    if ( usModelID != 0 )
-    {
-        unsigned short usTxdId = ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID]->usTextureDictionary;
-        SetTextureDict ( usTxdId );
-    }
-
     // open the stream
-    RwBuffer buffer;
-    buffer.ptr = (void*)fileData.GetData();
-    buffer.size = fileData.GetSize();
-    RwStream * streamModel = RwStreamOpen ( STREAM_TYPE_BUFFER, STREAM_MODE_READ, &buffer );
+    RwStream * streamModel = RwStreamOpen ( STREAM_TYPE_FILENAME, STREAM_MODE_READ, szDFF );
 
     // get the modelinfo array
     DWORD *pPool = ( DWORD* ) ARRAY_ModelInfo;
@@ -251,180 +561,90 @@ RpClump * CRenderWareSA::ReadDFF ( const CBuffer& fileData, unsigned short usMod
     if ( streamModel == NULL )
         return NULL;
 
+    // force a load of the model, if this is a vehicle
+    //if ( usModelID != 0 )
+    //  pGame->GetModelInfo ( usModelID )->Request ( true, true );
+
     // DFF header id: 0x10
     // find our dff chunk
     if ( RwStreamFindChunk ( streamModel, 0x10, NULL, NULL ) == false )
-    {
-        RwStreamClose ( streamModel, NULL );
         return NULL;
-    }
 
     // rockstar's collision hack: set the global particle emitter to the modelinfo pointer of this model
-    if ( bLoadEmbeddedCollisions )
+    //#pragma message(__LOC__ "(IJs) RpPrtStdGlobalDataSetStreamEmbedded R* hack is unstable. Seems to work when forced to packer vehicle id (443).")
+    if ( usModelID != 0 )
         RpPrtStdGlobalDataSetStreamEmbedded ( ( void* ) pPool[usModelID] );
 
     // read the clump with all its extensions
     RpClump * pClump = RpClumpStreamRead ( streamModel );
 
     // reset collision hack
-    if ( bLoadEmbeddedCollisions )
+    if ( usModelID != 0 )
         RpPrtStdGlobalDataSetStreamEmbedded ( NULL );
 
     // close the stream
     RwStreamClose ( streamModel, NULL );
 
+    //
+    /*
+    if ( usModelID != 0 ) {
+        //
+        DWORD dwCreateModelInfo = 0x4C95C0; //0x4C5110
+        DWORD dwThis = (DWORD)(pPool[usModelID]);
+
+        __asm {
+            mov     ecx, dwThis
+            push    pClump
+            call    dwCreateModelInfo
+        }
+        //pGame->GetModelInfo ( usModelID )->Request ( TRUE, TRUE );
+    }
+    */
+
     return pClump;
 }
 
-
-//
-// Returns list of atomics inside a clump
-//
-void CRenderWareSA::GetClumpAtomicList ( RpClump* pClump, std::vector < RpAtomic* >& outAtomicList )
-{
-    LOCAL_FUNCTION_START
-        static RpAtomic* GetClumpAtomicListCB ( RpAtomic* pAtomic, std::vector < RpAtomic* >* pData )
-        {
-            pData->push_back ( pAtomic );
-            return pAtomic;
-        }
-    LOCAL_FUNCTION_END
-
-    RpClumpForAllAtomics ( pClump, LOCAL_FUNCTION::GetClumpAtomicListCB, &outAtomicList );
-}
-
-
-//
-// Returns true if the clump geometry sort of matches
-//
-// ClumpA vs ClumpB(or)AtomicB
-//
-bool CRenderWareSA::DoContainTheSameGeometry ( RpClump* pClumpA, RpClump* pClumpB, RpAtomic* pAtomicB )
-{
-    // Fast check if comparing one atomic
-    if ( pAtomicB )
-    {
-        RpGeometry* pGeometryA = ( ( RpAtomic* ) ( ( pClumpA->atomics.root.next ) - 0x8 ) )->geometry;    
-        RpGeometry* pGeometryB = pAtomicB->geometry;
-        return pGeometryA == pGeometryB;
-    }
-
-    // Get atomic list from both sides
-    std::vector < RpAtomic* > atomicListA;
-    std::vector < RpAtomic* > atomicListB;
-    GetClumpAtomicList ( pClumpA, atomicListA );
-    if ( pClumpB )
-        GetClumpAtomicList ( pClumpB, atomicListB );
-    if ( pAtomicB )
-        atomicListB.push_back ( pAtomicB );
-
-    // Count geometries that exist in both sides
-    std::set < RpGeometry* > geometryListA;
-    for ( uint i = 0 ; i < atomicListA.size () ; i++ )
-        MapInsert ( geometryListA, atomicListA[i]->geometry );
-
-    uint uiInBoth = 0;
-    for ( uint i = 0 ; i < atomicListB.size () ; i++ )
-        if ( MapContains ( geometryListA, atomicListB[i]->geometry ) )
-            uiInBoth++;
-
-    // If less than 50% match then assume it is not the same
-    if ( uiInBoth * 2 < atomicListB.size () || atomicListB.size () == 0 )
-        return false;
-
-    return true;
-}
-
-
-// Replaces a vehicle/weapon/ped model
-void CRenderWareSA::ReplaceModel ( RpClump* pNew, unsigned short usModelID, DWORD dwFunc )
-{
-    CModelInfo* pModelInfo = pGame->GetModelInfo ( usModelID );
-    if ( pModelInfo )
-    {
-        RpClump* pOldClump = (RpClump *)pModelInfo->GetRwObject ();
-        if ( !DoContainTheSameGeometry ( pNew, pOldClump, NULL ) )
-        {
-            if ( pModelInfo->IsVehicle ( ) )
-            {
-                // Reset our valid upgrade list
-                pModelInfo->ResetSupportedUpgrades ( );
-            }
-
-            // Make new clump container for the model geometry
-            // Clone twice as the geometry render order seems to be reversed each time it is cloned.
-            RpClump* pTemp = RpClumpClone ( pNew );
-            RpClump* pNewClone = RpClumpClone ( pTemp );
-            RpClumpDestroy ( pTemp );
-
-            // Calling CVehicleModelInfo::SetClump() allocates a new CVehicleStructure.
-            // So let's delete the old one first to avoid CPool<CVehicleStructure> depletion.
-            if ( dwFunc == FUNC_LoadVehicleModel )
-            {
-                CVehicleModelInfoSAInterface* pVehicleModelInfoInterface = (CVehicleModelInfoSAInterface*)pModelInfo->GetInterface ();
-                if ( pVehicleModelInfoInterface->pSomeInfo )
-                {
-                    DWORD dwDeleteFunc = FUNC_CVehicleStructure_delete;
-                    CVehicleStructure* pSomeInfo = pVehicleModelInfoInterface->pSomeInfo;
-                    __asm
-                    {
-                        mov     eax, pSomeInfo
-                        push    eax
-                        call    dwDeleteFunc
-                        add     esp, 4
-                    }
-                    pVehicleModelInfoInterface->pSomeInfo = NULL;
-                }
-            }
-
-            // ModelInfo::SetClump
-            CBaseModelInfoSAInterface* pModelInfoInterface = pModelInfo->GetInterface ();
-            __asm
-            {
-                mov     ecx, pModelInfoInterface
-                push    pNewClone
-                call    dwFunc
-            }
-
-            // Destroy old clump container
-            RpClumpDestroy ( pOldClump );
-        }
-    }
-}
-
 // Replaces a vehicle model
-void CRenderWareSA::ReplaceVehicleModel ( RpClump* pNew, unsigned short usModelID )
+void CRenderWareSA::ReplaceVehicleModel ( RpClump * pNew, unsigned short usModelID )
 {
-    ReplaceModel ( pNew, usModelID, FUNC_LoadVehicleModel );
-}
+    // get the modelinfo array
+    DWORD *pPool = ( DWORD* ) ARRAY_ModelInfo;
 
-// Replaces a weapon model
-void CRenderWareSA::ReplaceWeaponModel ( RpClump * pNew, unsigned short usModelID )
-{
-    ReplaceModel ( pNew, usModelID, FUNC_LoadWeaponModel );
-}
-
-// Replaces a ped model
-void CRenderWareSA::ReplacePedModel ( RpClump * pNew, unsigned short usModelID )
-{
-    ReplaceModel ( pNew, usModelID, FUNC_LoadPedModel );
+    DWORD dwFunc = FUNC_LoadVehicleModel;
+    DWORD dwThis = pPool[usModelID];
+    if ( dwThis && pNew != (RpClump *)((CBaseModelInfoSAInterface *)dwThis)->pRwObject )
+    {
+        __asm
+        {
+            mov     ecx, dwThis
+            push    pNew
+            call    dwFunc
+        }
+    }
 }
 
 // Reads and parses a COL3 file
-CColModel * CRenderWareSA::ReadCOL ( const CBuffer& fileData )
+CColModel * CRenderWareSA::ReadCOL ( const char * szCOLFile )
 {
-    if ( fileData.GetSize() < sizeof( ColModelFileHeader ) + 16 )
+    if ( !szCOLFile )
         return NULL;
 
-    const ColModelFileHeader& header = *(ColModelFileHeader*)fileData.GetData();
+    // Read the file
+    FILE* pFile = fopen ( szCOLFile, "rb" );
+    if ( !pFile )
+        return NULL;
 
+    // Create a new CColModel
+    CColModelSA* pColModel = new CColModelSA ();
+
+    ColModelFileHeader header = { 0 };
+    fread ( &header, sizeof(ColModelFileHeader), 1, pFile );
+    
     // Load the col model
     if ( header.version[0] == 'C' && header.version[1] == 'O' && header.version[2] == 'L' )
     {
-        unsigned char* pModelData = (unsigned char*)fileData.GetData() + sizeof( ColModelFileHeader );
-
-        // Create a new CColModel
-        CColModelSA* pColModel = new CColModelSA ();
+        unsigned char* pModelData = new unsigned char [ header.size - 0x18 ];
+        fread ( pModelData, header.size - 0x18, 1, pFile );
 
         if ( header.version[3] == 'L' )
         {
@@ -439,11 +659,41 @@ CColModel * CRenderWareSA::ReadCOL ( const CBuffer& fileData )
             LoadCollisionModelVer3 ( pModelData, header.size - 0x18, pColModel->GetInterface (), NULL );
         }
 
-        // Return the collision model
-        return pColModel;
+        delete[] pModelData;
+    }
+    else
+    {
+        delete pColModel;
+        fclose ( pFile );
+        return NULL;
     }
 
-    return NULL;
+    fclose ( pFile );
+
+    // Return the collision model
+    return pColModel;
+}
+
+// Positions the front seat by reading out the vector from the 'ped_frontseat' atomic in the clump (RpClump*)
+// and changing the vector in the CModelInfo class identified by the model id (usModelID)
+bool CRenderWareSA::PositionFrontSeat ( RpClump *pClump, unsigned short usModelID )
+{
+    // get the modelinfo array (+5Ch contains a pointer to vehicle specific dummy data)
+    DWORD *pPool = ( DWORD* ) ARRAY_ModelInfo;
+    DWORD *pVehicleDummies = ( DWORD* ) ( pPool[usModelID] + 0x5C );
+
+    // read out the 'ped_frontseat' frame
+    RwFrame * pPedFrontSeat = RwFrameFindFrame ( RpGetFrame ( pClump ), "ped_frontseat" );
+    if ( pPedFrontSeat == NULL )
+        return false;
+
+    // in the vehicle specific dummy data, +30h contains the front seat vector
+    CVector *vecFrontSeat = ( CVector* ) ( pVehicleDummies + 0x30 );
+    vecFrontSeat->fX = pPedFrontSeat->modelling.pos.x;
+    vecFrontSeat->fY = pPedFrontSeat->modelling.pos.y;
+    vecFrontSeat->fZ = pPedFrontSeat->modelling.pos.z;
+
+    return true;
 }
 
 // Loads all atomics from a clump into a container struct and returns the number of atomics it loaded
@@ -472,29 +722,21 @@ RpAtomic* AtomicsReplacer ( RpAtomic* pAtomic, SAtomicsReplacer* pData )
     return pAtomic;
 }
 
-void CRenderWareSA::ReplaceAllAtomicsInModel ( RpClump * pNew, unsigned short usModelID )
+void CRenderWareSA::ReplaceAllAtomicsInModel ( RpClump * pSrc, unsigned short usModelID )
 {
-    CModelInfo* pModelInfo = pGame->GetModelInfo ( usModelID );
-    if ( pModelInfo )
-    {
-        RpAtomic* pOldAtomic = (RpAtomic *)pModelInfo->GetRwObject ();
-        if ( !DoContainTheSameGeometry ( pNew, NULL, pOldAtomic ) )
-        {
-            // Clone the clump that's to be replaced (FUNC_AtomicsReplacer removes the atomics from the source clump)
-            RpClump * pCopy = RpClumpClone ( pNew );
+    // Clone the clump that's to be replaced (FUNC_AtomicsReplacer removes the atomics from the source clump)
+    RpClump * pCopy = RpClumpClone ( pSrc );
 
-            // Replace the atomics
-            SAtomicsReplacer data;
-            data.usTxdID = ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID]->usTextureDictionary;
-            data.pClump = pCopy;
+    // Replace the atomics
+    SAtomicsReplacer data;
+    data.usTxdID = ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID]->usTextureDictionary;
+    data.pClump = pCopy;
 
-            MemPutFast < DWORD > ( (DWORD*)DWORD_AtomicsReplacerModelID, usModelID );
-            RpClumpForAllAtomics ( pCopy, AtomicsReplacer, &data );
+    *((DWORD*)DWORD_AtomicsReplacerModelID) = usModelID;
+    RpClumpForAllAtomics ( pCopy, AtomicsReplacer, &data );
 
-            // Get rid of the now empty copied clump
-            RpClumpDestroy ( pCopy );
-        }
-    }
+    // Get rid of the now empty copied clump
+    RpClumpDestroy ( pCopy );
 }
 
 // Replaces all atomics in a vehicle
@@ -541,7 +783,7 @@ bool CRenderWareSA::ReplacePartModels ( RpClump * pClump, RpAtomicContainer * pA
 {
     // get the part's dummy name
     char szDummyName[16] = {0};
-    snprintf ( &szDummyName[0], 16, "%s_dummy", szName );
+    _snprintf ( &szDummyName[0], 16, "%s_dummy", szName );
 
     // get the clump's frame
     RwFrame * pFrame = RpGetFrame ( pClump );
@@ -571,8 +813,8 @@ void CRenderWareSA::ReplaceCollisions ( CColModel* pCol, unsigned short usModelI
     // Apply some low-level hacks (copies the old col area and sets a flag)
     DWORD pColModelInterface = (DWORD)pColModel->GetInterface ();
     DWORD pOldColModelInterface = *((DWORD *) pPool [ usModelID ] + 20);
-    MemOrFast < BYTE > ( pPool [usModelID ] + 0x13, 8 );
-    MemPutFast < BYTE > ( pColModelInterface + 40, *((BYTE *)( pOldColModelInterface + 40 )) );
+    *((BYTE *)( pPool [usModelID ] + 0x13 )) |= 8;
+    *((BYTE *)( pColModelInterface + 40 )) = *((BYTE *)( pOldColModelInterface + 40 ));
 
     // TODO: It seems that on entering the game, when this function is executed, the modelinfo array for this
     // model is still zero, leading to a crash!
@@ -597,10 +839,7 @@ void CRenderWareSA::DestroyTXD ( RwTexDictionary * pTXD )
 void CRenderWareSA::DestroyTexture ( RwTexture* pTex )
 {
     if ( pTex )
-    {
-        ScriptRemovedTexture ( pTex );
         RwTextureDestroy ( pTex );
-    }
 }
 
 void CRenderWareSA::RwTexDictionaryRemoveTexture ( RwTexDictionary* pTXD, RwTexture* pTex )
@@ -618,172 +857,13 @@ short CRenderWareSA::CTxdStore_GetTxdRefcount ( unsigned short usTxdID )
     return *(short *)( *(*(DWORD **)0xC8800C) + 0xC*usTxdID + 4 );
 }
 
-bool CRenderWareSA::RwTexDictionaryContainsTexture ( RwTexDictionary* pTXD, RwTexture* pTex )
+bool CRenderWareSA::ListContainsNamedTexture ( std::list < RwTexture* >& list, const char* szTexName )
 {
-    return pTex->txd == pTXD;
-}
-
-
-////////////////////////////////////////////////////////////////
-//
-// CRenderWareSA::GetTXDIDForModelID
-//
-// Get a TXD ID associated with the model ID
-//
-////////////////////////////////////////////////////////////////
-ushort CRenderWareSA::GetTXDIDForModelID ( ushort usModelID )
-{
-    if ( usModelID >= 20000 && usModelID < 25000 )
+    std::list < RwTexture* >::iterator it;
+    for ( it = list.begin (); it != list.end (); it++ )
     {
-        // Get global TXD ID instead
-        return usModelID - 20000;
+        if ( !stricmp ( szTexName, (*it)->name ) )
+            return true;
     }
-    else
-    {
-        // Get the CModelInfo's TXD ID
-
-        // Ensure valid
-        if ( usModelID >= 20000 || !((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID] )
-            return 0;
-
-        return ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID]->usTextureDictionary;
-    }
-}
-
-
-////////////////////////////////////////////////////////////////
-//
-// CRenderWareSA::GetModelTextureNames
-//
-// Get list of texture names associated with the model
-// Will try to load the model if needed
-//
-////////////////////////////////////////////////////////////////
-void CRenderWareSA::GetModelTextureNames ( std::vector < SString >& outNameList, ushort usModelId )
-{
-    outNameList.clear ();
-
-    // Special case for CJ
-    if ( usModelId == 0 )
-    {
-        outNameList.push_back( "CJ" );
-        return;
-    }
-
-    ushort usTxdId = GetTXDIDForModelID ( usModelId );
-
-    if ( usTxdId == 0 )
-        return;
-
-    // Get the TXD corresponding to this ID
-    RwTexDictionary* pTXD = CTxdStore_GetTxd ( usTxdId );
-
-    bool bLoadedModel = false;
-    if ( !pTXD )
-    {
-        // Try model load
-        bLoadedModel = true;
-        pGame->GetModelInfo ( usModelId )->Request ( BLOCKING, "CRenderWareSA::GetModelTextureNames" );
-        pTXD = CTxdStore_GetTxd ( usTxdId );
-    }
-
-    std::vector < RwTexture* > textureList;
-    GetTxdTextures ( textureList, pTXD );
-
-    for ( std::vector < RwTexture* > ::iterator iter = textureList.begin () ; iter != textureList.end () ; iter++ )
-    {
-        outNameList.push_back ( (*iter)->name );
-    }
-
-    if ( bLoadedModel )
-        ( (void (__cdecl *)(unsigned short))FUNC_RemoveModel )( usModelId );
-}
-
-
-////////////////////////////////////////////////////////////////
-//
-// CRenderWareSA::GetTxdTextures
-//
-// If TXD must already be loaded
-//
-////////////////////////////////////////////////////////////////
-void CRenderWareSA::GetTxdTextures ( std::vector < RwTexture* >& outTextureList, ushort usTxdId )
-{
-    if ( usTxdId == 0 )
-        return;
-
-    // Get the TXD corresponding to this ID
-    RwTexDictionary* pTXD = CTxdStore_GetTxd ( usTxdId );
-
-    if ( !pTXD )
-        return;
-
-    GetTxdTextures ( outTextureList, pTXD );
-}
-
-
-////////////////////////////////////////////////////////////////
-//
-// CRenderWareSA::GetTxdTextures
-//
-// Get textures from a TXD
-//
-////////////////////////////////////////////////////////////////
-void CRenderWareSA::GetTxdTextures ( std::vector < RwTexture* >& outTextureList, RwTexDictionary* pTXD )
-{
-    if ( pTXD )
-    {
-        RwTexDictionaryForAllTextures ( pTXD, StaticGetTextureCB, &outTextureList );
-    }
-}
-
-
-////////////////////////////////////////////////////////////////
-//
-// CRenderWareSA::StaticGetTextureCB
-//
-// Callback used in GetTxdTextures
-//
-////////////////////////////////////////////////////////////////
-bool CRenderWareSA::StaticGetTextureCB ( RwTexture* texture, std::vector < RwTexture* >* pTextureList )
-{
-    pTextureList->push_back ( texture );
-    return true;
-}
-
-
-////////////////////////////////////////////////////////////////
-//
-// CRenderWareSA::GetTextureName
-//
-// Only called by CRenderItemManager::GetVisibleTextureNames ?
-//
-////////////////////////////////////////////////////////////////
-const char* CRenderWareSA::GetTextureName ( CD3DDUMMY* pD3DData )
-{
-    STexInfo** ppTexInfo = MapFind ( m_D3DDataTexInfoMap, pD3DData );
-    if ( ppTexInfo )
-        return (*ppTexInfo)->strTextureName;
-    if ( !pD3DData )
-        return FAKE_NAME_NO_TEXTURE;
-    return "";
-}
-
-
-//
-// CFastHashMap functions
-//
-CD3DDUMMY* GetEmptyMapKey ( CD3DDUMMY** )
-{
-    return FAKE_D3DTEXTURE_EMPTY_KEY;
-}
-
-CD3DDUMMY* GetDeletedMapKey ( CD3DDUMMY** )
-{
-    return FAKE_D3DTEXTURE_DELETED_KEY;
-}
-
-RwFrame * CRenderWareSA::GetFrameFromName ( RpClump * pRoot, SString strName )
-{
-    return RwFrameFindFrame ( RpGetFrame ( pRoot ), strName );
+    return false;
 }

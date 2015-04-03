@@ -31,8 +31,6 @@ public:
     static int      fileFlush                           ( lua_State* luaVM );
     static int      fileClose                           ( lua_State* luaVM );
     static int      fileDelete                          ( lua_State* luaVM );
-    static int      fileRename                          ( lua_State* luaVM );
-    static int      fileCopy                            ( lua_State* luaVM );
 };
 
 #endif

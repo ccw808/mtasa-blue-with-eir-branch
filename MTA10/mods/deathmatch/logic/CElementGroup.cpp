@@ -28,8 +28,8 @@ CElementGroup::~CElementGroup()
 {
     CElementDeleter * deleter = g_pClientGame->GetElementDeleter();
 
-    CFastList < CClientEntity* > ::iterator iter = m_elements.begin ();
-    for ( ; iter != m_elements.end (); ++iter )
+    list < CClientEntity* > ::iterator iter = m_elements.begin ();
+    for ( ; iter != m_elements.end (); iter++ )
     {
         ( *iter )->SetElementGroup ( NULL );
         ( *iter )->DeleteAllEvents ();
@@ -45,7 +45,7 @@ void CElementGroup::Add ( class CClientEntity * element )
 
 void CElementGroup::Remove ( class CClientEntity * element )
 {
-    m_elements.remove ( element );
+    if ( !m_elements.empty() ) m_elements.remove ( element );
 }
 
 unsigned int CElementGroup::GetCount ( void )

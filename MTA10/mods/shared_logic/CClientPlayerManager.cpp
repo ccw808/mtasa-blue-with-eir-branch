@@ -41,11 +41,10 @@ void CClientPlayerManager::DoPulse ( void )
     for ( ; iter != m_Players.end (); ++iter )
     {
         pPlayer = *iter;
-
         if ( !pPlayer->IsLocalPlayer () )
         {
             // Pulse voice data if voice is enabled
-            if ( g_pClientGame->GetVoiceRecorder()->IsEnabled() && pPlayer->GetVoice() )
+            if ( true )
                 pPlayer->GetVoice()->DoPulse();
 
             // Flag him with connection error if its been too long since last puresync and force his position

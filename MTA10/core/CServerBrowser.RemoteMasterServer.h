@@ -6,11 +6,10 @@
 // Communicate with a remote master server and parse the result.
 //
 
-class CRemoteMasterServerInterface : public CRefCountable
+class CRemoteMasterServerInterface
 {
-protected:
-    virtual                 ~CRemoteMasterServerInterface  ( void ) {}
 public:
+    virtual                 ~CRemoteMasterServerInterface  ( void ) {}
 
     // CRemoteMasterServerInterface
     virtual void            Refresh                     ( void ) = 0;

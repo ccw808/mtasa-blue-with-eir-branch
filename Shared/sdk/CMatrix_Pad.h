@@ -62,15 +62,6 @@ public:
         vRight = Matrix.vRight;
         dwPadRoll = 0;
     }
-
-    void SetFromMatrixSkipPadding ( const CMatrix& Matrix )
-    {
-        vPos = Matrix.vPos;
-        vFront = Matrix.vFront;
-        vUp = Matrix.vUp;
-        vRight = Matrix.vRight;
-    }
-
 };
 
 #endif

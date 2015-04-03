@@ -14,6 +14,7 @@
 
 CPedManager::CPedManager ( void )
 {
+    m_bDontRemoveFromList = false;
 }
 
 
@@ -66,19 +67,42 @@ CPed* CPedManager::CreateFromXML ( CElement* pParent, CXMLNode& Node, CLuaMain* 
 void CPedManager::DeleteAll ( void )
 {
     // Delete all items
-    DeletePointersAndClearList ( m_List );
+    m_bDontRemoveFromList = true;
+    list < CPed* > ::const_iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
+    {
+        delete *iter;
+    }
+
+    // Clear the list
+    m_List.clear ();
+    m_bDontRemoveFromList = false;
 }
 
 
 void CPedManager::RemoveFromList ( CPed* pPed )
 {
-    m_List.remove ( pPed );
+    if ( !m_bDontRemoveFromList && !m_List.empty() )
+    {
+        m_List.remove ( pPed );
+    }
 }
 
 
 bool CPedManager::Exists ( CPed* pPed )
 {
-    return ListContains ( m_List, pPed );
+    // Try to find the Ped ID in the list
+    list < CPed* > ::const_iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
+    {
+        if ( (*iter) == pPed )
+        {
+            return true;
+        }
+    }
+
+    // Couldn't find it
+    return false;
 }
 
 

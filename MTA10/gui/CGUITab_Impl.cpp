@@ -25,7 +25,9 @@ CGUITab_Impl::CGUITab_Impl ( CGUI_Impl* pGUI, CGUIElement_Impl* pParent, const c
     m_pWindow = pGUI->GetWindowManager ()->createWindow ( "DefaultWindow", szUnique );
     m_pWindow->setDestroyedByParent ( false );
 
-    m_pWindow->setText ( CGUI_Impl::GetUTFString(szCaption) );
+    CEGUI::String strText;
+    strText.assign( (CEGUI::utf8*) szCaption ); // assign as UTF8 string
+    m_pWindow->setText ( strText );
 
 
     // Store the pointer to this CGUI element in the CEGUI element
@@ -57,34 +59,8 @@ CGUITab_Impl::~CGUITab_Impl ( void )
 
 void CGUITab_Impl::SetCaption ( const char* szCaption )
 {
-    m_pWindow->setText ( CGUI_Impl::GetUTFString(szCaption) );
-}
+    CEGUI::String strCaption;
 
-void CGUITab_Impl::SetVisible ( bool bVisible )
-{
-    CGUIElement_Impl* pParent = static_cast < CGUIElement_Impl* > ( m_pParent );
-    CEGUI::TabControl* pControl = reinterpret_cast < CEGUI::TabControl* > ( ((CGUITabPanel_Impl*)pParent)->m_pWindow );
-    pControl->getButtonForTabContents ( m_pWindow )->setVisible ( bVisible );
-    pControl->requestChildWindowLayout();
-}
-
-bool CGUITab_Impl::IsVisible ( void )
-{
-    CGUIElement_Impl* pParent = static_cast < CGUIElement_Impl* > ( m_pParent );
-    CEGUI::TabControl* pControl = reinterpret_cast < CEGUI::TabControl* > ( ((CGUITabPanel_Impl*)pParent)->m_pWindow );
-    return pControl->getButtonForTabContents ( m_pWindow )->isVisible ();
-}
-
-void CGUITab_Impl::SetEnabled ( bool bEnabled )
-{
-    CGUIElement_Impl* pParent = static_cast < CGUIElement_Impl* > ( m_pParent );
-    CEGUI::TabControl* pControl = reinterpret_cast < CEGUI::TabControl* > ( ((CGUITabPanel_Impl*)pParent)->m_pWindow );
-    pControl->getButtonForTabContents ( m_pWindow )->setEnabled ( bEnabled );
-}
-
-bool CGUITab_Impl::IsEnabled ( void )
-{
-    CGUIElement_Impl* pParent = static_cast < CGUIElement_Impl* > ( m_pParent );
-    CEGUI::TabControl* pControl = reinterpret_cast < CEGUI::TabControl* > ( ((CGUITabPanel_Impl*)pParent)->m_pWindow );
-    return !pControl->getButtonForTabContents ( m_pWindow )->isDisabled ();
+    if ( szCaption ) strCaption.assign ( (CEGUI::utf8*)szCaption );
+    m_pWindow->setText ( strCaption );
 }

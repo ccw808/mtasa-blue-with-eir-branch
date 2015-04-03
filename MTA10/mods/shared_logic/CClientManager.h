@@ -24,6 +24,7 @@ class CClientManager;
 #include "CClientDFFManager.h"
 #include "CClientEntity.h"
 #include "CClientGUIManager.h"
+#include "CClientHandlingManager.h"
 #include "CClientMarkerManager.h"
 #include "CClientModelRequestManager.h"
 #include "CClientObjectManager.h"
@@ -36,17 +37,14 @@ class CClientManager;
 #include "CClientStreamer.h"
 #include "CClientTeamManager.h"
 #include "CClientSoundManager.h"
-#include "CClientRenderElementManager.h"
 #include "CClientDisplayManager.h"
+#include "CClientTime.h"
 #include "CClientVehicleManager.h"
 #include "CClientPedManager.h"
 #include "..\deathmatch\logic\CResourceManager.h"
 #include "CClientColManager.h"
 #include "CClientGroups.h"
 #include "CClientWaterManager.h"
-#include "CClientWeaponManager.h"
-#include "CClientEffectManager.h"
-#include "CClientPointLightsManager.h"
 
 class CClientProjectileManager;
 class CClientExplosionManager;
@@ -54,12 +52,10 @@ class CClientExplosionManager;
 class CClientManager
 {
 public:
-    ZERO_ON_NEW
                                         CClientManager              ( void );
                                         ~CClientManager             ( void );
 
-    void                                DoPulse                     ( bool bDoStandardPulses, bool bDoVehicleManagerPulse );
-    void                                DoRender                    ( void );
+    void                                DoPulse                     ( void );
     void                                UpdateStreamers             ( void );
 
     inline CAntiCheat&                  GetAntiCheat                ( void )        { return m_AntiCheat; }
@@ -68,12 +64,12 @@ public:
     inline CClientColModelManager*      GetColModelManager          ( void )        { return m_pColModelManager; }
     inline CClientDFFManager*           GetDFFManager               ( void )        { return m_pDFFManager; }
     inline CClientGUIManager*           GetGUIManager               ( void )        { return m_pGUIManager; }
+    inline CClientHandlingManager*      GetHandlingManager          ( void )        { return m_pHandlingManager; }
     inline CClientMarkerManager*        GetMarkerManager            ( void )        { return m_pMarkerManager; }
     inline CClientStreamer*             GetMarkerStreamer           ( void )        { return m_pMarkerStreamer; }
     inline CClientModelRequestManager*  GetModelRequestManager      ( void )        { return m_pModelRequestManager; }
     inline CClientObjectManager*        GetObjectManager            ( void )        { return m_pObjectManager; }
     inline CClientStreamer*             GetObjectStreamer           ( void )        { return m_pObjectStreamer; }
-    inline CClientStreamer*             GetObjectLodStreamer        ( void )        { return m_pObjectLodStreamer; }
     inline CClientPathManager*          GetPathManager              ( void )        { return m_pPathManager; }
     inline CClientPickupManager*        GetPickupManager            ( void )        { return m_pPickupManager; }
     inline CClientStreamer*             GetPickupStreamer           ( void )        { return m_pPickupStreamer; }
@@ -82,7 +78,6 @@ public:
     inline CClientRadarAreaManager*     GetRadarAreaManager         ( void )        { return m_pRadarAreaManager; }
     inline CClientRadarMarkerManager*   GetRadarMarkerManager       ( void )        { return m_pRadarMarkerManager; }
     inline CClientSoundManager*         GetSoundManager             ( void )        { return m_pSoundManager; }
-    inline CClientRenderElementManager* GetRenderElementManager     ( void )        { return m_pRenderElementManager; }
     inline CClientTeamManager*          GetTeamManager              ( void )        { return m_pTeamManager; }
     inline CClientDisplayManager*       GetDisplayManager           ( void )        { return m_pDisplayManager; }
     inline CClientVehicleManager*       GetVehicleManager           ( void )        { return m_pVehicleManager; }
@@ -95,9 +90,8 @@ public:
     inline CClientExplosionManager*     GetExplosionManager         ( void )        { return m_pExplosionManager; }
     inline CClientPacketRecorder*       GetPacketRecorder           ( void )        { return m_pPacketRecorder; }
     inline CClientWaterManager*         GetWaterManager             ( void )        { return m_pWaterManager; }
-    inline CClientWeaponManager*        GetWeaponManager            ( void )        { return m_pWeaponManager; }
-    inline CClientEffectManager*        GetEffectManager            ( void )        { return m_pEffectManager; }
-    inline CClientPointLightsManager*   GetPointLightsManager       ( void )        { return m_pPointLightsManager; }
+
+    inline CGUITexture*                 GetConnectionTroubleTexture ( void )        { return m_pConnectionTroubleTexture; }
 
     inline bool                         IsGameLoaded                ( void )        { return g_pGame->GetSystemState () == 9 && !m_bGameUnloadedFlag && g_pCore->GetNetwork ()->GetServerBitStreamVersion (); }
     inline bool                         IsBeingDeleted              ( void )        { return m_bBeingDeleted; }
@@ -110,8 +104,6 @@ public:
     CClientEntity *                     FindEntitySafe              ( CEntity * pGameEntity );
 
     void                                OnUpdateStreamPosition      ( CClientStreamElement* pElement );
-    void                                OnLowLODElementCreated      ( void );
-    void                                OnLowLODElementDestroyed    ( void );
 
 private:
     CAntiCheat                          m_AntiCheat;
@@ -132,27 +124,23 @@ private:
     CClientRadarAreaManager*            m_pRadarAreaManager;
     CClientRadarMarkerManager*          m_pRadarMarkerManager;
     CClientSoundManager*                m_pSoundManager;
-    CClientRenderElementManager*        m_pRenderElementManager;
     CClientStreamer*                    m_pObjectStreamer;
-    CClientStreamer*                    m_pObjectLodStreamer;
     CClientTeamManager*                 m_pTeamManager;
     CClientDisplayManager*              m_pDisplayManager;
     CClientVehicleManager*              m_pVehicleManager;
     CClientStreamer*                    m_pVehicleStreamer;
     CClientPedManager*                  m_pPedManager;
+    CClientHandlingManager*             m_pHandlingManager;
     CClientWaterManager*                m_pWaterManager;
     CResourceManager*                   m_pResourceManager;
     CClientColManager*                  m_pColManager;
     CClientGroups*                      m_pGroups;
     CClientProjectileManager*           m_pProjectileManager;
     CClientExplosionManager*            m_pExplosionManager;
-    CClientWeaponManager*               m_pWeaponManager;
-    CClientEffectManager*               m_pEffectManager;
-    CClientPointLightsManager*          m_pPointLightsManager;
+    CGUITexture*                        m_pConnectionTroubleTexture;
     CClientPacketRecorder*              m_pPacketRecorder;
     bool                                m_bBeingDeleted;
     bool                                m_bGameUnloadedFlag;
-    int                                 m_iNumLowLODElements;
 };
 
 #endif

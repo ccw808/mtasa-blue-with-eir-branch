@@ -72,9 +72,6 @@ MouseCursor::MouseCursor(void)
 	// no default image though
 	d_cursorImage = NULL;
 
-    // set default colour rect
-    d_colourRect.setColours(colour(1.0f, 1.0f, 1.0f));
-
 	// add events
 	addMouseCursorEvents();
 
@@ -119,7 +116,7 @@ void MouseCursor::draw(void) const
 {
 	if (d_visible && (d_cursorImage != NULL))
 	{
-		d_cursorImage->draw( d_position, System::getSingleton().getRenderer()->getRect(), d_colourRect );
+		d_cursorImage->draw( d_position, System::getSingleton().getRenderer()->getRect() );
 	}
 }
 
@@ -143,15 +140,6 @@ void MouseCursor::offsetPosition(const Point& offset)
 	d_position.d_x += offset.d_x;
 	d_position.d_y += offset.d_y;
 	constrainPosition();
-}
-
-
-/*************************************************************************
-    Set the mouse cursor's alpha
-*************************************************************************/
-void MouseCursor::setAlpha(float alpha)
-{
-    d_colourRect.setColours(colour(1.0f, 1.0f, 1.0f, alpha));
 }
 
 

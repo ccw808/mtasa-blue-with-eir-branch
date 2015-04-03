@@ -18,6 +18,7 @@
 CGUILabel_Impl::CGUILabel_Impl ( CGUI_Impl* pGUI, CGUIElement* pParent, const char* szText )
 {
     m_pManager = pGUI;
+    m_pFont = pGUI->GetDefaultFont ();
 
     // Get an unique identifier for CEGUI (gah, there's gotta be an another way)
     char szUnique [CGUI_CHAR_SIZE];
@@ -35,9 +36,7 @@ CGUILabel_Impl::CGUILabel_Impl ( CGUI_Impl* pGUI, CGUIElement* pParent, const ch
     // Do some hardcore disabling on the labels
     //m_pWindow->moveToBack ( );
     //m_pWindow->disable ( );
-
-    // not sure what that was for, disabled
-    //m_pWindow->setZOrderingEnabled ( false );
+    m_pWindow->setZOrderingEnabled ( false );
     //m_pWindow->setAlwaysOnTop ( true );
 
     SetFrameEnabled ( false );
@@ -67,8 +66,19 @@ CGUILabel_Impl::~CGUILabel_Impl ( void )
 
 void CGUILabel_Impl::SetText ( const char *Text )
 {
+    CEGUI::String strText;
+
+    if ( Text ) strText.assign ( (CEGUI::utf8*) Text ); // assign as UTF8 string
+
     // Set the new text and size the text field after it
-    m_pWindow->setText ( CGUI_Impl::GetUTFString(Text) );
+    m_pWindow->setText ( strText );
+}
+
+
+void CGUILabel_Impl::AutoSize ( const char* Text )
+{
+    const CEGUI::Font *pFont = m_pWindow->getFont();
+    m_pWindow->setSize ( CEGUI::Absolute, CEGUI::Size ( pFont->getTextExtent ( Text ), pFont->getFontHeight() + 2.0f ) );   // Add hack factor to height to allow for long characters such as 'g' or 'j'
 }
 
 
@@ -147,10 +157,7 @@ float CGUILabel_Impl::GetCharacterWidth ( int iCharIndex )
 
 float CGUILabel_Impl::GetFontHeight ( void )
 {
-    const CEGUI::Font* pFont = m_pWindow->getFont ();
-    if ( pFont )
-        return pFont->getFontHeight();
-    return 14.0f;
+    return m_pFont->GetFontHeight ();
 }
 
 
@@ -168,7 +175,7 @@ float CGUILabel_Impl::GetTextExtent ( void )
 
             while( std::getline ( ssText, sLineText ) )
             {
-                fLineExtent = pFont->getTextExtent ( CGUI_Impl::GetUTFString( sLineText ) );
+                fLineExtent = pFont->getTextExtent ( sLineText );
                 if ( fLineExtent > fMax )
                     fMax = fLineExtent;
             }

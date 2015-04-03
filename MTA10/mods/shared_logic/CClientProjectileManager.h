@@ -21,7 +21,7 @@ class CClientManager;
 
 class CClientProjectileManager
 {
-    friend class CClientProjectile;
+    friend CClientProjectile;
 public:
                                     CClientProjectileManager            ( CClientManager * pManager );
                                     ~CClientProjectileManager           ( void );
@@ -29,9 +29,10 @@ public:
     void                            DoPulse                             ( void );
     void                            RemoveAll                           ( void );
     bool                            Exists                              ( CClientProjectile * pProjectile );
-    CClientProjectile*              Get                                 ( CEntitySAInterface * pProjectile );
 
     inline unsigned int             Count                               ( void )                                    { return static_cast < unsigned int > ( m_List.size () ); }
+
+    inline void                     SetInitiateHandler                  ( ProjectileInitiateHandler * pHandler )    { m_pInitiateHandler = pHandler; }
 
     // * Game-layer wrapping *
     static bool                     Hook_StaticProjectileAllow          ( CEntity * pGameCreator, eWeaponType weaponType, CVector * origin, float fForce, CVector * target, CEntity * targetEntity );
@@ -43,17 +44,19 @@ public:
 protected:
     inline void                     AddToList                           ( CClientProjectile * pProjectile )         { m_List.push_back ( pProjectile ); }
     void                            RemoveFromList                      ( CClientProjectile * pProjectile );
+    void                            OnInitiate                          ( CClientProjectile * pProjectile );
 
     void                            TakeOutTheTrash                     ( void );
 private:
     CClientManager *                    m_pManager;
     std::list < CClientProjectile* >    m_List;
+    ProjectileInitiateHandler *         m_pInitiateHandler;
 
     bool                                m_bIsLocal;
-    CClientEntityPtr                    m_pCreator;
+    CClientEntity *                     m_pCreator;
 
     bool                                m_bCreating;
-    CClientProjectilePtr                m_pLastCreated;
+    CClientProjectile *                 m_pLastCreated;
 };
 
 #endif

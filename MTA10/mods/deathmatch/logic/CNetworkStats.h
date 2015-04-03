@@ -31,15 +31,15 @@ private:
     CClientDisplayManager*          m_pDisplayManager;
 
     unsigned long                   m_ulLastUpdateTime;
-    unsigned int                    m_uiLastPacketsReceived;
-    unsigned int                    m_uiLastPacketsSent;
-    unsigned long long              m_ullLastBytesSent;
-    unsigned long long              m_ullLastBytesReceived;
+    unsigned int                    m_uiPacketsSent;
+    unsigned int                    m_uiPacketsReceived;
+    unsigned int                    m_uiBitsReceived;
+    unsigned int                    m_uiBitsSent;
 
-    float                           m_fPacketSendRate;
-    float                           m_fPacketReceiveRate;
-    float                           m_fByteSendRate;
-    float                           m_fByteReceiveRate;
+    unsigned int                    m_uiLastPacketsSent;
+    unsigned int                    m_uiLastPacketsReceived;
+    unsigned int                    m_uiLastBitsReceived;
+    unsigned int                    m_uiLastBitsSent;
 };
 
 #endif

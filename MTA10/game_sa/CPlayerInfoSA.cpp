@@ -58,13 +58,11 @@ long CPlayerInfoSA::GetPlayerMoney (  )
  * Sets the amount of money the player has
  * @param dwMoney DWORD containing the ammount of money you wish the player to have
  */
-void CPlayerInfoSA::SetPlayerMoney ( long lMoney, bool bInstant )
+void CPlayerInfoSA::SetPlayerMoney ( long lMoney )
 {
-    DEBUG_TRACE("void CPlayerInfoSA::SetPlayerMoney ( unsigned long ulMoney, bool bInstant )");
-    MemPutFast < long > ( 0xB7CE50, lMoney );
-
-    if (bInstant)
-        MemPutFast < long >(0xB7CE54, lMoney);
+    DEBUG_TRACE("void CPlayerInfoSA::SetPlayerMoney ( unsigned long ulMoney )");
+    //internalInterface->DisplayScore = ulMoney;
+    * ( long * ) ( 0xB7CE50 ) = lMoney;
 }
 
 /**

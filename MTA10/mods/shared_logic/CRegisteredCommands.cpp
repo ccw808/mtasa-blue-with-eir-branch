@@ -27,7 +27,7 @@ CRegisteredCommands::~CRegisteredCommands ( void )
 }
 
 
-bool CRegisteredCommands::AddCommand ( CLuaMain* pLuaMain, const char* szKey, const CLuaFunctionRef& iLuaFunction, bool bCaseSensitive )
+bool CRegisteredCommands::AddCommand ( CLuaMain* pLuaMain, const char* szKey, int iLuaFunction, bool bCaseSensitive )
 {
     assert ( pLuaMain );
     assert ( szKey );
@@ -43,7 +43,8 @@ bool CRegisteredCommands::AddCommand ( CLuaMain* pLuaMain, const char* szKey, co
     // Create the entry
     pCommand = new SCommand;
     pCommand->pLuaMain = pLuaMain;
-    pCommand->strKey.AssignLeft ( szKey, MAX_REGISTERED_COMMAND_LENGTH );
+    strncpy ( pCommand->szKey, szKey, MAX_REGISTERED_COMMAND_LENGTH );
+    pCommand->szKey [MAX_REGISTERED_COMMAND_LENGTH] = 0;
     pCommand->iLuaFunction = iLuaFunction;
     pCommand->bCaseSensitive = bCaseSensitive;
 
@@ -66,9 +67,9 @@ bool CRegisteredCommands::RemoveCommand ( CLuaMain* pLuaMain, const char* szKey 
     while ( iter != m_Commands.end () )
     {
         if ( (*iter)->bCaseSensitive )
-            iCompareResult = strcmp ( (*iter)->strKey, szKey );
+            iCompareResult = strcmp ( (*iter)->szKey, szKey );
         else
-            iCompareResult = stricmp ( (*iter)->strKey, szKey );
+            iCompareResult = stricmp ( (*iter)->szKey, szKey );
 
         // Matching vm's and names?
         if ( (*iter)->pLuaMain == pLuaMain && iCompareResult == 0 )
@@ -151,9 +152,9 @@ bool CRegisteredCommands::ProcessCommand ( const char* szKey, const char* szArgu
     for ( ; iter != m_Commands.end (); iter++ )
     {
         if ( (*iter)->bCaseSensitive )
-            iCompareResult = strcmp ( (*iter)->strKey, szKey );
+            iCompareResult = strcmp ( (*iter)->szKey, szKey );
         else
-            iCompareResult = stricmp ( (*iter)->strKey, szKey );
+            iCompareResult = stricmp ( (*iter)->szKey, szKey );
 
         // Matching names?
         if ( iCompareResult == 0 )
@@ -182,9 +183,9 @@ CRegisteredCommands::SCommand* CRegisteredCommands::GetCommand ( const char* szK
     for ( ; iter != m_Commands.end (); iter++ )
     {
         if ( (*iter)->bCaseSensitive )
-            iCompareResult = strcmp ( (*iter)->strKey, szKey );
+            iCompareResult = strcmp ( (*iter)->szKey, szKey );
         else
-            iCompareResult = stricmp ( (*iter)->strKey, szKey );
+            iCompareResult = stricmp ( (*iter)->szKey, szKey );
 
         // Matching name and no given VM or matching VM
         if ( iCompareResult == 0 && ( !pLuaMain || pLuaMain == (*iter)->pLuaMain ) )
@@ -198,7 +199,7 @@ CRegisteredCommands::SCommand* CRegisteredCommands::GetCommand ( const char* szK
 }
 
 
-void CRegisteredCommands::CallCommandHandler ( CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFunction, const char* szKey, const char* szArguments )
+void CRegisteredCommands::CallCommandHandler ( CLuaMain* pLuaMain, int iLuaFunction, const char* szKey, const char* szArguments )
 {
     assert ( pLuaMain );
     assert ( szKey );

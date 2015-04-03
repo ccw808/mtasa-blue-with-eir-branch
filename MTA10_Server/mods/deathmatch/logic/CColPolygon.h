@@ -26,7 +26,7 @@ public:
 
     eColShapeType               GetShapeType        ( void )                { return COLSHAPE_POLYGON; }
 
-    bool                        DoHitDetection      ( const CVector& vecNowPosition );
+    bool                        DoHitDetection      ( const CVector& vecLastPosition, const CVector& vecNowPosition, float fRadius );
 
     void                        SetPosition         ( const CVector& vecPosition );
 

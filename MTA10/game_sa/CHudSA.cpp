@@ -16,27 +16,6 @@
 char szVehicleName[50] = {'\0'};
 char szZoneName[50] = {'\0'};
 
-CHudSA::CHudSA ( void )
-{
-    InitComponentList ();
-
-    // Set the default values
-    m_fSniperCrosshairScale = 210.0f;
-
-    m_pfCameraCrosshairScale = (float*) VAR_CameraCrosshairScale;
-    MemPut < float > ( m_pfCameraCrosshairScale, 192.0f );
-    m_pfAspectRatioMultiplicator = (float*) VAR_AspectRatioMult;
-    MemPut < float > ( m_pfAspectRatioMultiplicator, 0.002232143f );
-
-    // Patch xrefs to 0x863B34, because this variable seems to be shared (2 other functions without any context access to it; probably a compiler optimization)
-    MemPut < DWORD > ( 0x58E7D4 + 2, (DWORD)&m_fSniperCrosshairScale );
-    MemPut < DWORD > ( 0x58E7EA + 2, (DWORD)&m_fSniperCrosshairScale );
-    MemPut < DWORD > ( 0x53E3ED + 2, (DWORD)&m_fSniperCrosshairScale );
-    MemPut < DWORD > ( 0x53E41A + 2, (DWORD)&m_fSniperCrosshairScale );
-    MemPut < DWORD > ( 0x53E488 + 2, (DWORD)&m_fSniperCrosshairScale );
-    MemPut < DWORD > ( 0x53E4BF + 2, (DWORD)&m_fSniperCrosshairScale );
-}
-
 VOID CHudSA::SetHelpMessage( char * szMessage )
 {
     DEBUG_TRACE("VOID CHudSA::SetHelpMessage( char * szMessage )");
@@ -94,7 +73,7 @@ VOID CHudSA::SetVehicleName( char * szName )
     }
     else
     {
-        MemPutFast < DWORD > ( VAR_VehicleNamePtr, 0 );
+        *(DWORD *)VAR_VehicleNamePtr = 0;
     }
 }
 
@@ -115,7 +94,7 @@ VOID CHudSA::SetZoneName( char * szName )
     }
     else
     {
-        MemPutFast < DWORD > ( VAR_ZoneNamePtr, 0 );
+        *(DWORD *)VAR_ZoneNamePtr = 0;
     }
 }
 
@@ -123,20 +102,10 @@ VOID CHudSA::Disable ( bool bDisabled )
 {
     DEBUG_TRACE("VOID CHudSA::Disable ( bool bDisabled )");
     if ( bDisabled )
-        MemPut < BYTE > ( FUNC_Draw, 0xC3 );
+        *(BYTE *)FUNC_Draw = 0xC3;
     else
-        MemPut < BYTE > ( FUNC_Draw, 0x80 );
+        *(BYTE *)FUNC_Draw = 0x80;
 
-    // Also disable the radar as the above code will not hide it before the local player has spawned
-    if ( bDisabled )
-        MemPut < BYTE > ( FUNC_DrawRadarPlanB, 0xC3 );
-    else
-        MemPut < BYTE > ( FUNC_DrawRadarPlanB, 0x83 );
-}
-
-bool CHudSA::IsDisabled ( void )
-{
-    return *(BYTE*)FUNC_Draw == 0xC3;
 }
 
 VOID CHudSA::DrawBarChart ( float fX, float fY, DWORD dwWidth, DWORD dwHeight, float fPercentage, DWORD dwForeColor, DWORD dwBorderColor )
@@ -199,118 +168,222 @@ void CHudSA::Draw2DPolygon ( float fX1, float fY1, float fX2, float fY2, float f
     }
 }
 
-//
-// CHudSA::InitComponentList
-//
-void CHudSA::InitComponentList ( void )
+void CHudSA::DisableAmmo ( bool bDisabled )
 {
-    SHudComponent componentList[] = {
-                { 1, HUD_AMMO, 1, FUNC_DrawAmmo, 1, 0xCC, 0xC3 },
-                { 1, HUD_WEAPON, 1, FUNC_DrawWeaponIcon, 1, 0xCC, 0xC3 },
-                { 1, HUD_HEALTH, 1, FUNC_PrintHealthForPlayer, 1, 0xCC, 0xC3 },
-                { 1, HUD_BREATH, 1, FUNC_PrintBreathForPlayer, 1, 0xCC, 0xC3 },
-                { 1, HUD_ARMOUR, 1, FUNC_PrintArmourForPlayer, 1, 0xCC, 0xC3 },
-                { 1, HUD_MONEY, 1, CODE_ShowMoney, 2, 0xCCCC, 0xE990 },
-                { 1, HUD_VEHICLE_NAME, 1, FUNC_DrawVehicleName, 1, 0xCC, 0xC3 },
-                { 1, HUD_AREA_NAME, 1, FUNC_DrawAreaName, 1, 0xCC, 0xC3 },
-                { 1, HUD_RADAR, 1, FUNC_DrawRadar, 1, 0xCC, 0xC3 },
-                { 1, HUD_CLOCK, 0, VAR_DisableClock, 1, 1, 0 },
-                { 1, HUD_RADIO, 1, FUNC_DrawRadioName, 1, 0xCC, 0xC3 },
-                { 1, HUD_WANTED, 1, FUNC_DrawWantedLevel, 1, 0xCC, 0xC3 },
-                { 1, HUD_CROSSHAIR, 1, FUNC_DrawCrosshair, 1, 0xCC, 0xC3 },
-                { 1, HUD_VITAL_STATS, 1, FUNC_DrawVitalStats, 1, 0xCC, 0xC3 },
-                { 0, HUD_HELP_TEXT, 1, FUNC_DrawHelpText, 1, 0xCC, 0xC3 },
-            };
-
-    for ( uint i = 0 ; i < NUMELMS( componentList ) ; i++ )
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
     {
-        const SHudComponent& component = componentList[i]; 
-        MapSet ( m_HudComponentMap, component.type, component );
+        byteOriginal = *(BYTE *)FUNC_DrawAmmo;
+        *(BYTE *)FUNC_DrawAmmo = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_DrawAmmo = byteOriginal;
+        byteOriginal = 0;
     }
 }
 
-//
-// CHudSA::SetComponentVisible
-//
-void CHudSA::SetComponentVisible ( eHudComponent component, bool bVisible )
+void CHudSA::DisableWeaponIcon ( bool bDisabled )
 {
-    // Handle ALL option
-    if ( component == HUD_ALL )
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
     {
-        for ( std::map < eHudComponent, SHudComponent >::iterator iter = m_HudComponentMap.begin () ; iter != m_HudComponentMap.end () ; ++iter )
-        {
-            const SHudComponent& component = iter->second;
-            if ( component.bIsPartOfAll )
-                SetComponentVisible ( component.type, bVisible );
-        }
-        return;
+        byteOriginal = *(BYTE *)FUNC_DrawWeaponIcon;
+        *(BYTE *)FUNC_DrawWeaponIcon = 0xC3;
     }
-
-    // Set visiblity of one component
-    SHudComponent* pComponent = MapFind ( m_HudComponentMap, component );
-    if ( pComponent )
+    else if ( !bDisabled && byteOriginal )
     {
-        // Save original bytes if requred
-        if ( pComponent->bSaveOriginalBytes )
-        {
-            pComponent->origData = *(DWORD*)pComponent->uiDataAddr;
-            pComponent->bSaveOriginalBytes = false;
-        }
-
-        // Poke bytes
-        uchar* pSrc = (uchar*)( bVisible ? &pComponent->origData : &pComponent->disabledData );
-        uchar* pDest = (uchar*)( pComponent->uiDataAddr );
-        for ( uint i = 0 ; i < pComponent->uiDataSize ; i++ )
-        {
-            if ( pComponent->type != HUD_CLOCK )
-                MemPut < BYTE > ( pDest + i, pSrc[i] );
-            else
-                MemPutFast < BYTE > ( pDest + i, pSrc[i] );
-        }
+        *(BYTE *)FUNC_DrawWeaponIcon = byteOriginal;
+        byteOriginal = 0;
     }
 }
 
-//
-// CHudSA::IsComponentVisible
-//
-bool CHudSA::IsComponentVisible ( eHudComponent component )
+void CHudSA::DisableHealth ( bool bDisabled )
 {
-    SHudComponent* pComponent = MapFind ( m_HudComponentMap, component );
-    if ( pComponent )
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
     {
-        // Determine if invisible by matching data with disabled values
-        uchar* pSrc = (uchar*)( &pComponent->disabledData );
-        uchar* pDest = (uchar*)( pComponent->uiDataAddr );
-        if ( memcmp ( pDest, pSrc, pComponent->uiDataSize ) == 0 )
-            return false;   // Matches disabled bytes
-        return true;
+        byteOriginal = *(BYTE *)FUNC_PrintHealthForPlayer;
+        *(BYTE *)FUNC_PrintHealthForPlayer = 0xC3;
     }
-    return false;
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_PrintHealthForPlayer = byteOriginal;
+        byteOriginal = 0;
+    }
 }
 
-//
-// CHudSA::AdjustComponents
-//
-void CHudSA::AdjustComponents ( float fAspectRatio )
+void CHudSA::DisableBreath ( bool bDisabled )
 {
-    // Fix for #7400 (HUD elements do not scale correctly for widescreen)
-    // 0x859524: GTA multiplies all HUD and menu transformation variables by this floating point value. It is equal to 1/448, so just translate it to 16/10 / 16/9
-    MemPut < float > ( m_pfAspectRatioMultiplicator, 0.002232143f / (4.0f/3.0f) * fAspectRatio );
-
-    // Set the sniper crosshair scale (fix for #7659)
-    m_fSniperCrosshairScale = 210.0f * (4.0f/3.0f) / fAspectRatio;
-
-    // Set the camera crosshair scale (same display flaw as in #7659)
-    MemPut < float > ( m_pfCameraCrosshairScale, 192.0f * (4.0f/3.0f) / fAspectRatio );
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_PrintBreathForPlayer;
+        *(BYTE *)FUNC_PrintBreathForPlayer = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_PrintBreathForPlayer = byteOriginal;
+        byteOriginal = 0;
+    }
 }
 
-//
-// CHudSA::ResetComponentAdjustment
-//
-void CHudSA::ResetComponentAdjustment ( void )
+void CHudSA::DisableArmour ( bool bDisabled )
 {
-    // Restore default values (4:3 aspect ratio)
-    MemPut < float > ( m_pfAspectRatioMultiplicator, 0.002232143f );
-    MemPut < float > ( m_pfCameraCrosshairScale, 192.0f );
-    m_fSniperCrosshairScale = 210.0f;
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_PrintArmourForPlayer;
+        *(BYTE *)FUNC_PrintArmourForPlayer = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_PrintArmourForPlayer = byteOriginal;
+        byteOriginal = 0;
+    }
+}
+
+void CHudSA::DisableVitalStats ( bool bDisabled )
+{
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_DrawVitalStats;
+        *(BYTE *)FUNC_DrawVitalStats = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_DrawVitalStats = byteOriginal;
+        byteOriginal = 0;
+    }
+}
+
+void CHudSA::DisableMoney ( bool bDisabled )
+{
+    static DWORD dwOriginal = 0;
+    if ( bDisabled && !dwOriginal )
+    {
+        dwOriginal = *(DWORD *)CODE_ShowMoney;
+        *(BYTE *)CODE_ShowMoney       = 0x90;
+        *(BYTE *)(CODE_ShowMoney + 1) = 0xE9;
+    }
+    else if ( !bDisabled && dwOriginal )
+    {
+        *(DWORD *)CODE_ShowMoney = dwOriginal;
+        dwOriginal = 0;
+    }
+}
+
+void CHudSA::DisableVehicleName ( bool bDisabled )
+{
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_DrawVehicleName;
+        *(BYTE *)FUNC_DrawVehicleName = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_DrawVehicleName = byteOriginal;
+        byteOriginal = 0;
+    }
+}
+
+void CHudSA::DisableHelpText ( bool bDisabled )
+{
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_DrawHelpText;
+        *(BYTE *)FUNC_DrawHelpText = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_DrawHelpText = byteOriginal;
+        byteOriginal = 0;
+    }
+}
+
+void CHudSA::DisableAreaName ( bool bDisabled )
+{
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_DrawAreaName;
+        *(BYTE *)FUNC_DrawAreaName = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_DrawAreaName = byteOriginal;
+        byteOriginal = 0;
+    }
+}
+
+void CHudSA::DisableRadar ( bool bDisabled )
+{
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_DrawRadar;
+        *(BYTE *)FUNC_DrawRadar = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_DrawRadar = byteOriginal;
+        byteOriginal = 0;
+    }
+}
+
+void CHudSA::DisableClock ( bool bDisabled )
+{
+    *(int *)VAR_DisableClock = bDisabled ? 0 : 1;
+}
+
+void CHudSA::DisableRadioName ( bool bDisabled )
+{
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_DrawRadioName;
+        *(BYTE *)FUNC_DrawRadioName = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_DrawRadioName = byteOriginal;
+        byteOriginal = 0;
+    }
+}
+
+void CHudSA::DisableWantedLevel ( bool bDisabled )
+{
+    static BYTE byteOriginal = 0;
+    if ( bDisabled && !byteOriginal )
+    {
+        byteOriginal = *(BYTE *)FUNC_DrawWantedLevel;
+        *(BYTE *)FUNC_DrawWantedLevel = 0xC3;
+    }
+    else if ( !bDisabled && byteOriginal )
+    {
+        *(BYTE *)FUNC_DrawWantedLevel = byteOriginal;
+        byteOriginal = 0;
+    }
+}
+
+void CHudSA::DisableAll ( bool bDisabled )
+{
+    DisableAmmo ( bDisabled );
+    DisableWeaponIcon ( bDisabled );
+    DisableHealth ( bDisabled );
+    DisableBreath ( bDisabled );
+    DisableArmour ( bDisabled );
+    DisableVitalStats ( bDisabled );
+    DisableMoney ( bDisabled );
+    DisableVehicleName ( bDisabled );
+    // Keep the help text always disabled
+    //DisableHelpText ( bDisabled );
+    DisableAreaName ( bDisabled );
+    DisableRadar ( bDisabled );
+    DisableClock ( bDisabled );
+    DisableRadioName ( bDisabled );
+    DisableWantedLevel ( bDisabled );
 }

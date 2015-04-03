@@ -19,7 +19,6 @@
 #include <math.h>
 
 #define FLOAT_EPSILON 0.0001f
-#include "CVector4D.h"
 
 /**
  * CVector Structure used to store a 3D vertex.
@@ -45,17 +44,19 @@ public:
 
     float Normalize ( void ) 
     { 
-        float t = sqrt(fX*fX + fY*fY + fZ*fZ);
+        double t = sqrt(fX*fX + fY*fY + fZ*fZ);
         if ( t > FLOAT_EPSILON )
         {
-            float fRcpt = 1 / t;
-            fX *= fRcpt;
-            fY *= fRcpt;
-            fZ *= fRcpt;
+            double fX2 = fX / t;
+            double fY2 = fY / t;
+            double fZ2 = fZ / t;
+            fX = (float)fX2;
+            fY = (float)fY2;
+            fZ = (float)fZ2;
         }
         else
             t = 0;
-        return t;
+        return static_cast < float > ( t );
     }
 
     float Length ( void ) const
@@ -81,29 +82,6 @@ public:
         fZ = _fX * param->fY - param->fX * _fY;
     }
 
-    // Convert (direction) to rotation
-    CVector ToRotation ( void ) const
-    {
-        CVector vecRotation;
-        vecRotation.fZ = atan2 ( fY, fX );
-        CVector vecTemp ( sqrt ( fX * fX + fY * fY ), fZ, 0 );
-        vecTemp.Normalize ();
-        vecRotation.fY = atan2 ( vecTemp.fX, vecTemp.fY ) - PI / 2;
-        return vecRotation;
-    }
-
-    // Return a perpendicular direction
-    CVector GetOtherAxis ( void ) const
-    {
-        CVector vecResult;
-        if ( abs( fX ) > abs( fY ) )
-	        vecResult = CVector( fZ, 0, -fX );
-        else
-	        vecResult = CVector( 0, -fZ, fY );
-        vecResult.Normalize();
-        return vecResult;
-    }
-
     CVector operator + ( const CVector& vecRight ) const
     {
         return CVector ( fX + vecRight.fX, fY + vecRight.fY, fZ + vecRight.fZ );
@@ -127,12 +105,6 @@ public:
     CVector operator / ( const CVector& vecRight ) const
     {
         return CVector ( fX / vecRight.fX, fY / vecRight.fY, fZ / vecRight.fZ );
-    }
-
-    CVector operator / ( float fRight ) const
-    {
-        float fRcpValue = 1 / fRight;
-        return CVector ( fX * fRcpValue, fY * fRcpValue, fZ * fRcpValue );
     }
 
     CVector operator - () const
@@ -184,10 +156,9 @@ public:
 
     void operator /= ( float fRight )
     {
-        float fRcpValue = 1 / fRight;
-        fX *= fRcpValue;
-        fY *= fRcpValue;
-        fZ *= fRcpValue;
+        fX /= fRight;
+        fY /= fRight;
+        fZ /= fRight;
     }
 
     void operator /= ( const CVector& vecRight )
@@ -209,14 +180,6 @@ public:
         return ( ( fabs ( fX - param.fX ) >= FLOAT_EPSILON ) ||
                  ( fabs ( fY - param.fY ) >= FLOAT_EPSILON ) ||
                  ( fabs ( fZ - param.fZ ) >= FLOAT_EPSILON ) );
-    }
-
-    CVector& operator = ( const CVector4D& vec )
-    {
-        fX = vec.fX;
-        fY = vec.fY;
-        fZ = vec.fZ;
-        return *this;
     }
 };
 

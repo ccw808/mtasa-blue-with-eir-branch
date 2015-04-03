@@ -199,55 +199,6 @@ VOID CCameraSA::TakeControlAttachToEntity(CEntity * TargetEntity, CEntity * Atta
     }
 }
 
-// LSOD recovery
-void CCameraSA::RestoreLastGoodState ( void )
-{
-    CMatrix defmat;
-    SetMatrix ( &defmat );
-
-    CCameraSAInterface* pCameraInterface = GetInterface ();
-
-    pCameraInterface->m_CameraAverageSpeed = 0;
-    pCameraInterface->m_CameraSpeedSoFar = 0;
-    pCameraInterface->m_PreviousCameraPosition = CVector ();
-    pCameraInterface->m_vecGameCamPos = CVector ();
-    pCameraInterface->m_cameraMatrix.SetFromMatrixSkipPadding ( CMatrix () );
-    pCameraInterface->m_cameraMatrixOld.SetFromMatrixSkipPadding ( CMatrix () );
-    pCameraInterface->m_viewMatrix.SetFromMatrixSkipPadding ( CMatrix () );
-    pCameraInterface->m_matInverse.SetFromMatrixSkipPadding ( CMatrix () );
-    pCameraInterface->m_vecBottomFrustumNormal = CVector ( 0, -1, -1 );
-    pCameraInterface->m_vecTopFrustumNormal = CVector ( -1, -1, 0 );
-
-    for ( uint i = 0 ; i < MAX_CAMS ; i++ )
-    {
-        CCamSA* pCam = Cams[i];
-        if ( !pCam )
-            continue;
-
-        CCamSAInterface* pCamInterface = pCam->GetInterface ();
-        if ( !pCamInterface )
-            continue;
-
-        pCamInterface->m_fAlphaSpeedOverOneFrame = 0;
-        pCamInterface->m_fBetaSpeedOverOneFrame = 0;
-        pCamInterface->m_fTrueBeta = 1;
-        pCamInterface->m_fTrueAlpha = 1;
-        pCamInterface->m_fVerticalAngle = 1;
-        pCamInterface->m_fHorizontalAngle = 1;
-        pCamInterface->BetaSpeed = 0;
-        pCamInterface->SpeedVar = 0;
-
-        pCamInterface->m_cvecSourceSpeedOverOneFrame = CVector ( 0, 0, 0 );
-        pCamInterface->m_cvecTargetSpeedOverOneFrame = CVector ( 0, 0, 0 );
-        pCamInterface->Front = CVector ( 1, 0, 0 );
-        pCamInterface->Source = CVector ( 1, 0, 0 );
-        pCamInterface->SourceBeforeLookBehind = CVector ( 1, 0, 0 );
-        pCamInterface->Up = CVector ( 0, 0, 1 );
-        for ( uint i = 0 ; i < CAM_NUM_TARGET_HISTORY ; i++ )
-            pCamInterface->m_aTargetHistoryPos[i] = CVector ( 1, 0, 0 );
-    }
-}
-
 CMatrix * CCameraSA::GetMatrix ( CMatrix * matrix )
 {
     DEBUG_TRACE("CMatrix * CCameraSA::GetMatrix ( CMatrix * matrix )");
@@ -256,20 +207,14 @@ CMatrix * CCameraSA::GetMatrix ( CMatrix * matrix )
     CMatrix_Padded * pCamMatrix = &this->GetInterface()->m_cameraMatrix; // ->Placeable.matrix;
     if ( pCamMatrix )
     {
-        matrix->vFront = pCamMatrix->vFront;
-        matrix->vPos = pCamMatrix->vPos;
-        matrix->vUp = pCamMatrix->vUp;
-        matrix->vRight = pCamMatrix->vRight;
- 
-        if ( !IsValidMatrix ( *matrix ) )
-        {
-            RestoreLastGoodState ();
-            pCamMatrix->ConvertToMatrix ( *matrix );
-        }
+        memcpy(&matrix->vFront,     &pCamMatrix->vFront,    sizeof(CVector));
+        memcpy(&matrix->vPos,           &pCamMatrix->vPos,          sizeof(CVector));
+        memcpy(&matrix->vUp,            &pCamMatrix->vUp,           sizeof(CVector));
+        memcpy(&matrix->vRight,         &pCamMatrix->vRight,            sizeof(CVector));   
     }
     else
     {
-        *matrix = CMatrix ();
+        memset(matrix, 0, sizeof(CMatrix));
     }
     return matrix;
 }
@@ -280,10 +225,10 @@ VOID CCameraSA::SetMatrix ( CMatrix * matrix )
     CMatrix_Padded * pCamMatrix = this->GetInterface()->Placeable.matrix;
     if ( pCamMatrix )
     {
-        pCamMatrix->vFront = matrix->vFront;
-        pCamMatrix->vPos = matrix->vPos;
-        pCamMatrix->vUp = matrix->vUp;
-        pCamMatrix->vRight = matrix->vRight;
+        memcpy(&pCamMatrix->vFront,     &matrix->vFront,    sizeof(CVector));
+        memcpy(&pCamMatrix->vPos,           &matrix->vPos,          sizeof(CVector));
+        memcpy(&pCamMatrix->vUp,            &matrix->vUp,           sizeof(CVector));
+        memcpy(&pCamMatrix->vRight,         &matrix->vRight,            sizeof(CVector));
     }   
 }
 
@@ -571,32 +516,26 @@ void CCameraSA::SetCameraClip ( bool bObjects, bool bVehicles )
     bCameraClipVehicles = bVehicles;
 }
 
-void CCameraSA::GetCameraClip( bool &bObjects, bool &bVehicles )
-{
-    bObjects = bCameraClipObjects;
-    bVehicles = bCameraClipVehicles;
-}
-
-void _cdecl DoCameraCollisionDetectionPokes ()
-{
-    if ( !bCameraClipObjects )
-    {
-        MemPutFast < char > ( VAR_CameraClipDynamicObjects, 0 );
-        MemPutFast < char > ( VAR_CameraClipStaticObjects, 0 );
-    }
-    else
-        MemPutFast < char > ( VAR_CameraClipStaticObjects, 1 );
-
-    if ( !bCameraClipVehicles )
-        MemPutFast < char > ( VAR_CameraClipVehicles, 0 );
-}
-
 void _declspec(naked) HOOK_Camera_CollisionDetection ()
 {
     _asm
     {
         pushad
-        call DoCameraCollisionDetectionPokes
+    }
+
+    if ( !bCameraClipObjects )
+    {
+        *(char*)VAR_CameraClipDynamicObjects = 0;
+        *(char*)VAR_CameraClipStaticObjects = 0;
+    }
+    else
+        *(char*)VAR_CameraClipStaticObjects = 1;
+
+    if ( !bCameraClipVehicles )
+        *(char*)VAR_CameraClipVehicles = 0;
+
+    _asm
+    {
         popad
         sub         esp,24h
         push        ebx 
@@ -605,25 +544,13 @@ void _declspec(naked) HOOK_Camera_CollisionDetection ()
     }
 }
 
-BYTE CCameraSA::GetCameraViewMode ( void )
+BYTE CCameraSA::GetCameraView ( void )
 {
     // TODO: Add support for ped camera view, this will only work on vehicles for now.
     return *(BYTE *)VAR_VehicleCameraView;
 }
 
-VOID CCameraSA::SetCameraViewMode ( BYTE dwCamMode )
+VOID CCameraSA::SetCameraView ( BYTE dwCamMode )
 {
-    MemPutFast < BYTE > ( VAR_VehicleCameraView, dwCamMode );
-}
-
-void CCameraSA::SetShakeForce ( float fShakeForce )
-{
-    CCameraSAInterface* pCameraInterface = GetInterface ();
-    pCameraInterface->m_fCamShakeForce = fShakeForce;
-}
-
-float CCameraSA::GetShakeForce ( void )
-{
-    CCameraSAInterface* pCameraInterface = GetInterface ();
-    return pCameraInterface->m_fCamShakeForce;
+    *(BYTE *)VAR_VehicleCameraView = dwCamMode;
 }

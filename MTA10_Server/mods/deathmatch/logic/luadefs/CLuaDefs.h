@@ -33,8 +33,6 @@
 #include "../CScriptDebugging.h"
 #include "../CTeamManager.h"
 #include "../CVehicleManager.h"
-#include "../CRegistry.h"
-#include "../CDatabaseManager.h"
 
 
 // Used by script handlers to verify elements
@@ -55,15 +53,35 @@
 #define SCRIPT_VERIFY_COLSHAPE(colshape) (m_pColManager->Exists(colshape))
 #define SCRIPT_VERIFY_RESOURCE(resource) (m_pResourceManager->Exists(resource))
 
+#define argtype(number,type) (lua_type(luaVM,number) == type)
+#define argtype2(number,type,type2) (lua_type(luaVM,number) == type || lua_type(luaVM,number) == type2)
+
 
 class CLuaDefs
 {
 public:
-    static void         Initialize      (   class CGame* pGame );
+    static void         Initialize      (   CElement* pRootElement,
+                                            CElementDeleter* pElementDeleter,
+                                            CBlipManager* pBlipManager,
+                                            CHandlingManager* pHandlingManager,
+                                            CLuaManager* pLuaManager,
+                                            CMarkerManager* pMarkers,
+                                            CObjectManager* pObjectManager,
+                                            CPickupManager* pPickupManager,
+                                            CPlayerManager* pPlayerManager,
+                                            CRadarAreaManager* pRadarAreaManager,
+                                            CRegisteredCommands* pRegisteredCommands,
+                                            CScriptDebugging* pScriptDebugging,
+                                            CVehicleManager* pVehicleManager,
+                                            CTeamManager* pTeamManager,
+                                            CAccountManager* pAccountManager,
+                                            CColManager* pColManager,
+                                            CResourceManager* pResourceManager,
+                                            CAccessControlListManager* pACLManager,
+                                            CMainConfig* pMainConfig );
 
     static bool         CanUseFunction      ( const char* szFunction, lua_State* luaVM, bool bRestricted );
     static int          CanUseFunction      ( lua_CFunction f, lua_State* luaVM );
-    static void         DidUseFunction      ( lua_CFunction f, lua_State* luaVM );
 
 // This is just for the LUA funcs. Please don't public this and use it other
 // places in the server.

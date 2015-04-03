@@ -30,17 +30,7 @@ CResourceScriptItem::~CResourceScriptItem ( void )
 bool CResourceScriptItem::Start ( void )
 {
     m_pVM = m_resource->GetVirtualMachine();
-
-    // Load the file
-    std::vector < char > buffer;
-    FileLoad ( m_strResourceFileName, buffer );
-    unsigned int iSize = buffer.size();
-
-    if ( iSize > 0 ) 
-    {
-        m_pVM->LoadScriptFromBuffer ( &buffer.at ( 0 ), iSize, m_strResourceFileName.c_str() );
-    }
-
+    m_pVM->LoadScriptFromFile ( m_strResourceFileName.c_str () );
     return true;
 }
 

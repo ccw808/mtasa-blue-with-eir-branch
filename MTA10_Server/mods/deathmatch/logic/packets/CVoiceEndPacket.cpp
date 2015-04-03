@@ -12,16 +12,26 @@
 
 #include "StdInc.h"
 
-CVoiceEndPacket::CVoiceEndPacket ( CPlayer* pPlayer )
+CVoiceEndPacket::CVoiceEndPacket ( void )
 {
     m_PlayerID = INVALID_ELEMENT_ID;
-    if ( pPlayer )
-        SetSourceElement ( pPlayer );
 }
 
 CVoiceEndPacket::~CVoiceEndPacket ( )
 {
 
+}
+
+
+ePacketID CVoiceEndPacket::GetPacketID ( void ) const
+{
+    return static_cast < ePacketID > ( PACKET_ID_VOICE_END );
+}
+
+
+unsigned long CVoiceEndPacket::GetFlags ( void ) const
+{
+    return 0;
 }
 
 
@@ -33,12 +43,5 @@ bool CVoiceEndPacket::Read ( NetBitStreamInterface& BitStream )
 
 bool CVoiceEndPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
-    if ( m_pSourceElement )
-    {
-        // Write the source player
-        ElementID ID = m_pSourceElement->GetID();
-        BitStream.Write ( ID );
-        return true;
-    }
     return false;
 }

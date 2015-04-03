@@ -18,15 +18,15 @@
 VOID HookInstallMethod( DWORD dwInstallAddress,
                         DWORD dwHookFunction )
 {
-    MemPut < DWORD > ( dwInstallAddress, dwHookFunction );
+    *(PDWORD)dwInstallAddress = (DWORD)dwHookFunction;
 }
 
 VOID HookInstallCall ( DWORD dwInstallAddress,
                         DWORD dwHookFunction )
 {
     DWORD dwOffset = dwHookFunction - (dwInstallAddress + 5);
-    MemPut < BYTE > ( dwInstallAddress, 0xE8 );
-    MemPut < DWORD > ( dwInstallAddress+1, dwOffset );
+    *(BYTE*)(dwInstallAddress) = 0xE8;
+    *(DWORD*)(dwInstallAddress+1) = dwOffset;
 }
 
 ////////////////////////////////////////////////////////////////////
@@ -36,13 +36,10 @@ BOOL HookInstall( DWORD dwInstallAddress,
                   int iJmpCodeSize )
 {
     BYTE JumpBytes[MAX_JUMPCODE_SIZE];
-    MemSetFast ( JumpBytes, 0x90, MAX_JUMPCODE_SIZE );
+    memset ( JumpBytes, 0x90, MAX_JUMPCODE_SIZE );
     if ( CreateJump ( dwInstallAddress, dwHookHandler, JumpBytes ) )
     {
-        if ( IsSlowMem( (PVOID)dwInstallAddress, iJmpCodeSize ) )
-            MemCpy ( (PVOID)dwInstallAddress, JumpBytes, iJmpCodeSize );
-        else
-            MemCpyFast ( (PVOID)dwInstallAddress, JumpBytes, iJmpCodeSize );
+        memcpy ( (PVOID)dwInstallAddress, JumpBytes, iJmpCodeSize );
         return TRUE;
     }
     else
@@ -56,16 +53,7 @@ BOOL HookInstall( DWORD dwInstallAddress,
 BYTE * CreateJump ( DWORD dwFrom, DWORD dwTo, BYTE * ByteArray )
 {
     ByteArray[0] = 0xE9;
-    MemPutFast < DWORD > ( &ByteArray[1], dwTo - (dwFrom + 5) );
+    *(DWORD *)(&ByteArray[1]) = dwTo - (dwFrom + 5);
     return ByteArray;
 }
 
-////////////////////////////////////////////////////////////////////
-
-VOID HookCheckOriginalByte( DWORD dwInstallAddress, uchar ucExpectedValue )
-{
-    uchar ucValue = *(uchar*)dwInstallAddress;
-    dassert( ucValue == ucExpectedValue );
-    if ( ucValue != ucExpectedValue )
-        AddReportLog( 8423, SString( "HookCheckOriginalByte failed at %08x - Got %02x - expected %02x", dwInstallAddress, ucValue, ucExpectedValue ) );
-}

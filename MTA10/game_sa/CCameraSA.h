@@ -338,25 +338,12 @@ public:
     bool m_bResetOldMatrix;
 
 //  protected:
-#if 0
-    // Original
     CMatrix_Padded m_cameraMatrix;
     CMatrix_Padded m_cameraMatrixOld;
     CMatrix_Padded m_viewMatrix;
     CMatrix_Padded m_matInverse;
     CMatrix_Padded m_matMirrorInverse;
     CMatrix_Padded m_matMirror;
-#else
-    // Looks more likely to be this
-    CMatrix_Padded m_cameraMatrix;
-    int unk1[2];
-    CMatrix_Padded m_cameraMatrixOld;
-    int unk2[2];
-    CMatrix_Padded m_viewMatrix;
-    int unk3[2];
-    CMatrix_Padded m_matInverse;
-    int unk4[26];
-#endif
 
     CVector m_vecFrustumNormals[4];
     CVector m_vecFrustumWorldNormals[4];
@@ -398,11 +385,11 @@ public:
     DWORD   m_uiFadeTimeStarted;
     DWORD   m_uiFadeTimeStartedMusic;
 };
-// C_ASSERT(sizeof(CCameraSAInterface) == 0xD78);
+
 
 class CCameraSA : public CCamera
 {
-    friend class COffsets;
+    friend COffsets;
 private:
     CCameraSAInterface          * internalInterface;
     CCamSA                      * Cams[MAX_CAMS];
@@ -443,12 +430,9 @@ public:
     RwMatrix *                  GetLTM ( void );
     CEntity *                   GetTargetEntity ( void );
     void                        SetCameraClip ( bool bObjects, bool bVehicles );
-    void                        GetCameraClip ( bool &bObjects, bool &bVehicles );
-    BYTE                        GetCameraViewMode ( void );
-    VOID                        SetCameraViewMode ( BYTE dwCamMode );
-    void                        RestoreLastGoodState ( void );
-    void                        SetShakeForce ( float fShakeForce );
-    float                       GetShakeForce ( void );
+    BYTE                        GetCameraView ( void );
+    VOID                        SetCameraView ( BYTE dwCamMode );
+
 private:
     static unsigned long        FUNC_RwFrameGetLTM;
 };

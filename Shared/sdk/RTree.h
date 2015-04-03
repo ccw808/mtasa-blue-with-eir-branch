@@ -51,6 +51,7 @@ o Minor updates for MSVC 2005/08 compilers
 // NOTE These next few lines may be win32 specific, you may need to modify them to compile on other platform
 #include <stdio.h>
 #include <math.h>
+#include <assert.h>
 #include <stdlib.h>
 
 #ifndef _WIN32
@@ -1010,7 +1011,7 @@ typename RTREE_QUAL::Rect RTREE_QUAL::NodeCover(Node* a_node)
 {
   ASSERT(a_node);
   
-  bool firstTime = true;
+  int firstTime = true;
   Rect rect;
   InitRect(&rect);
   

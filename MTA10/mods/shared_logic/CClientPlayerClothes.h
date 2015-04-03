@@ -39,13 +39,13 @@ class CClientPed;
 
 struct SPlayerClothingType
 {
-    const char* szName;
+    char szName [ 32 ];
 };
 
 struct SPlayerClothing
 {
-    const char* szTexture;
-    const char* szModel;
+    char* szTexture;
+    char* szModel;
 };
 
 class CClientPlayerClothes
@@ -54,9 +54,9 @@ public:
                                 CClientPlayerClothes        ( CClientPed* pPed );
                                 ~CClientPlayerClothes       ( void );
 
-    const SPlayerClothing*      GetClothing                 ( unsigned char ucType );
-    void                        AddClothes                  ( const char* szTexture, const char* szModel, unsigned char ucType, bool bAddToModel = true );
-    void                        InternalAddClothes          ( const SPlayerClothing* pClothing, unsigned char ucType );
+    SPlayerClothing*            GetClothing                 ( unsigned char ucType );
+    void                        AddClothes                  ( char* szTexture, char* szModel, unsigned char ucType, bool bAddToModel = true );
+    void                        InternalAddClothes          ( SPlayerClothing * pClothing, unsigned char ucType );
     bool                        RemoveClothes               ( unsigned char ucType, bool bRemoveFromModel = true );
     
     void                        AddAllToModel               ( void );
@@ -65,19 +65,19 @@ public:
     void                        DefaultClothes              ( bool bAddToModel = true );
 
     static bool                 HasEmptyClothing            ( unsigned char ucType );
-    static bool                 IsEmptyClothing             ( const SPlayerClothing * pClothing, unsigned char ucType );
-    static const char*          GetClothingName             ( unsigned char ucType );
+    static bool                 IsEmptyClothing             ( SPlayerClothing * pClothing, unsigned char ucType );
+    static char*                GetClothingName             ( unsigned char ucType );
 
-    static const SPlayerClothing*   GetClothingGroup        ( unsigned char ucType );
+    static SPlayerClothing*     GetClothingGroup            ( unsigned char ucType );
     static const int            GetClothingGroupMax         ( unsigned char ucType );
 
 private:
-    static const SPlayerClothing*   GetClothing             ( const char* szTexture, const char* szModel, unsigned char ucType );
+    static SPlayerClothing*     GetClothing                 ( char * szTexture, char * szModel, unsigned char ucType );
 
     CClientPed*                 m_pPlayerModel;
 
-    SFixedArray < const SPlayerClothing*, PLAYER_CLOTHING_SLOTS >         m_Clothes;
-    static SFixedArray < const SPlayerClothing*, PLAYER_CLOTHING_SLOTS >  m_GlobalClothes;
+    SPlayerClothing *           m_Clothes [ PLAYER_CLOTHING_SLOTS ];
+    static SPlayerClothing *    m_GlobalClothes [ PLAYER_CLOTHING_SLOTS ];
     static bool                 m_bStaticInit;
 };
 

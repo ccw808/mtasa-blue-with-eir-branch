@@ -29,18 +29,14 @@ public:
                                 ~CPlayerStatsPacket         ( void );
 
     inline ePacketID            GetPacketID                 ( void ) const                  { return PACKET_ID_PLAYER_STATS; };
-    inline unsigned long        GetFlags                    ( void ) const                  { return PACKET_HIGH_PRIORITY | PACKET_RELIABLE | PACKET_SEQUENCED; };
+    inline unsigned long        GetFlags                    ( void ) const                  { return PACKET_RELIABLE | PACKET_SEQUENCED; };
 
     bool                        Write                       ( NetBitStreamInterface& BitStream ) const;
 
     void                        Add                         ( unsigned short usID, float fValue );
-    void                        Remove                      ( unsigned short usID, float fValue );
-    void                        Clear                       ( void );
-
-    int                         GetSize                     ( void )                        { return m_List.size ( ); }
 
 private:
-    map < unsigned short, sPlayerStat >     m_List;
+    vector < sPlayerStat* >     m_List;
 };
 
 #endif

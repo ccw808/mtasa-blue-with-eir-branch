@@ -5,12 +5,8 @@
 #pragma warning (disable:4250)
 
 #include <windows.h>
-#define MTA_CLIENT
-#define SHARED_UTIL_WITH_HASH_MAP
-#define SHARED_UTIL_WITH_FAST_HASH_MAP
-#include "SharedUtil.h"
-#include "SharedUtil.MemAccess.h"
 #include <stdio.h>
+#include <assert.h>
 
 #include <algorithm>
 #include <list>
@@ -20,11 +16,10 @@
 #include <vector>
 
 // SDK includes
-#include <core/CCoreInterface.h>
-#include <net/CNet.h>
+#define MTA_CLIENT
+#include "SharedUtil.h"
 #include <game/CGame.h>
 #include <game/CWanted.h>
-#include <../version.h>
 #include <ijsify.h>
 
 // Game includes
@@ -58,8 +53,7 @@
 #include "CTextSA.h"
 #include "CPedSA.h"
 #include "CPedSoundSA.h"
-#include "CAudioEngineSA.h"
-#include "CAudioContainerSA.h"
+#include "CAudioSA.h"
 #include "CPlayerInfoSA.h"
 #include "CPopulationSA.h"
 #include "CSettingsSA.h"
@@ -78,9 +72,6 @@
 #include "CKeyGenSA.h"
 #include "CRopesSA.h"
 #include "CFxSA.h"
-#include "CFxSystemBPSA.h"
-#include "CFxSystemSA.h"
-#include "CFxManagerSA.h"
 #include "HookSystem.h"
 #include "CModelInfoSA.h"
 #include "CPedModelInfoSA.h"
@@ -108,8 +99,3 @@
 #include "CWaterManagerSA.h"
 #include "CPedDamageResponseSA.h"
 #include "CPedDamageResponseCalculatorSA.h"
-#include "CPointLightsSA.h"
-#include "CWeaponStatSA.h"
-#include "CWeaponStatManagerSA.h"
-#include "CShadowDataSA.h"
-#include "CBuoyancySA.h"

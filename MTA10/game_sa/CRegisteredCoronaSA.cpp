@@ -27,7 +27,7 @@ CVector * CRegisteredCoronaSA::GetPosition()
 VOID CRegisteredCoronaSA::SetPosition(CVector * vector)
 {
     DEBUG_TRACE("VOID CRegisteredCoronaSA::SetPosition(CVector * vector)");
-    MemCpyFast (&internalInterface->Coordinates, vector, sizeof(CVector));
+    memcpy(&internalInterface->Coordinates, vector, sizeof(CVector));
 }
 
 FLOAT CRegisteredCoronaSA::GetSize()

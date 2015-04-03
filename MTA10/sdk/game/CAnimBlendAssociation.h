@@ -27,8 +27,6 @@ public:
 
     virtual float                               GetBlendAmount          ( void ) = 0;
     virtual void                                SetBlendAmount          ( float fAmount ) = 0;
-
-    virtual void                                SetCurrentProgress      ( float fProgress ) = 0;
 };
 
 #endif

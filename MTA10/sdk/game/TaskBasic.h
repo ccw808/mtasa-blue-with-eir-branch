@@ -52,18 +52,6 @@ public:
     virtual                     ~CTaskSimpleStealthKill ( void ) {};
 };
 
-class CTaskSimpleDead : public virtual CTaskSimple
-{
-public:
-    virtual                     ~CTaskSimpleDead ( void ) {};
-};
-
-class CTaskSimpleBeHit : public virtual CTaskSimple
-{
-public:
-    virtual                     ~CTaskSimpleBeHit ( void ) {};
-};
-
 enum eSunbatherType
 {
     SUNBATHER_MALE_1=0,

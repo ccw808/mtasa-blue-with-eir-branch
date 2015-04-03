@@ -82,12 +82,12 @@ public:
 
     CChatLineSection&           operator =              ( const CChatLineSection& other );
 
-    void                        Draw                    ( const CVector2D& vecPosition, unsigned char ucAlpha, bool bShadow, const CRect2D& RenderBounds );
+    void                        Draw                    ( CVector2D& vecPosition, unsigned char ucAlpha, bool bShadow, const CRect2D& RenderBounds );
     float                       GetWidth                ( void );
     inline const char*          GetText                 ( void )            { return m_strText.c_str (); }
     void                        SetText                 ( const char* szText )  { m_strText = szText; }
     inline void                 GetColor                ( CColor& color )   { color = m_Color; }
-    inline void                 SetColor                ( const CColor& color )   { m_Color = color; }
+    inline void                 SetColor                ( CColor& color )   { m_Color = color; }
 
 protected:
     std::string                 m_strText;
@@ -101,11 +101,15 @@ class CChatLine
 public:
                                 CChatLine               ( void );
 
+    static bool                 IsColorCode             ( const char* szColorCode );
+
     virtual const char*         Format                  ( const char* szText, float fWidth, CColor& color, bool bColorCoded );
-    virtual void                Draw                    ( const CVector2D& vecPosition, unsigned char ucAlpha, bool bShadow, const CRect2D& RenderBounds );    
+    virtual void                Draw                    ( CVector2D& vecPosition, unsigned char ucAlpha, bool bShadow, const CRect2D& RenderBounds );    
     virtual float               GetWidth                ( void );
     bool                        IsActive                ( void )    { return m_bActive; }
     void                        SetActive               ( bool bActive )    { m_bActive = bActive; }
+    
+    static void                 RemoveColorCode         ( const char* szText, std::string& strOut );
 
     inline unsigned long        GetCreationTime         ( void )    { return m_ulCreationTime; }
     inline void                 UpdateCreationTime      ( void );
@@ -127,76 +131,23 @@ public:
     std::vector < CChatLine >   m_ExtraLines;
 };
 
-
-//
-// SDrawListLineItem
-//
-struct SDrawListLineItem
-{
-    uint        uiLine;
-    CVector2D   vecPosition;
-    uchar       ucAlpha;
-
-    bool operator!= ( const SDrawListLineItem& other ) const
-    {
-        return !operator==( other );
-    }
-    bool operator== ( const SDrawListLineItem& other ) const
-    {
-        return uiLine == other.uiLine
-          && vecPosition == other.vecPosition
-          && ucAlpha == other.ucAlpha;
-    }
-};
-
-
-//
-// SDrawList - Used to store a snapshot of what the chatbox is currently rendering
-//
-struct SDrawList
-{
-    CRect2D                             renderBounds;
-    bool                                bShadow;
-    std::vector < SDrawListLineItem >   lineItemList;
-
-    bool operator!= ( const SDrawList& other ) const
-    {
-        return !operator==( other );
-    }
-    bool operator== ( const SDrawList& other ) const
-    {
-        if ( lineItemList.size () != other.lineItemList.size ()
-          || bShadow != other.bShadow
-          || renderBounds != other.renderBounds )
-            return false;
-
-        for ( uint i = 0 ; i < lineItemList.size () ; i++ )
-            if ( lineItemList[i] != other.lineItemList[i] )
-                return false;
-
-        return true;
-    }
-};
-
-
-
 class CChat
 {
-    friend class CChatLine;
-    friend class CChatInputLine;
-    friend class CChatLineSection;
+    friend CChatLine;
+    friend CChatInputLine;
+    friend CChatLineSection;
 
 public:
     inline                      CChat                   ( void ) {};
-                                CChat                   ( CGUI* pManager, const CVector2D & vecPosition );
+                                CChat                   ( CGUI* pManager, CVector2D & vecPosition );
                                 ~CChat                  ( void );
 
-    virtual void                Draw                    ( bool bUseCacheTexture );
+    virtual void                Draw                    ( void );
     virtual void                Output                  ( const char* szText, bool bColorCoded = true );
+    virtual void                Outputf                 ( bool bColorCoded, const char* szFormat, ... );
     void                        Clear                   ( void );
     void                        ClearInput              ( void );
     bool                        CharacterKeyHandler     ( CGUIKeyEventArgs KeyboardArgs );
-    void                        SetDxFont               ( LPD3DXFONT pDXFont );
 
     inline bool                 IsVisible               ( void )            { return m_bVisible; }
     void                        SetVisible              ( bool bVisible );
@@ -209,15 +160,15 @@ public:
     void                        SetInputText            ( const char* szText );
     const char*                 GetCommand              ( void )    { return m_strCommand.c_str (); }
     void                        SetCommand              ( const char* szCommand );
-    CVector2D                   CalcInputSize           ( void );
 
     static float                GetFontHeight           ( float fScale = 1.0f );
+    static float                GetCharacterWidth       ( int iChar, float fScale = 1.0f );
     static float                GetTextExtent           ( const char * szText, float fScale = 1.0f );
     static void                 DrawTextString          ( const char * szText, CRect2D DrawArea, float fZ, CRect2D ClipRect, unsigned long ulFormat, unsigned long ulColor, float fScaleX, float fScaleY, const CRect2D& RenderBounds );
 
-    void                        SetColor                ( const CColor& Color );
-    void                        SetInputColor           ( const CColor& Color );
-    void                        SetTextColor            ( const CColor& Color )   { m_TextColor = Color; };
+    void                        SetColor                ( CColor& Color );
+    void                        SetInputColor           ( CColor& Color );
+    void                        SetTextColor            ( CColor& Color )   { m_TextColor = Color; };
     void                        SetNumLines             ( unsigned int uiNumLines );
 
     void                        Scroll                  ( int iState )  { m_iScrollState = iState; };
@@ -233,8 +184,6 @@ private:
 protected:
     void                        UpdateGUI               ( void );
     void                        UpdateSmoothScroll      ( float* pfPixelScroll, int *piLineScroll );
-    void                        DrawDrawList            ( const SDrawList& drawList, const CVector2D& topLeftOffset = CVector2D ( 0, 0 ) );
-    void                        GetDrawList             ( SDrawList& outDrawList );
 
     CChatLine                   m_Lines [ CHAT_MAX_LINES ];     // Circular buffer
     int                         m_iScrollState;                 // 1 up, 0 stop, -1 down 
@@ -283,18 +232,9 @@ protected:
     bool                        m_bUseCEGUI;
     CVector2D                   m_vecScale;
     float                       m_fNativeWidth;
-    float                       m_fRcpUsingDxFontScale;
 
     bool                        m_bCanChangeWidth;
     int                         m_iCVarsRevision;
-
-    SDrawList                   m_PrevDrawList;
-    CRenderTargetItem*          m_pCacheTexture;
-    int                         m_iCacheTextureRevision;
-
-    CVector2D                   m_RenderTargetChatSize;
-    int                         m_iReportCount;
-    CTickCount                  m_lastRenderTargetCreationFail;
 };
 
 #endif

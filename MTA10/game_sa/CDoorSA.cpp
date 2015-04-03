@@ -90,9 +90,9 @@ BOOL CDoorSA::IsFullyOpen (  )
  * @param fUnknown Not sure...
  * \todo Check what the parameter for Open does
  */
-VOID CDoorSA::Open ( float fOpenRatio )
+VOID CDoorSA::Open ( float fAngleRatio )
 {
-    DEBUG_TRACE("VOID CDoorSA::Open ( float fOpenRatio )");
+    DEBUG_TRACE("VOID CDoorSA::Open ( float fAngleRatio )");
     DWORD dwFunction = FUNC_Open;
     DWORD dwPointer = (DWORD)GetInterface();
 
@@ -101,7 +101,7 @@ VOID CDoorSA::Open ( float fOpenRatio )
         _asm
         {
             mov     ecx, dwPointer
-            push    fOpenRatio
+            push    fAngleRatio
             call    dwFunction
         }
     }

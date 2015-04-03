@@ -16,9 +16,6 @@ case $LEX in
 :) AC_MSG_ERROR([No lex program found]);;
 esac
 
-# Check for libtool
-AM_PROG_LIBTOOL
-
 # Checks for libraries.
 
 # Checks for header files.

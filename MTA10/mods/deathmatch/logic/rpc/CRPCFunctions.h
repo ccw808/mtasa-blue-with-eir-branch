@@ -5,7 +5,6 @@
 *  FILE:        mods/deathmatch/logic/rpc/CRPCFunctions.h
 *  PURPOSE:     Header for RPC functions class
 *  DEVELOPERS:  Jax <>
-*               Alberto Alonso <rydencillo@gmail.com>
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *
@@ -17,25 +16,19 @@
 class CRPCFunctions;
 
 #define DECLARE_RPC(a) static void a ( class NetBitStreamInterface& bitStream );
-#define DECLARE_ELEMENT_RPC(a) static void a ( CClientEntity* pSourceEntity, NetBitStreamInterface& bitStream );
 
 class CRPCFunctions
 {
+protected:
+    enum eRPCFunctions;
 private:
 
     typedef void (*pfnRPCHandler) ( class NetBitStreamInterface& bitStream );
-    typedef void (*pfnElementRPCHandler) ( CClientEntity* pSourceEntity, class NetBitStreamInterface& bitStream );
     struct SRPCHandler
     {
-        SRPCHandler () { Callback = NULL; }
+        SRPCHandler () { Callback = NULL; szName[0] = '\0'; }
         pfnRPCHandler Callback;
-        SString strName;
-    };
-    struct SElementRPCHandler
-    {
-        SElementRPCHandler () { Callback = NULL; }
-        pfnElementRPCHandler Callback;
-        SString strName;
+        char szName [ 32 ];
     };
 
 public:
@@ -43,9 +36,8 @@ public:
     virtual                     ~CRPCFunctions                          ( void );
 
     void                        AddHandlers                             ( void );
-    static void                 AddHandler                              ( unsigned char ucID, pfnRPCHandler Callback, const char * szName = "unknown" );
-    static void                 AddHandler                              ( unsigned char ucID, pfnElementRPCHandler Callback, const char * szName = "unknown" );
-    void                        ProcessPacket                           ( unsigned char ucPacketID, class NetBitStreamInterface& bitStream );
+    static void                 AddHandler                              ( unsigned char ucID, pfnRPCHandler Callback, char * szName = "unknown" );
+    void                        ProcessPacket                           ( class NetBitStreamInterface& bitStream );
 
     bool                        m_bShowRPCs;
 
@@ -72,8 +64,7 @@ protected:
     // Include the RPC functions enum
     #include "net/rpc_enums.h"
 
-    static SFixedArray < SRPCHandler, NUM_RPC_FUNCS >           m_RPCHandlers;
-    static SFixedArray < SElementRPCHandler, NUM_RPC_FUNCS >    m_ElementRPCHandlers;
+    static SRPCHandler          m_RPCHandlers [ NUM_RPC_FUNCS ];
 };
 
 #endif

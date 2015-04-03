@@ -20,7 +20,11 @@ class CClientPlayer;
 #ifndef __CCLIENTPLAYER_H
 #define __CCLIENTPLAYER_H
 
-#include <game/CPlayerPed.h>
+#ifdef COMPILE_FOR_VC
+    #include <game/CPlayerPed.h>
+#else if COMPILE_FOR_SA
+    #include <game/CPlayerPed.h>
+#endif
 
 #include "CClientCommon.h"
 #include "CClientPed.h"
@@ -30,16 +34,10 @@ class CClientPlayer;
 
 class CClientPlayerManager;
 class CClientTeam;
-enum ePuresyncType
-{
-    PURESYNC_TYPE_NONE,
-    PURESYNC_TYPE_LIGHTSYNC,
-    PURESYNC_TYPE_PURESYNC,
-};
+
 class CClientPlayer : public CClientPed
 {
-    DECLARE_CLASS( CClientPlayer, CClientPed )
-    friend class CClientPlayerManager;
+    friend CClientPlayerManager;
 
 public:
                                     CClientPlayer           ( CClientManager* pManager, ElementID ID, bool bIsLocalPlayer = false );
@@ -49,7 +47,7 @@ public:
 
     eClientEntityType               GetType                 ( void ) const                          { return CCLIENTPLAYER; }
 
-    const char*                     GetNick                 ( void ) const                          { return m_strNick; }
+    const char*                     GetNick                 ( void ) const                          { return m_szNick; }
     void                            SetNick                 ( const char* szNick );
 
     inline unsigned int             GetPing                 ( void )                                { return ( m_bIsLocalPlayer ) ? g_pNet->GetPing () : m_uiPing; }
@@ -64,6 +62,7 @@ public:
     inline void                     SetNametagText          ( const char* szText );
     inline bool                     IsNametagShowing        ( void )                                { return m_bNametagShowing; }
     inline void                     SetNametagShowing       ( bool bShowing )                       { m_bNametagShowing = bShowing; }
+    inline CGUIStaticImage*         GetStatusIcon           ( void )                                { return m_pStatusIcon; }
     inline unsigned long            GetLastNametagShow      ( void )                                { return m_ulLastNametagShow; }
     inline void                     SetLastNametagShow      ( unsigned long ulTime )                { m_ulLastNametagShow = ulTime; }
 
@@ -80,10 +79,7 @@ public:
     inline void                     SetLastPuresyncPosition ( const CVector& vecPosition )          { m_vecLastPuresyncPosition = vecPosition; }
     inline bool                     HasConnectionTrouble    ( void )                                { return m_bHasConnectionTrouble; }
     inline void                     SetHasConnectionTrouble ( bool bHasTrouble )                    { m_bHasConnectionTrouble = bHasTrouble; }
-    inline ePuresyncType            GetLastPuresyncType     ( void )                                { return m_LastPuresyncType; }
-    inline void                     SetLastPuresyncType     ( ePuresyncType LastPuresyncType )      { m_LastPuresyncType = LastPuresyncType; }
-    void                            SetLightsyncCalcedVelocity ( const CVector& vecVelocity )       { m_vecLightsyncCalcedVelocity = vecVelocity; }
-    const CVector&                  GetLightsyncCalcedVelocity ( void )                             { return m_vecLightsyncCalcedVelocity; }
+
     inline void                     IncrementPlayerSync     ( void )                                { ++m_uiPlayerSyncCount; }
     inline void                     IncrementKeySync        ( void )                                { ++m_uiKeySyncCount; }
     inline void                     IncrementVehicleSync    ( void )                                { ++m_uiVehicleSyncCount; }
@@ -93,11 +89,10 @@ public:
     inline unsigned int             GetVehicleSyncCount     ( void )                                { return m_uiVehicleSyncCount; }
     
     inline CClientTeam*             GetTeam                 ( void )                                { return m_pTeam; }
-    void                            SetTeam                 ( CClientTeam* pTeam, bool bChangeTeam );
+    void                            SetTeam                 ( CClientTeam* pTeam, bool bChangeTeam = false);
     bool                            IsOnMyTeam              ( CClientPlayer* pPlayer );
 
     CClientPlayerVoice*             GetVoice                ( void )                                { return m_voice; }
-    void                            SetPlayerVoice          ( CClientPlayerVoice* voice )           { m_voice = voice; }
 
     inline float                    GetNametagDistance      ( void )                                { return m_fNametagDistance; }
     inline void                     SetNametagDistance      ( float fDistance )                     { m_fNametagDistance = fDistance; }
@@ -106,21 +101,12 @@ public:
     inline void                     SetDeadOnNetwork        ( bool bDead )                          { m_bNetworkDead = bDead; }
 
     void                            Reset                   ( void );
-    
+
     inline CClientManager*          GetManager              ( void )                                { return m_pManager; }
 
-    void                            DischargeWeapon         ( eWeaponType weaponType, const CVector& vecStart, const CVector& vecEnd );
-
-    void                            SetRemoteVersionInfo        ( ushort usBitstreamVersion, uint uiBuildNumber );
-    ushort                          GetRemoteBitstreamVersion   ( void );
-    uint                            GetRemoteBuildNumber        ( void );
-
-    CVector                         m_vecPrevBulletSyncStart;
-    CVector                         m_vecPrevBulletSyncEnd;
-    uchar                           m_ucPrevBulletSyncOrderCounter;
 private:
     bool                            m_bIsLocalPlayer;
-    SString                         m_strNick;
+    char                            m_szNick [ MAX_PLAYER_NICK_LENGTH + 1 ];
 
     unsigned int                    m_uiPing;
 
@@ -149,6 +135,7 @@ private:
 
     CClientTeam*                    m_pTeam;
 
+    CGUIStaticImage*                m_pStatusIcon;
     bool                            m_bNametagShowing;
     unsigned long                   m_ulLastNametagShow;
     unsigned char                   m_ucNametagColorR, m_ucNametagColorG, m_ucNametagColorB;
@@ -164,10 +151,6 @@ private:
     bool                            m_bNetworkDead;
 
     CClientPlayerVoice*             m_voice;
-    ePuresyncType                   m_LastPuresyncType;
-    CVector                         m_vecLightsyncCalcedVelocity;
-    ushort                          m_usRemoteBitstreamVersion;
-    uint                            m_uiRemoteBuildNumber;
 
 #ifdef MTA_DEBUG
 private:

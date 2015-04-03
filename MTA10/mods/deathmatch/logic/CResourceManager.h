@@ -24,13 +24,6 @@ class CResourceManager;
 
 class CClientEntity;
 class CResource;
-class CDownloadableResource;
-
-enum eAccessType
-{
-    ACCESS_PUBLIC,
-    ACCESS_PRIVATE,
-};
 
 class CResourceManager
 {  
@@ -39,12 +32,9 @@ public:
                                 CResourceManager            ( void );
                                 ~CResourceManager           ( void );
 
-    CResource*                  Add                         ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq, bool bEnableOOP );
+    CResource*                  Add                         ( unsigned short usID, char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity );
     CResource*                  GetResource                 ( const char* szResourceName );
-    CResource*                  GetResourceFromNetID        ( unsigned short usNetID );
-    CResource*                  GetResourceFromScriptID     ( uint uiScriptID );
-    CResource*                  GetResourceFromLuaState     ( struct lua_State* luaVM );
-    SString                     GetResourceName             ( struct lua_State* luaVM );
+    CResource*                  GetResource                 ( unsigned short usID );
     bool                        RemoveResource              ( unsigned short usID );
     void                        Remove                      ( CResource* pResource );
     bool                        Exists                      ( CResource* pResource );
@@ -52,20 +42,11 @@ public:
 
     void                        LoadUnavailableResources    ( CClientEntity* pRootEntity );
 
-    void                        OnAddResourceFile           ( CDownloadableResource* pResourceFile );
-    void                        OnRemoveResourceFile        ( CDownloadableResource* pResourceFile );
-    void                        OnDownloadedResourceFile    ( const SString& strFilename );
-    bool                        IsResourceFile              ( const SString& strFilename );
-    void                        ValidateResourceFile        ( const SString& strFilename, const CBuffer& fileData );
-
-    static bool                 ParseResourcePathInput      ( std::string strInput, CResource* &pResource, std::string &strPath, std::string &strMetaPath );
-    static bool                 ParseResourcePathInput      ( std::string strInput, CResource* &pResource, std::string &strPath );
+    static bool                 ParseResourcePathInput      ( std::string strInput, CResource* &pResource, std::string &strPath, std::string &strMetaPath = std::string("") );
 
 private:
 
-    CMappedList < CResource* >          m_resources;
-    std::map < ushort, CResource* >     m_NetIdResourceMap;
-    std::map < SString, CDownloadableResource* > m_ResourceFileMap;
+    CMappedList < CResource* >  m_resources;
 };
 
 #endif

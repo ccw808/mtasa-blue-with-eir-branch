@@ -1,6 +1,6 @@
 /*
 	BASSmix 2.4 C/C++ header file
-	Copyright (c) 2005-2012 Un4seen Developments Ltd.
+	Copyright (c) 2005-2008 Un4seen Developments Ltd.
 
 	See the BASSMIX.CHM file for more detailed documentation
 */
@@ -23,26 +23,23 @@ extern "C" {
 #endif
 
 // additional BASS_SetConfig option
+#define BASS_CONFIG_MIXER_FILTER	0x10600
 #define BASS_CONFIG_MIXER_BUFFER	0x10601
-#define BASS_CONFIG_MIXER_POSEX		0x10602
 #define BASS_CONFIG_SPLIT_BUFFER	0x10610
 
 // BASS_Mixer_StreamCreate flags
 #define BASS_MIXER_END			0x10000	// end the stream when there are no sources
 #define BASS_MIXER_NONSTOP		0x20000	// don't stall when there are no sources
 #define BASS_MIXER_RESUME		0x1000	// resume stalled immediately upon new/unpaused source
-#define BASS_MIXER_POSEX		0x2000	// enable BASS_Mixer_ChannelGetPositionEx support
 
 // source flags
+#define BASS_MIXER_FILTER		0x1000	// resampling filter
 #define BASS_MIXER_BUFFER		0x2000	// buffer data for BASS_Mixer_ChannelGetData/Level
 #define BASS_MIXER_LIMIT		0x4000	// limit mixer processing to the amount available from this source
 #define BASS_MIXER_MATRIX		0x10000	// matrix mixing
 #define BASS_MIXER_PAUSE		0x20000	// don't process the source
 #define BASS_MIXER_DOWNMIX		0x400000 // downmix to stereo/mono
 #define BASS_MIXER_NORAMPIN		0x800000 // don't ramp-in the start
-
-// splitter flags
-#define BASS_SPLIT_SLAVE		0x1000	// only read buffered data
 
 // envelope node
 typedef struct {
@@ -57,8 +54,7 @@ typedef struct {
 #define BASS_MIXER_ENV_LOOP		0x10000 // FLAG: loop
 
 // additional sync type
-#define BASS_SYNC_MIXER_ENVELOPE		0x10200
-#define BASS_SYNC_MIXER_ENVELOPE_NODE	0x10201
+#define BASS_SYNC_MIXER_ENVELOPE	0x10200
 
 // BASS_CHANNELINFO type
 #define BASS_CTYPE_STREAM_MIXER	0x10800
@@ -75,7 +71,6 @@ DWORD BASSMIXDEF(BASS_Mixer_ChannelFlags)(DWORD handle, DWORD flags, DWORD mask)
 BOOL BASSMIXDEF(BASS_Mixer_ChannelRemove)(DWORD handle);
 BOOL BASSMIXDEF(BASS_Mixer_ChannelSetPosition)(DWORD handle, QWORD pos, DWORD mode);
 QWORD BASSMIXDEF(BASS_Mixer_ChannelGetPosition)(DWORD handle, DWORD mode);
-QWORD BASSMIXDEF(BASS_Mixer_ChannelGetPositionEx)(DWORD channel, DWORD mode, DWORD delay);
 DWORD BASSMIXDEF(BASS_Mixer_ChannelGetLevel)(DWORD handle);
 DWORD BASSMIXDEF(BASS_Mixer_ChannelGetData)(DWORD handle, void *buffer, DWORD length);
 HSYNC BASSMIXDEF(BASS_Mixer_ChannelSetSync)(DWORD handle, DWORD type, QWORD param, SYNCPROC *proc, void *user);
@@ -88,10 +83,7 @@ QWORD BASSMIXDEF(BASS_Mixer_ChannelGetEnvelopePos)(DWORD handle, DWORD type, flo
 
 HSTREAM BASSMIXDEF(BASS_Split_StreamCreate)(DWORD channel, DWORD flags, int *chanmap);
 DWORD BASSMIXDEF(BASS_Split_StreamGetSource)(HSTREAM handle);
-DWORD BASSMIXDEF(BASS_Split_StreamGetSplits)(DWORD handle, HSTREAM *splits, DWORD count);
 BOOL BASSMIXDEF(BASS_Split_StreamReset)(DWORD handle);
-BOOL BASSMIXDEF(BASS_Split_StreamResetEx)(DWORD handle, DWORD offset);
-DWORD BASSMIXDEF(BASS_Split_StreamGetAvailable)(DWORD handle);
 
 #ifdef __cplusplus
 }

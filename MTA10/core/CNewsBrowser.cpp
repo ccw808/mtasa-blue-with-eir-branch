@@ -56,7 +56,7 @@ void CNewsBrowser::InitNewsItemList ( void )
     m_NewsitemList.clear ();
 
     // Find all sub-directories in 'news' directory
-    SString strAllNewsDir = PathJoin ( GetMTADataPath (), "news" );
+    SString strAllNewsDir = PathJoin ( GetMTALocalAppDataPath (), "news" );
     std::vector < SString > directoryList = FindFiles ( strAllNewsDir + "\\*", false, true );
     std::sort ( directoryList.begin (), directoryList.end () );
 
@@ -90,13 +90,6 @@ void CNewsBrowser::InitNewsItemList ( void )
                 CXMLNode* pHeadline = pRoot->FindSubNode ( "headline", 0 );
                 if ( pHeadline )
                     newsItem.strHeadline = pHeadline->GetTagContent ();
-
-                // Date text
-                CXMLNode* pDate = pRoot->FindSubNode ( "date", 0 );
-                if ( pDate )
-                    newsItem.strDate = pDate->GetTagContent ();
-                else
-                    newsItem.strHeadline.Split ( " - ", &newsItem.strHeadline, &newsItem.strDate, true );
 
                 // Layout filename
                 CXMLNode* pLayout = pRoot->FindSubNode ( "layout", 0 );
@@ -135,11 +128,11 @@ void CNewsBrowser::CreateHeadlines ( void )
     uint i;
     // Process each news item
     for ( i = 0; i < m_NewsitemList.size () ; i++ )
-        CCore::GetSingleton ().GetLocalGUI ()->GetMainMenu ()->SetNewsHeadline ( i, m_NewsitemList[i].strHeadline, m_NewsitemList[i].strDate, i < 1 && bNewsUpdated );
+        CCore::GetSingleton ().GetLocalGUI ()->GetMainMenu ()->SetNewsHeadline ( i, m_NewsitemList[i].strHeadline, i < 1 && bNewsUpdated );
 
     // Clear unused slots
     for ( ; i < 3 ; i++ )
-        CCore::GetSingleton ().GetLocalGUI ()->GetMainMenu ()->SetNewsHeadline ( i, "", "", false );
+        CCore::GetSingleton ().GetLocalGUI ()->GetMainMenu ()->SetNewsHeadline ( i, "", false );
 }
 
 
@@ -171,7 +164,6 @@ void CNewsBrowser::CreateGUI ( void )
     //  OK button
     m_pButtonOK = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( m_pWindow, "OK" ) );
     m_pButtonOK->SetPosition ( CVector2D ( 560.0f - 60, 480.0f - 30 ) );
-    m_pButtonOK->SetZOrderingEnabled ( false );
 
     // Set up the events
     m_pWindow->SetEnterKeyHandler ( GUI_CALLBACK ( &CNewsBrowser::OnOKButtonClick, this ) );
@@ -249,7 +241,8 @@ void CNewsBrowser::AddNewsTab ( const SNewsItem& newsItem )
     m_pScrollPane->SetVerticalScrollBar ( true );
 
     // Switch cwd
-    pManager->PushGuiWorkingDirectory ( newsItem.strContentFullDir );
+    SString cwd = GetCurrentWorkingDirectory ();
+    SetCurrentDirectory ( newsItem.strContentFullDir );
 
     // Load files
     CGUIWindow* pWindow = LoadLayoutAndImages ( m_pScrollPane, newsItem );
@@ -264,7 +257,7 @@ void CNewsBrowser::AddNewsTab ( const SNewsItem& newsItem )
     }
 
     // Restore cwd
-    pManager->PopGuiWorkingDirectory ( newsItem.strContentFullDir );
+    SetCurrentDirectory ( cwd );
 }
 
 

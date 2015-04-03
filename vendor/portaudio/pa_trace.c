@@ -1,5 +1,5 @@
 /*
- * $Id: pa_trace.c 1339 2008-02-15 07:50:33Z rossb $
+ * $Id: pa_trace.c,v 1.1.1.1 2002/01/22 00:52:11 phil Exp $
  * Portable Audio I/O Library Trace Facility
  * Store trace information in real-time for later printing.
  *
@@ -17,6 +17,10 @@
  * The above copyright notice and this permission notice shall be
  * included in all copies or substantial portions of the Software.
  *
+ * Any person wishing to distribute modifications to the Software is
+ * requested to send the modifications to the original developer so that
+ * they can be incorporated into the canonical version.
+ *
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
  * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
  * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
@@ -26,67 +30,49 @@
  * WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-/*
- * The text above constitutes the entire PortAudio license; however, 
- * the PortAudio community also makes the following non-binding requests:
- *
- * Any person wishing to distribute modifications to the Software is
- * requested to send the modifications to the original developer so that
- * they can be incorporated into the canonical version. It is also 
- * requested that these non-binding requests be included along with the 
- * license above.
- */
-
-/** @file
- @ingroup common_src
-
- @brief Real-time safe event trace logging facility for debugging.
-*/
-
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include "pa_trace.h"
 
-#if PA_TRACE_REALTIME_EVENTS
+#if TRACE_REALTIME_EVENTS
 
-static char *traceTextArray[PA_MAX_TRACE_RECORDS];
-static int traceIntArray[PA_MAX_TRACE_RECORDS];
+static char *traceTextArray[MAX_TRACE_RECORDS];
+static int traceIntArray[MAX_TRACE_RECORDS];
 static int traceIndex = 0;
 static int traceBlock = 0;
 
 /*********************************************************************/
-void PaUtil_ResetTraceMessages()
+void ResetTraceMessages()
 {
     traceIndex = 0;
 }
 
 /*********************************************************************/
-void PaUtil_DumpTraceMessages()
+void DumpTraceMessages()
 {
     int i;
-    int messageCount = (traceIndex < PA_MAX_TRACE_RECORDS) ? traceIndex : PA_MAX_TRACE_RECORDS;
+    int numDump = (traceIndex < MAX_TRACE_RECORDS) ? traceIndex : MAX_TRACE_RECORDS;
 
     printf("DumpTraceMessages: traceIndex = %d\n", traceIndex );
-    for( i=0; i<messageCount; i++ )
+    for( i=0; i<numDump; i++ )
     {
         printf("%3d: %s = 0x%08X\n",
                i, traceTextArray[i], traceIntArray[i] );
     }
-    PaUtil_ResetTraceMessages();
+    ResetTraceMessages();
     fflush(stdout);
 }
 
 /*********************************************************************/
-void PaUtil_AddTraceMessage( const char *msg, int data )
+void AddTraceMessage( const char *msg, int data )
 {
-    if( (traceIndex == PA_MAX_TRACE_RECORDS) && (traceBlock == 0) )
+    if( (traceIndex == MAX_TRACE_RECORDS) && (traceBlock == 0) )
     {
         traceBlock = 1;
-        /*  PaUtil_DumpTraceMessages(); */
+        /*  DumpTraceMessages(); */
     }
-    else if( traceIndex < PA_MAX_TRACE_RECORDS )
+    else if( traceIndex < MAX_TRACE_RECORDS )
     {
         traceTextArray[traceIndex] = msg;
         traceIntArray[traceIndex] = data;
@@ -94,4 +80,4 @@ void PaUtil_AddTraceMessage( const char *msg, int data )
     }
 }
 
-#endif /* TRACE_REALTIME_EVENTS */
+#endif

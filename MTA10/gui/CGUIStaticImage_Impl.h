@@ -21,15 +21,14 @@
 class CGUITexture;
 class CGUITexture_Impl;
 
-class CGUIStaticImage_Impl : public CGUIStaticImage, public CGUIElement_Impl, public CGUITabList
+class CGUIStaticImage_Impl : public CGUIStaticImage, public CGUIElement_Impl
 {
 public:
                                 CGUIStaticImage_Impl    ( class CGUI_Impl* pGUI, CGUIElement* pParent = NULL );
                                 ~CGUIStaticImage_Impl   ( void );
 
-    bool                        LoadFromFile            ( const char* szFilename );
+    bool                        LoadFromFile            ( const char* szFilename, const char* szDirectory = NULL );
     bool                        LoadFromTexture         ( CGUITexture* pTexture );
-    bool                        GetNativeSize           ( CVector2D &vecSize );
     void                        Clear                   ( void );
 
     void                        SetFrameEnabled         ( bool bFrameEnabled );

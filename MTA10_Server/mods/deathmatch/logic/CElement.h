@@ -23,6 +23,7 @@
 #include "CMapEventManager.h"
 #include "CCustomData.h"
 #include "CEvents.h"
+#include <assert.h>
 #include <list>
 #include <cstring>
 #include "CElementGroup.h"
@@ -34,8 +35,10 @@
 #define IS_COLSHAPE(element) ((element)->GetType()==CElement::COLSHAPE)
 #define IS_DUMMY(element)    ((element)->GetType()==CElement::DUMMY)
 #define IS_FILE(element)     ((element)->GetType()==CElement::SCRIPTFILE)
+#define IS_HANDLING(element) ((element)->GetType()==CElement::HANDLING)
 #define IS_MARKER(element)   ((element)->GetType()==CElement::MARKER)
 #define IS_OBJECT(element)   ((element)->GetType()==CElement::OBJECT)
+#define IS_PATHNODE(element) ((element)->GetType()==CElement::PATH_NODE)
 #define IS_PERPLAYER_ENTITY(element) ((element)->IsPerPlayerEntity())
 #define IS_PICKUP(element)   ((element)->GetType()==CElement::PICKUP)
 #define IS_PED(element)      ((element)->GetType()==CElement::PLAYER||(element)->GetType()==CElement::PED)
@@ -45,15 +48,6 @@
 #define IS_CONSOLE(element)  ((element)->GetType()==CElement::CONSOLE)
 #define IS_TEAM(element)     ((element)->GetType()==CElement::TEAM)
 #define IS_WATER(element)    ((element)->GetType()==CElement::WATER)
-#define IS_WEAPON(element)    ((element)->GetType()==CElement::WEAPON)
-
-typedef CFastList < CElement* > CChildListType;
-typedef CFastList < CElement* > CElementListType;
-
-// List of elements which is auto deleted when the last user calls Release()
-class CElementListSnapshot : public std::vector < CElement* >, public CRefCountableST
-{
-};
 
 class CElement
 {
@@ -63,7 +57,7 @@ class CElement
     friend class CPlayerCamera;
 
 public:
-    enum EElementType
+    enum
     {
         DUMMY,
         PLAYER,
@@ -76,16 +70,14 @@ public:
         SPAWNPOINT_DEPRECATED,
         REMOTECLIENT_DEPRECATED,
         CONSOLE,
-        PATH_NODE_UNUSED,
-        WORLD_MESH_UNUSED,
+        PATH_NODE,
+        WORLD_MESH,
         TEAM,
         PED,
         COLSHAPE,
         SCRIPTFILE,
+        HANDLING,
         WATER,
-        WEAPON,
-        DATABASE_CONNECTION,
-        ROOT,
         UNKNOWN,
     };
 
@@ -100,11 +92,10 @@ public:
     inline ElementID                            GetID                       ( void )                        { return m_ID; };
 
     virtual const CVector&                      GetPosition                 ( void );
+    virtual const CVector&                      GetLastPosition             ( void )                        { return m_vecLastPosition; };
     virtual void                                SetPosition                 ( const CVector& vecPosition );
 
     virtual void                                GetRotation                 ( CVector & vecRotation )       { vecRotation = CVector (); }
-    virtual void                                GetMatrix                   ( CMatrix& matrix );
-    virtual void                                SetMatrix                   ( const CMatrix& matrix );
 
     virtual bool                                IsPerPlayerEntity           ( void )                        { return false; };
 
@@ -112,22 +103,18 @@ public:
     CElement*                                   FindChildByType             ( const char* szType, unsigned int uiIndex, bool bRecursive );
     void                                        FindAllChildrenByType       ( const char* szType, lua_State* pLua );
     void                                        GetChildren                 ( lua_State* pLua );
-    void                                        GetChildrenByType           ( const char* szType, lua_State* pLua );
+    std::list < CElement * >                    GetChildrenList             ( void )        { return m_Children; }
     bool                                        IsMyChild                   ( CElement* pElement, bool bRecursive );
-    bool                                        IsMyParent                  ( CElement* pElement, bool bRecursive );
     void                                        ClearChildren               ( void );
-    void                                        GetDescendantsByType        ( std::vector < CElement* >& outResult, EElementType elementType );
-    void                                        GetDescendantsByTypeSlow    ( std::vector < CElement* >& outResult, uint uiTypeHash );
-    template < class T > void                   GetDescendantsByType        ( std::vector < T >& outResult, EElementType elementType ) { GetDescendantsByType ( ( std::vector < CElement* >& ) outResult, elementType ); }
 
     inline CMapEventManager*                    GetEventManager             ( void )                        { return m_pEventManager; };
     inline CElement*                            GetParentEntity             ( void )                        { return m_pParent; };
     inline CXMLNode*                            GetXMLNode                  ( void )                        { return m_pXMLNode; };
 
-    CElement*                                   SetParentObject             ( CElement* pParent, bool bUpdatePerPlayerEntities = true );
+    CElement*                                   SetParentObject             ( CElement* pParent );
     void                                        SetXMLNode                  ( CXMLNode* pNode );
 
-    bool                                        AddEvent                    ( CLuaMain* pLuaMain, const char* szName, const CLuaFunctionRef& iLuaFunction, bool bPropagated, EEventPriorityType eventPriority, float fPriorityMod );
+    bool                                        AddEvent                    ( CLuaMain* pLuaMain, const char* szName, const CLuaFunctionRef& iLuaFunction, bool bPropagated );
     bool                                        CallEvent                   ( const char* szName, const CLuaArguments& Arguments, CPlayer* pCaller = NULL );
     bool                                        DeleteEvent                 ( CLuaMain* pLuaMain, const char* szName, const CLuaFunctionRef& iLuaFunction = CLuaFunctionRef () );
     void                                        DeleteEvents                ( CLuaMain* pLuaMain, bool bRecursive );
@@ -141,24 +128,21 @@ public:
     bool                                        GetCustomDataInt            ( const char* szName, int& iOut, bool bInheritData );
     bool                                        GetCustomDataFloat          ( const char* szName, float& fOut, bool bInheritData );
     bool                                        GetCustomDataBool           ( const char* szName, bool& bOut, bool bInheritData );
-    void                                        SetCustomData               ( const char* szName, const CLuaArgument& Variable, CLuaMain* pLuaMain, bool bSynchronized = true, CPlayer* pClient = NULL, bool bTriggerEvent = true );
+    void                                        SetCustomData               ( const char* szName, const CLuaArgument& Variable, CLuaMain* pLuaMain, bool bSynchronized = true, CPlayer* pClient = NULL );
     bool                                        DeleteCustomData            ( const char* szName, bool bRecursive );
     void                                        DeleteAllCustomData         ( CLuaMain* pLuaMain, bool bRecursive );
-    void                                        SendAllCustomData           ( CPlayer* pPlayer );
 
     CXMLNode*                                   OutputToXML                 ( CXMLNode* pNode );
 
     void                                        CleanUpForVM                ( CLuaMain* pLuaMain, bool bRecursive );
 
     inline unsigned int                         CountChildren               ( void )                        { return static_cast < unsigned int > ( m_Children.size () ); };
-    CChildListType ::const_iterator             IterBegin                   ( void )                        { return m_Children.begin (); };
-    CChildListType ::const_iterator             IterEnd                     ( void )                        { return m_Children.end (); };
-    CChildListType ::const_reverse_iterator     IterReverseBegin            ( void )                        { return m_Children.rbegin (); };
-    CChildListType ::const_reverse_iterator     IterReverseEnd              ( void )                        { return m_Children.rend (); };
-    CElementListSnapshot*                       GetChildrenListSnapshot     ( void );
+    inline std::list < CElement* > ::const_iterator          IterBegin           ( void )                   { return m_Children.begin (); };
+    inline std::list < CElement* > ::const_iterator          IterEnd             ( void )                   { return m_Children.end (); };
+    inline std::list < CElement* > ::const_reverse_iterator  IterReverseBegin    ( void )                   { return m_Children.rbegin (); };
+    inline std::list < CElement* > ::const_reverse_iterator  IterReverseEnd      ( void )                   { return m_Children.rend (); };
 
-    static uint                                 GetTypeHashFromString       ( const SString& strTypeName );
-    EElementType                                GetType                     ( void )                        { return m_iType; };
+    inline int                                  GetType                     ( void )                        { return m_iType; };
     virtual bool                                IsEntity                    ( void )                        { return false; };
     inline unsigned int                         GetTypeHash                 ( void )                        { return m_uiTypeHash; };
     inline const std::string&                   GetTypeName                 ( void )                        { return m_strTypeName; };
@@ -175,8 +159,10 @@ public:
     virtual void                                UpdatePerPlayer             ( void ) {};
     void                                        UpdatePerPlayerEntities     ( void );
 
+    static unsigned int                         GetTypeID                   ( const char * szTypeName );
+
     void                                        AddCollision                ( class CColShape* pShape )     { m_Collisions.push_back ( pShape ); }
-    void                                        RemoveCollision             ( class CColShape* pShape )     { m_Collisions.remove ( pShape ); }
+    void                                        RemoveCollision             ( class CColShape* pShape )     { if ( !m_Collisions.empty() ) m_Collisions.remove ( pShape ); }
     bool                                        CollisionExists             ( class CColShape* pShape );
     void                                        RemoveAllCollisions         ( bool bNotify = false );
     std::list < class CColShape* > ::iterator   CollisionsBegin             ( void )                        { return m_Collisions.begin (); }
@@ -191,11 +177,11 @@ public:
     virtual void                                AttachTo                    ( CElement* pElement );
     virtual void                                GetAttachedOffsets          ( CVector & vecPosition, CVector & vecRotation );
     virtual void                                SetAttachedOffsets          ( CVector & vecPosition, CVector & vecRotation );
-    void                                        AddAttachedElement          ( CElement* pElement );
-    void                                        RemoveAttachedElement       ( CElement* pElement );
-    std::list < CElement* > ::const_iterator    AttachedElementsBegin       ( void )                        { return m_AttachedElements.begin (); }
-    std::list < CElement* > ::const_iterator    AttachedElementsEnd         ( void )                        { return m_AttachedElements.end (); }
-    const char*                                 GetAttachToID               ( void )                        { return m_strAttachToID; }
+    inline void                                 AddAttachedElement          ( CElement* pElement )          { m_AttachedElements.push_back ( pElement ); }
+    inline void                                 RemoveAttachedElement       ( CElement* pElement )          { if ( !m_AttachedElements.empty() ) m_AttachedElements.remove ( pElement ); }
+    std::list < CElement* > ::iterator          AttachedElementsBegin       ( void )                        { return m_AttachedElements.begin (); }
+    std::list < CElement* > ::iterator          AttachedElementsEnd         ( void )                        { return m_AttachedElements.end (); }
+    inline char*                                GetAttachToID               ( void )                        { return m_szAttachToID; }
     bool                                        IsElementAttached           ( CElement* pElement );
     virtual bool                                IsAttachable                ( void );
     virtual bool                                IsAttachToable              ( void );
@@ -224,12 +210,11 @@ public:
     bool                                        IsDoubleSided               ( void )                        { return m_bDoubleSided; }
     void                                        SetDoubleSided              ( bool bDoubleSided )           { m_bDoubleSided = bDoubleSided; }
 
+    inline bool                                 IsMapCreated                ( void )                        { return m_bMapCreated; }
+
     // Spatial database
     virtual CSphere                             GetWorldBoundingSphere      ( void );
     virtual void                                UpdateSpatialData           ( void );
-
-    bool                                        IsCallPropagationEnabled    ( void )                        { return m_bCallPropagationEnabled; }
-    void                                        SetCallPropagationEnabled   ( bool bEnabled )               { m_bCallPropagationEnabled = bEnabled; }
 
 protected:
     CElement*                                   GetRootElement              ( void );
@@ -242,11 +227,10 @@ protected:
     void                                        CallEventNoParent           ( const char* szName, const CLuaArguments& Arguments, CElement* pSource, CPlayer* pCaller = NULL );
     void                                        CallParentEvent             ( const char* szName, const CLuaArguments& Arguments, CElement* pSource, CPlayer* pCaller = NULL );
 
-
     CMapEventManager*                           m_pEventManager;
     CCustomData*                                m_pCustomData;
 
-    EElementType                                m_iType;
+    int                                         m_iType;
     ElementID                                   m_ID;
     CElement*                                   m_pParent;
     CXMLNode*                                   m_pXMLNode;
@@ -254,13 +238,12 @@ protected:
     bool                                        m_bIsBeingDeleted;
 
     CVector                                     m_vecPosition;
+    CVector                                     m_vecLastPosition;
 
     unsigned int                                m_uiTypeHash;
     std::string                                 m_strTypeName;
     std::string                                 m_strName;
-    CChildListType                              m_Children;
-    CElementListSnapshot*                       m_pChildrenListSnapshot;
-    uint                                        m_uiChildrenListSnapshotRevision;
+    std::list < CElement* >                     m_Children;
 
     std::list < class CPerPlayerEntity* >       m_ElementReferenced;
     std::list < class CColShape* >              m_Collisions;
@@ -270,7 +253,7 @@ protected:
     CVector                                     m_vecAttachedPosition;
     CVector                                     m_vecAttachedRotation;
     std::list < CElement* >                     m_AttachedElements;
-    SString                                     m_strAttachToID;
+    char                                        m_szAttachToID [ MAX_ELEMENT_NAME_LENGTH + 1 ];
 
     CElementGroup*                              m_pElementGroup;
 
@@ -280,8 +263,8 @@ protected:
     std::list < class CPed * >                  m_OriginSourceUsers;
     unsigned char                               m_ucInterior;
     bool                                        m_bDoubleSided;
+    bool                                        m_bMapCreated;
     bool                                        m_bUpdatingSpatialData;
-    bool                                        m_bCallPropagationEnabled;
 
     // Optimization for getElementsByType starting at root
 public:
@@ -291,16 +274,17 @@ private:
     static void                     AddEntityFromRoot       ( unsigned int uiTypeHash, CElement* pEntity, bool bDebugCheck = true );
     static void                     RemoveEntityFromRoot    ( unsigned int uiTypeHash, CElement* pEntity );
     static void                     GetEntitiesFromRoot     ( unsigned int uiTypeHash, lua_State* pLua );
-    static void                     GetEntitiesFromRoot     ( unsigned int uiTypeHash, std::vector < CElement* >& outResult );
 
 #if CHECK_ENTITIES_FROM_ROOT
     static void                     _CheckEntitiesFromRoot      ( unsigned int uiTypeHash );
     void                            _FindAllChildrenByTypeIndex ( unsigned int uiTypeHash, std::map < CElement*, int >& mapResults );
     static void                     _GetEntitiesFromRoot        ( unsigned int uiTypeHash, std::map < CElement*, int >& mapResults );
 #endif
-};
 
-typedef CElement::EElementType EElementType;
+    typedef google::dense_hash_map < unsigned int, std::list < CElement* > > t_mapEntitiesFromRoot;
+    static t_mapEntitiesFromRoot    ms_mapEntitiesFromRoot;
+    static bool                     ms_bEntitiesFromRootInitialized;
+};
 
 #endif
 

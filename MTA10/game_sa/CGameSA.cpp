@@ -17,9 +17,7 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#define ALLOC_STATS_MODULE_NAME "game_sa"
 #include "SharedUtil.hpp"
-#include "SharedUtil.MemAccess.hpp"
 
 unsigned long* CGameSA::VAR_SystemTime;
 unsigned long* CGameSA::VAR_IsAtMenu;
@@ -40,13 +38,15 @@ unsigned long* CGameSA::VAR_Framelimiter;
  */
 CGameSA::CGameSA()
 {
-    pGame = this;
+    m_bAsyncSettingsDontUse = false;
+    m_bAsyncSettingsEnabled = false;
     m_bAsyncScriptEnabled = false;
     m_bAsyncScriptForced = false;
     m_bASyncLoadingSuspended = false;
-    m_iCheckStatus = 0;
 
-    SetInitialVirtualProtect();
+    // Unprotect all of the GTASA code at once and leave it that way
+    DWORD oldProt;
+    VirtualProtect((LPVOID)0x401000, 0x4A3000, PAGE_EXECUTE_READWRITE, &oldProt);
 
     // Initialize the offsets
     eGameVersion version = FindGameVersion ();
@@ -65,8 +65,7 @@ CGameSA::CGameSA()
     }
 
     DEBUG_TRACE("CGameSA::CGameSA()");
-    this->m_pAudioEngine            = new CAudioEngineSA((CAudioEngineSAInterface*)CLASS_CAudioEngine);
-    this->m_pAudioContainer         = new CAudioContainerSA();
+    this->m_pAudio                  = new CAudioSA();
     this->m_pWorld                  = new CWorldSA();
     this->m_pPools                  = new CPoolsSA();
     this->m_pClock                  = new CClockSA();
@@ -105,42 +104,20 @@ CGameSA::CGameSA()
     this->m_pKeyGen                 = new CKeyGenSA;
     this->m_pRopes                  = new CRopesSA;
     this->m_pFx                     = new CFxSA ( (CFxSAInterface *)CLASS_CFx );
-    this->m_pFxManager              = new CFxManagerSA ( (CFxManagerSAInterface *)CLASS_CFxManager );
     this->m_pWaterManager           = new CWaterManagerSA ();
-    this->m_pWeaponStatsManager     = new CWeaponStatManagerSA ();
-    this->m_pPointLights            = new CPointLightsSA ();
 
     // Normal weapon types (WEAPONSKILL_STD)
     for ( int i = 0; i < NUM_WeaponInfosStdSkill; i++)
-    {
-        eWeaponType weaponType = (eWeaponType)(WEAPONTYPE_PISTOL + i);
-        WeaponInfos[i] = new CWeaponInfoSA( (CWeaponInfoSAInterface *)(ARRAY_WeaponInfo + i*CLASSSIZE_WeaponInfo), weaponType );
-        m_pWeaponStatsManager->CreateWeaponStat ( WeaponInfos[i], (eWeaponType)(weaponType - WEAPONTYPE_PISTOL), WEAPONSKILL_STD );
-    }
+        WeaponInfos[i] = new CWeaponInfoSA((CWeaponInfoSAInterface *)(ARRAY_WeaponInfo + i*CLASSSIZE_WeaponInfo), (eWeaponType)(WEAPONTYPE_PISTOL + i));
 
     // Extra weapon types for skills (WEAPONSKILL_POOR,WEAPONSKILL_PRO,WEAPONSKILL_SPECIAL)
     int index;
-    eWeaponSkill weaponSkill = eWeaponSkill::WEAPONSKILL_POOR;
     for ( int skill = 0; skill < 3 ; skill++ )
     {
-        //STD is created first, then it creates "extra weapon types" (poor, pro, special?) but in the enum 1 = STD which meant the STD weapon skill contained pro info
-        if ( skill >= 1 )
-        {
-            if ( skill == 1 )
-            {
-                weaponSkill = eWeaponSkill::WEAPONSKILL_PRO;
-            }
-            if ( skill == 2 )
-            {
-                weaponSkill = eWeaponSkill::WEAPONSKILL_SPECIAL;
-            }
-        }
         for ( int i = 0; i < NUM_WeaponInfosOtherSkill; i++ )
         {
-            eWeaponType weaponType = (eWeaponType)(WEAPONTYPE_PISTOL + i);
             index = NUM_WeaponInfosStdSkill + skill*NUM_WeaponInfosOtherSkill + i;
-            WeaponInfos[index] = new CWeaponInfoSA( (CWeaponInfoSAInterface *)(ARRAY_WeaponInfo + index*CLASSSIZE_WeaponInfo), weaponType );
-            m_pWeaponStatsManager->CreateWeaponStat ( WeaponInfos[index], weaponType, weaponSkill );
+            WeaponInfos[index] = new CWeaponInfoSA((CWeaponInfoSAInterface *)(ARRAY_WeaponInfo + index*CLASSSIZE_WeaponInfo), (eWeaponType)(WEAPONTYPE_PISTOL + i));
         }
     }
 
@@ -170,26 +147,8 @@ CGameSA::CGameSA()
     m_Cheats [ CHEAT_HEALTARMORMONEY  ] = new SCheatSA((BYTE *)VAR_HealthArmorMoney, false);
 
     // Change pool sizes here
-    m_pPools->SetPoolCapacity ( TASK_POOL, 5000 );                  // Default is 500
-    m_pPools->SetPoolCapacity ( OBJECT_POOL, 700 );                 // Default is 350
-    m_pPools->SetPoolCapacity ( EVENT_POOL, 5000 );                 // Default is 200
-    m_pPools->SetPoolCapacity ( COL_MODEL_POOL, 12000 );            // Default is 10150
-    m_pPools->SetPoolCapacity ( ENV_MAP_MATERIAL_POOL, 16000 );     // Default is 4096
-    m_pPools->SetPoolCapacity ( ENV_MAP_ATOMIC_POOL, 4000 );        // Default is 1024
-    m_pPools->SetPoolCapacity ( SPEC_MAP_MATERIAL_POOL, 16000 );    // Default is 4096
-
-    // Increase streaming object instances list size
-    MemPut < WORD > ( 0x05B8E55, 30000 );         // Default is 12000
-    MemPut < WORD > ( 0x05B8EB0, 30000 );         // Default is 12000
-
-    CModelInfoSA::StaticSetHooks ();
-    CPlayerPedSA::StaticSetHooks ();
-    CRenderWareSA::StaticSetHooks ();
-    CRenderWareSA::StaticSetClothesReplacingHooks ();
-    CTasksSA::StaticSetHooks ();
-    CPedSA::StaticSetHooks ();
-    CSettingsSA::StaticSetHooks ();
-    CFxSystemSA::StaticSetHooks ();
+    m_pPools->SetPoolCapacity ( TASK_POOL, 5000 );  // Default is 500
+    m_pPools->SetPoolCapacity ( OBJECT_POOL, 700 );  // Default is 350
 }
 
 CGameSA::~CGameSA ( void )
@@ -233,9 +192,7 @@ CGameSA::~CGameSA ( void )
     delete reinterpret_cast < CClockSA* > ( m_pClock );
     delete reinterpret_cast < CPoolsSA* > ( m_pPools );
     delete reinterpret_cast < CWorldSA* > ( m_pWorld );
-    delete reinterpret_cast < CAudioEngineSA* > ( m_pAudioEngine );
-    delete reinterpret_cast < CAudioContainerSA* > ( m_pAudioContainer );
-    delete reinterpret_cast < CPointLightsSA * > ( m_pPointLights );
+    delete reinterpret_cast < CAudioSA* > ( m_pAudio );  
 }
 
 CWeaponInfo * CGameSA::GetWeaponInfo(eWeaponType weapon, eWeaponSkill skill)
@@ -314,8 +271,8 @@ VOID CGameSA::StartGame()
 //  InitScriptInterface();
     //*(BYTE *)VAR_StartGame = 1;
     this->SetSystemState(GS_INIT_PLAYING_GAME);
-    MemPutFast < BYTE > ( 0xB7CB49, 0 );
-    MemPutFast < BYTE > ( 0xBA67A4, 0 );
+    *(BYTE *)0xB7CB49 = 0; // game not paused
+    *(BYTE *)0xBA67A4 = 0; // menu not visible
 }
 
 /**
@@ -374,7 +331,7 @@ float CGameSA::GetGravity ( void )
 
 void CGameSA::SetGravity ( float fGravity )
 {
-    MemPut < float > ( 0x863984, fGravity );
+    * ( float* ) ( 0x863984 ) = fGravity;
 }
 
 float CGameSA::GetGameSpeed ( void )
@@ -384,7 +341,7 @@ float CGameSA::GetGameSpeed ( void )
 
 void CGameSA::SetGameSpeed ( float fSpeed )
 {
-    MemPutFast < float > ( 0xB7CB64, fSpeed );
+    * ( float* ) ( 0xB7CB64 ) = fSpeed;
 }
 
 // this prevents some crashes (respawning mainly)
@@ -397,11 +354,11 @@ VOID CGameSA::DisableRenderer( bool bDisabled )
 
     if ( bDisabled )
     {
-        MemPut < BYTE > ( 0x53DF40, 0xC3 );
+        *(BYTE *)0x53DF40 = 0xC3;
     }
     else
     {
-        MemPut < BYTE > ( 0x53DF40, 0xD9 );
+        *(BYTE *)0x53DF40 = 0xD9;
     }
 }
 
@@ -411,7 +368,7 @@ VOID CGameSA::SetRenderHook ( InRenderer* pInRenderer )
         HookInstall ( (DWORD)FUNC_CDebug_DebugDisplayTextBuffer, (DWORD)pInRenderer, 6 );
     else
     {
-        MemPut < BYTE > ( FUNC_CDebug_DebugDisplayTextBuffer, 0xC3 );
+        *(BYTE *)FUNC_CDebug_DebugDisplayTextBuffer = 0xC3;
     }
 }
 
@@ -458,7 +415,7 @@ void CGameSA::Reset ( void )
 
         // Restore the HUD
         m_pHud->Disable ( false );
-        m_pHud->SetComponentVisible ( HUD_ALL, true );
+        m_pHud->DisableAll ( false );
     }
 }
 
@@ -478,10 +435,9 @@ void CGameSA::Initialize ( void )
     // Initialize garages
     m_pGarages->Initialize();
     SetupSpecialCharacters ();
-    m_pRenderWare->Initialize();
 
     // *Sebas* Hide the GTA:SA Main menu.
-    MemPutFast < BYTE > ( CLASS_CMenuManager+0x5C, 0 );
+    *(BYTE *)(CLASS_CMenuManager+0x5C) = 0;
 }
 
 eGameVersion CGameSA::GetGameVersion ( void )
@@ -547,7 +503,7 @@ unsigned char CGameSA::GetBlurLevel ( void )
 
 void CGameSA::SetBlurLevel ( unsigned char ucLevel )
 {
-    MemPutFast < unsigned char > ( 0x8D5104, ucLevel );
+    * ( unsigned char * ) 0x8D5104 = ucLevel;
 }
 
 unsigned long CGameSA::GetMinuteDuration ( void )
@@ -558,7 +514,7 @@ unsigned long CGameSA::GetMinuteDuration ( void )
 
 void CGameSA::SetMinuteDuration ( unsigned long ulTime )
 {
-    MemPutFast < unsigned long > ( 0xB7015C, ulTime );
+    * ( unsigned long * ) 0xB7015C = ulTime;
 }
 
 bool CGameSA::IsCheatEnabled ( const char* szCheatName )
@@ -576,7 +532,7 @@ bool CGameSA::SetCheatEnabled ( const char* szCheatName, bool bEnable )
         return false;
     if ( !it->second->m_bCanBeSet )
         return false;
-    MemPutFast < BYTE > ( it->second->m_byAddress, bEnable );
+    *(it->second->m_byAddress) = bEnable;
     it->second->m_bEnabled = bEnable;
     return true;
 }
@@ -585,31 +541,10 @@ void CGameSA::ResetCheats ()
 {
     std::map < std::string, SCheatSA* >::iterator it;
     for ( it = m_Cheats.begin (); it != m_Cheats.end (); it++ ) {
-        if ( it->second->m_byAddress > (BYTE*)0x8A4000 )
-            MemPutFast < BYTE > ( it->second->m_byAddress, 0 );
-        else
-            MemPut < BYTE > ( it->second->m_byAddress, 0 );
+        *(it->second->m_byAddress) = 0;
         it->second->m_bEnabled = false;
     }
 }
-
-bool CGameSA::GetJetpackWeaponEnabled ( eWeaponType weaponType )
-{
-    if ( weaponType >= WEAPONTYPE_BRASSKNUCKLE && weaponType < WEAPONTYPE_LAST_WEAPONTYPE )
-    {
-        return m_JetpackWeapons[weaponType];
-    }
-    return false;
-}
-
-void CGameSA::SetJetpackWeaponEnabled ( eWeaponType weaponType, bool bEnabled )
-{
-    if ( weaponType >= WEAPONTYPE_BRASSKNUCKLE && weaponType < WEAPONTYPE_LAST_WEAPONTYPE )
-    {
-        m_JetpackWeapons[weaponType] = bEnabled;
-    }
-}
-
 bool CGameSA::PerformChecks ( void )
 {
     std::map < std::string, SCheatSA* >::iterator it;
@@ -625,7 +560,6 @@ bool CGameSA::VerifySADataFileNames ()
            !strcmp ( *(char **)0x5BD839, "DATA" ) &&
            !strcmp ( *(char **)0x5BD84C, "HANDLING.CFG" ) &&
            !strcmp ( *(char **)0x5BEEE8, "DATA\\melee.dat" ) &&
-           !strcmp ( *(char **)0x4D563E, "ANIM\\PED.IFP" ) &&
            !strcmp ( *(char **)0x5B925B, "DATA\\OBJECT.DAT" ) &&
            !strcmp ( *(char **)0x55D0FC, "data\\surface.dat" ) &&
            !strcmp ( *(char **)0x55F2BB, "data\\surfaud.dat" ) &&
@@ -635,40 +569,31 @@ bool CGameSA::VerifySADataFileNames ()
            !strcmp ( *(char **)0x5BE686, "DATA\\WEAPON.DAT" );
 }
 
+void CGameSA::SetAsyncLoadingFromSettings ( bool bSettingsDontUse, bool bSettingsEnabled )
+{
+    m_bAsyncSettingsDontUse = bSettingsDontUse;
+    m_bAsyncSettingsEnabled = bSettingsEnabled;
+}
+
 void CGameSA::SetAsyncLoadingFromScript ( bool bScriptEnabled, bool bScriptForced )
 {
     m_bAsyncScriptEnabled = bScriptEnabled;
     m_bAsyncScriptForced = bScriptForced;
 }
 
-void CGameSA::SuspendASyncLoading ( bool bSuspend, uint uiAutoUnsuspendDelay )
+void CGameSA::SuspendASyncLoading ( bool bSuspend )
 {
     m_bASyncLoadingSuspended = bSuspend;
-    // Setup auto unsuspend time if required
-    if ( uiAutoUnsuspendDelay && bSuspend )
-        m_llASyncLoadingAutoUnsuspendTime = CTickCount::Now() + CTickCount( (long long)uiAutoUnsuspendDelay );
-    else
-        m_llASyncLoadingAutoUnsuspendTime = CTickCount();
 }
 
 bool CGameSA::IsASyncLoadingEnabled ( bool bIgnoreSuspend )
 {
-    // Process auto unsuspend time if set
-    if ( m_llASyncLoadingAutoUnsuspendTime.ToLongLong() != 0 )
-    {
-        if ( CTickCount::Now() > m_llASyncLoadingAutoUnsuspendTime )
-        {
-            m_llASyncLoadingAutoUnsuspendTime = CTickCount();
-            m_bASyncLoadingSuspended = false;
-        }
-    }
-
     if ( m_bASyncLoadingSuspended && !bIgnoreSuspend )
         return false;
 
-    if ( m_bAsyncScriptForced )
+    if ( m_bAsyncScriptForced || m_bAsyncSettingsDontUse )
         return m_bAsyncScriptEnabled;
-    return true;
+    return m_bAsyncSettingsEnabled;
 }
 
 void CGameSA::SetupSpecialCharacters ( void )
@@ -719,64 +644,4 @@ void CGameSA::SetupSpecialCharacters ( void )
     ModelInfo[316].MakePedModel ( "COPGRL2" );
     ModelInfo[317].MakePedModel ( "NURGRL2" );
     */
-}
-
-// Well, has it?
-bool CGameSA::HasCreditScreenFadedOut ( void )
-{
-    BYTE ucAlpha = *(BYTE*)0xBAB320;
-    bool bCreditScreenFadedOut = ( GetSystemState() >= 7 ) && ( ucAlpha < 6 );
-    return bCreditScreenFadedOut;
-}
-
-// Ensure replaced/restored textures for models in the GTA map are correct
-void CGameSA::FlushPendingRestreamIPL ( void )
-{
-    CModelInfoSA::StaticFlushPendingRestreamIPL ();
-    m_pRenderWare->ResetStats ();
-}
-
-void CGameSA::GetShaderReplacementStats ( SShaderReplacementStats& outStats )
-{
-    m_pRenderWare->GetShaderReplacementStats ( outStats );
-}
-
-// Ensure models have the default lod distances
-void CGameSA::ResetModelLodDistances ( void )
-{
-    CModelInfoSA::StaticResetLodDistances ();
-}
-
-void CGameSA::ResetAlphaTransparencies ( void )
-{
-    CModelInfoSA::StaticResetAlphaTransparencies ();
-}
-
-// Disable VSync by forcing what normally happends at the end of the loading screens
-// Note #1: This causes the D3D device to be reset after the next frame
-// Note #2: Some players do not need this to disable VSync. (Possibly because their video card driver settings override it somewhere)
-void CGameSA::DisableVSync ( void )
-{
-    MemPutFast < BYTE > ( 0xBAB318, 0 );
-}
-CWeapon * CGameSA::CreateWeapon ( void )
-{
-    return new CWeaponSA ( new CWeaponSAInterface, NULL, WEAPONSLOT_MAX );
-}
-
-CWeaponStat * CGameSA::CreateWeaponStat ( eWeaponType weaponType, eWeaponSkill weaponSkill )
-{
-    return m_pWeaponStatsManager->CreateWeaponStatUnlisted ( weaponType, weaponSkill );
-}
-
-void CGameSA::OnPedContextChange ( CPed* pPedContext )
-{
-    m_pPedContext = pPedContext;
-}
-
-CPed* CGameSA::GetPedContext ( void )
-{
-    if ( !m_pPedContext )
-        m_pPedContext = pGame->GetPools ()->GetPedFromRef ( (DWORD)1 );
-    return m_pPedContext;
 }

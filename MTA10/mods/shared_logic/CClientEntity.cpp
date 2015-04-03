@@ -21,11 +21,16 @@ using std::list;
 
 extern CClientGame* g_pClientGame;
 
-#pragma warning( disable : 4355 )   // warning C4355: 'this' : used in base member initializer list
+#define snprintf _snprintf
+
+int CClientEntity::iCount = 0;
 
 CClientEntity::CClientEntity ( ElementID ID )
-        : ClassInit ( this )
 {
+    #ifdef MTA_DEBUG
+        ++iCount;
+    #endif
+
     // Init
     m_pManager = NULL;
     m_pParent = NULL;
@@ -35,7 +40,6 @@ CClientEntity::CClientEntity ( ElementID ID )
     m_ucInterior = 0;
     m_bDoubleSided = false;
     m_bDoubleSidedInit = false;
-    m_bCallPropagationEnabled = true;
 
     // Need to generate a clientside ID?
     if ( ID == INVALID_ELEMENT_ID )
@@ -52,25 +56,28 @@ CClientEntity::CClientEntity ( ElementID ID )
 
     m_pAttachedToEntity = NULL;
 
-    m_strTypeName = "unknown";
-    m_uiTypeHash = HashString ( m_strTypeName );
+    strncpy ( m_szTypeName, "unknown", MAX_TYPENAME_LENGTH );
+    m_szTypeName [MAX_TYPENAME_LENGTH] = 0;
+    m_uiTypeHash = HashString ( m_szTypeName );
     if ( IsFromRoot ( m_pParent ) )
         CClientEntity::AddEntityFromRoot ( m_uiTypeHash, this );
+
+    m_szName [0] = 0;
+    m_szName [MAX_ELEMENT_NAME_LENGTH] = 0;
 
     m_bBeingDeleted = false;
 
     m_pElementGroup = NULL;
     m_pModelInfo = NULL;
-
-    g_pClientGame->GetGameEntityXRefManager ()->OnClientEntityCreate ( this );
-
-    m_bWorldIgnored = false;
-    g_pCore->UpdateDummyProgress();
 }
 
 
 CClientEntity::~CClientEntity ( void )
 {
+    #ifdef MTA_DEBUG
+        --iCount;
+    #endif
+
     // Make sure we won't get deleted later by the element deleter if we've been requested so
     if ( m_bBeingDeleted )
     {
@@ -78,9 +85,11 @@ CClientEntity::~CClientEntity ( void )
     }
 
     // Remove from parent
-    ClearChildren ();
-    SetParent ( NULL );
-
+    if ( !g_pClientGame->IsBeingDeleted () )
+    {
+        ClearChildren ();
+        SetParent ( NULL );
+    }
     // Reset our index in the element array
     if ( m_ID != INVALID_ELEMENT_ID )
     {
@@ -99,15 +108,19 @@ CClientEntity::~CClientEntity ( void )
         delete m_pCustomData;
     }
 
-    // Detach from everything
-    AttachTo( NULL );
-    while( m_AttachedEntities.size() )
+    if ( m_pAttachedToEntity )
     {
-        CClientEntity* pAttachedEntity = m_AttachedEntities.back();
-        pAttachedEntity->AttachTo( NULL );
+        m_pAttachedToEntity->RemoveAttachedEntity ( this );
     }
-    m_bDisallowAttaching = true;
-    assert( !m_pAttachedToEntity && m_AttachedEntities.empty() );
+
+    for ( list < CClientEntity* >::iterator iter = m_AttachedEntities.begin () ; iter != m_AttachedEntities.end () ; ++iter )
+    {
+        CClientEntity* pAttachedEntity = *iter;
+        if ( pAttachedEntity )
+        {
+            pAttachedEntity->m_pAttachedToEntity = NULL;
+        }
+    }
 
     RemoveAllCollisions ( true );
 
@@ -164,29 +177,15 @@ CClientEntity::~CClientEntity ( void )
     assert ( !MapContains ( g_pClientGame->m_AllDisabledCollisions, this ) );
 
     // Ensure nothing has inadvertently set a parent
-    assert ( m_pParent == NULL );
-
     if ( !g_pClientGame->IsBeingDeleted () )
-        CClientEntityRefManager::OnEntityDelete ( this );
-
-    g_pClientGame->GetGameEntityXRefManager ()->OnClientEntityDelete ( this );
-    SAFE_RELEASE( m_pChildrenListSnapshot );
-    g_pCore->GetGraphics ()->GetRenderItemManager ()->RemoveClientEntityRefs ( this );
-    g_pCore->UpdateDummyProgress();
+        assert ( m_pParent == NULL );
 }
-
-
-// Static function
-//bool CClientEntity::IsValidEntity ( CClientEntity* pEntity )
-//{
-//    return MapContains ( ms_ValidEntityMap, pEntity );
-//}
 
 
 void CClientEntity::SetTypeName ( const char* szName )
 {
     CClientEntity::RemoveEntityFromRoot ( m_uiTypeHash, this );
-    m_strTypeName.AssignLeft ( szName, MAX_TYPENAME_LENGTH );
+    strncpy ( m_szTypeName, szName, MAX_TYPENAME_LENGTH );
     m_uiTypeHash = HashString ( szName );
     if ( IsFromRoot ( m_pParent ) )
         CClientEntity::AddEntityFromRoot ( m_uiTypeHash, this );
@@ -249,23 +248,31 @@ CClientEntity* CClientEntity::AddChild ( CClientEntity* pChild )
 }
 
 
-// Also returns true if the element is the same
 bool CClientEntity::IsMyChild ( CClientEntity* pEntity, bool bRecursive )
 {
-    return pEntity && pEntity->IsMyParent ( this, bRecursive );
-}
+    // Since VERIFY_ELEMENT is calling us, the pEntity argument could be NULL
+    if ( pEntity == NULL ) return false;
 
-
-// Also returns true if the element is the same
-bool CClientEntity::IsMyParent ( CClientEntity* pEntity, bool bRecursive )
-{
     // Is he us?
     if ( pEntity == this )
         return true;
 
-    if ( bRecursive && pEntity && m_pParent && m_pParent->IsMyParent ( pEntity, true ) )
-        return true;
+    // Is he our child directly?
+    list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
+    for ( ; iter != m_Children.end (); iter++ )
+    {
+        // Return true if this is our child. If not check if he's one of our children's children if we were asked to do a recursive search.
+        if ( *iter == pEntity )
+        {
+            return true;
+        }
+        else if ( bRecursive && (*iter)->IsMyChild ( pEntity, true ) )
+        {
+            return true;
+        }
+    }
 
+    // He's not under us
     return false;
 }
 
@@ -276,8 +283,13 @@ void CClientEntity::ClearChildren ( void )
     assert ( m_pParent != this );
 
     // Process our children - Move up to our parent
-    while ( m_Children.size () )
-        (*m_Children.begin())->SetParent ( m_pParent );
+    list < CClientEntity* > cloneList = m_Children;
+    list < CClientEntity* > ::const_iterator iter = cloneList.begin ();
+    for ( ; iter != cloneList.end () ; ++iter )
+        (*iter)->SetParent ( m_pParent );
+
+    // This list should now be empty
+    assert ( m_Children.size () == 0 );
 }
 
 
@@ -487,12 +499,6 @@ bool CClientEntity::GetCustomDataBool ( const char* szName, bool& bOut, bool bIn
 void CClientEntity::SetCustomData ( const char* szName, const CLuaArgument& Variable, CLuaMain* pLuaMain )
 {
     assert ( szName );
-    if ( strlen ( szName ) > MAX_CUSTOMDATA_NAME_LENGTH )
-    {
-        // Don't allow it to be set if the name is too long
-        CLogger::ErrorPrintf ( "Custom data name too long (%s)", *SStringX ( szName ).Left ( MAX_CUSTOMDATA_NAME_LENGTH + 1 ) );
-        return;
-    }
 
     // Grab the old variable
     CLuaArgument oldVariable;
@@ -522,7 +528,7 @@ bool CClientEntity::DeleteCustomData ( const char* szName, bool bRecursive )
     // If recursive, delete our children's data
     if ( bRecursive )
     {
-        CChildListType ::const_iterator iter = m_Children.begin ();
+        list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
         for ( ; iter != m_Children.end (); iter++ )
         {
             // Delete it. If we deleted any, remember that we've done that so we can return true.
@@ -544,7 +550,7 @@ void CClientEntity::DeleteAllCustomData ( CLuaMain* pLuaMain, bool bRecursive )
     // If recursive, delete our children's data
     if ( bRecursive )
     {
-        CChildListType ::iterator iter = m_Children.begin ();
+        list < CClientEntity* > ::iterator iter = m_Children.begin ();
         for ( ; iter != m_Children.end (); iter++ )
         {
             (*iter)->DeleteAllCustomData ( pLuaMain, true );
@@ -554,26 +560,13 @@ void CClientEntity::DeleteAllCustomData ( CLuaMain* pLuaMain, bool bRecursive )
 
 bool CClientEntity::GetMatrix ( CMatrix& matrix ) const
 {
-    CEntity* pEntity = const_cast < CEntity* > ( GetGameEntity () );
+    const CEntity* pEntity = GetGameEntity ();
     if ( pEntity )
     {
-        if ( pEntity->GetMatrix ( &matrix ) )
-            return true;
+        if ( pEntity->GetMatrix ( &matrix ) ) return true;
     }
 
-    // When streamed out
-    CVector vecRotation;
-    GetRotationRadians ( vecRotation );
-
-    // Change rotation order so it works correctly for CClientObjects
-    // Any maybe other types that don't have a GetMatrix() override - Needs checking.
-    ConvertRadiansToDegreesNoWrap( vecRotation );
-    vecRotation = ConvertEulerRotationOrder( vecRotation, EULER_ZXY, EULER_MINUS_ZYX );
-    ConvertDegreesToRadiansNoWrap( vecRotation );
-
-    g_pMultiplayer->ConvertEulerAnglesToMatrix ( matrix, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
-    GetPosition ( matrix.vPos );
-    return true;
+    return false;
 }
 
 
@@ -586,19 +579,7 @@ bool CClientEntity::SetMatrix ( const CMatrix& matrix )
         return true;
     }
 
-    // When streamed out
-    SetPosition ( matrix.vPos );
-    CVector vecRotation;
-    g_pMultiplayer->ConvertMatrixToEulerAngles ( matrix, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
-
-    // Change rotation order so it works correctly for CClientObjects
-    // Any maybe other types that don't have a SetMatrix() override - Needs checking.
-    ConvertRadiansToDegreesNoWrap( vecRotation );
-    vecRotation = ConvertEulerRotationOrder( vecRotation, EULER_MINUS_ZYX, EULER_ZXY );
-    ConvertDegreesToRadiansNoWrap( vecRotation );
-
-    SetRotationRadians ( vecRotation );
-    return true;
+    return false;
 }
 
 
@@ -617,29 +598,6 @@ void CClientEntity::SetPositionRelative ( CClientEntity * pOrigin, const CVector
     SetPosition ( vecOrigin + vecPosition );
 }
 
-void CClientEntity::GetRotationRadians ( CVector& vecOutRadians ) const
-{
-    vecOutRadians = CVector ();
-}
-
-void CClientEntity::GetRotationDegrees ( CVector& vecOutDegrees ) const
-{
-    GetRotationRadians ( vecOutDegrees );
-    ConvertRadiansToDegrees ( vecOutDegrees );
-}
-
-void CClientEntity::SetRotationRadians ( const CVector& vecRadians )
-{
-}
-
-void CClientEntity::SetRotationDegrees ( const CVector& vecDegrees )
-{
-    CVector vecTemp = vecDegrees;
-    ConvertDegreesToRadians ( vecTemp );
-    SetRotationRadians ( vecTemp );
-}
-
-
 bool CClientEntity::IsOutOfBounds ( void )
 {
     CVector vecPosition;
@@ -653,35 +611,13 @@ bool CClientEntity::IsOutOfBounds ( void )
 
 void CClientEntity::AttachTo ( CClientEntity* pEntity )
 {
-    // Handle attach attempt during entity destructor
-    if ( pEntity )
-    {
-        if ( m_bDisallowAttaching )
-        {
-            assert( !m_pAttachedToEntity && m_AttachedEntities.empty() );
-            return;
-        }
-
-        if ( pEntity->m_bDisallowAttaching )
-        {
-            assert( !pEntity->m_pAttachedToEntity && pEntity->m_AttachedEntities.empty() );
-            return;
-        }
-    }
-
     if ( m_pAttachedToEntity )
-    {
-        assert( ListContains( m_pAttachedToEntity->m_AttachedEntities, this ) );
-        ListRemove( m_pAttachedToEntity->m_AttachedEntities, this );
-    }    
+        m_pAttachedToEntity->RemoveAttachedEntity ( this );
 
     m_pAttachedToEntity = pEntity;
 
     if ( m_pAttachedToEntity )
-    {
-        assert( !ListContains( m_pAttachedToEntity->m_AttachedEntities, this ) );
-        m_pAttachedToEntity->m_AttachedEntities.push_back( this );
-    }
+        m_pAttachedToEntity->AddAttachedEntity ( this );
 
     InternalAttachTo ( pEntity );
 }
@@ -716,7 +652,6 @@ void CClientEntity::InternalAttachTo ( CClientEntity* pEntity )
                     break;
                 }
                 case CCLIENTOBJECT:
-                case CCLIENTWEAPON:
                 {
                     CObject * pGameObject = static_cast < CClientObject* > ( pEntity )->GetGameObject ();
                     if ( pGameObject )
@@ -763,18 +698,14 @@ void CClientEntity::SetAttachedOffsets ( CVector & vecPosition, CVector & vecRot
 }
 
 
-bool CClientEntity::AddEvent ( CLuaMain* pLuaMain, const char* szName, const CLuaFunctionRef& iLuaFunction, bool bPropagated, EEventPriorityType eventPriority, float fPriorityMod )
+bool CClientEntity::AddEvent ( CLuaMain* pLuaMain, const char* szName, int iLuaFunction, bool bPropagated )
 {
-    return m_pEventManager->Add ( pLuaMain, szName, iLuaFunction, bPropagated, eventPriority, fPriorityMod );
+    return m_pEventManager->Add ( pLuaMain, szName, iLuaFunction, bPropagated );
 }
 
 
 bool CClientEntity::CallEvent ( const char* szName, const CLuaArguments& Arguments, bool bCallOnChildren )
 {
-    g_pClientGame->GetDebugHookManager()->OnPreEvent( szName, Arguments, this, NULL );
-
-    TIMEUS startTime = GetTimeUs ();
-
     CEvents* pEvents = g_pClientGame->GetEvents();
 
     // Make sure our event-manager knows we're about to call an event
@@ -792,15 +723,6 @@ bool CClientEntity::CallEvent ( const char* szName, const CLuaArguments& Argumen
     // Tell the event manager that we're done calling the event
     pEvents->PostEventPulse ();
 
-    if ( IS_TIMING_CHECKPOINTS() )
-    {
-        TIMEUS deltaTimeUs = GetTimeUs () - startTime;
-        if ( deltaTimeUs > 10000 )
-            TIMING_DETAIL( SString ( "Event: %s [%d ms]", szName, deltaTimeUs / 1000 ) );
-    }
-
-    g_pClientGame->GetDebugHookManager()->OnPostEvent( szName, Arguments, this, NULL );
-
     // Return whether it got cancelled or not
     return ( !pEvents->WasEventCancelled () );
 }
@@ -810,7 +732,7 @@ void CClientEntity::CallEventNoParent ( const char* szName, const CLuaArguments&
 {
     // Call it on us if this isn't the same class it was raised on
     //TODO not sure why the null check is necessary (eAi)
-    if ( pSource != this && m_pEventManager != NULL && m_pEventManager->HasEvents () )
+    if ( pSource != this && m_pEventManager != NULL )
     {
         m_pEventManager->Call ( szName, Arguments, pSource, this );
     }
@@ -818,17 +740,12 @@ void CClientEntity::CallEventNoParent ( const char* szName, const CLuaArguments&
     // Call it on all our children
     if ( ! m_Children.empty () )
     {
-        CChildListType ::const_iterator iter = m_Children.begin ();
+        list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
         for ( ; iter != m_Children.end (); iter++ )
         {
-            CClientEntity* pEntity = *iter;
-
-            if ( !pEntity->m_pEventManager || pEntity->m_pEventManager->HasEvents () || !pEntity->m_Children.empty () )
-            {
-                pEntity->CallEventNoParent ( szName, Arguments, pSource );
-                if ( m_bBeingDeleted )
-                    break;
-            }
+            (*iter)->CallEventNoParent ( szName, Arguments, pSource );
+            if ( m_bBeingDeleted )
+                break;
         }
     }
 }
@@ -837,7 +754,7 @@ void CClientEntity::CallEventNoParent ( const char* szName, const CLuaArguments&
 void CClientEntity::CallParentEvent ( const char* szName, const CLuaArguments& Arguments, CClientEntity* pSource )
 {
     // Call the event on us
-    if ( m_pEventManager && m_pEventManager->HasEvents () )
+    if ( m_pEventManager )
     {
         m_pEventManager->Call ( szName, Arguments, pSource, this );
     }
@@ -850,7 +767,7 @@ void CClientEntity::CallParentEvent ( const char* szName, const CLuaArguments& A
 }
 
 
-bool CClientEntity::DeleteEvent ( CLuaMain* pLuaMain, const char* szName, const CLuaFunctionRef& iLuaFunction )
+bool CClientEntity::DeleteEvent ( CLuaMain* pLuaMain, const char* szName, int iLuaFunction )
 {
     return m_pEventManager->Delete ( pLuaMain, szName, iLuaFunction );
 }
@@ -864,7 +781,7 @@ void CClientEntity::DeleteEvents ( CLuaMain* pLuaMain, bool bRecursive )
     // Delete it from all our children's events
     if ( bRecursive )
     {
-        CChildListType ::const_iterator iter = m_Children.begin ();
+        list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
         for ( ; iter != m_Children.end (); iter++ )
         {
             (*iter)->DeleteEvents ( pLuaMain, true );
@@ -887,7 +804,7 @@ void CClientEntity::CleanUpForVM ( CLuaMain* pLuaMain, bool bRecursive )
     // If recursive, do it on our children too
     if ( bRecursive )
     {
-        CChildListType ::const_iterator iter = m_Children.begin ();
+        list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
         for ( ; iter != m_Children.end (); iter++ )
         {
             (*iter)->CleanUpForVM ( pLuaMain, true );
@@ -902,7 +819,7 @@ CClientEntity* CClientEntity::FindChild ( const char* szName, unsigned int uiInd
 
     // Is it our name?
     unsigned int uiCurrentIndex = 0;
-    if ( strcmp ( szName, m_strName ) == 0 )
+    if ( strcmp ( szName, m_szName ) == 0 )
     {
         if ( uiIndex == 0 )
         {
@@ -924,7 +841,7 @@ CClientEntity* CClientEntity::FindChildIndex ( const char* szName, unsigned int 
     assert ( szName );
 
     // Look among our children
-    CChildListType ::const_iterator iter = m_Children.begin ();
+    list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
     for ( ; iter != m_Children.end (); iter++ )
     {
         CClientEntity* pChild = *iter;
@@ -985,7 +902,7 @@ CClientEntity* CClientEntity::FindChildByType ( const char* szType, unsigned int
 CClientEntity* CClientEntity::FindChildByTypeIndex ( unsigned int uiTypeHash, unsigned int uiIndex, unsigned int& uiCurrentIndex, bool bRecursive )
 {
     // Look among our children
-    CChildListType ::const_iterator iter = m_Children.begin ();
+    list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
     for ( ; iter != m_Children.end (); iter++ )
     {
         // Name matches?
@@ -1018,10 +935,10 @@ CClientEntity* CClientEntity::FindChildByTypeIndex ( unsigned int uiTypeHash, un
 }
 
 
-void CClientEntity::FindAllChildrenByType ( const char* szType, lua_State* luaVM, bool bStreamedIn )
+void CClientEntity::FindAllChildrenByType ( const char* szType, CLuaMain* pLuaMain, bool bStreamedIn )
 {
     assert ( szType );
-    assert ( luaVM );
+    assert ( pLuaMain );
 
     // Add all children of the given type to the table
     unsigned int uiIndex = 0;
@@ -1029,22 +946,20 @@ void CClientEntity::FindAllChildrenByType ( const char* szType, lua_State* luaVM
 
     if ( this == g_pClientGame->GetRootEntity () )
     {
-        GetEntitiesFromRoot ( uiTypeHash, luaVM, bStreamedIn );
+        GetEntitiesFromRoot ( uiTypeHash, pLuaMain, bStreamedIn );
     }
     else
     {
-        FindAllChildrenByTypeIndex ( uiTypeHash, luaVM, uiIndex, bStreamedIn );
+        FindAllChildrenByTypeIndex ( uiTypeHash, pLuaMain, uiIndex, bStreamedIn );
     }
 }
 
 
-void CClientEntity::FindAllChildrenByTypeIndex ( unsigned int uiTypeHash, lua_State* luaVM, unsigned int& uiIndex, bool bStreamedIn )
+void CClientEntity::FindAllChildrenByTypeIndex ( unsigned int uiTypeHash, CLuaMain* pLuaMain, unsigned int& uiIndex, bool bStreamedIn )
 {
-    assert ( luaVM );
+    assert ( pLuaMain );
 
-    // If we're being deleted, skip this
-    if ( IsBeingDeleted ( ) )
-        return;
+    lua_State* luaVM = pLuaMain->GetVirtualMachine ();
 
     // Our type matches?
     if ( m_uiTypeHash == uiTypeHash )
@@ -1061,53 +976,28 @@ void CClientEntity::FindAllChildrenByTypeIndex ( unsigned int uiTypeHash, lua_St
     }
 
     // Call us on the children
-    CChildListType ::const_iterator iter = m_Children.begin ();
+    list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
     for ( ; iter != m_Children.end (); iter++ )
     {
-        (*iter)->FindAllChildrenByTypeIndex ( uiTypeHash, luaVM, uiIndex, bStreamedIn );
+        (*iter)->FindAllChildrenByTypeIndex ( uiTypeHash, pLuaMain, uiIndex, bStreamedIn );
     }
 }
 
 
-void CClientEntity::GetChildren ( lua_State* luaVM )
+void CClientEntity::GetChildren ( CLuaMain* pLuaMain )
 {
-    assert ( luaVM );
+    assert ( pLuaMain );
 
     // Add all our children to the table on top of the given lua main's stack
     unsigned int uiIndex = 0;
-    CChildListType ::const_iterator iter = m_Children.begin ();
+    list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
     for ( ; iter != m_Children.end (); iter++ )
     {
-        if ( !( *iter )->IsBeingDeleted ( ) )
-        {
-            // Add it to the table
-            lua_pushnumber ( luaVM, ++uiIndex );
-            lua_pushelement ( luaVM, *iter );
-            lua_settable ( luaVM, -3 );
-        }
-    }
-}
-
-
-void CClientEntity::GetChildrenByType ( const char* szType, lua_State* luaVM )
-{
-    assert ( szType );
-    assert ( luaVM );
-
-    // Add all our children to the table on top of the given lua main's stack
-    unsigned int uiIndex = 0;
-    unsigned int uiTypeHash = HashString ( szType );
-    CChildListType ::const_iterator iter = m_Children.begin ();
-    for ( ; iter != m_Children.end (); iter++ )
-    {
-        // Name matches?
-        if ( (*iter)->GetTypeHash() == uiTypeHash && !(*iter)->IsBeingDeleted())
-        {
-            // Add it to the table
-            lua_pushnumber ( luaVM, ++uiIndex );
-            lua_pushelement ( luaVM, *iter );
-            lua_settable ( luaVM, -3 );
-        }
+        // Add it to the table
+        lua_State* luaVM = pLuaMain->GetVirtualMachine ();
+        lua_pushnumber ( luaVM, ++uiIndex );
+        lua_pushelement ( luaVM, *iter );
+        lua_settable ( luaVM, -3 );
     }
 }
 
@@ -1146,7 +1036,7 @@ void CClientEntity::RemoveAllCollisions ( bool bNotify )
 
 bool CClientEntity::IsEntityAttached ( CClientEntity* pEntity )
 {
-    std::vector < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
+    list < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
     for ( ; iter != m_AttachedEntities.end (); iter++ )
     {
         if ( *iter == pEntity )
@@ -1167,9 +1057,10 @@ void CClientEntity::ReattachEntities ( void )
     }
 
     // Reattach any entities attached to us
-    for ( uint i = 0 ; i < m_AttachedEntities.size () ; ++i )
+    list < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
+    for ( ; iter != m_AttachedEntities.end (); iter++ )
     {
-        m_AttachedEntities[i]->InternalAttachTo ( this );
+        (*iter)->InternalAttachTo ( this );
     }  
 }
 
@@ -1187,8 +1078,6 @@ bool CClientEntity::IsAttachable ( void )
         case CCLIENTPICKUP:
         case CCLIENTSOUND:
         case CCLIENTCOLSHAPE:
-        case CCLIENTWEAPON:
-        case CCLIENTPOINTLIGHTS:
         {
             return true;
             break;
@@ -1208,13 +1097,10 @@ bool CClientEntity::IsAttachToable ( void )
         case CCLIENTRADARMARKER:
         case CCLIENTVEHICLE:
         case CCLIENTOBJECT:
-        case CCLIENTWEAPON:
         case CCLIENTMARKER:
         case CCLIENTPICKUP:
         case CCLIENTSOUND:
         case CCLIENTCOLSHAPE:
-        case CCLIENTCAMERA:
-        case CCLIENTPOINTLIGHTS:
         {
             return true;
             break;
@@ -1264,8 +1150,6 @@ unsigned int CClientEntity::GetTypeID ( const char* szTypeName )
         return CCLIENTRADARAREA;
     else if ( strcmp ( szTypeName, "sound" ) == 0 )
         return CCLIENTSOUND;
-    else if ( strcmp ( szTypeName, "light" ) == 0 )
-        return CCLIENTPOINTLIGHTS;
     else
         return CCLIENTUNKNOWN;
 }
@@ -1274,15 +1158,15 @@ unsigned int CClientEntity::GetTypeID ( const char* szTypeName )
 void CClientEntity::DeleteClientChildren ( void )
 {
     // Gather a list over children (we can't use the list as it changes)
-    std::list < CClientEntity* > Children;
-    CChildListType ::const_iterator iterCopy = m_Children.begin ();
+    list < CClientEntity* > Children;
+    list < CClientEntity* > ::const_iterator iterCopy = m_Children.begin ();
     for ( ; iterCopy != m_Children.end (); iterCopy++ )
     {
         Children.push_back ( *iterCopy );
     }
 
     // Call ourselves on each child of this to go as deep as possible and start deleting there
-    std::list < CClientEntity* > ::const_iterator iter = Children.begin ();
+    list < CClientEntity* > ::const_iterator iter = Children.begin ();
     for ( ; iter != Children.end (); iter++ )
     {
         (*iter)->DeleteClientChildren ();
@@ -1388,37 +1272,17 @@ RpClump * CClientEntity::GetClump ( void )
     return NULL;
 }
 
-void CClientEntity::WorldIgnore ( bool bIgnore )
-{
-    CEntity * pEntity = GetGameEntity ();
-    if ( bIgnore )
-    {
-        if ( pEntity )
-        {
-            g_pGame->GetWorld ()->IgnoreEntity ( pEntity );
-        }
-    }
-    else
-    {
-        g_pGame->GetWorld ()->IgnoreEntity ( NULL );
-    }
-    m_bWorldIgnored = bIgnore;
-}
 
 // Entities from root optimization for getElementsByType
-typedef CFastList < CClientEntity* > CFromRootListType;
-typedef CFastHashMap < unsigned int, CFromRootListType > t_mapEntitiesFromRoot;
-static t_mapEntitiesFromRoot    ms_mapEntitiesFromRoot;
-static bool                     ms_bEntitiesFromRootInitialized = false;
-
-// CFastHashMap helpers
-static unsigned int GetEmptyMapKey ( unsigned int* )   { return (unsigned int)0xFFFFFFFF; }
-static unsigned int GetDeletedMapKey ( unsigned int* ) { return (unsigned int)0x00000000 ; }
+CClientEntity::t_mapEntitiesFromRoot CClientEntity::ms_mapEntitiesFromRoot;
+bool CClientEntity::ms_bEntitiesFromRootInitialized = false;
 
 void CClientEntity::StartupEntitiesFromRoot ()
 {
     if ( !ms_bEntitiesFromRootInitialized )
     {
+        ms_mapEntitiesFromRoot.set_deleted_key ( (unsigned int)0x00000000 );
+        ms_mapEntitiesFromRoot.set_empty_key ( (unsigned int)0xFFFFFFFF );
         ms_bEntitiesFromRootInitialized = true;
     }
 }
@@ -1439,12 +1303,12 @@ void CClientEntity::AddEntityFromRoot ( unsigned int uiTypeHash, CClientEntity* 
     assert ( CClientEntity::IsFromRoot ( pEntity ) );
 
     // Insert into list
-    CFromRootListType& listEntities = ms_mapEntitiesFromRoot [ uiTypeHash ];
+    std::list < CClientEntity* >& listEntities = ms_mapEntitiesFromRoot [ uiTypeHash ];
     listEntities.remove ( pEntity );
     listEntities.push_front ( pEntity );
 
     // Apply to child elements as well
-    CChildListType ::const_iterator iter = pEntity->IterBegin ();
+    list < CClientEntity* > ::const_iterator iter = pEntity->IterBegin ();
     for ( ; iter != pEntity->IterEnd (); iter++ )
         CClientEntity::AddEntityFromRoot ( (*iter)->GetTypeHash (), *iter, false );
 
@@ -1460,19 +1324,19 @@ void CClientEntity::RemoveEntityFromRoot ( unsigned int uiTypeHash, CClientEntit
     t_mapEntitiesFromRoot::iterator find = ms_mapEntitiesFromRoot.find ( uiTypeHash );
     if ( find != ms_mapEntitiesFromRoot.end () )
     {
-        CFromRootListType& listEntities = find->second;
+        std::list < CClientEntity* >& listEntities = find->second;
         listEntities.remove ( pEntity );
         if ( listEntities.size () == 0 )
             ms_mapEntitiesFromRoot.erase ( find );
     }
 
     // Apply to child elements as well
-    CChildListType ::const_iterator iter = pEntity->IterBegin ();
+    list < CClientEntity* > ::const_iterator iter = pEntity->IterBegin ();
     for ( ; iter != pEntity->IterEnd (); iter++ )
         CClientEntity::RemoveEntityFromRoot ( (*iter)->GetTypeHash (), *iter );
 }
 
-void CClientEntity::GetEntitiesFromRoot ( unsigned int uiTypeHash, lua_State* luaVM, bool bStreamedIn )
+void CClientEntity::GetEntitiesFromRoot ( unsigned int uiTypeHash, CLuaMain* pLuaMain, bool bStreamedIn )
 {
 #if CHECK_ENTITIES_FROM_ROOT
     _CheckEntitiesFromRoot ( uiTypeHash );
@@ -1481,11 +1345,12 @@ void CClientEntity::GetEntitiesFromRoot ( unsigned int uiTypeHash, lua_State* lu
     t_mapEntitiesFromRoot::iterator find = ms_mapEntitiesFromRoot.find ( uiTypeHash );
     if ( find != ms_mapEntitiesFromRoot.end () )
     {
-        CFromRootListType& listEntities = find->second;
+        std::list < CClientEntity* >& listEntities = find->second;
         CClientEntity* pEntity;
+        lua_State* luaVM = pLuaMain->GetVirtualMachine ();
         unsigned int uiIndex = 0;
 
-        for ( CFromRootListType::reverse_iterator i = listEntities.rbegin ();
+        for ( std::list < CClientEntity* >::const_reverse_iterator i = listEntities.rbegin ();
               i != listEntities.rend ();
               ++i )
         {
@@ -1495,13 +1360,10 @@ void CClientEntity::GetEntitiesFromRoot ( unsigned int uiTypeHash, lua_State* lu
             if ( !bStreamedIn || !pEntity->IsStreamingCompatibleClass() || 
                  reinterpret_cast < CClientStreamElement* > ( pEntity )->IsStreamedIn() )
             {
-                if ( !pEntity->IsBeingDeleted ( ) )
-                {
-                    // Add it to the table
-                    lua_pushnumber ( luaVM, ++uiIndex );
-                    lua_pushelement ( luaVM, pEntity );
-                    lua_settable ( luaVM, -3 );
-                }
+                // Add it to the table
+                lua_pushnumber ( luaVM, ++uiIndex );
+                lua_pushelement ( luaVM, pEntity );
+                lua_settable ( luaVM, -3 );
             }
         }
     }    
@@ -1566,7 +1428,7 @@ void CClientEntity::_FindAllChildrenByTypeIndex ( unsigned int uiTypeHash, std::
     }
 
     // Call us on the children
-    CChildListType ::const_iterator iter = m_Children.begin ();
+    list < CClientEntity* > ::const_iterator iter = m_Children.begin ();
     for ( ; iter != m_Children.end (); iter++ )
     {
         (*iter)->_FindAllChildrenByTypeIndex ( uiTypeHash, mapResults );
@@ -1579,11 +1441,11 @@ void CClientEntity::_GetEntitiesFromRoot ( unsigned int uiTypeHash, std::map < C
     t_mapEntitiesFromRoot::iterator find = ms_mapEntitiesFromRoot.find ( uiTypeHash );
     if ( find != ms_mapEntitiesFromRoot.end () )
     {
-        CFromRootListType& listEntities = find->second;
+        const std::list < CClientEntity* >& listEntities = find->second;
         CClientEntity* pEntity;
         unsigned int uiIndex = 0;
 
-        for ( CFromRootListType::const_reverse_iterator i = listEntities.rbegin ();
+        for ( std::list < CClientEntity* >::const_reverse_iterator i = listEntities.rbegin ();
               i != listEntities.rend ();
               ++i )
         {
@@ -1654,31 +1516,4 @@ float CClientEntity::GetDistanceBetweenBoundingSpheres ( CClientEntity* pOther )
     CSphere sphere = GetWorldBoundingSphere ();
     CSphere otherSphere = pOther->GetWorldBoundingSphere ();
     return ( sphere.vecPosition - otherSphere.vecPosition ).Length () - sphere.fRadius - otherSphere.fRadius;
-}
-
-//
-// Ensure children list snapshot is up to date and return it
-//
-CElementListSnapshot* CClientEntity::GetChildrenListSnapshot( void )
-{
-    // See if list needs updating
-    if ( m_Children.GetRevision() != m_uiChildrenListSnapshotRevision || m_pChildrenListSnapshot == NULL )
-    {
-        m_uiChildrenListSnapshotRevision = m_Children.GetRevision();
-
-        // Detach old
-        SAFE_RELEASE( m_pChildrenListSnapshot );
-
-        // Make new
-        m_pChildrenListSnapshot = new CElementListSnapshot();
-
-        // Fill it up
-        m_pChildrenListSnapshot->reserve( m_Children.size() );
-        for ( CChildListType::const_iterator iter = m_Children.begin() ; iter != m_Children.end() ; iter++ )
-        {
-            m_pChildrenListSnapshot->push_back( *iter );
-        }
-    }
-
-    return m_pChildrenListSnapshot;
 }

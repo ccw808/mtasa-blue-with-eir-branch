@@ -1,19 +1,20 @@
 /*****************************************************************************
 *
 *  PROJECT:     Multi Theft Auto v1.0
+*               (Shared logic for modifications)
 *  LICENSE:     See LICENSE in the top level directory
 *  FILE:        mods/shared_logic/lua/CLuaFunctionDefs.Voice.cpp
-*  PURPOSE:     Lua Voice function definitions class
-*  DEVELOPERS:  Talidan <>
-*
-*  Multi Theft Auto is available from http://www.multitheftauto.com/
+*  PURPOSE:     Lua function definitions class
+*  DEVELOPERS:  Ed Lyons <eai@opencoding.net>
+*               Jax <>
+*               Cecill Etheredge <ijsf@gmx.net>
+*               Kevin Whiteside <kevuwk@gmail.com>
+*               Chris McArthur <>
+*               Derek Abdine <>
+*               Christian Myhre Lundheim <>
+*               Stanislav Bobrov <lil_toady@hotmail.com>
+*               Alberto Alonso <rydencillo@gmail.com>
 *
 *****************************************************************************/
 
 #include "StdInc.h"
-
-int CLuaFunctionDefs::IsVoiceEnabled ( lua_State* luaVM )
-{
-    lua_pushboolean ( luaVM, g_pClientGame->GetVoiceRecorder()->IsEnabled() );
-    return 1;
-}

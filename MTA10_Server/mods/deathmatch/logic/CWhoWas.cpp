@@ -12,15 +12,15 @@
 
 #include "StdInc.h"
 
-void CWhoWas::Add ( const char* szNick, unsigned long ulIP, std::string strSerial, const SString& strPlayerVersion, const SString& strAccountName )
+void CWhoWas::Add ( const char* szNick, unsigned long ulIP, std::string strSerial, const SString& strPlayerVersion )
 {
     // Create the struct and copy the data over
     SWhoWasEntry Entry;
-    Entry.strNick.AssignLeft ( szNick, MAX_NICK_LENGTH );
+    Entry.szNick [MAX_NICK_LENGTH] = 0;
+    strncpy ( Entry.szNick, szNick, MAX_NICK_LENGTH );
     Entry.ulIP = ulIP;
     Entry.strSerial  = strSerial;
     Entry.strPlayerVersion  = strPlayerVersion;
-    Entry.strAccountName = strAccountName;
 
     // Add it to our list
     m_List.push_front ( Entry );
@@ -30,27 +30,4 @@ void CWhoWas::Add ( const char* szNick, unsigned long ulIP, std::string strSeria
     {
         m_List.pop_back ();
     }
-}
-
-void CWhoWas::OnPlayerLogin ( CPlayer* pPlayer )
-{
-    // Find last added item from this player
-    unsigned long ulIP = inet_addr ( pPlayer->GetSourceIP () );
-    for ( std::list < SWhoWasEntry >::iterator iter = m_List.begin () ; iter != m_List.end () ; ++iter )
-    {
-        SWhoWasEntry& entry = *iter;
-        if ( entry.ulIP == ulIP && entry.strSerial == pPlayer->GetSerial () )
-        {
-            if ( entry.strAccountName == GUEST_ACCOUNT_NAME )
-            {
-                // Update account name if previously was a guest
-                entry.strAccountName = pPlayer->GetAccount ()->GetName ();
-                return;
-            }
-            break;
-        }
-    }
-
-    // Otherwise add a new line
-    Add ( pPlayer->GetNick (), inet_addr ( pPlayer->GetSourceIP () ), pPlayer->GetSerial (), pPlayer->GetPlayerVersion (), pPlayer->GetAccount ()->GetName () );
 }

@@ -86,96 +86,83 @@ typedef int                 (__cdecl *RwStreamFindChunk_t)                  (RwS
 typedef RpClump*                (__cdecl *RpClumpStreamRead_t)                  (RwStream *stream);
 typedef RwError*                (__cdecl *RwErrorGet_t)                         (RwError *code);
 typedef RwStream*               (__cdecl *RwStreamOpen_t)                       (RwStreamType type, RwStreamMode mode, const void *pData);
-typedef int                     (__cdecl *RwStreamClose_t)                      (RwStream *stream, void *pData);
-typedef int                     (__cdecl *RwStreamRead_t)                       (RwStream* stream, void *pData, uint size);
-typedef int                     (__cdecl *RwStreamSkip_t)                       (RwStream* stream, uint size);
+typedef int                 (__cdecl *RwStreamClose_t)                      (RwStream *stream, void *pData);
 typedef int                 (__cdecl *RpClumpDestroy_t)                     (RpClump *clump);
 typedef RpClump*                (__cdecl *RpClumpForAllAtomics_t)               (RpClump *clump, void* callback, void* pData);
 typedef RwTexDictionary*        (__cdecl *RwTexDictionaryStreamRead_t)          (RwStream *stream);
-typedef RwTexDictionary*        (__cdecl *RwTexDictionaryGtaStreamRead_t)       (RwStream *stream);
 typedef RwRaster*               (__cdecl *RwRasterUnlock_t)                     (RwRaster *raster);
 typedef RwRaster*               (__cdecl *RwRasterLock_t)                       (RwRaster *raster, unsigned char level, int lockmode);
 typedef RwRaster*               (__cdecl *RwRasterCreate_t)                     (int width, int height, int depth, int flags);
 typedef RwTexture*              (__cdecl *RwTextureCreate_t)                    (RwRaster *raster);
-typedef RpMaterial*             (__cdecl *RpMaterialSetTexture_t)               (RpMaterial * mat, RwTexture * tex);
+
 /*****************************************************************************/
 /** Renderware function mappings                                            **/
 /*****************************************************************************/
 
-#ifdef RWFUNC_IMPLEMENT
-    #define RWFUNC(a,b) a = b;
-#else
-    #define RWFUNC(a,b) extern a;
-#endif
-
 // US Versions
-RWFUNC ( RwStreamFindChunk_t                     RwStreamFindChunk                       , (RwStreamFindChunk_t)                     0xDEAD )
-RWFUNC ( RpClumpStreamRead_t                     RpClumpStreamRead                       , (RpClumpStreamRead_t)                     0xDEAD )
-RWFUNC ( RwErrorGet_t                            RwErrorGet                              , (RwErrorGet_t)                            0xDEAD )
-RWFUNC ( RwStreamOpen_t                          RwStreamOpen                            , (RwStreamOpen_t)                          0xDEAD )
-RWFUNC ( RwStreamClose_t                         RwStreamClose                           , (RwStreamClose_t)                         0xDEAD )
-RWFUNC ( RwStreamRead_t                          RwStreamRead                            , (RwStreamRead_t)                          0xDEAD )
-RWFUNC ( RwStreamSkip_t                          RwStreamSkip                            , (RwStreamSkip_t)                          0xDEAD )
-RWFUNC ( RpClumpDestroy_t                        RpClumpDestroy                          , (RpClumpDestroy_t)                        0xDEAD )
-RWFUNC ( RpClumpGetNumAtomics_t                  RpClumpGetNumAtomics                    , (RpClumpGetNumAtomics_t)                  0xDEAD )
-RWFUNC ( RwFrameTranslate_t                      RwFrameTranslate                        , (RwFrameTranslate_t)                      0xDEAD )
-RWFUNC ( RpClumpForAllAtomics_t                  RpClumpForAllAtomics                    , (RpClumpForAllAtomics_t)                  0xDEAD )
-RWFUNC ( RwFrameAddChild_t                       RwFrameAddChild                         , (RwFrameAddChild_t)                       0xDEAD )
-RWFUNC ( RpClumpAddAtomic_t                      RpClumpAddAtomic                        , (RpClumpAddAtomic_t)                      0xDEAD )
-RWFUNC ( RpAtomicSetFrame_t                      RpAtomicSetFrame                        , (RpAtomicSetFrame_t)                      0xDEAD )
-RWFUNC ( RwTexDictionaryStreamRead_t             RwTexDictionaryStreamRead               , (RwTexDictionaryStreamRead_t)             0xDEAD )
-RWFUNC ( RwTexDictionaryGtaStreamRead_t          RwTexDictionaryGtaStreamRead            , (RwTexDictionaryGtaStreamRead_t)          0xDEAD )
-RWFUNC ( RwTexDictionaryGetCurrent_t             RwTexDictionaryGetCurrent               , (RwTexDictionaryGetCurrent_t)             0xDEAD )
-RWFUNC ( RwTexDictionarySetCurrent_t             RwTexDictionarySetCurrent               , (RwTexDictionarySetCurrent_t)             0xDEAD )
-RWFUNC ( RwTexDictionaryForAllTextures_t         RwTexDictionaryForAllTextures           , (RwTexDictionaryForAllTextures_t)         0xDEAD )
-RWFUNC ( RwTexDictionaryAddTexture_t             RwTexDictionaryAddTexture               , (RwTexDictionaryAddTexture_t)             0xDEAD )
-RWFUNC ( RpPrtStdGlobalDataSetStreamEmbedded_t   RpPrtStdGlobalDataSetStreamEmbedded     , (RpPrtStdGlobalDataSetStreamEmbedded_t)   0xDEAD )
-RWFUNC ( RpClumpRemoveAtomic_t                   RpClumpRemoveAtomic                     , (RpClumpRemoveAtomic_t)                   0xDEAD )
-RWFUNC ( RpAtomicClone_t                         RpAtomicClone                           , (RpAtomicClone_t)                         0xDEAD )
-RWFUNC ( RwTexDictionaryFindNamedTexture_t       RwTexDictionaryFindNamedTexture         , (RwTexDictionaryFindNamedTexture_t)       0xDEAD )
-RWFUNC ( RwFrameRemoveChild_t                    RwFrameRemoveChild                      , (RwFrameRemoveChild_t)                    0xDEAD )
-RWFUNC ( RwFrameForAllObjects_t                  RwFrameForAllObjects                    , (RwFrameForAllObjects_t)                  0xDEAD )
-RWFUNC ( RpAtomicDestroy_t                       RpAtomicDestroy                         , (RpAtomicDestroy_t)                       0xDEAD )
-RWFUNC ( RpAtomicSetGeometry_t                   RpAtomicSetGeometry                     , (RpAtomicSetGeometry_t)                   0xDEAD )
-RWFUNC ( RpWorldAddAtomic_t                      RpWorldAddAtomic                        , (RpWorldAddAtomic_t)                      0xDEAD )
-RWFUNC ( RpGeometryCreate_t                      RpGeometryCreate                        , (RpGeometryCreate_t)                      0xDEAD )
-RWFUNC ( RpGeometryTriangleSetVertexIndices_t    RpGeometryTriangleSetVertexIndices      , (RpGeometryTriangleSetVertexIndices_t)    0xDEAD )
-RWFUNC ( RpGeometryUnlock_t                      RpGeometryUnlock                        , (RpGeometryUnlock_t)                      0xDEAD )
-RWFUNC ( RpGeometryLock_t                        RpGeometryLock                          , (RpGeometryLock_t)                        0xDEAD )
-RWFUNC ( RpAtomicCreate_t                        RpAtomicCreate                          , (RpAtomicCreate_t)                        0xDEAD )
-RWFUNC ( RwFrameCreate_t                         RwFrameCreate                           , (RwFrameCreate_t)                         0xDEAD )
-RWFUNC ( RpGeometryTransform_t                   RpGeometryTransform                     , (RpGeometryTransform_t)                   0xDEAD )
-RWFUNC ( RwFrameSetIdentity_t                    RwFrameSetIdentity                      , (RwFrameSetIdentity_t)                    0xDEAD )
-RWFUNC ( RwMatrixCreate_t                        RwMatrixCreate                          , (RwMatrixCreate_t)                        0xDEAD )
-RWFUNC ( RwMatrixTranslate_t                     RwMatrixTranslate                       , (RwMatrixTranslate_t)                     0xDEAD )
-RWFUNC ( RwMatrixScale_t                         RwMatrixScale                           , (RwMatrixScale_t)                         0xDEAD )
-RWFUNC ( RpGeometryTriangleSetMaterial_t         RpGeometryTriangleSetMaterial           , (RpGeometryTriangleSetMaterial_t)         0xDEAD )
-RWFUNC ( RpMaterialCreate_t                      RpMaterialCreate                        , (RpMaterialCreate_t)                      0xDEAD )
-RWFUNC ( RpGeometryDestroy_t                     RpGeometryDestroy                       , (RpGeometryDestroy_t)                     0xDEAD )
-RWFUNC ( RpMaterialDestroy_t                     RpMaterialDestroy                       , (RpMaterialDestroy_t)                     0xDEAD )
-RWFUNC ( RwV3dNormalize_t                        RwV3dNormalize                          , (RwV3dNormalize_t)                        0xDEAD )
-RWFUNC ( RwIm3DTransform_t                       RwIm3DTransform                         , (RwIm3DTransform_t)                       0xDEAD )
-RWFUNC ( RwIm3DRenderIndexedPrimitive_t          RwIm3DRenderIndexedPrimitive            , (RwIm3DRenderIndexedPrimitive_t)          0xDEAD )
-RWFUNC ( RwIm3DEnd_t                             RwIm3DEnd                               , (RwIm3DEnd_t)                             0xDEAD )
-RWFUNC ( RwMatrixInvert_t                        RwMatrixInvert                          , (RwMatrixInvert_t)                        0xDEAD )
-RWFUNC ( RpWorldAddClump_t                       RpWorldAddClump                         , (RpWorldAddClump_t)                       0xDEAD )
-RWFUNC ( RwFrameScale_t                          RwFrameScale                            , (RwFrameScale_t)                          0xDEAD )
-RWFUNC ( RwV3dTransformVector_t                  RwV3dTransformVector                    , (RwV3dTransformVector_t)                  0xDEAD )
-RWFUNC ( RpLightCreate_t                         RpLightCreate                           , (RpLightCreate_t)                         0xDEAD )
-RWFUNC ( RpClumpAddLight_t                       RpClumpAddLight                         , (RpClumpAddLight_t)                       0xDEAD )
-RWFUNC ( _rwObjectHasFrameSetFrame_t             _rwObjectHasFrameSetFrame               , (_rwObjectHasFrameSetFrame_t)             0xDEAD )
-RWFUNC ( RpLightSetRadius_t                      RpLightSetRadius                        , (RpLightSetRadius_t)                      0xDEAD )
-RWFUNC ( RpWorldAddLight_t                       RpWorldAddLight                         , (RpWorldAddLight_t)                       0xDEAD )
-RWFUNC ( RpLightSetColor_t                       RpLightSetColor                         , (RpLightSetColor_t)                       0xDEAD )
-RWFUNC ( RwCameraClone_t                         RwCameraClone                           , (RwCameraClone_t)                         0xDEAD )
-RWFUNC ( RpClumpClone_t                          RpClumpClone                            , (RpClumpClone_t)                          0xDEAD )
-RWFUNC ( RwTexDictionaryDestroy_t                RwTexDictionaryDestroy                  , (RwTexDictionaryDestroy_t)                0xDEAD )
-RWFUNC ( RwTextureDestroy_t                      RwTextureDestroy                        , (RwTextureDestroy_t)                      0xDEAD )
-RWFUNC ( RwRasterUnlock_t                        RwRasterUnlock                          , (RwRasterUnlock_t)                        0xDEAD )
-RWFUNC ( RwRasterLock_t                          RwRasterLock                            , (RwRasterLock_t)                          0xDEAD )
-RWFUNC ( RwRasterCreate_t                        RwRasterCreate                          , (RwRasterCreate_t)                        0xDEAD )
-RWFUNC ( RwTextureCreate_t                       RwTextureCreate                         , (RwTextureCreate_t)                       0xDEAD )
-RWFUNC ( RpMaterialSetTexture_t                  RpMaterialSetTexture                    , (RpMaterialSetTexture_t)                  0xDEAD )
+RwStreamFindChunk_t                     RwStreamFindChunk                       = (RwStreamFindChunk_t)                     0xDEAD;
+RpClumpStreamRead_t                     RpClumpStreamRead                       = (RpClumpStreamRead_t)                     0xDEAD;
+RwErrorGet_t                            RwErrorGet                              = (RwErrorGet_t)                            0xDEAD;
+RwStreamOpen_t                          RwStreamOpen                            = (RwStreamOpen_t)                          0xDEAD;
+RwStreamClose_t                         RwStreamClose                           = (RwStreamClose_t)                         0xDEAD;
+RpClumpDestroy_t                        RpClumpDestroy                          = (RpClumpDestroy_t)                        0xDEAD;
+RpClumpGetNumAtomics_t                  RpClumpGetNumAtomics                    = (RpClumpGetNumAtomics_t)                  0xDEAD;
+RwFrameTranslate_t                      RwFrameTranslate                        = (RwFrameTranslate_t)                      0xDEAD;
+RpClumpForAllAtomics_t                  RpClumpForAllAtomics                    = (RpClumpForAllAtomics_t)                  0xDEAD;
+RwFrameAddChild_t                       RwFrameAddChild                         = (RwFrameAddChild_t)                       0xDEAD;
+RpClumpAddAtomic_t                      RpClumpAddAtomic                        = (RpClumpAddAtomic_t)                      0xDEAD;
+RpAtomicSetFrame_t                      RpAtomicSetFrame                        = (RpAtomicSetFrame_t)                      0xDEAD;
+RwTexDictionaryStreamRead_t             RwTexDictionaryStreamRead               = (RwTexDictionaryStreamRead_t)             0xDEAD;
+RwTexDictionaryGetCurrent_t             RwTexDictionaryGetCurrent               = (RwTexDictionaryGetCurrent_t)             0xDEAD;
+RwTexDictionarySetCurrent_t             RwTexDictionarySetCurrent               = (RwTexDictionarySetCurrent_t)             0xDEAD;
+RwTexDictionaryForAllTextures_t         RwTexDictionaryForAllTextures           = (RwTexDictionaryForAllTextures_t)         0xDEAD;
+RwTexDictionaryAddTexture_t             RwTexDictionaryAddTexture               = (RwTexDictionaryAddTexture_t)             0xDEAD;
+RpPrtStdGlobalDataSetStreamEmbedded_t   RpPrtStdGlobalDataSetStreamEmbedded     = (RpPrtStdGlobalDataSetStreamEmbedded_t)   0xDEAD;
+RpClumpRemoveAtomic_t                   RpClumpRemoveAtomic                     = (RpClumpRemoveAtomic_t)                   0xDEAD;
+RpAtomicClone_t                         RpAtomicClone                           = (RpAtomicClone_t)                         0xDEAD;
+RwTexDictionaryFindNamedTexture_t       RwTexDictionaryFindNamedTexture         = (RwTexDictionaryFindNamedTexture_t)       0xDEAD;
+RwFrameRemoveChild_t                    RwFrameRemoveChild                      = (RwFrameRemoveChild_t)                    0xDEAD;
+RwFrameForAllObjects_t                  RwFrameForAllObjects                    = (RwFrameForAllObjects_t)                  0xDEAD;
+RpAtomicDestroy_t                       RpAtomicDestroy                         = (RpAtomicDestroy_t)                       0xDEAD;
+RpAtomicSetGeometry_t                   RpAtomicSetGeometry                     = (RpAtomicSetGeometry_t)                   0xDEAD;
+RpWorldAddAtomic_t                      RpWorldAddAtomic                        = (RpWorldAddAtomic_t)                      0xDEAD;
+RpGeometryCreate_t                      RpGeometryCreate                        = (RpGeometryCreate_t)                      0xDEAD;
+RpGeometryTriangleSetVertexIndices_t    RpGeometryTriangleSetVertexIndices      = (RpGeometryTriangleSetVertexIndices_t)    0xDEAD;
+RpGeometryUnlock_t                      RpGeometryUnlock                        = (RpGeometryUnlock_t)                      0xDEAD;
+RpGeometryLock_t                        RpGeometryLock                          = (RpGeometryLock_t)                        0xDEAD;
+RpAtomicCreate_t                        RpAtomicCreate                          = (RpAtomicCreate_t)                        0xDEAD;
+RwFrameCreate_t                         RwFrameCreate                           = (RwFrameCreate_t)                         0xDEAD;
+RpGeometryTransform_t                   RpGeometryTransform                     = (RpGeometryTransform_t)                   0xDEAD;
+RwFrameSetIdentity_t                    RwFrameSetIdentity                      = (RwFrameSetIdentity_t)                    0xDEAD;
+RwMatrixCreate_t                        RwMatrixCreate                          = (RwMatrixCreate_t)                        0xDEAD;
+RwMatrixTranslate_t                     RwMatrixTranslate                       = (RwMatrixTranslate_t)                     0xDEAD;
+RwMatrixScale_t                         RwMatrixScale                           = (RwMatrixScale_t)                         0xDEAD;
+RpGeometryTriangleSetMaterial_t         RpGeometryTriangleSetMaterial           = (RpGeometryTriangleSetMaterial_t)         0xDEAD;
+RpMaterialCreate_t                      RpMaterialCreate                        = (RpMaterialCreate_t)                      0xDEAD;
+RpGeometryDestroy_t                     RpGeometryDestroy                       = (RpGeometryDestroy_t)                     0xDEAD;
+RpMaterialDestroy_t                     RpMaterialDestroy                       = (RpMaterialDestroy_t)                     0xDEAD;
+RwV3dNormalize_t                        RwV3dNormalize                          = (RwV3dNormalize_t)                        0xDEAD;
+RwIm3DTransform_t                       RwIm3DTransform                         = (RwIm3DTransform_t)                       0xDEAD;
+RwIm3DRenderIndexedPrimitive_t          RwIm3DRenderIndexedPrimitive            = (RwIm3DRenderIndexedPrimitive_t)          0xDEAD;
+RwIm3DEnd_t                             RwIm3DEnd                               = (RwIm3DEnd_t)                             0xDEAD;
+RwMatrixInvert_t                        RwMatrixInvert                          = (RwMatrixInvert_t)                        0xDEAD;
+RpWorldAddClump_t                       RpWorldAddClump                         = (RpWorldAddClump_t)                       0xDEAD;
+RwFrameScale_t                          RwFrameScale                            = (RwFrameScale_t)                          0xDEAD;
+RwV3dTransformVector_t                  RwV3dTransformVector                    = (RwV3dTransformVector_t)                  0xDEAD;
+RpLightCreate_t                         RpLightCreate                           = (RpLightCreate_t)                         0xDEAD;
+RpClumpAddLight_t                       RpClumpAddLight                         = (RpClumpAddLight_t)                       0xDEAD;
+_rwObjectHasFrameSetFrame_t             _rwObjectHasFrameSetFrame               = (_rwObjectHasFrameSetFrame_t)             0xDEAD;
+RpLightSetRadius_t                      RpLightSetRadius                        = (RpLightSetRadius_t)                      0xDEAD;
+RpWorldAddLight_t                       RpWorldAddLight                         = (RpWorldAddLight_t)                       0xDEAD;
+RpLightSetColor_t                       RpLightSetColor                         = (RpLightSetColor_t)                       0xDEAD;
+RwCameraClone_t                         RwCameraClone                           = (RwCameraClone_t)                         0xDEAD;
+RpClumpClone_t                          RpClumpClone                            = (RpClumpClone_t)                          0xDEAD;
+RwTexDictionaryDestroy_t                RwTexDictionaryDestroy                  = (RwTexDictionaryDestroy_t)                0xDEAD;
+RwTextureDestroy_t                      RwTextureDestroy                        = (RwTextureDestroy_t)                      0xDEAD;
+RwRasterUnlock_t                        RwRasterUnlock                          = (RwRasterUnlock_t)                        0xDEAD;
+RwRasterLock_t                          RwRasterLock                            = (RwRasterLock_t)                          0xDEAD;
+RwRasterCreate_t                        RwRasterCreate                          = (RwRasterCreate_t)                        0xDEAD;
+RwTextureCreate_t                       RwTextureCreate                         = (RwTextureCreate_t)                       0xDEAD;
 
 /*****************************************************************************/
 /** GTA function definitions and mappings                                   **/
@@ -194,32 +181,32 @@ typedef void                (__cdecl *CTxdStore_AddRef_t)               (unsigne
 typedef RwTexDictionary*    (__cdecl *CTxdStore_GetTxd_t)               (unsigned int id);
 typedef RwTexture*          (__cdecl *CClothesBuilder_CopyTexture_t)    (RwTexture *texture);
 
-RWFUNC ( SetTextureDict_t                SetTextureDict                  , (SetTextureDict_t)                0xDEAD )
-RWFUNC ( LoadClumpFile_t                 LoadClumpFile                   , (LoadClumpFile_t)                 0xDEAD )
-RWFUNC ( LoadModel_t                     LoadModel                       , (LoadModel_t)                     0xDEAD )
-RWFUNC ( LoadCollisionModel_t            LoadCollisionModel              , (LoadCollisionModel_t)            0xDEAD )
-RWFUNC ( LoadCollisionModelVer2_t        LoadCollisionModelVer2          , (LoadCollisionModelVer2_t)        0xDEAD )
-RWFUNC ( LoadCollisionModelVer3_t        LoadCollisionModelVer3          , (LoadCollisionModelVer3_t)        0xDEAD )
-RWFUNC ( CTxdStore_LoadTxd_t             CTxdStore_LoadTxd               , (CTxdStore_LoadTxd_t)             0xDEAD )
-RWFUNC ( CTxdStore_GetTxd_t              CTxdStore_GetTxd                , (CTxdStore_GetTxd_t)              0xDEAD )
-RWFUNC ( CTxdStore_RemoveTxd_t           CTxdStore_RemoveTxd             , (CTxdStore_RemoveTxd_t)           0xDEAD )
-RWFUNC ( CTxdStore_RemoveRef_t           CTxdStore_RemoveRef             , (CTxdStore_RemoveRef_t)           0xDEAD )
-RWFUNC ( CTxdStore_AddRef_t              CTxdStore_AddRef                , (CTxdStore_AddRef_t)              0xDEAD )
-RWFUNC ( CClothesBuilder_CopyTexture_t   CClothesBuilder_CopyTexture     , (CClothesBuilder_CopyTexture_t)   0xDEAD )
+SetTextureDict_t                SetTextureDict                  = (SetTextureDict_t)                0xDEAD;
+LoadClumpFile_t                 LoadClumpFile                   = (LoadClumpFile_t)                 0xDEAD;
+LoadModel_t                     LoadModel                       = (LoadModel_t)                     0xDEAD;
+LoadCollisionModel_t            LoadCollisionModel              = (LoadCollisionModel_t)            0xDEAD;
+LoadCollisionModelVer2_t        LoadCollisionModelVer2          = (LoadCollisionModelVer2_t)        0xDEAD;
+LoadCollisionModelVer3_t        LoadCollisionModelVer3          = (LoadCollisionModelVer3_t)        0xDEAD;
+CTxdStore_LoadTxd_t             CTxdStore_LoadTxd               = (CTxdStore_LoadTxd_t)             0xDEAD;
+CTxdStore_GetTxd_t              CTxdStore_GetTxd                = (CTxdStore_GetTxd_t)              0xDEAD;
+CTxdStore_RemoveTxd_t           CTxdStore_RemoveTxd             = (CTxdStore_RemoveTxd_t)           0xDEAD;
+CTxdStore_RemoveRef_t           CTxdStore_RemoveRef             = (CTxdStore_RemoveRef_t)           0xDEAD;
+CTxdStore_AddRef_t              CTxdStore_AddRef                = (CTxdStore_AddRef_t)              0xDEAD;
+CClothesBuilder_CopyTexture_t   CClothesBuilder_CopyTexture     = (CClothesBuilder_CopyTexture_t)   0xDEAD;
 
 /*****************************************************************************/
 /** Function inlines                                                        **/
 /*****************************************************************************/
 
 // Matrix copying
-inline void RwFrameCopyMatrix ( RwFrame * dst, RwFrame * src ) {
+void RwFrameCopyMatrix ( RwFrame * dst, RwFrame * src ) {
     if ( dst == NULL || src == NULL ) return;
-    MemCpyFast (&dst->modelling,&src->modelling,sizeof(RwMatrix));
-    MemCpyFast (&dst->ltm,&src->ltm,sizeof(RwMatrix));
+    memcpy(&dst->modelling,&src->modelling,sizeof(RwMatrix));
+    memcpy(&dst->ltm,&src->ltm,sizeof(RwMatrix));
 }
 
 // Recursive RwFrame children searching function
-inline RwFrame * RwFrameFindFrame ( RwFrame * parent, const char * name ) {
+RwFrame * RwFrameFindFrame ( RwFrame * parent, const char * name ) {
     RwFrame * ret = parent->child, * buf;
     while ( ret != NULL ) {
         // recurse into the child

@@ -37,19 +37,10 @@ CObjectSA::CObjectSA(CObjectSAInterface * objectInterface)
     this->SetInterface(objectInterface);
     m_ucAlpha = 255;
 
-    // Setup some flags
-    this->BeingDeleted = FALSE;
-    this->DoNotRemoveFromGame = FALSE;
-
-    if ( m_pInterface )
-    {
-        ResetScale ();
-        CheckForGangTag ();
-        m_pInterface->bStreamingDontDelete = true;
-    }
+    CheckForGangTag ();
 }
 
-CObjectSA::CObjectSA( DWORD dwModel, bool bBreakingDisabled )
+CObjectSA::CObjectSA( DWORD dwModel )
 {
     DEBUG_TRACE("CObjectSA::CObjectSA( DWORD dwModel )");
 
@@ -61,7 +52,7 @@ CObjectSA::CObjectSA( DWORD dwModel, bool bBreakingDisabled )
 
     DWORD dwFunc = 0x538090; // CFileLoader__LoadObjectInstance
     CFileObjectInstance fileLoader;
-    MemSetFast (&fileLoader, 0, sizeof(CFileObjectInstance));
+    memset(&fileLoader, 0, sizeof(CFileObjectInstance));
     fileLoader.modelId = dwModel;
     fileLoader.rr = 1;
     fileLoader.areaNumber = 0;
@@ -79,8 +70,8 @@ CObjectSA::CObjectSA( DWORD dwModel, bool bBreakingDisabled )
 
     this->SetInterface((CEntitySAInterface*)dwThis);
     
-    MemPutFast < DWORD > ( 0xBCC0E0, dwThis );
-    MemPutFast < DWORD > ( 0xBCC0D8, 1 );
+    *(DWORD *)(0xBCC0E0) = dwThis; // dw_buildings_created_this_scene
+    *(DWORD *)0xBCC0D8 = 1; // dw_current_ipl_line
 
     dwFunc = 0x404DE0; // CIplStore__SetupRelatedIpls
     DWORD dwTemp = 0;
@@ -146,23 +137,12 @@ CObjectSA::CObjectSA( DWORD dwModel, bool bBreakingDisabled )
     {
         this->SetInterface((CEntitySAInterface *)dwObjectPtr);
 
-        world->Add( m_pInterface, CObject_Constructor );
+        world->Add( m_pInterface );
 
         // Setup some flags
         this->BeingDeleted = FALSE;
         this->DoNotRemoveFromGame = FALSE;
-        MemPutFast < BYTE > ( dwObjectPtr + 316, 6 );
-        if ( bBreakingDisabled )
-        {
-            // Set our immunities
-            // Sum of all flags checked @ CPhysical__CanPhysicalBeDamaged
-            CObjectSAInterface* pObjectSAInterface = GetObjectInterface();
-            pObjectSAInterface->bBulletProof = true;
-            pObjectSAInterface->bFireProof = true;
-            pObjectSAInterface->bCollisionProof = true;
-            pObjectSAInterface->bMeeleProof = true;
-            pObjectSAInterface->bExplosionProof = true;
-        }
+        *(BYTE *)(dwObjectPtr + 316) = 6;   // Related to moving stuff (eg: fire hydrants, default is 2)
         m_pInterface->bStreamingDontDelete = true;
     }
     else
@@ -177,11 +157,7 @@ CObjectSA::CObjectSA( DWORD dwModel, bool bBreakingDisabled )
     m_ucAlpha = 255;
 
     if ( m_pInterface )
-    {
-        ResetScale ();
         CheckForGangTag ();
-    }
-
 }
 
 CObjectSA::~CObjectSA( )
@@ -193,35 +169,40 @@ CObjectSA::~CObjectSA( )
         DWORD dwInterface = (DWORD)this->GetInterface();
         if ( dwInterface )
         {       
-            if ( (DWORD)this->GetInterface()->vtbl != VTBL_CPlaceable )
+            CWorldSA * world = (CWorldSA *)pGame->GetWorld();
+            world->Remove(this->GetInterface());
+        
+            DWORD dwThis = (DWORD)this->GetInterface();
+            DWORD dwFunc = this->GetInterface()->vtbl->Remove;
+            _asm
             {
-                CWorldSA * world = (CWorldSA *)pGame->GetWorld();
-                world->Remove(this->GetInterface(), CObject_Destructor);
-            
-                DWORD dwFunc = this->GetInterface()->vtbl->SCALAR_DELETING_DESTRUCTOR; // we use the vtbl so we can be type independent
-                _asm    
-                {
-                    mov     ecx, dwInterface
-                    push    1           //delete too
-                    call    dwFunc
-                }
+                mov     ecx, dwThis
+                call    dwFunc
+            }
+
+            dwFunc = this->GetInterface()->vtbl->SCALAR_DELETING_DESTRUCTOR; // we use the vtbl so we can be type independent
+            _asm    
+            {
+                mov     ecx, dwThis
+                push    1           //delete too
+                call    dwFunc
+            }
         
 #ifdef MTA_USE_BUILDINGS_AS_OBJECTS
-                DWORD dwModelID = this->internalInterface->m_nModelIndex;
-                // REMOVE ref to colstore thingy
-                dwFunc = 0x4107D0;
-                _asm
-                {
-                    mov     eax, dwModelID
-                    mov     eax, 0xA9B0C8[eax*4]
-                    mov     eax, [eax+20]
-                    movzx   eax, byte ptr [eax+40]
-                    push    eax
-                    call    dwFunc
-                    add     esp, 4
-                }
-#endif
+            DWORD dwModelID = this->internalInterface->m_nModelIndex;
+            // REMOVE ref to colstore thingy
+            dwFunc = 0x4107D0;
+            _asm
+            {
+                mov     eax, dwModelID
+                mov     eax, 0xA9B0C8[eax*4]
+                mov     eax, [eax+20]
+                movzx   eax, byte ptr [eax+40]
+                push    eax
+                call    dwFunc
+                add     esp, 4
             }
+#endif
         }
 
         this->BeingDeleted = true;
@@ -243,56 +224,28 @@ void CObjectSA::Explode()
     }
 }
 
-void CObjectSA::Break ()
+void CObjectSA::SetScale( float faScale )
 {
-    DWORD dwFunc = 0x5A0D90;
-    DWORD dwThis = (DWORD) GetInterface ();
-
-    float fHitVelocity = 1000.0f; // has no direct influence, but should be high enough to trigger the break (effect)
-
+    DWORD dwFunc = 0x4745E0;
+    DWORD dwThis = (DWORD)this->GetInterface();
     _asm
     {
-        push    32h // most cases: between 30 and 37
-        push    0 // colliding entity. To ignore it, we can set it to 0
-        push    0B73710h // vecCollisionImpactVelocity
-        push    0 // vecCollisionLastPos
-        push    fHitVelocity
+        push    faScale
         mov     ecx, dwThis
         call    dwFunc
     }
 
-    if ( IsGlass () )
-    {
-        float fX = 0.0f;
-        float fY = 0.0f;
-        float fZ = 0.0f;
-        dwFunc = FUNC_CGlass_WindowRespondsToCollision;
-
-        _asm
-        {
-            push 0
-            push fZ
-            push fY
-            push fX
-            push 0
-            push 0
-            push 0
-            push fHitVelocity
-            push dwThis
-            call dwFunc
-            add esp, 24h
-        }
-    }
+//  *(FLOAT *)(this->GetInterface() + 348) = fScale;
 }
 
 void CObjectSA::SetHealth ( float fHealth )
 {
-    static_cast < CObjectSAInterface* > ( this->GetInterface () )->fHealth = fHealth;
+    *(float *)( (DWORD)this->GetInterface () + 340 ) = fHealth;
 }
 
 float CObjectSA::GetHealth ( void )
 {
-    return static_cast < CObjectSAInterface* > ( this->GetInterface () )->fHealth;
+    return *(float *)( (DWORD)this->GetInterface () + 340 );
 }
 
 void CObjectSA::SetModelIndex ( unsigned long ulModel )
@@ -322,37 +275,4 @@ void CObjectSA::CheckForGangTag ( )
             m_bIsAGangTag = false; 
             break;
     }
-}
-
-bool CObjectSA::IsGlass ()
-{
-    DWORD dwFunc = 0x46A760;
-    DWORD dwThis = (DWORD) GetInterface ();
-    bool bResult;
-
-    _asm
-    {
-        push dwThis
-        call dwFunc
-        mov bResult, al
-        add esp, 4
-    }
-    return bResult;
-}
-
-void CObjectSA::SetScale ( float fX, float fY, float fZ )
-{
-    m_vecScale = CVector ( fX, fY, fZ );
-    GetObjectInterface ()->bUpdateScale = true;
-    GetObjectInterface ()->fScale = Max( fX, Max( fY, fZ ) );
-}
-
-CVector* CObjectSA::GetScale ( )
-{
-    return &m_vecScale;
-}
-
-void CObjectSA::ResetScale ( )
-{
-    SetScale ( 1.0f, 1.0f, 1.0f );
 }

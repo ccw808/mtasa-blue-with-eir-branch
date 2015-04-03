@@ -43,7 +43,6 @@ public:
     void                SetVisible                      ( bool bVisible );
     void                Show                            ( void );
     void                Hide                            ( void );
-    bool                IsInputActive                   ( void );
     void                ActivateInput                   ( void );
 
     void                HandleTextAccepted              ( bool bHandled );
@@ -64,7 +63,6 @@ protected:
     bool                OnCloseButtonClick              ( CGUIElement* pElement );
     bool                Edit_OnTextAccepted             ( CGUIElement* pElement );
     bool                History_OnTextChanged           ( CGUIElement* pElement );
-    void                FlushPendingAdd                 ( void );
 
 private:
     void                CreateElements                  ( CGUIElement* pParent = NULL );
@@ -90,7 +88,7 @@ private:
     float               m_fWindowX;
     float               m_fWindowY;
     float               m_fInputHeight;
-    SString             m_strPendingAdd;
+
 };
 
 #endif

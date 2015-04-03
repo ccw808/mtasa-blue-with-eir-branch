@@ -17,20 +17,20 @@
 void C3DMarkerSA::GetMatrix ( CMatrix * pMatrix )
 {
     CMatrix_Padded * mat = &GetInterface ()->m_mat;
-    MemCpyFast ( &pMatrix->vPos, &mat->vPos, sizeof ( CVector ) );
-    MemCpyFast ( &pMatrix->vFront, &mat->vFront, sizeof ( CVector ) );
-    MemCpyFast ( &pMatrix->vRight, &mat->vRight, sizeof ( CVector ) );
-    MemCpyFast ( &pMatrix->vUp, &mat->vUp, sizeof ( CVector ) );
+    memcpy ( &pMatrix->vPos, &mat->vPos, sizeof ( CVector ) );
+    memcpy ( &pMatrix->vFront, &mat->vFront, sizeof ( CVector ) );
+    memcpy ( &pMatrix->vRight, &mat->vRight, sizeof ( CVector ) );
+    memcpy ( &pMatrix->vUp, &mat->vUp, sizeof ( CVector ) );
 }
 
 
 void C3DMarkerSA::SetMatrix ( CMatrix * pMatrix )
 {
     CMatrix_Padded * mat = &GetInterface ()->m_mat;
-    MemCpyFast ( &mat->vPos, &pMatrix->vPos, sizeof ( CVector ) );
-    MemCpyFast ( &mat->vFront, &pMatrix->vFront, sizeof ( CVector ) );
-    MemCpyFast ( &mat->vRight, &pMatrix->vRight, sizeof ( CVector ) );
-    MemCpyFast ( &mat->vUp, &pMatrix->vUp, sizeof ( CVector ) );
+    memcpy ( &mat->vPos, &pMatrix->vPos, sizeof ( CVector ) );
+    memcpy ( &mat->vFront, &pMatrix->vFront, sizeof ( CVector ) );
+    memcpy ( &mat->vRight, &pMatrix->vRight, sizeof ( CVector ) );
+    memcpy ( &mat->vUp, &pMatrix->vUp, sizeof ( CVector ) );
 }
 
 VOID C3DMarkerSA::SetPosition(CVector * vecPosition)
@@ -75,10 +75,10 @@ SColor C3DMarkerSA::GetColor()
     // From ABGR
     unsigned long ulABGR = this->GetInterface()->rwColour;
     SColor color;
-    color.A = ( ulABGR >> 24 ) & 0xff;
-    color.B = ( ulABGR >> 16 ) & 0xff;
-    color.G = ( ulABGR >> 8 ) & 0xff;
-    color.R = ulABGR & 0xff;
+    color.A = ( ulABGR >> 24 ) && 0xff;
+    color.B = ( ulABGR >> 16 ) && 0xff;
+    color.G = ( ulABGR >> 8 ) && 0xff;
+    color.R = ulABGR && 0xff;
     return color;
 }
 

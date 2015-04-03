@@ -25,9 +25,6 @@ class CServerBrowser;
 // Amount of server lists/tabs (ServerBrowserType)
 #define SERVER_BROWSER_TYPE_COUNT           4
 
-// Amount of search types
-#define SERVER_BROWSER_SEARCH_TYPE_COUNT    2
-
 // Server browser list update interval (in ms)
 #define SERVER_BROWSER_UPDATE_INTERVAL      1000
 
@@ -36,37 +33,21 @@ class CServerBrowser;
 #include "CSingleton.h"
 #include "CFavouritesAddByIP.h"
 #include "CCommunityLogin.h"
-#include "CServerInfo.h"
 #include <ctime>
 
-namespace ServerBrowserTypes
+
+class CServerBrowser : public CSingleton < CServerBrowser >
 {
-    enum ServerBrowserType
+    friend class CCore;
+
+public:
+    typedef enum ServerBrowserType
     {
         INTERNET = 0,
         LAN,
         FAVOURITES,
         RECENTLY_PLAYED
     };
-}
-
-using ServerBrowserTypes::ServerBrowserType;
-
-namespace SearchTypes
-{
-    enum SearchType
-    {
-        SERVERS = 0,
-        PLAYERS,
-        MAX_SEARCH_TYPES,
-    };
-}
-
-using SearchTypes::SearchType;
-
-class CServerBrowser : public CSingleton < CServerBrowser >
-{
-    friend class CCore;
 
 public:
     explicit            CServerBrowser          ( void );
@@ -77,6 +58,9 @@ public:
     void                SetVisible              ( bool bVisible );
     bool                IsVisible               ( void );
     
+    void                SetSize                 ( CVector2D& vecSize );
+    CVector2D           GetSize                 ( void );
+
     bool                ConnectToSelectedServer ( void );
 
     static void         CompleteConnect         ( void );
@@ -84,7 +68,6 @@ public:
     CServerList*        GetInternetList         ( void ) { return &m_ServersInternet; };
     CServerList*        GetFavouritesList       ( void ) { return &m_ServersFavourites; };
     CServerList*        GetRecentList           ( void ) { return &m_ServersRecent; };
-    CServerList*        GetHistoryList          ( void ) { return &m_ServersHistory; };
 
     void                SaveRecentlyPlayedList  ( );
     void                SaveFavouritesList      ( );
@@ -93,54 +76,34 @@ public:
     void                SaveOptions             ( );
 
     bool                LoadServerList          ( CXMLNode* pNode, const std::string& strTagName, CServerList *pList );
-    bool                SaveServerList          ( CXMLNode* pNode, const std::string& strTagName, CServerList *pList, unsigned int iLimit = 0 );
+    bool                SaveServerList          ( CXMLNode* pNode, const std::string& strTagName, CServerList *pList );
 
     void                SetServerPassword       ( const std::string& strHost, const std::string& strPassword );
     std::string         GetServerPassword       ( const std::string& strHost );
     void                ClearServerPasswords    ( void );
 
-    void                SetStatusText           ( std::string strStatus );
-    void                SetAddressBarText       ( std::string strText );
-
     CServerListItem*    FindSelectedServer      ( ServerBrowserType Type );
     CServerListItem*    FindServerFromRow       ( ServerBrowserType Type, int iRow );
-    CServerListItem*    FindServer              ( std::string strHost, unsigned short usPort );
     int                 FindRowFromServer       ( ServerBrowserType Type, const CServerListItem * pServer );
     void                UpdateSelectedServerPlayerList ( ServerBrowserType Type );
     void                GetVisibleEndPointList  ( std::vector < SAddressPort >& outEndpointList );
 
-    bool                IsAddressBarAwaitingInput  ( void );
-    void                SetNextHistoryText      ( bool bDown );
-
-    void                OnQuickConnectButtonClick ( void );
-    void                NotifyServerExists      ( in_addr Address, ushort usPort );
-
-    void                TabSkip                 ( bool bBackwards );
-
-    bool                IsActive                ( void );
-
-    void                SetSelectedIndex        ( unsigned int uiIndex );
 protected:
     bool                OnMouseClick            ( CGUIMouseEventArgs Args );
     bool                OnMouseDoubleClick      ( CGUIMouseEventArgs Args );
 
-    void                CreateHistoryList       ( void );
-    bool                CanBrowseVersion        ( const SString& strVersion );
-
     int                 m_iSelectedServer[ SERVER_BROWSER_TYPE_COUNT ];
 
-    const char*         m_szSearchTypePath[ SearchTypes::MAX_SEARCH_TYPES ];
-    CGUIStaticImage*    m_pSearchIcons[ SearchTypes::MAX_SEARCH_TYPES ];
-
-    CVector2D           m_WidgetSize;
-
     // Window widgets
-    CGUIWindow*         m_pFrame;
-    CGUIElement*        m_pTopWindow;
-    CGUITabPanel*       m_pPanel;
+    CGUIWindow*         m_pWindow;
+    CGUITabPanel*       m_pTabs;
+    CGUIButton*         m_pButtonBack;
+    CGUILabel*          m_pServerListStatus;
     CGUIStaticImage*    m_pLockedIcon;
+    CGUIButton*         m_pButtonFavouritesByIP;
 
     // Classes
+    CFavouritesAddByIP  m_pFavouritesAddByIP;
     CCommunityLogin     m_pCommunityLogin;
   
     // Tab controls
@@ -163,31 +126,14 @@ protected:
     CGUICheckBox*       m_pIncludeOtherVersions [ SERVER_BROWSER_TYPE_COUNT ];
 
     CGUIButton*         m_pButtonConnect [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIStaticImage*    m_pButtonConnectIcon [ SERVER_BROWSER_TYPE_COUNT ];
     CGUIButton*         m_pButtonRefresh [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIStaticImage*    m_pButtonRefreshIcon [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIButton*         m_pButtonInfo [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIStaticImage*    m_pButtonInfoIcon [ SERVER_BROWSER_TYPE_COUNT ];
     CGUIButton*         m_pButtonFavourites [ SERVER_BROWSER_TYPE_COUNT ];
-
-    CGUIEdit*           m_pEditAddress [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUILabel*          m_pLabelAddressDescription [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIComboBox*       m_pComboAddressHistory  [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIStaticImage*    m_pSearchTypeIcon  [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIStaticImage*    m_pAddressFavoriteIcon [ SERVER_BROWSER_TYPE_COUNT ];
-
-    CGUIComboBox*       m_pComboSearchType  [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIEdit*           m_pEditSearch  [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUILabel*          m_pLabelSearchDescription  [ SERVER_BROWSER_TYPE_COUNT ];
-
-
     
     CGUILabel*          m_pLabelPassword [ SERVER_BROWSER_TYPE_COUNT ];
     CGUIEdit*           m_pEditPassword [ SERVER_BROWSER_TYPE_COUNT ];
 
-    CGUILabel*          m_pServerListStatus [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIButton*         m_pButtonBack [ SERVER_BROWSER_TYPE_COUNT ];
-    CGUIButton*         m_pButtonGeneralHelp [ SERVER_BROWSER_TYPE_COUNT ];
+    CGUIEdit*           m_pEditPlayerSearch [ SERVER_BROWSER_TYPE_COUNT ];
+    CGUIStaticImage*    m_pPlayerSearchIcon [ SERVER_BROWSER_TYPE_COUNT ];
 
     // Server list columns
     CGUIHandle          m_hVersion [ SERVER_BROWSER_TYPE_COUNT ];
@@ -202,23 +148,11 @@ protected:
     // Player list columns
     CGUIHandle          m_hPlayerName [ SERVER_BROWSER_TYPE_COUNT ];
 
-    // Flash searchbox
-    struct {
-        uint uiCount;
-        uint uiNextTime;
-    } m_FlashSearchBox  [ SERVER_BROWSER_TYPE_COUNT ];
-
 private:
-    enum
-    {
-        DATA_PSERVER = 1,  //Column which stores server pointer
-    };
-
     void                    CreateTab                       ( ServerBrowserType type, const char* szName );
     void                    DeleteTab                       ( ServerBrowserType type );
 
     void                    UpdateServerList                ( ServerBrowserType Type, bool bClearServerList = false);
-    void                    UpdateHistoryList               ( void );
     CServerList *           GetServerList                   ( ServerBrowserType Type );
     void                    AddServerToList                 ( const CServerListItem * pServer, const ServerBrowserType Type );
     
@@ -226,51 +160,27 @@ private:
     bool                    OnDoubleClick                   ( CGUIElement* pElement );
     bool                    OnConnectClick                  ( CGUIElement* pElement );
     bool                    OnRefreshClick                  ( CGUIElement* pElement );
-    bool                    OnInfoClick                     ( CGUIElement* pElement );
     bool                    OnFavouritesClick               ( CGUIElement* pElement );
     bool                    OnBackClick                     ( CGUIElement* pElement );
-    bool                    OnGeneralHelpClick              ( CGUIElement* pElement );
-    bool                    OnGeneralHelpDeactivate         ( CGUIElement* pElement );
-    bool                    OnAddressChanged                ( CGUIElement* pElement );
     bool                    OnFilterChanged                 ( CGUIElement* pElement );
     bool                    OnTabChanged                    ( CGUIElement* pElement );
-    bool                    OnHistorySelected               ( CGUIElement* pElement );
-    bool                    OnHistoryDropListRemove         ( CGUIElement* pElement );
-
-    bool                    OnSearchTypeSelected            ( CGUIElement* pElement );
-
-    bool                    OnSearchFocused                 ( CGUIElement* pElement );
-    bool                    OnSearchDefocused               ( CGUIElement* pElement );
-    bool                    OnAddressFocused                ( CGUIElement* pElement );
-    bool                    OnAddressDefocused              ( CGUIElement* pElement );
-
-    bool                    OnServerListChangeRow           ( CGUIKeyEventArgs Args );
+    bool                    OnFavouritesByIPClick           ( CGUIElement* pElement );
+    bool                    OnFavouritesByIPAddClick        ( CGUIElement* pElement );
+    bool                    OnWindowSize                    ( CGUIElement* pElement );
 
     ServerBrowserType       GetCurrentServerBrowserType     ( void );
-    ServerBrowserType       GetCurrentServerBrowserTypeForSave ( void );
 
     CServerListInternet     m_ServersInternet;
     CServerListLAN          m_ServersLAN;
     CServerList             m_ServersFavourites;
     CServerList             m_ServersRecent;
-    CServerList             m_ServersHistory;
 
     unsigned long           m_ulLastUpdateTime;
-    bool                    m_bFirstTimeBrowseServer;
-    bool                    m_bOptionsLoaded;        
+    bool                    m_firstTimeBrowseServer;
+    bool                    m_bOptionsLoaded;
     ServerBrowserType       m_PrevServerBrowserType;
 
     std::map < SString, int > m_blockedVersionMap;
-    std::map < SString, int > m_allowedVersionMap;
-
-    CGUIWindow*             m_pQuickConnectHelpWindow;
-    bool                    m_bFocusTextEdit;
-
-    uint                    m_uiShownQuickConnectHelpCount;
-    uint                    m_uiIsUsingTempTab;
-    ServerBrowserType       m_BeforeTempServerBrowserType;
-    CGUIWindow*             m_pGeneralHelpWindow;
-    long long               m_llLastGeneralHelpTime;
 };
 
 #endif

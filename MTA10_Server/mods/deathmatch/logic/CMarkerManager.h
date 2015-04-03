@@ -48,6 +48,7 @@ private:
     void                                                RemoveFromList              ( CMarker* pMarker );
 
     CColManager*                                        m_pColManager;
+    bool                                                m_bDontRemove;
     list < CMarker* >                                   m_Markers;
 };
 

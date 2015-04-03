@@ -30,7 +30,7 @@
 #include "CResourceFile.h"
 #include "CResourceManager.h"
 #include "CElementGroup.h"
-#include <unzip.h>
+#include "../utils/zip/unzip.h"
 #include <list>
 #include <vector>
 #include "ehs/ehs.h"
@@ -61,24 +61,51 @@ public:
 
 private:
     std::string                     m_strFunctionName;
+    vector<std::string>             m_accessList;
     bool                            m_bHTTPAccess;
     bool                            m_bRestricted;
 
     eExportedFunctionType           m_ucType;
 
 public:
-                                    CExportedFunction ( const std::string& strFunctionName, bool bHTTPAccess, eExportedFunctionType ucType, bool bRestricted )
+                                    CExportedFunction ( const std::string& strFunctionName, const std::string& access, bool bHTTPAccess, eExportedFunctionType ucType, bool bRestricted )
                                     {
                                         m_ucType = ucType;
                                         m_strFunctionName = strFunctionName;
                                         m_bHTTPAccess = bHTTPAccess;
                                         m_bRestricted = bRestricted;
+                                        size_t leng = access.length ();
+                                        char szResourceName[MAX_RESOURCE_NAME_LENGTH] = {'\0'};
+                                        size_t s = 0;
+                                        for ( size_t i = 0; i < leng; i++ )
+                                        {
+                                            if ( access[i] != ',' )
+                                                szResourceName[s] = access[i];
+                                            else if ( strlen(szResourceName) != 0 )
+                                            {
+                                                m_accessList.push_back ( szResourceName );
+                                                szResourceName[0] = '\0';
+                                                s = 0;
+                                            }
+                                        }   
                                     }
 
     inline eExportedFunctionType    GetType ( void ) { return m_ucType; }
     inline const std::string&       GetFunctionName ( void ) { return m_strFunctionName; }
     inline bool                     IsHTTPAccessible ( void ) { return m_bHTTPAccess; }
     inline bool                     IsRestricted ( void ) { return m_bRestricted; };
+    inline bool                     IsOnAccessList ( char * strResourceName )
+    {
+        if ( m_accessList.size() == 0 )
+            return false;
+        vector < std::string > ::iterator iter = m_accessList.begin ();
+        for ( ; iter != m_accessList.end (); iter++ )
+        {
+            if ( (*iter).compare ( "*" ) == 0 || (*iter).compare ( strResourceName ) == 0 )
+                return true;
+        }
+        return false;
+    }
 };
 
 class CIncludedResources 
@@ -146,11 +173,10 @@ private:
     bool                    m_bHandlingHTTPRequest;
     bool                    m_bResourceIsZip;
     std::string             m_strResourceName;
-    SString                 m_strAbsPath;               // Absolute path to containing directory        i.e. /server/mods/deathmatch/resources
-    std::string             m_strResourceZip;           // Absolute path to zip file (if a zip)         i.e. m_strAbsPath/resource_name.zip
-    std::string             m_strResourceDirectoryPath; // Absolute path to resource files (if a dir)   i.e. m_strAbsPath/resource_name
-    std::string             m_strResourceCachePath;     // Absolute path to unzipped cache (if a zip)   i.e. /server/mods/deathmatch/resources/cache/resource_name 
-
+    std::string             m_strResourceZip; // stores the path to /mods/deathmatch/resources/resource_name.zip
+    std::string             m_strResourceDirectoryPath; // stores the path to /mods/deathmatch/resources/resource_name
+    std::string             m_strResourceCachePath; // stores the path to /mods/deathmatch/resources/cache/resource_name
+    
     unsigned int            m_uiVersionMajor;
     unsigned int            m_uiVersionMinor;
     unsigned int            m_uiVersionRevision;
@@ -163,14 +189,15 @@ private:
     class CDummy*           m_pResourceElement;
     class CDummy*           m_pResourceDynamicElementRoot;
 
-    list<CInfoValue>        m_infoValues;
+    list<CInfoValue *>      m_infoValues;
     list<CIncludedResources *>  m_includedResources; // we store them here temporarily, then read them once all the resources are loaded
     list<CResourceFile *>   m_resourceFiles;
     list<CResource *>       m_dependents; // resources that have "included" or loaded this one
-    list<CExportedFunction> m_exportedFunctions;
+    list<CElementGroup *>   m_elementGroups; // stores elements created by scripts in this resource
+    list<CExportedFunction *>   m_exportedFunctions;
     list<CResource *>       m_temporaryIncludes; // started by startResource script command
     
-    CElementGroup *         m_pDefaultElementGroup; // stores elements created by scripts in this resource
+    CElementGroup *         m_pDefaultElementGroup;
     
     std::string             m_strCircularInclude;
     bool                    m_bLoaded; // its been loaded successfully (i.e. meta parsed ok), included resources loaded ok
@@ -180,13 +207,12 @@ private:
     bool                    m_bIsPersistent; // if true, the resource will remain even if it has no Dependents, mainly if started by the user or the startup
     bool                    m_bLinked; // if true, the included resources are already linked to this resource
     unzFile                 m_zipfile;
-    SString                 m_strFailureReason;
+    std::string             m_strFailureReason;
 
     bool                    m_bClientConfigs;
     bool                    m_bClientScripts;
     bool                    m_bClientFiles;
     bool                    m_bHasStarted;
-    bool                    m_bDoneUpgradeWarnings;
 
     class CResourceManager *      m_resourceManager; 
     class CLuaMain *        m_pVM;
@@ -194,27 +220,12 @@ private:
     CXMLNode *              m_pNodeSettings;        // Settings XML node, read from meta.xml and copied into it's own instance
     CXMLNode *              m_pNodeStorage;         // Dummy XML node used for temporary storage of stuff returned by CSettings::Get
 
-    SString                 m_strMinClientReqFromMetaXml;    // Min MTA client version as declared in meta.xml
-    SString                 m_strMinServerReqFromMetaXml;    // Min MTA server version as declared in meta.xml
-    SString                 m_strMinClientReqFromSource;     // Min MTA client version as calculated by scanning the script source
-    SString                 m_strMinServerReqFromSource;     // Min MTA server version as calculated by scanning the script source
-    SString                 m_strMinClientReason;
-    SString                 m_strMinServerReason;
+    CChecksum               m_checksum; // Checksum last time this was loaded, generated by GenerateChecksum()
 
-    bool                    m_bSyncMapElementData;
-    bool                    m_bSyncMapElementDataDefined;
-
-    CChecksum               m_metaChecksum;     // Checksum of meta.xml last time this was loaded, generated in GenerateChecksums()
-
-    unsigned short          m_usNetID; // resource ID    
-    uint                    m_uiScriptID;
+    unsigned short          m_usID; // resource ID    
 
     bool                    m_bProtected;
     bool                    m_bStartedManually;
-
-    bool                    m_bOOPEnabledInMetaXml;
-    uint                    m_uiFunctionRightCacheRevision;
-    CFastHashMap < lua_CFunction, bool > m_FunctionRightCacheMap;
 
     bool                    CheckState ( void ); // if the resource has no Dependents, stop it, if it has, start it. returns true if the resource is started.
     bool                    ReadIncludedResources ( class CXMLNode * root );
@@ -224,11 +235,12 @@ private:
     bool                    ReadIncludedHTML ( CXMLNode * root );
     bool                    ReadIncludedExports ( CXMLNode * root );
     bool                    ReadIncludedFiles ( CXMLNode * root );
-    bool                    CreateVM ( bool bEnableOOP );
+    bool                    CreateVM ( void );
     bool                    DestroyVM ( void );
     void                    TidyUp ( void );
     ResponseCode            HandleRequestActive ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse, class CAccount* account );
     ResponseCode            HandleRequestCall ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse, class CAccount* account );
+    ResponseCode            HandleRequestInfo ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse );
     
     pthread_mutex_t         m_mutex;
     bool                    m_bDestroyed;
@@ -243,7 +255,7 @@ private:
         pthread_mutex_unlock ( &m_mutex );
     }
 public:
-                            CResource ( CResourceManager * resourceManager, bool bIsZipped, const char * szAbsPath, const char * szResourceName );
+                            CResource ( CResourceManager * resourceManager, const char * szResourceName, bool bLoad = true );
                             ~CResource ( );
 
     /* Load this resource if it's not already loaded. It needs to be loaded before it can be started. */ 
@@ -287,22 +299,19 @@ public:
 
     bool                    StopAllResourceItems ( void );    
 
-    bool                    GenerateChecksums ( void );
-    const CChecksum&        GetLastMetaChecksum ( void ) { return m_metaChecksum; }
+    CChecksum               GenerateChecksum ( void );
+    inline CChecksum        GetLastChecksum ( void ) { return m_checksum; }
     bool                    HasResourceChanged ( void );
-    void                    ApplyUpgradeModifications ( void );
-    void                    LogUpgradeWarnings ( void );
-    bool                    GetCompatibilityStatus ( SString& strOutStatus );
 
     void                    AddTemporaryInclude ( CResource * resource );
-    SString                 GetFailureReason ( void )
+    const std::string&      GetFailureReason ( void )
     { 
-        return m_strFailureReason.TrimEnd( "\n" ); 
+        return m_strFailureReason; 
     }
     inline CXMLNode *       GetSettingsNode ( void ) { return m_pNodeSettings; }
     inline CXMLNode *       GetStorageNode ( void ) { return m_pNodeStorage; }
 
-    bool                    CallExportedFunction ( const char * szFunctionName, CLuaArguments& args, CLuaArguments& returns, CResource& caller );
+    bool                    CallExportedFunction ( char * szFunctionName, CLuaArguments& args, CLuaArguments& returns, CResource& caller );
 
     inline list<CResource *> *  GetDependents ( void ) { return &m_dependents; }
     inline int              GetDependentCount ( void ) { return m_dependents.size(); }
@@ -310,7 +319,7 @@ public:
     inline list<CIncludedResources *>::iterator GetIncludedResourcesEnd ( void )    { return m_includedResources.end(); };
     inline int              GetIncludedResourcesCount ( void )  { return m_includedResources.size(); };
     bool                    GetInfoValue ( const char * szKey, std::string& strValue );
-    void                    SetInfoValue ( const char * szKey, const char * szValue, bool bSave = true );
+    void                    SetInfoValue ( const char * szKey, const char * szValue );
     inline unsigned int     GetVersionMajor ( void ) { return m_uiVersionMajor; }
     inline unsigned int     GetVersionMinor ( void ) { return m_uiVersionMinor; }
     inline unsigned int     GetVersionRevision ( void ) { return m_uiVersionRevision; }
@@ -333,7 +342,6 @@ public:
     inline void             SetPersistent ( bool bPersistent ) { m_bIsPersistent = bPersistent; }
     bool                    ExtractFile ( const char * szFilename );
     bool                    DoesFileExistInZip ( const char * szFilename );
-    bool                    HasGoneAway ( void );
     bool                    GetFilePath ( const char * szFilename, string& strPath );
     inline const std::string&   GetResourceDirectoryPath () { return m_strResourceDirectoryPath; };
     inline const std::string&   GetResourceCacheDirectoryPath () { return m_strResourceCachePath; };
@@ -341,15 +349,14 @@ public:
     bool                    CheckIfStartable ( void );
     inline unsigned int     GetFileCount ( void ) { return m_resourceFiles.size(); }
     void                    DisplayInfo ( void );
+    char *                  DisplayInfoHTML ( char * info, size_t length );
     list<CResourceFile *>*  GetFiles ( void ) { return &m_resourceFiles; }
     CElementGroup *         GetElementGroup ( void ) { return m_pDefaultElementGroup; }
     inline time_t           GetTimeStarted ( void ) { return m_timeStarted; }
     inline time_t           GetTimeLoaded ( void ) { return m_timeLoaded; }
-    void                    SetNetID ( unsigned short usNetID ) { m_usNetID = usNetID; }
-    unsigned short          GetNetID ( void ) { return m_usNetID; }
-    uint                    GetScriptID ( void ) const { return m_uiScriptID; }
+    void                    SetID ( unsigned short usID ) { m_usID = usID; }
+    unsigned short          GetID ( void ) { return m_usID; }
     void                    OnPlayerJoin ( CPlayer& Player );
-    void                    SendNoClientCacheScripts ( CPlayer* pPlayer = NULL );
     CDummy*                 GetResourceRootElement ( void ) { return m_pResourceElement; };
     CDummy*                 GetDynamicElementRoot ( void ) { return m_pResourceDynamicElementRoot; };
 
@@ -364,33 +371,13 @@ public:
     inline list < CResourceFile* >::iterator    IterEnd     ( void )        { return m_resourceFiles.end(); }
     inline unsigned short                       IterCount   ( void )        { return m_resourceFiles.size(); }
 
-    inline list < CExportedFunction >::iterator    IterBeginExportedFunctions   ( void )        { return m_exportedFunctions.begin(); }
-    inline list < CExportedFunction >::iterator    IterEndExportedFunctions     ( void )        { return m_exportedFunctions.end(); }
+    inline list < CExportedFunction* >::iterator    IterBeginExportedFunctions   ( void )        { return m_exportedFunctions.begin(); }
+    inline list < CExportedFunction* >::iterator    IterEndExportedFunctions     ( void )        { return m_exportedFunctions.end(); }
 
     static list < CResource* > m_StartedResources;
 
-    void                GetAclRequests                  ( std::vector < SAclRequest >& outResultList );
-    bool                HandleAclRequestListCommand     ( bool bDetail );
-    bool                HandleAclRequestChangeCommand   ( const SString& strRightName, bool bAccess, const SString& strWho );
-    bool                HandleAclRequestChange          ( const CAclRightName& strRightName, bool bAccess, const SString& strWho );
-    const SString&      GetMinServerReqFromMetaXml      ( void )                                { return m_strMinServerReqFromMetaXml; }
-    const SString&      GetMinClientReqFromMetaXml      ( void )                                { return m_strMinClientReqFromMetaXml; }
-    bool                IsOOPEnabledInMetaXml           ( void )                                { return m_bOOPEnabledInMetaXml; }
-    bool                CheckFunctionRightCache         ( lua_CFunction f, bool* pbOutAllowed );
-    void                UpdateFunctionRightCache        ( lua_CFunction f, bool bAllowed );
-    bool                IsFilenameUsed                  ( const SString& strFilename, bool bClient );
 
-protected:
-    SString             GetAutoGroupName                ( void );
-    SString             GetAutoAclName                  ( void );
-    CAccessControlList* GetAutoAcl                      ( void );
-    CAccessControlList* FindAutoAcl                     ( void );
-
-    void                RemoveAutoPermissions           ( void );
-    bool                RefreshAutoPermissions          ( CXMLNode* pNodeAclRequest );
-
-    void                CommitAclRequest                ( const SAclRequest& request );
-    bool                FindAclRequest                  ( SAclRequest& request );
 };
+
 
 #endif

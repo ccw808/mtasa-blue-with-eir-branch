@@ -44,7 +44,15 @@ CClientMarker* CClientMarkerManager::Get ( ElementID ID )
 
 bool CClientMarkerManager::Exists ( CClientMarker* pMarker )
 {
-    return m_Markers.contains ( pMarker );
+    list < CClientMarker* > ::const_iterator iter = m_Markers.begin ();
+    for ( ; iter != m_Markers.end (); iter++ )
+    {
+        if ( *iter == pMarker )
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 
@@ -63,7 +71,7 @@ void CClientMarkerManager::DeleteAll ( void )
 {
     // Delete each checkpoint
     m_bCanRemoveFromList = false;
-    CFastList < CClientMarker* > ::const_iterator iter = m_Markers.begin ();
+    list < CClientMarker* > ::const_iterator iter = m_Markers.begin ();
     for ( ; iter != m_Markers.end (); iter++ )
     {
         delete *iter;
@@ -79,7 +87,7 @@ void CClientMarkerManager::DeleteAll ( void )
 void CClientMarkerManager::DoPulse ( void )
 {
     // Pulse all our markers
-    CFastList < CClientMarker* > ::const_iterator iter = m_Markers.begin ();
+    list < CClientMarker* > ::const_iterator iter = m_Markers.begin ();
     for ( ; iter != m_Markers.end (); iter++ )
     {
         (*iter)->DoPulse ();

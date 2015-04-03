@@ -16,7 +16,7 @@ using std::list;
 
 extern CClientGame* g_pClientGame;
 
-#define PED_SYNC_RATE   ( g_TickRateSettings.iPedSync )
+#define PED_SYNC_RATE 500
 
 CPedSync::CPedSync ( CClientPedManager* pPedManager )
 {
@@ -82,9 +82,22 @@ void CPedSync::RemovePed ( CClientPed* pPed )
 }
 
 
+void CPedSync::ClearPeds ( void )
+{
+    // Clear the list
+    m_List.clear ();
+}
+
+
 bool CPedSync::Exists ( CClientPed* pPed )
 {
-    return m_List.Contains ( pPed );
+    list < CClientPed* > ::iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
+    {
+        if ( *iter == pPed )
+            return true;
+    }
+    return false;
 }
 
 
@@ -124,13 +137,13 @@ void CPedSync::Packet_PedStartSync ( NetBitStreamInterface& BitStream )
             pPed->SetCurrentRotation ( fRotation );
             pPed->SetMoveSpeed ( vecVelocity );
 
-            // Unlock health and armour for the syncer
-            pPed->UnlockHealth ();
-            pPed->UnlockArmor ();
-
             // Set the new health
             pPed->SetHealth ( fHealth );
             pPed->SetArmor ( fArmor );
+
+            // Unlock health and armour for the syncer
+            pPed->UnlockHealth ();
+            pPed->UnlockArmor ();
 
             AddPed ( pPed );
         }
@@ -177,8 +190,6 @@ void CPedSync::Packet_PedSync ( NetBitStreamInterface& BitStream )
 
             CVector vecPosition, vecMoveSpeed;
             float fRotation, fHealth, fArmor;
-            bool bOnFire;
-            bool bIsInWater;
 
             // Read out the position
             if ( ucFlags & 0x01 )
@@ -203,12 +214,6 @@ void CPedSync::Packet_PedSync ( NetBitStreamInterface& BitStream )
             if ( ucFlags & 0x08 ) BitStream.Read ( fHealth );
             if ( ucFlags & 0x10 ) BitStream.Read ( fArmor );
 
-            // And the burning state
-            if ( BitStream.Version() >= 0x04E && ucFlags & 0x20 ) BitStream.ReadBit ( bOnFire );  
-
-            // And the in water state
-            if ( BitStream.Version() >= 0x55 && ucFlags & 0x40 ) BitStream.ReadBit ( bIsInWater ); 
-
             // Grab the ped. Only update the sync if this packet is from the same context.
             CClientPed* pPed = m_pPedManager->Get ( ID );
             if ( pPed && pPed->CanUpdateSync ( ucSyncTimeContext ) )
@@ -218,8 +223,6 @@ void CPedSync::Packet_PedSync ( NetBitStreamInterface& BitStream )
                 if ( ucFlags & 0x04 ) pPed->SetMoveSpeed ( vecMoveSpeed );
                 if ( ucFlags & 0x08 ) pPed->LockHealth ( fHealth );
                 if ( ucFlags & 0x10 ) pPed->LockArmor ( fArmor );
-                if ( BitStream.Version() >= 0x04E && ucFlags & 0x20 ) pPed->SetOnFire ( bOnFire );
-                if ( BitStream.Version() >= 0x55 && ucFlags & 0x40 ) pPed->SetInWater ( bIsInWater );
             }
         }
     }
@@ -236,14 +239,14 @@ void CPedSync::Update ( void )
         if ( pBitStream )
         {
             // Write each ped to it
-            list < CClientPed* > ::const_iterator iter = m_List.begin ();
-            for ( ; iter != m_List.end (); ++iter )
+            list < CClientPed* > ::iterator iter = m_List.begin ();
+            for ( ; iter != m_List.end (); iter++ )
             {
                 WritePedInformation ( pBitStream, *iter );
             }
 
             // Send and destroy the packet
-            g_pNet->SendPacket ( PACKET_ID_PED_SYNC, pBitStream, PACKET_PRIORITY_MEDIUM, PACKET_RELIABILITY_UNRELIABLE_SEQUENCED );
+            g_pNet->SendPacket ( PACKET_ID_PED_SYNC, pBitStream, PACKET_PRIORITY_LOW, PACKET_RELIABILITY_UNRELIABLE_SEQUENCED );
             g_pNet->DeallocateNetBitStream ( pBitStream );
         }
     }
@@ -263,8 +266,6 @@ void CPedSync::WritePedInformation ( NetBitStreamInterface* pBitStream, CClientP
     if ( vecVelocity != pPed->m_LastSyncedData->vVelocity ) ucFlags |= 0x04;
     if ( pPed->GetHealth() != pPed->m_LastSyncedData->fHealth ) ucFlags |= 0x08;
     if ( pPed->GetArmor() != pPed->m_LastSyncedData->fArmour ) ucFlags |= 0x10;
-    if ( pPed->IsOnFire() != pPed->m_LastSyncedData->bOnFire ) ucFlags |= 0x20;
-    if ( pPed->IsInWater() != pPed->m_LastSyncedData->bIsInWater ) ucFlags |= 0x40;
 
     // Do we really have to sync this ped?
     if ( ucFlags == 0 ) return;
@@ -312,17 +313,5 @@ void CPedSync::WritePedInformation ( NetBitStreamInterface* pBitStream, CClientP
     {
         pBitStream->Write ( pPed->GetArmor () );
         pPed->m_LastSyncedData->fArmour = pPed->GetArmor ();
-    }
-
-    if ( ucFlags & 0x20 && pBitStream->Version() >= 0x04E )
-    {
-        pBitStream->WriteBit ( pPed->IsOnFire () );
-        pPed->m_LastSyncedData->bOnFire = pPed->IsOnFire ();
-    }
-
-    if ( ucFlags & 0x40 && pBitStream->Version() >= 0x55 )
-    {
-        pBitStream->WriteBit ( pPed->IsInWater () );
-        pPed->m_LastSyncedData->bIsInWater = pPed->IsInWater ();
     }
 }

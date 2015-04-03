@@ -13,8 +13,13 @@
 *
 *****************************************************************************/
 
+class CClientObjectManager;
+
 #ifndef __CCLIENTOBJECTMANAGER_H
 #define __CCLIENTOBJECTMANAGER_H
+
+#include "CClientCommon.h"
+#include <list>
 
 class CClientManager;
 class CClientObject;
@@ -22,11 +27,10 @@ class CObject;
 
 class CClientObjectManager
 {
-public:
-    ZERO_ON_NEW
-                                            CClientObjectManager        ( class CClientManager* pManager );
-                                            ~CClientObjectManager       ( void );
+    friend CClientManager;
+    friend CClientObject;
 
+public:
     void                                    DoPulse                     ( void );
 
     void                                    DeleteAll                   ( void );
@@ -46,13 +50,22 @@ public:
 
     void                                    RestreamObjects             ( unsigned short usModel );
 
-    void                                    AddToList                   ( CClientObject* pObject )      { m_Objects.push_back ( pObject ); }
-    void                                    RemoveFromLists             ( CClientObject* pObject );
+    std::list < CClientObject* > ::const_iterator           IterGet             ( CClientObject* pObject );
+    std::list < CClientObject* > ::const_reverse_iterator   IterGetReverse      ( CClientObject* pObject );
+    std::list < CClientObject* > ::const_iterator           IterBegin           ( void )                        { return m_Objects.begin (); };
+    std::list < CClientObject* > ::const_iterator           IterEnd             ( void )                        { return m_Objects.end (); };
+    std::list < CClientObject* > ::const_reverse_iterator   IterReverseBegin    ( void )                        { return m_Objects.rbegin (); };
+    std::list < CClientObject* > ::const_reverse_iterator   IterReverseEnd      ( void )                        { return m_Objects.rend (); };
+
+private:
+                                            CClientObjectManager        ( class CClientManager* pManager );
+                                            ~CClientObjectManager       ( void );
+
+    inline void                             AddToList                   ( CClientObject* pObject )      { m_Objects.push_back ( pObject ); };
+    void                                    RemoveFromList              ( CClientObject* pObject );
 
     void                                    OnCreation                  ( CClientObject * pObject );
     void                                    OnDestruction               ( CClientObject * pObject );
-
-protected:
 
     void                                    UpdateLimitInfo             ( void );
 
@@ -60,10 +73,11 @@ protected:
     static int                              m_iPointerNodeSingleLinkEntries;
     static int                              m_iPointerNodeDoubleLinkEntries;
 
-    CClientManager*                         m_pManager;
+    class CClientManager*                   m_pManager;
     bool                                    m_bCanRemoveFromList;
-    CMappedArray < CClientObject* >         m_Objects;
-    CMappedArray < CClientObject* >         m_StreamedIn;
+    std::list < CClientObject* >            m_Objects;
+    std::vector < CClientObject* >          m_StreamedIn;
+    std::list < CClientObject* >            m_Attached;
 };
 
 #endif

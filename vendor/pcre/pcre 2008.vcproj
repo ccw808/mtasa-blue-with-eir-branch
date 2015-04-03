@@ -4,7 +4,7 @@
 	Version="9.00"
 	Name="pcre"
 	ProjectGUID="{39452ACC-FF12-488D-94B6-301B4EFBB606}"
-	RootNamespace="pcre"
+	RootNamespace="pcre2008"
 	Keyword="Win32Proj"
 	TargetFrameworkVersion="196613"
 	>
@@ -12,17 +12,14 @@
 		<Platform
 			Name="Win32"
 		/>
-		<Platform
-			Name="x64"
-		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory="."
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="1"
 			>
@@ -44,8 +41,8 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=".;shipped_for_mta_win32"
-				PreprocessorDefinitions="HAVE_CONFIG_H;"
+				AdditionalIncludeDirectories="."
+				PreprocessorDefinitions="HAVE_CONFIG_H;FORCE_BUILD=2"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -65,8 +62,8 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\pcre3_d.dll"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				OutputFile="../pcre3d.dll"
+				ImportLibrary="lib/pcred_2008.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -88,88 +85,13 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="xcopy /y &quot;$(OutDir)\pcre3_d.dll&quot; &quot;C:\Program Files\MTA San Andreas 1.4\server\mods\deathmatch\&quot; &amp;&amp; xcopy /y &quot;$(OutDir)\pcre3_d.dll&quot; &quot;C:\Program Files\MTA San Andreas 1.4\mods\deathmatch\&quot; "
-			/>
-		</Configuration>
-		<Configuration
-			Name="Debug|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
-			ConfigurationType="2"
-			CharacterSet="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				TargetEnvironment="3"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				AdditionalIncludeDirectories=".;shipped_for_mta_win32"
-				PreprocessorDefinitions="HAVE_CONFIG_H;"
-				MinimalRebuild="true"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-				DisableSpecificWarnings="4996,4244,4267"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\pcre3_d.dll"
-				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
-				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="xcopy /y &quot;$(OutDir)\pcre3_d.dll&quot; &quot;C:\Program Files\MTA San Andreas 1.4\server\$(PlatformName)\&quot;"
+				CommandLine="xcopy /y ..\pcre3d.dll &quot;C:\Program Files\MTA San Andreas\server\mods\deathmatch\&quot;"
 			/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -193,8 +115,8 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories=".;shipped_for_mta_win32"
-				PreprocessorDefinitions="HAVE_CONFIG_H;"
+				AdditionalIncludeDirectories="."
+				PreprocessorDefinitions="HAVE_CONFIG_H;FORCE_BUILD=2"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -213,11 +135,13 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\pcre3.dll"
+				OutputFile="../pcre3.dll"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ProgramDatabaseFile="C:/Symbols/$(ConfigurationName)_$(SafeParentName).pdb"
+				GenerateMapFile="true"
+				MapFileName="C:/Symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
+				ImportLibrary="lib/pcre_2008.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -239,91 +163,13 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="xcopy /y &quot;$(OutDir)\pcre3.dll&quot; &quot;C:\Program Files\MTA San Andreas 1.4\server\mods\deathmatch\&quot; &amp;&amp; xcopy /y &quot;$(OutDir)\pcre3.dll&quot; &quot;C:\Program Files\MTA San Andreas 1.4\mods\deathmatch\&quot;"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
-			ConfigurationType="2"
-			CharacterSet="1"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				TargetEnvironment="3"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories=".;shipped_for_mta_win32"
-				PreprocessorDefinitions="HAVE_CONFIG_H;"
-				RuntimeLibrary="2"
-				EnableFunctionLevelLinking="true"
-				UsePrecompiledHeader="0"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-				DisableSpecificWarnings="4996,4244,4267"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\pcre3.dll"
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(PlatformName)_$(SafeParentName).pdb"
-				MapFileName=""
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
-				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="xcopy /y &quot;$(OutDir)\pcre3.dll&quot; &quot;C:\Program Files\MTA San Andreas 1.4\server\$(PlatformName)\&quot;"
+				CommandLine="xcopy /y ..\pcre3.dll &quot;C:\Program Files\MTA San Andreas\server\mods\deathmatch\&quot;"
 			/>
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\obj\x86\$(ConfigurationName)\vendor\$(SafeRootNamespace)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="..\..\obj\vendor\pcre"
 			ConfigurationType="2"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -347,8 +193,8 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories=".;shipped_for_mta_win32"
-				PreprocessorDefinitions="HAVE_CONFIG_H;"
+				AdditionalIncludeDirectories="."
+				PreprocessorDefinitions="HAVE_CONFIG_H;FORCE_BUILD=2"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				WarningLevel="3"
@@ -366,11 +212,13 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\pcre3.dll"
+				OutputFile="../pcre3.dll"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ProgramDatabaseFile="C:/Symbols/$(ConfigurationName)_$(SafeParentName).pdb"
+				GenerateMapFile="true"
+				MapFileName="C:/Symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
+				ImportLibrary="lib/pcre_2008.lib"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -392,84 +240,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine="xcopy /y &quot;$(OutDir)\pcre3.dll&quot; &quot;..\..\output\MTA San Andreas\server\mods\deathmatch\&quot; &amp;&amp; xcopy /y &quot;$(OutDir)\pcre3.dll&quot; &quot;..\..\output\MTA San Andreas\mods\deathmatch\&quot;"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Nightly|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="..\..\obj\$(PlatformName)\$(ConfigurationName)\vendor\$(SafeRootNamespace)"
-			ConfigurationType="2"
-			CharacterSet="1"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				TargetEnvironment="3"
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				EnableIntrinsicFunctions="true"
-				AdditionalIncludeDirectories=".;shipped_for_mta_win32"
-				PreprocessorDefinitions="HAVE_CONFIG_H;"
-				RuntimeLibrary="2"
-				EnableFunctionLevelLinking="true"
-				WarningLevel="3"
-				DebugInformationFormat="3"
-				DisableSpecificWarnings="4996,4244,4267"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\pcre3.dll"
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(PlatformName)_$(SafeParentName).pdb"
-				MapFileName=""
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
-				TargetMachine="17"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				CommandLine="xcopy /y &quot;$(OutDir)\pcre3.dll&quot; &quot;..\..\output\MTA San Andreas\server\$(PlatformName)\&quot;"
+				CommandLine="xcopy /y ..\pcre3.dll &quot;..\..\output\MTA San Andreas\server\mods\deathmatch\&quot;"
 			/>
 		</Configuration>
 	</Configurations>
@@ -584,7 +355,7 @@
 			UniqueIdentifier="{93995380-89BD-4b04-88EB-625FBE52EBFB}"
 			>
 			<File
-				RelativePath=".\shipped_for_mta_win32\config.h"
+				RelativePath=".\config.h"
 				>
 			</File>
 			<File

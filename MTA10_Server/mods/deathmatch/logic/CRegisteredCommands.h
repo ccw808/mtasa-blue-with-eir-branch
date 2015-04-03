@@ -28,7 +28,7 @@ class CRegisteredCommands
     struct SCommand
     {
         class CLuaMain* pLuaMain;
-        SString strKey;
+        char szKey [MAX_REGISTERED_COMMAND_LENGTH + 1];
         CLuaFunctionRef iLuaFunction;
         bool bRestricted;
         bool bCaseSensitive;

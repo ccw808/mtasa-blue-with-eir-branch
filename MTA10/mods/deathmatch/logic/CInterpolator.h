@@ -140,7 +140,7 @@ private:
 
 
 private:
-    SFixedArray < VecMap, uiMaxElements >   m_nodes;
+    VecMap          m_nodes [ uiMaxElements ];
     unsigned int    m_uiStartIdx;
     unsigned int    m_uiEndIdx;
     unsigned int    m_uiSize;

@@ -19,7 +19,7 @@ CTrailerSA::CTrailerSA( CTrailerSAInterface * trailer ):CAutomobileSA( trailer )
     this->m_pInterface = trailer;
 }
 
-CTrailerSA::CTrailerSA( eVehicleTypes dwModelID, unsigned char ucVariation, unsigned char ucVariation2 ):CAutomobileSA( dwModelID, ucVariation, ucVariation2 )
+CTrailerSA::CTrailerSA( eVehicleTypes dwModelID ):CAutomobileSA( dwModelID )
 {
     DEBUG_TRACE("CTrailerSA::CTrailerSA( eVehicleTypes dwModelID ):CVehicleSA( dwModelID )");
 }

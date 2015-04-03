@@ -19,7 +19,7 @@ CMonsterTruckSA::CMonsterTruckSA( CMonsterTruckSAInterface * monstertruck ):CAut
     this->m_pInterface = monstertruck;
 }
 
-CMonsterTruckSA::CMonsterTruckSA( eVehicleTypes dwModelID, unsigned char ucVariation, unsigned char ucVariation2 ):CAutomobileSA( dwModelID, ucVariation, ucVariation2 )
+CMonsterTruckSA::CMonsterTruckSA( eVehicleTypes dwModelID ):CAutomobileSA( dwModelID )
 {
     DEBUG_TRACE("CMonsterTruckSA::CMonsterTruckSA( eVehicleTypes dwModelID ):CVehicleSA( dwModelID )");
 }

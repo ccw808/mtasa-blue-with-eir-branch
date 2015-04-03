@@ -25,6 +25,7 @@ public:
 
     static unsigned char    GetWeaponID         ( const char* szName );
     static const char*      GetWeaponName       ( unsigned char ucID );
+
     static char             GetSlotFromWeapon   ( unsigned char ucID );
 
     static bool             DoesSlotHaveAmmo    ( unsigned int uiSlot )

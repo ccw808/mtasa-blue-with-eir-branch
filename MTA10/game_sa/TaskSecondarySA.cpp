@@ -22,7 +22,6 @@ CTaskSimpleDuckSA::CTaskSimpleDuckSA ( eDuckControlTypes nDuckControl, unsigned 
 {
     DWORD dwFunc = FUNC_CTaskSimpleDuck__Constructor;
     this->CreateTaskInterface(sizeof(CTaskSimpleDuckSAInterface));
-    if ( !IsValid () ) return;
     DWORD dwThisInterface = (DWORD)this->GetInterface();
     _asm
     {

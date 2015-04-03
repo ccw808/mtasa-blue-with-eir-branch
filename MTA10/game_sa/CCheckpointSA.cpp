@@ -15,7 +15,7 @@
 VOID CCheckpointSA::SetPosition(CVector * vecPosition)
 {
     DEBUG_TRACE("VOID CCheckpointSA::SetPosition(CVector * vecPosition)");
-    MemCpyFast (&this->GetInterface()->m_pos, vecPosition, sizeof(CVector));
+    memcpy(&this->GetInterface()->m_pos, vecPosition, sizeof(CVector));
 }
 
 CVector * CCheckpointSA::GetPosition()
@@ -27,7 +27,7 @@ CVector * CCheckpointSA::GetPosition()
 VOID CCheckpointSA::SetPointDirection(CVector * vecPointDirection)
 {
     DEBUG_TRACE("VOID CCheckpointSA::SetPointDirection(CVector * vecPointDirection)");
-    MemCpyFast (&this->GetInterface()->m_pointDir, vecPointDirection, sizeof(CVector));
+    memcpy(&this->GetInterface()->m_pointDir, vecPointDirection, sizeof(CVector));
 }
 
 CVector * CCheckpointSA::GetPointDirection()
@@ -78,10 +78,10 @@ SColor CCheckpointSA::GetColor()
     // From ABGR
     unsigned long ulABGR = this->GetInterface()->rwColour;
     SColor color;
-    color.A = ( ulABGR >> 24 ) & 0xff;
-    color.B = ( ulABGR >> 16 ) & 0xff;
-    color.G = ( ulABGR >> 8 ) & 0xff;
-    color.R = ulABGR & 0xff;
+    color.A = ( ulABGR >> 24 ) && 0xff;
+    color.B = ( ulABGR >> 16 ) && 0xff;
+    color.G = ( ulABGR >> 8 ) && 0xff;
+    color.R = ulABGR && 0xff;
     return color;
 }
 

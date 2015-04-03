@@ -17,9 +17,6 @@
 
 extern CGame* g_pGame;
 
-//
-// NOTE: Any changes to this function will require similar changes to CSimVehiclePuresyncPacket::Read()
-//
 bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
 {
     // Got a player to read?
@@ -54,33 +51,11 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                 return false;
             pSourcePlayer->SetPosition ( position.data.vecPosition );
 
-            if ( pVehicle->GetVehicleType() == VEHICLE_TRAIN )
-            {
-                // Train specific data
-                float fPosition = 0.0f;
-                uchar ucTrack = 0;
-                bool bDirection = false;
-                float fSpeed = 0.0f;
-                BitStream.Read ( fPosition );
-                BitStream.ReadBit ( bDirection );
-                BitStream.Read ( ucTrack );
-                BitStream.Read ( fSpeed );
-                pVehicle->SetTrainPosition ( fPosition );
-                pVehicle->SetTrainDirection ( bDirection );
-                pVehicle->SetTrainTrack ( ucTrack );
-                pVehicle->SetTrainSpeed ( fSpeed );
-            }
-
-            // Read the camera orientation
-            CVector vecCamPosition, vecCamFwd;
-            ReadCameraOrientation ( position.data.vecPosition, BitStream, vecCamPosition, vecCamFwd );
-            pSourcePlayer->SetCameraOrientation ( vecCamPosition, vecCamFwd );
-
             // Jax: don't allow any outdated packets through
-            SOccupiedSeatSync seat;
-            if ( !BitStream.Read ( &seat ) )
+            unsigned char ucSeat;
+            if ( !BitStream.Read ( ucSeat ) )
                 return false;
-            if ( seat.data.ucSeat != pSourcePlayer->GetOccupiedVehicleSeat () )
+            if ( ucSeat != pSourcePlayer->GetOccupiedVehicleSeat () )
             {
                 // Mis-matching seats can happen when we warp into a different one,
                 // which will screw up the whole packet
@@ -119,8 +94,7 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                 SVehicleHealthSync health;
                 if ( !BitStream.Read ( &health ) )
                     return false;
-
-                float fPreviousHealth = pVehicle->GetLastSyncedHealth ( );
+                float fPreviousHealth = pVehicle->GetHealth ();                
                 float fHealth = health.data.fValue;
 
                 // Less than last time?
@@ -138,12 +112,10 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                     }
                 }
                 pVehicle->SetHealth ( fHealth );
-                // Stops sync + fixVehicle/setElementHealth conflicts triggering onVehicleDamage by having a seperate stored float keeping track of ONLY what comes in via sync
-                // - Caz
-                pVehicle->SetLastSyncedHealth( fHealth );
 
                 // Trailer chain
                 CVehicle* pTowedByVehicle = pVehicle;
+                CVehicle* pTrailer = NULL;
                 ElementID TrailerID;
                 bool bHasTrailer;
                 if ( !BitStream.ReadBit ( bHasTrailer ) )
@@ -151,8 +123,10 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
 
                 while ( bHasTrailer )
                 {
-                    BitStream.Read ( TrailerID );
-                    CVehicle* pTrailer = GetElementFromId < CVehicle > ( TrailerID );
+                    BitStream.ReadCompressed ( TrailerID );
+                    CElement* pElement = CElementIDs::GetElement ( TrailerID );
+                    if ( pElement )
+                        pTrailer = static_cast < CVehicle* > ( pElement );
                     
                     // Read out the trailer position and rotation
                     SPositionSync trailerPosition ( false );
@@ -181,8 +155,8 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                                 pCurrentTrailer->SetTowedByVehicle ( NULL );
 
                                 // Tell everyone to detach them
-                                CVehicleTrailerPacket DetachPacket ( pTowedByVehicle, pCurrentTrailer, false );
-                                g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( DetachPacket );
+                                CVehicleTrailerPacket AttachPacket ( pTowedByVehicle, pCurrentTrailer, false );
+                                g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( AttachPacket );
 
                                 // Execute the attach trailer script function
                                 CLuaArguments Arguments;
@@ -198,8 +172,8 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                                 pTrailer->SetTowedByVehicle ( NULL );
 
                                 // Tell everyone to detach them
-                                CVehicleTrailerPacket DetachPacket ( pCurrentVehicle, pTrailer, false );
-                                g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( DetachPacket );
+                                CVehicleTrailerPacket AttachPacket ( pCurrentVehicle, pTrailer, false );
+                                g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( AttachPacket );
 
                                 // Execute the attach trailer script function
                                 CLuaArguments Arguments;
@@ -237,34 +211,13 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                     pCurrentTrailer->SetTowedByVehicle ( NULL );
 
                     // Tell everyone else to detach them
-                    CVehicleTrailerPacket DetachPacket ( pTowedByVehicle, pCurrentTrailer, false );
-                    g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( DetachPacket );
+                    CVehicleTrailerPacket AttachPacket ( pTowedByVehicle, pCurrentTrailer, false );
+                    g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( AttachPacket );
 
                     // Execute the detach trailer script function
                     CLuaArguments Arguments;
                     Arguments.PushElement ( pTowedByVehicle );
-                    pCurrentTrailer->CallEvent ( "onTrailerDetach", Arguments );
-                }
-            }
-
-            // Update Damage info
-            if ( BitStream.Version() >= 0x047) 
-            {
-                if ( BitStream.ReadBit () == true )
-                {
-                    ElementID DamagerID;
-                    if ( !BitStream.Read ( DamagerID ) )
-                        return false;
-
-                    SWeaponTypeSync weaponType;
-                    if ( !BitStream.Read ( &weaponType ) )
-                        return false;
-
-                    SBodypartSync bodyPart;
-                    if ( !BitStream.Read ( &bodyPart ) )
-                        return false;
-
-                    pSourcePlayer->SetDamageInfo ( DamagerID, weaponType.data.ucWeaponType, bodyPart.data.uiBodypart );
+                    pCurrentTrailer->CallEvent ( "onTrailerDetach", Arguments );                    
                 }
             }
 
@@ -280,29 +233,13 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
             // Less than last packet's frame?
             if ( fHealth < fOldHealth && fHealthLoss > 0 )
             {
-                if (BitStream.Version() <= 0x046)
-                {
-                    // Call the onPlayerDamage event
-                    CLuaArguments Arguments;
-                    Arguments.PushNil ();
-                    Arguments.PushNumber ( false );
-                    Arguments.PushNumber ( false );
-                    Arguments.PushNumber ( fHealthLoss );
-                    pSourcePlayer->CallEvent ( "onPlayerDamage", Arguments );
-                }
-                else
-                {
-                    // Call the onPlayerDamage event
-                    CLuaArguments Arguments;
-                    
-                    CElement* pDamageSource = CElementIDs::GetElement ( pSourcePlayer->GetPlayerAttacker () );
-                    if ( pDamageSource ) Arguments.PushElement ( pDamageSource );
-                    else Arguments.PushNil();
-                    Arguments.PushNumber ( pSourcePlayer->GetAttackWeapon () );
-                    Arguments.PushNumber ( pSourcePlayer->GetAttackBodyPart () );
-                    Arguments.PushNumber ( fHealthLoss );
-                    pSourcePlayer->CallEvent ( "onPlayerDamage", Arguments );              
-                }
+                // Call the onPlayerDamage event
+                CLuaArguments Arguments;
+                Arguments.PushNil ();
+                Arguments.PushNumber ( false );
+                Arguments.PushNumber ( false );
+                Arguments.PushNumber ( fHealthLoss );
+                pSourcePlayer->CallEvent ( "onPlayerDamage", Arguments );
             }
             pSourcePlayer->SetHealth ( fHealth );
 
@@ -318,29 +255,14 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
             // Less than last packet's frame?
             if ( fArmor < fOldArmor && fArmorLoss > 0 )
             {
-                if (BitStream.Version() <= 0x046)
-                {
-                    // Call the onPlayerDamage event
-                    CLuaArguments Arguments;
-                    Arguments.PushNil ();
-                    Arguments.PushNumber ( false );
-                    Arguments.PushNumber ( false );
-                    Arguments.PushNumber ( fArmorLoss );
-                    pSourcePlayer->CallEvent ( "onPlayerDamage", Arguments );
-                }
-                else
-                {
-                    // Call the onPlayerDamage event
-                    CLuaArguments Arguments;
-                    
-                    CElement* pDamageSource = CElementIDs::GetElement ( pSourcePlayer->GetPlayerAttacker () );
-                    if ( pDamageSource ) Arguments.PushElement ( pDamageSource );
-                    else Arguments.PushNil();
-                    Arguments.PushNumber ( pSourcePlayer->GetAttackWeapon () );
-                    Arguments.PushNumber ( pSourcePlayer->GetAttackBodyPart () );
-                    Arguments.PushNumber ( fArmorLoss );
-                    pSourcePlayer->CallEvent ( "onPlayerDamage", Arguments );              
-                }          
+                // Call the onPlayerDamage event
+                CLuaArguments Arguments;
+                Arguments.PushNil ();
+                Arguments.PushNumber ( false );
+                Arguments.PushNumber ( false );
+                Arguments.PushNumber ( fArmorLoss );
+
+                pSourcePlayer->CallEvent ( "onPlayerDamage", Arguments );                   
             }
             pSourcePlayer->SetArmor ( fArmor );
 
@@ -352,7 +274,6 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
             pSourcePlayer->SetWearingGoggles ( flags.data.bIsWearingGoggles );
             pSourcePlayer->SetDoingGangDriveby ( flags.data.bIsDoingGangDriveby );            
 
-
             // Weapon sync
             if ( flags.data.bHasAWeapon )
             {
@@ -363,19 +284,15 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
                 pSourcePlayer->SetWeaponSlot ( slot.data.uiSlot );
 
                 if ( flags.data.bIsDoingGangDriveby && CWeaponNames::DoesSlotHaveAmmo ( slot.data.uiSlot ) )
-                {      
-                    float fWeaponRange = pSourcePlayer->GetWeaponRangeFromSlot ( slot.data.uiSlot );
-
+                {
                     // Read the ammo states
-                    SWeaponAmmoSync ammo ( pSourcePlayer->GetWeaponType (), BitStream.Version () >= 0x44, true );
+                    SWeaponAmmoSync ammo ( pSourcePlayer->GetWeaponType (), false, true );
                     if ( !BitStream.Read ( &ammo ) )
                         return false;
                     pSourcePlayer->SetWeaponAmmoInClip ( ammo.data.usAmmoInClip );
-                    if ( BitStream.Version () >= 0x44 )
-                        pSourcePlayer->SetWeaponTotalAmmo ( ammo.data.usTotalAmmo );
 
                     // Read aim data
-                    SWeaponAimSync aim ( fWeaponRange, true );
+                    SWeaponAimSync aim ( pSourcePlayer->GetWeaponRange (), true );
                     if ( !BitStream.Read ( &aim ) )
                         return false;
                     pSourcePlayer->SetAimDirection ( aim.data.fArm );
@@ -427,9 +344,6 @@ bool CVehiclePuresyncPacket::Read ( NetBitStreamInterface& BitStream )
 }
 
 
-//
-// NOTE: Any changes to this function will require similar changes to CSimVehiclePuresyncPacket::Write()
-//
 bool CVehiclePuresyncPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
     // Got a player to send?
@@ -453,7 +367,7 @@ bool CVehiclePuresyncPacket::Write ( NetBitStreamInterface& BitStream ) const
             BitStream.WriteCompressed ( usLatency );
 
             // Write the keysync data
-            const CControllerState& ControllerState = pSourcePlayer->GetPad ()->GetCurrentControllerState ();
+            CControllerState ControllerState = pSourcePlayer->GetPad ()->GetCurrentControllerState ();
             WriteFullKeysync ( ControllerState, BitStream );
 
             // Write the vehicle matrix only if he's the driver
@@ -465,19 +379,6 @@ bool CVehiclePuresyncPacket::Write ( NetBitStreamInterface& BitStream ) const
                 SPositionSync position ( false );
                 position.data.vecPosition = pVehicle->GetPosition ();
                 BitStream.Write ( &position );
-
-                if ( pVehicle->GetVehicleType() == VEHICLE_TRAIN )
-                {
-                    // Train specific data
-                    float fPosition = pVehicle->GetTrainPosition ( );
-                    uchar ucTrack = pVehicle->GetTrainTrack ( );
-                    bool bDirection = pVehicle->GetTrainDirection ( );
-                    float fSpeed = pVehicle->GetTrainSpeed ( );
-                    BitStream.Write ( fPosition );
-                    BitStream.WriteBit ( bDirection );
-                    BitStream.Write ( ucTrack );
-                    BitStream.Write ( fSpeed );
-                }
 
                 // Vehicle rotation
                 SRotationDegreesSync rotation;
@@ -498,38 +399,6 @@ bool CVehiclePuresyncPacket::Write ( NetBitStreamInterface& BitStream ) const
                 SVehicleHealthSync health;
                 health.data.fValue = pVehicle->GetHealth ();
                 BitStream.Write ( &health );
-
-                // Write the trailer chain
-                if ( BitStream.Version () >= 0x42 )
-                {
-                    CVehicle* pTrailer = pVehicle->GetTowedVehicle ();
-                    while ( pTrailer )
-                    {
-                        BitStream.WriteBit ( true );
-                        BitStream.Write ( pTrailer->GetID () );
-
-                        // Write the position and rotation
-                        CVector vecTrailerPosition, vecTrailerRotationDegrees;
-
-                        // Write the matrix
-                        vecTrailerPosition = pTrailer->GetPosition ();
-                        pTrailer->GetRotationDegrees ( vecTrailerRotationDegrees );
-
-                        SPositionSync trailerPosition ( false );
-                        trailerPosition.data.vecPosition = vecTrailerPosition;
-                        BitStream.Write ( &trailerPosition );
-
-                        SRotationDegreesSync trailerRotation;
-                        trailerRotation.data.vecRotation = vecTrailerRotationDegrees;
-                        BitStream.Write ( &trailerRotation );
-
-                        // Get the next towed vehicle
-                        pTrailer = pTrailer->GetTowedVehicle ();
-                    }
-
-                    // End of our trailer chain
-                    BitStream.WriteBit ( false );
-                }
             }
 
             // Player health and armor
@@ -571,9 +440,8 @@ bool CVehiclePuresyncPacket::Write ( NetBitStreamInterface& BitStream ) const
                 if ( flags.data.bIsDoingGangDriveby && CWeaponNames::DoesSlotHaveAmmo ( slot.data.uiSlot ) )
                 {
                     // Write the ammo states
-                    SWeaponAmmoSync ammo ( ucWeaponType, BitStream.Version () >= 0x44, true );
+                    SWeaponAmmoSync ammo ( ucWeaponType, false, true );
                     ammo.data.usAmmoInClip = pSourcePlayer->GetWeaponAmmoInClip ();
-                    ammo.data.usTotalAmmo = pSourcePlayer->GetWeaponTotalAmmo ();
                     BitStream.Write ( &ammo );
 
                     // Sync aim data
@@ -604,23 +472,6 @@ bool CVehiclePuresyncPacket::Write ( NetBitStreamInterface& BitStream ) const
                 BitStream.WriteBit ( ControllerState.RightShoulder2 != 0 );
             }
 
-            // Write parts state
-            if ( BitStream.Version() >= 0x5D )
-            {
-                SVehicleDamageSyncMethodeB damage;
-                // Check where we are in the cycle
-                uchar ucMode = ( pVehicle->m_uiDamageInfoSendPhase & 3 );
-                damage.data.bSyncDoors = ( ucMode == 0 );
-                damage.data.bSyncWheels = ( ucMode == 1 );
-                damage.data.bSyncPanels = ( ucMode == 2 );
-                damage.data.bSyncLights = ( ucMode == 3 );
-                damage.data.doors.data.ucStates = pVehicle->m_ucDoorStates;
-                damage.data.wheels.data.ucStates = pVehicle->m_ucWheelStates;
-                damage.data.panels.data.ucStates = pVehicle->m_ucPanelStates;
-                damage.data.lights.data.ucStates = pVehicle->m_ucLightStates;
-                BitStream.Write ( &damage );
-            }
-
             // Success
             return true;
         }
@@ -637,7 +488,7 @@ void CVehiclePuresyncPacket::ReadVehicleSpecific ( CVehicle* pVehicle, NetBitStr
     if ( CVehicleManager::HasTurret ( usModel ) ) 
     {
         // Read out the turret position
-        SVehicleTurretSync vehicle;
+        SVehicleSpecific vehicle;
         if ( !BitStream.Read ( &vehicle ) )
             return;
 
@@ -654,19 +505,6 @@ void CVehiclePuresyncPacket::ReadVehicleSpecific ( CVehicle* pVehicle, NetBitStr
             pVehicle->SetAdjustableProperty ( usAdjustableProperty );
         }
     }
-
-    // Door angles.
-    if ( CVehicleManager::HasDoors ( usModel ) )
-    {
-        SDoorOpenRatioSync door;
-
-        for ( unsigned int i = 2; i < 6; ++i )
-        {
-            if ( !BitStream.Read ( &door ) )
-                return;
-            pVehicle->SetDoorOpenRatio ( i, door.data.fRatio );
-        }
-    }
 }
 
 
@@ -676,7 +514,7 @@ void CVehiclePuresyncPacket::WriteVehicleSpecific ( CVehicle* pVehicle, NetBitSt
     unsigned short usModel = pVehicle->GetModel ();
     if ( CVehicleManager::HasTurret ( usModel ) )
     {
-        SVehicleTurretSync vehicle;
+        SVehicleSpecific vehicle;
         pVehicle->GetTurretPosition ( vehicle.data.fTurretX, vehicle.data.fTurretY );
 
         BitStream.Write ( &vehicle );
@@ -686,16 +524,5 @@ void CVehiclePuresyncPacket::WriteVehicleSpecific ( CVehicle* pVehicle, NetBitSt
     if ( CVehicleManager::HasAdjustableProperty ( usModel ) )
     {
         BitStream.Write ( pVehicle->GetAdjustableProperty () );
-    }
-
-    // Door angles.
-    if ( CVehicleManager::HasDoors ( usModel ) )
-    {
-        SDoorOpenRatioSync door;
-        for ( unsigned int i = 2; i < 6; ++i )
-        {
-            door.data.fRatio = pVehicle->GetDoorOpenRatio ( i );
-            BitStream.Write ( &door );
-        }
     }
 }

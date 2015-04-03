@@ -28,16 +28,12 @@ public:
 
                                 CHTTPD      ( void ); // start the initial server
                                 ~CHTTPD     ();
-    // EHS interface
-    HttpResponse* RouteRequest ( HttpRequest * ipoHttpRequest );
+
     ResponseCode HandleRequest ( HttpRequest * ipoHttpRequest,
                                  HttpResponse * ipoHttpResponse );
     void         HttpPulse     ( void );
-    bool         ShouldAllowConnection ( const char * szAddress );
-
-    // CHTTPD methods   
+    
     bool                        StartHTTPD ( const char* szIP, unsigned int port );
-    bool                        StopHTTPD ( void );
     inline void                 SetResource ( CResource * resource ) { m_resource = resource; }
     inline CResource *          GetResource ( void ) { return m_resource; }
     class CAccount *            CheckAuthentication ( HttpRequest * ipoHttpRequest );
@@ -55,8 +51,6 @@ private:
     class CAccount *            m_pGuestAccount;
     map < string, long long >   m_LoggedInMap;
     CConnectHistory             m_BruteForceProtect;
-    CConnectHistory             m_HttpDosProtect;
-    std::set < SString >        m_HttpDosExcludeMap;
 };
 
 #endif

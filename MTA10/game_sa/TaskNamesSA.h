@@ -15,10 +15,10 @@
 
 struct sTaskName
 {
-    const char* szName;
+    char        szName[100];
 };
 
-extern const char* sNoTaskName;
+extern char sNoTaskName [100];
 
-extern const sTaskName TaskNames [1802];
+extern sTaskName TaskNames [1802];
 #endif

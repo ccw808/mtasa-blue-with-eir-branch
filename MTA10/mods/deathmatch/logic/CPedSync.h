@@ -27,6 +27,7 @@ public:
 
     void                            AddPed                              ( CClientPed* pPed );
     void                            RemovePed                           ( CClientPed* pPed );
+    void                            ClearPeds                           ( void );
 
     inline std::list < CClientPed* > ::const_iterator
                                     IterBegin                           ( void )    { return m_List.begin (); };
@@ -43,7 +44,7 @@ private:
     void                            WritePedInformation                 ( NetBitStreamInterface* pBitStream, CClientPed* pPed );
 
     CClientPedManager*              m_pPedManager;
-    CMappedList < CClientPed* >     m_List;
+    std::list < CClientPed* >       m_List;
     unsigned long                   m_ulLastSyncTime;
 };
 

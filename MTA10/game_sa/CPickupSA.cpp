@@ -157,7 +157,6 @@ VOID CPickupSA::GiveUsAPickUpObject(int ForcedObjectIndex)
     {
         if ( this->object )
         {
-            ((CEntitySA*)this->object)->DoNotRemoveFromGame = true;
             delete this->object;
         }
 
@@ -169,11 +168,10 @@ VOID CPickupSA::GetRidOfObjects()
 {
     DEBUG_TRACE("VOID CPickupSA::GetRidOfObjects()");
     if(this->GetInterface()->pObject)
-        ((CWorldSA *)pGame->GetWorld())->Remove(this->GetInterface()->pObject, CPickup_Destructor);
+        ((CWorldSA *)pGame->GetWorld())->Remove(this->GetInterface()->pObject);
     
     if(this->object)
     {
-        ((CEntitySA*)this->object)->DoNotRemoveFromGame = true;
         delete this->object;
         this->object = NULL;
     }

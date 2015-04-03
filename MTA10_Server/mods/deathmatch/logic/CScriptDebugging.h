@@ -30,32 +30,22 @@ public:
     bool                            RemovePlayer                    ( class CPlayer& Player );
     void                            ClearPlayers                    ( void );
 
+    void                            OutputDebugInfo                 ( lua_State* luaVM, int iLevel, unsigned char ucRed = 255, unsigned char ucGreen = 255, unsigned char ucBlue = 255 );
+
     void                            LogCustom                       ( lua_State* luaVM, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue, const char* szFormat, ... );
     void                            LogInformation                  ( lua_State* luaVM, const char* szFormat, ... );
     void                            LogWarning                      ( lua_State* luaVM, const char* szFormat, ... );
     void                            LogError                        ( lua_State* luaVM, const char* szFormat, ... );
-    void                            LogBadPointer                   ( lua_State* luaVM, const char* szArgumentType, unsigned int uiArgument );
-    void                            LogBadType                      ( lua_State* luaVM );
-    void                            LogBadAccess                    ( lua_State* luaVM );
+    void                            LogBadPointer                   ( lua_State* luaVM, const char* szFunction, const char* szArgumentType, unsigned int uiArgument );
+    void                            LogBadType                      ( lua_State* luaVM, const char* szFunction );
+    void                            LogBadAccess                    ( lua_State* luaVM, const char* szFunction );
     void                            LogCustom                       ( lua_State* luaVM, const char* szMessage );
-    void                            LogWarning                      ( const SLuaDebugInfo& luaDebugInfo, const char* szFormat, ... );
-    void                            LogError                        ( const SLuaDebugInfo& luaDebugInfo, const char* szFormat, ... );
-    void                            LogPCallError                   ( lua_State* luaVM, const SString& strRes, bool bInitialCall = false );
 
     bool                            SetLogfile                      ( const char* szFilename, unsigned int uiLevel );
     inline void                     SetHTMLLogLevel                 ( unsigned int uiLevel ) { m_uiHtmlLogLevel = uiLevel; }
 
-    const SLuaDebugInfo&            GetLuaDebugInfo                 ( lua_State* luaVM );
-    void                            SaveLuaDebugInfo                ( const SLuaDebugInfo& luaDebugInfo ) { m_SavedLuaDebugInfo = luaDebugInfo; }
-
-    void                            PushLuaMain                     ( CLuaMain* pLuaMain );
-    void                            PopLuaMain                      ( CLuaMain* pLuaMain );
-    void                            OnLuaMainDestroy                ( CLuaMain* pLuaMain );
-    CLuaMain*                       GetTopLuaMain                   ( void );
-
 private:
-    SString                         ComposeErrorMessage             ( const char* szPrePend, const SLuaDebugInfo& luaDebugInfo, const char* szMessage );
-    void                            LogString                       ( const char* szPrePend, const SLuaDebugInfo& luaDebugInfo, const char* szMessage, unsigned int uiMinimumDebugLevel, unsigned char ucRed = 255, unsigned char ucGreen = 255, unsigned char ucBlue = 255 );
+    void                            LogString                       ( const char* szPrePend, lua_State * luaVM, const char* szMessage, unsigned int uiMinimumDebugLevelunsigned, unsigned char ucRed = 255, unsigned char ucGreen = 255, unsigned char ucBlue = 255 );
 
     void                            PrintLog                        ( const char* szText );
     void                            Broadcast                       ( const CPacket& Packet, unsigned int uiMinimumDebugLevel );
@@ -65,9 +55,6 @@ private:
     unsigned int                    m_uiHtmlLogLevel;
     FILE*                           m_pLogFile;
     list < class CPlayer* >         m_Players;
-    bool                            m_bTriggeringOnDebugMessage;
-    SLuaDebugInfo                   m_SavedLuaDebugInfo;
-    std::list < CLuaMain* >         m_LuaMainStack;
 };
 
 #endif

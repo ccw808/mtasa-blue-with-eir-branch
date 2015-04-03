@@ -330,9 +330,9 @@ public:
 		Depending upon the internal state, this may either re-use rendering from last time, or trigger a full re-draw from all elements.
 
 	\return
-		False if render failed
+		Nothing
 	*/
-	bool	renderGUI(void);
+	void	renderGUI(void);
 
 
 	/*!
@@ -826,14 +826,7 @@ public:
 	*/
 	bool	injectTimePulse(float timeElapsed);
 
-    bool    isStarted(void) { return d_started; }
 
-    void                            SetGuiWorkingDirectory      ( const String& strDir )    { d_guiWorkingDirectory = strDir; }
-    String                          GetGuiWorkingDirectory      ( void )                    { return d_guiWorkingDirectory; }
-
-    bool                            d_started;
-    static void                     SetBidiEnabled              ( bool bEnabled ) { ms_bBidiEnabled = bEnabled; }
-    static bool                     ms_bBidiEnabled;
 private:
     // unimplemented constructors / assignment
     System(const System& obj);
@@ -1025,8 +1018,6 @@ private:
 	// scripting
 	ScriptModule*	d_scriptModule;			//!< Points to the scripting support module.
 	String			d_termScriptName;		//!< Name of the script to run upon system shutdown.
-
-    String          d_guiWorkingDirectory;
 
 	float	d_mouseScalingFactor;			//!< Scaling applied to mouse movement inputs.
 

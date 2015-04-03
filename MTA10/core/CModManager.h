@@ -41,12 +41,16 @@ public:
     void                Unload                  ( void );
 
     void                DoPulsePreFrame         ( void );
-    void                DoPulsePreHUDRender     ( bool bDidUnminimize, bool bDidRecreateRenderTargets );
     void                DoPulsePostFrame        ( void );
 
     CClientBase*        GetCurrentMod           ( void );
 
     void                RefreshMods             ( void );
+
+    static long WINAPI  HandleExceptionGlobal   ( _EXCEPTION_POINTERS* pException );
+    static void         DumpCoreLog             ( CExceptionInformation* pExceptionInformation );
+    static void         DumpMiniDump            ( _EXCEPTION_POINTERS* pException );
+    static void         RunErrorTool            ( CExceptionInformation* pExceptionInformation );
 
 private:
     void                InitializeModList       ( const char* szModFolderPath );

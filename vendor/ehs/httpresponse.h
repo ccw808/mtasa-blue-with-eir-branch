@@ -13,6 +13,8 @@
 #include <sstream>
 #include <string.h>
 
+#include <assert.h>
+
 #include "ehstypes.h"
 #include "datum.h"
 

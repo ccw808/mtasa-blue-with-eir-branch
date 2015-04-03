@@ -19,16 +19,21 @@ extern "C"
     #include "lua.h"
     #include "lualib.h"
     #include "lauxlib.h"
+
+    LUALIB_API int luaM_toref (lua_State *L, int i);
 }
 
-CLuaFunctionRef         luaM_toref              ( lua_State *luaVM, int iArgument );
+#define abs_index(L, i) \
+    ((i) > 0 || (i) <= LUA_REGISTRYINDEX ? (i) : \
+    lua_gettop(L) + (i) + 1)
+#define FREELIST_REF    0
+#define RESERVED_REFS   2
 
 #define TO_ELEMENTID(x) ((ElementID) reinterpret_cast < unsigned long > (x) )
 
 // Predeclarations of our classes
 class CClientColModel;
 class CClientColShape;
-class CScriptFile;
 class CClientDFF;
 class CClientEntity;
 class CClientGUIElement;
@@ -42,64 +47,77 @@ class CClientTeam;
 class CClientTXD;
 class CClientVehicle;
 class CClientWater;
-class CClientWeapon;
 class CClientRadarArea;
-class CClientPointLights;
 class CLuaTimer;
 class CResource;
 class CXMLNode;
 
 
+#define VERIFY_FUNCTION(func) (func!=LUA_REFNIL)
+
+
 // Lua push/pop macros for our datatypes
+CClientRadarMarker*     lua_toblip          ( lua_State* luaVM, int iArgument );
+CClientColModel*        lua_tocolmodel      ( lua_State* luaVM, int iArgument );
+CClientColShape*        lua_tocolshape      ( lua_State* luaVM, int iArgument );
+CClientDFF*             lua_todff           ( lua_State* luaVM, int iArgument );
+CClientEntity*          lua_toelement       ( lua_State* luaVM, int iArgument );
+CClientGUIElement*      lua_toguielement    ( lua_State* luaVM, int iArgument );
+CClientMarker*          lua_tomarker        ( lua_State* luaVM, int iArgument );
+CClientObject*          lua_toobject        ( lua_State* luaVM, int iArgument );
+CClientPed*             lua_toped           ( lua_State* luaVM, int iArgument );
+CClientPickup*          lua_topickup        ( lua_State* luaVM, int iArgument );
+CClientPlayer*          lua_toplayer        ( lua_State* luaVM, int iArgument );
+CClientProjectile*      lua_toprojectile    ( lua_State* luaVM, int iArgument );
+CLuaTimer*              lua_totimer         ( lua_State* luaVM, int iArgument );
+CResource*              lua_toresource      ( lua_State* luaVM, int iArgument );
+CClientSound*           lua_tosound         ( lua_State* luaVM, int iArgument );
+CClientTeam*            lua_toteam          ( lua_State* luaVM, int iArgument );
+CClientTXD*             lua_totxd           ( lua_State* luaVM, int iArgument );
+CClientVehicle*         lua_tovehicle       ( lua_State* luaVM, int iArgument );
+CClientWater*           lua_towater         ( lua_State* luaVM, int iArgument );
+CXMLNode*               lua_toxmlnode       ( lua_State* luaVM, int iArgument );
+CClientRadarArea*       lua_toradararea     ( lua_State* luaVM, int iArgument );
 
-class CClientEntity*    lua_toelement           ( lua_State* luaVM, int iArgument );
+void                    lua_pushelement     ( lua_State* luaVM, CClientEntity* pElement );
+void                    lua_pushresource    ( lua_State* luaVM, CResource* pElement );
+void                    lua_pushtimer       ( lua_State* luaVM, CLuaTimer* pElement );
+void                    lua_pushxmlnode     ( lua_State* luaVM, CXMLNode* pElement );
 
-void                    lua_pushelement         ( lua_State* luaVM, CClientEntity* pElement );
-void                    lua_pushresource        ( lua_State* luaVM, CResource* pElement );
-void                    lua_pushtimer           ( lua_State* luaVM, CLuaTimer* pElement );
-void                    lua_pushxmlnode         ( lua_State* luaVM, CXMLNode* pElement );
-void                    lua_pushuserdata        ( lua_State* luaVM, void* pData );
+#define lua_istype(luavm, number,type) (lua_type(luavm,number) == type)
 
-void                    lua_pushobject          ( lua_State* luaVM, const char* szClass, void* pObject );
-
-void                    lua_pushvector          ( lua_State* luaVM, const CVector4D& vector );
-void                    lua_pushvector          ( lua_State* luaVM, const CVector& vector );
-void                    lua_pushvector          ( lua_State* luaVM, const CVector2D& vector );
-void                    lua_pushmatrix          ( lua_State* luaVM, const CMatrix& matrix );
-
-// Internal use
-void                    lua_initclasses         ( lua_State* luaVM );
-
-void                    lua_newclass            ( lua_State* luaVM );
-void                    lua_getclass            ( lua_State* luaVM, const char* szName );
-void                    lua_registerclass       ( lua_State* luaVM, const char* szName, const char* szParent = NULL );
-void                    lua_registerstaticclass ( lua_State* luaVM, const char* szName );
-void                    lua_classfunction       ( lua_State* luaVM, const char* szFunction, lua_CFunction fn );
-void                    lua_classfunction       ( lua_State* luaVM, const char* szFunction, const char* fn );
-void                    lua_classvariable       ( lua_State* luaVM, const char* szVariable, lua_CFunction set, lua_CFunction get );
-void                    lua_classvariable       ( lua_State* luaVM, const char* szVariable, const char* set, const char* get );
-void                    lua_classmetamethod     ( lua_State* luaVM, const char* szName, lua_CFunction fn );
-
-const char*             lua_makestring          ( lua_State* luaVM, int iArgument );
-
-// Lua debug info for logging
-enum
+// Custom Lua stack argument->reference function
+// This function should always be called last! (Since it pops the lua stack)
+static int luaM_toref (lua_State *L, int i) 
 {
-    DEBUG_INFO_NONE,
-    DEBUG_INFO_FILE_AND_LINE,
-    DEBUG_INFO_SHORT_SRC,
-};
+    int ref = -1;
 
-#define INVALID_LINE_NUMBER (-1)
+    // convert the function pointer to a string so we can use it as index
+    char buf[10] = {0};
+    char * index = itoa ( (int)lua_topointer ( L, i ), buf, 16 );
 
-struct SLuaDebugInfo
-{
-    SLuaDebugInfo( void ) : iLine( INVALID_LINE_NUMBER ), infoType( DEBUG_INFO_NONE ) {}
-    SLuaDebugInfo( const SString& strFile, int iLine ) : strFile( strFile ), iLine( iLine ), infoType( DEBUG_INFO_FILE_AND_LINE ) {}
-    SString     strFile;
-    SString     strShortSrc;
-    int         iLine;
-    int         infoType;
-};
+    // get the callback table we made in CLuaMain::InitVM (at location 1)
+    lua_getref ( L, 1 );
+    lua_getfield ( L, -1, index );
+    ref = static_cast < int > ( lua_tonumber ( L, -1 ) );
+    lua_pop ( L, 1 );
+    lua_pop ( L, 1 );
+
+    // if it wasn't added yet, add it to the callback table and the registry
+    // else, get the reference from the table
+    if ( !ref ) {
+        // add a new reference (and get the id)
+        lua_settop ( L, i );
+        ref = lua_ref ( L, 1 );
+
+        // and add it to the callback table
+        lua_getref ( L, 1 );
+        lua_pushstring ( L, index );
+        lua_pushnumber ( L, ref );
+        lua_settable ( L, -3 );
+        lua_pop ( L, 1 );
+    }
+    return ref;
+}
 
 #endif

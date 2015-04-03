@@ -21,10 +21,6 @@ CKeysyncPacket::CKeysyncPacket ( CPlayer * pPlayer )
     m_pSourceElement = pPlayer;
 }
 
-
-//
-// NOTE: Any changes to this function will require similar changes to CSimKeysyncPacket::Read()
-//
 bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
 {
     // Got a player to write?
@@ -34,14 +30,9 @@ bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
 
         // Read out the controller states
         CControllerState ControllerState;
-        if ( !ReadSmallKeysync ( ControllerState, BitStream ) )
+        CControllerState LastControllerState = pSourcePlayer->GetPad ()->GetLastControllerState ();
+        if ( !ReadSmallKeysync ( ControllerState, LastControllerState, BitStream ) )
             return false;
-
-        // Read the rotations
-        SKeysyncRotation rotation;
-        BitStream.Read ( &rotation );
-        float fPlayerCurrentRotation = rotation.data.fPlayerRotation;
-        float fCameraRotation = rotation.data.fCameraRotation;
 
         // Flags
         SKeysyncFlags flags;
@@ -52,65 +43,40 @@ bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
         pSourcePlayer->SetDucked ( flags.data.bIsDucked );
         pSourcePlayer->SetChoking ( flags.data.bIsChoking );
 
-        // If he's shooting or aiming
-        if ( ControllerState.ButtonCircle || ControllerState.RightShoulder1 )
+        // If he's shooting
+        if ( ControllerState.ButtonCircle )
         {
             bool bHasWeapon = BitStream.ReadBit ();
 
             if ( bHasWeapon )
             {
-                // Read client weapon data, but only apply it if the weapon matches with the server
-                uchar ucUseWeaponType = pSourcePlayer->GetWeaponType ();
-                bool bWeaponCorrect = true;
- 
-               // Check client has the weapon we think he has
-                unsigned char ucClientWeaponType;
-                if ( !BitStream.Read ( ucClientWeaponType ) )
-                    return false;
-
-                if ( pSourcePlayer->GetWeaponType () != ucClientWeaponType )
-                {
-                    bWeaponCorrect = false;                 // Possibly old weapon data.
-                    ucUseWeaponType = ucClientWeaponType;   // Use the packet supplied weapon type to skip over the correct amount of data
-                }
-
                 // Read out the current weapon slot and set it
                 SWeaponSlotSync slot;
                 if ( !BitStream.Read ( &slot ) )
                     return false;
                 unsigned int uiSlot = slot.data.uiSlot;
 
-                if ( bWeaponCorrect )
-                    pSourcePlayer->SetWeaponSlot ( uiSlot );
+                pSourcePlayer->SetWeaponSlot ( uiSlot );
 
                 // Did he have a weapon?
                 if ( CWeaponNames::DoesSlotHaveAmmo ( uiSlot ) )
                 {
                     // And ammo in clip
-                    SWeaponAmmoSync ammo ( ucUseWeaponType, false, true );
+                    SWeaponAmmoSync ammo ( pSourcePlayer->GetWeaponType (), false, true );
                     if ( !BitStream.Read ( &ammo ) )
                         return false;
-
-                    float fWeaponRange = pSourcePlayer->GetWeaponRangeFromSlot( uiSlot );
+                    pSourcePlayer->SetWeaponAmmoInClip ( ammo.data.usAmmoInClip );
 
                     // Read the aim data
-                    SWeaponAimSync aim ( fWeaponRange );
+                    SWeaponAimSync aim ( pSourcePlayer->GetWeaponRange () );
                     if ( !BitStream.Read ( &aim ) )
                         return false;
                     pSourcePlayer->SetSniperSourceVector ( aim.data.vecOrigin );
                     pSourcePlayer->SetTargettingVector ( aim.data.vecTarget );
 
-                    if ( bWeaponCorrect )
-                    {
-                        pSourcePlayer->SetWeaponAmmoInClip ( ammo.data.usAmmoInClip );
-
-                        pSourcePlayer->SetSniperSourceVector ( aim.data.vecOrigin );
-                        pSourcePlayer->SetTargettingVector ( aim.data.vecTarget );
-
-                        // Set the arm directions and whether or not arms are up
-                        pSourcePlayer->SetAimDirection ( aim.data.fArm );
-                        pSourcePlayer->SetAkimboArmUp ( flags.data.bAkimboTargetUp );
-                    }
+                    // Set the arm directions and whether or not arms are up
+                    pSourcePlayer->SetAimDirection ( aim.data.fArm );
+                    pSourcePlayer->SetAkimboArmUp ( flags.data.bAkimboTargetUp );
 
                     // Read out the driveby direction
                     unsigned char ucDriveByDirection;
@@ -156,8 +122,6 @@ bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
 
         // Set the controller states
         pSourcePlayer->GetPad ()->NewControllerState ( ControllerState );
-        pSourcePlayer->SetRotation ( fPlayerCurrentRotation );
-        pSourcePlayer->SetCameraRotation ( fCameraRotation );
 
         return true;
     }
@@ -165,9 +129,7 @@ bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
     return false;
 }
 
-//
-// NOTE: Any changes to this function will require similar changes to CSimKeysyncPacket::Write()
-//
+
 bool CKeysyncPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
     // Got a player to write?
@@ -178,17 +140,12 @@ bool CKeysyncPacket::Write ( NetBitStreamInterface& BitStream ) const
 
         // Write the source player id
         ElementID PlayerID = pSourcePlayer->GetID ();
-        BitStream.Write ( PlayerID );
+        BitStream.WriteCompressed ( PlayerID );
 
         // Write the keysync data
         const CControllerState& ControllerState = pSourcePlayer->GetPad ()->GetCurrentControllerState ();
-        WriteSmallKeysync ( ControllerState, BitStream );
-
-        // Write the rotations
-        SKeysyncRotation rotation;
-        rotation.data.fPlayerRotation = pSourcePlayer->GetRotation ();
-        rotation.data.fCameraRotation = pSourcePlayer->GetCameraRotation ();
-        BitStream.Write ( &rotation );
+        const CControllerState& LastControllerState = pSourcePlayer->GetPad ()->GetLastControllerState ();
+        WriteSmallKeysync ( ControllerState, LastControllerState, BitStream );
 
         // Flags
         SKeysyncFlags flags;
@@ -200,8 +157,8 @@ bool CKeysyncPacket::Write ( NetBitStreamInterface& BitStream ) const
         // Write the flags
         BitStream.Write ( &flags );
 
-        // If he's shooting or aiming
-        if ( ControllerState.ButtonCircle || ControllerState.RightShoulder1 )
+        // If he's shooting
+        if ( ControllerState.ButtonCircle )
         {
             // Write his current weapon slot
             unsigned int uiSlot = pSourcePlayer->GetWeaponSlot ();
@@ -266,7 +223,7 @@ void CKeysyncPacket::ReadVehicleSpecific ( CVehicle* pVehicle, NetBitStreamInter
     if ( CVehicleManager::HasTurret ( usModel ) )
     {
         // Read out the turret position
-        SVehicleTurretSync vehicle;
+        SVehicleSpecific vehicle;
         BitStream.Read ( &vehicle );
 
         // Set the data
@@ -282,7 +239,7 @@ void CKeysyncPacket::WriteVehicleSpecific ( CVehicle* pVehicle, NetBitStreamInte
     if ( CVehicleManager::HasTurret ( usModel ) )
     {
         // Grab the turret position
-        SVehicleTurretSync vehicle;
+        SVehicleSpecific vehicle;
         pVehicle->GetTurretPosition ( vehicle.data.fTurretX, vehicle.data.fTurretY );
 
         BitStream.Write ( &vehicle );

@@ -25,7 +25,6 @@
 *************************************************************************/
 #include "StdInc.h"
 #include "CEGUIString.h"
-#include "CEGUIStringBidi.h"
 
 #include <iostream>
 
@@ -138,38 +137,6 @@ utf8* String::build_utf8_buff(void) const
     return d_encodedbuff;
 }
 
-//Get the bidirectional version of the string
-String String::bidify(void) const
-{
-#ifdef DETECT_ARRAY_ISSUES
-    doBidiTest ();
-#endif
-    if ( !System::ms_bBidiEnabled )
-        return *this;
-
-    String tmp = *this;
-
-    // Apply in sections separated by \n
-    size_type pos = 0;
-    while ( true )
-    {
-        size_type newpos = tmp.find ( '\n', pos );
-        if ( newpos == String::npos )
-        {
-            doBidi(tmp.ptr() + pos, tmp.length() - pos, true, true);
-            break;
-        }
-        else
-        if ( newpos - pos > 0 )
-        {
-            doBidi(tmp.ptr() + pos, newpos - pos, true, true);
-            tmp[newpos] = '\n';     // Restore \n (doBidi replaces it with a zero)
-        }
-        pos = newpos + 1;
-    }
-
-    return tmp;
-}
 
 
 //////////////////////////////////////////////////////////////////////////
@@ -476,61 +443,5 @@ void	swap(String& str1, String& str2)
 	str1.swap(str2);
 }
 
-
-//////////////////////////////////////////////////////////////////////////
-// utf32 to wstring
-//////////////////////////////////////////////////////////////////////////
-typedef wchar_t utf16;
-// encoding functions
-// for all:
-// src_len is in code units, or 0 for null terminated string.
-// dest_len is in code units.
-// returns number of code units put into dest buffer.
-size_t utf32_To_utf16( const utf32* src, utf16* dest, size_t dest_len, size_t src_len )
-{
-    size_t destCapacity = dest_len;
-
-    // while there is data in the source buffer,
-    for (uint idx = 0; idx < src_len; ++idx)
-    {
-        utf32	cp = src[idx];
-
-        // check there is enough destination buffer to receive this encoded unit (exit loop & return if not)
-        if (destCapacity < 2)
-        {
-            break;
-        }
-
-        if (cp < 0x10000)
-        {
-            *dest++ = (utf16)cp;
-            --destCapacity;
-        }
-        else
-        {
-            utf32 vm = cp - 0x10000;
-            utf32 vh = vm >> 10;
-            utf32 vl = vm & 0x3FF;
-            utf32 w1 = 0xD800 + vh;
-            utf32 w2 = 0xDC00 + vl;
-            *dest++ = (utf16)(w1);
-            *dest++ = (utf16)(w2);
-            destCapacity -= 2;
-       }
-    }
-
-    return dest_len - destCapacity;
-}
-
-std::wstring String::c_wstring ( void ) const
-{
-    const utf32* src = this->ptr();
-    size_t src_len = this->length();
-
-    size_t dest_len = ( src_len + 10 ) * 2;
-    utf16* dest = (utf16*)_alloca( dest_len + 10 );
-    size_t numChars = utf32_To_utf16( src, dest, dest_len, src_len );
-    return std::wstring ( dest, numChars );
-}
 
 } // End of  CEGUI namespace section

@@ -66,9 +66,6 @@ public:
                                     CGUI_Impl                   ( IDirect3DDevice9* pDevice );
                                     ~CGUI_Impl                  ( void );
 
-    void                            SetSkin                     ( const char* szName );
-    void                            SetBidiEnabled              ( bool bEnabled );
-
     void                            Draw                        ( void );
     void                            Invalidate                  ( void );
     void                            Restore                     ( void );
@@ -80,12 +77,8 @@ public:
     void                            ProcessCharacter            ( unsigned long ulCharacter );
 
     //
+    void                            SetGUIInputEnabled          ( bool bEnabled );
     bool                            GetGUIInputEnabled          ( void );
-    void                            SetGUIInputMode             ( eInputMode a_eMode );
-    eInputMode                      GetGUIInputMode             ( void ); 
-    static CEGUI::String            GetUTFString                ( const char* szInput );
-    static CEGUI::String            GetUTFString                ( const std::string& strInput );
-    static CEGUI::String            GetUTFString                ( const CEGUI::String& strInput );      // Not defined
 
     //
     CGUIMessageBox*                 CreateMessageBox            ( const char* szTitle, const char* szMessage, unsigned int uiFlags );
@@ -120,13 +113,11 @@ public:
     CGUIStaticImage*                CreateStaticImage           ( CGUIGridList* pParent );
     CGUIStaticImage*                CreateStaticImage           ( void );
 
-    CGUITabPanel*                   CreateTabPanel              ( CGUIElement* pParent );
-    CGUITabPanel*                   CreateTabPanel              ( CGUITab* pParent );
-    CGUITabPanel*                   CreateTabPanel              ( void );
+    CGUITabPanel*                   CreateTabPanel              ( CGUIElement* pParent = NULL );
+    CGUITabPanel*                   CreateTabPanel              ( CGUITab* pParent = NULL );
 
-    CGUIScrollPane*                 CreateScrollPane            ( CGUIElement* pParent );
-    CGUIScrollPane*                 CreateScrollPane            ( CGUITab* pParent );
-    CGUIScrollPane*                 CreateScrollPane            ( void );
+    CGUIScrollPane*                 CreateScrollPane            ( CGUIElement* pParent = NULL );
+    CGUIScrollPane*                 CreateScrollPane            ( CGUITab* pParent = NULL );
 
     CGUIScrollBar*                  CreateScrollBar             ( bool bHorizontal, CGUIElement* pParent = NULL );
     CGUIScrollBar*                  CreateScrollBar             ( bool bHorizontal, CGUITab* pParent = NULL );
@@ -142,8 +133,6 @@ public:
 
     void                            SetCursorEnabled            ( bool bEnabled );
     bool                            IsCursorEnabled             ( void );
-    void                            SetCursorAlpha              ( float fAlpha, bool bOnlyCurrentServer = false );
-    float                           GetCurrentServerCursorAlpha ( void );
 
     void                            AddChild                    ( CGUIElement_Impl* pChild );
     CEGUI::FontManager*             GetFontManager              ( void );
@@ -153,7 +142,6 @@ public:
     CEGUI::SchemeManager*           GetSchemeManager            ( void );
     CEGUI::WindowManager*           GetWindowManager            ( void );
     void                            GetUniqueName               ( char* pBuf );
-    CEGUI::Window*                  GetMasterWindow             ( CEGUI::Window* Window );
 
     CVector2D                       GetResolution               ( void );
     void                            SetResolution               ( float fWidth, float fHeight );
@@ -165,15 +153,9 @@ public:
     CGUIFont*                       GetSAHeaderFont             ( void );
     CGUIFont*                       GetSAGothicFont             ( void );
     CGUIFont*                       GetSansFont                 ( void );
-    bool                            IsFontPresent               ( const char* szFont ) { return m_pFontManager->isFontPresent(szFont); }
 
-    float                           GetTextExtent               ( const char* szText, const char* szFont = "default-normal" );
-    float                           GetMaxTextExtent            ( SString strFont, SString arg, ... );
-
-    const SString&                  GetGuiWorkingDirectory         ( void ) const;
-    void                            SetDefaultGuiWorkingDirectory  ( const SString& strDir );
-    void                            PushGuiWorkingDirectory        ( const SString& strDir );
-    void                            PopGuiWorkingDirectory         ( const SString& strDirCheck = "" );
+    void                            SetWorkingDirectory         ( const char * szDir );
+    inline const char*              GetWorkingDirectory         ( void )    { return const_cast < const char* > ( m_szWorkingDirectory ); }
 
     void                            SetCharacterKeyHandler       ( eInputChannel channel, const GUI_CALLBACK_KEY & Callback )    { CHECK_CHANNEL ( channel ); m_CharacterKeyHandlers[ channel ] = Callback; }
     void                            SetKeyDownHandler            ( eInputChannel channel, const GUI_CALLBACK_KEY & Callback )    { CHECK_CHANNEL ( channel ); m_KeyDownHandlers[ channel ] = Callback; }
@@ -187,8 +169,6 @@ public:
     void                            SetMouseWheelHandler         ( eInputChannel channel, const GUI_CALLBACK_MOUSE & Callback )  { CHECK_CHANNEL ( channel ); m_MouseWheelHandlers[ channel ] = Callback; }
     void                            SetMovedHandler              ( eInputChannel channel, const GUI_CALLBACK & Callback )        { CHECK_CHANNEL ( channel ); m_MovedHandlers[ channel ] = Callback; }
     void                            SetSizedHandler              ( eInputChannel channel, const GUI_CALLBACK & Callback )        { CHECK_CHANNEL ( channel ); m_SizedHandlers[ channel ] = Callback; }
-    void                            SetFocusGainedHandler        ( eInputChannel channel, const GUI_CALLBACK_FOCUS & Callback )  { CHECK_CHANNEL ( channel ); m_FocusGainedHandlers[ channel ] = Callback; }
-    void                            SetFocusLostHandler          ( eInputChannel channel, const GUI_CALLBACK_FOCUS & Callback )  { CHECK_CHANNEL ( channel ); m_FocusLostHandlers[ channel ] = Callback; }
 
     void                            SelectInputHandlers          ( eInputChannel channel )                                       { CHECK_CHANNEL ( channel ); m_Channel = channel; }
     void                            ClearInputHandlers           ( eInputChannel channel );
@@ -210,15 +190,11 @@ public:
     bool                            Event_Moved                 ( const CEGUI::EventArgs& e );
     bool                            Event_Sized                 ( const CEGUI::EventArgs& e );
     bool                            Event_RedrawRequested       ( const CEGUI::EventArgs& e );
-    bool                            Event_FocusGained           ( const CEGUI::EventArgs& e );
-    bool                            Event_FocusLost             ( const CEGUI::EventArgs& e );
 
     void                            AddToRedrawQueue            ( CGUIElement* pWindow );
     void                            RemoveFromRedrawQueue       ( CGUIElement* pWindow );
 
     void                            CleanDeadPool               ( void );
-    CGUIWindow*                     LoadLayout                  ( CGUIElement* pParent, const SString& strFilename );
-    bool                            LoadImageset                ( const SString& strFilename );
 
 private:
     CGUIButton*                     _CreateButton               ( CGUIElement_Impl* pParent = NULL, const char* szCaption = "" );
@@ -235,10 +211,6 @@ private:
     CGUIScrollBar*                  _CreateScrollBar            ( bool bHorizontal, CGUIElement_Impl* pParent = NULL );
     CGUIComboBox*                   _CreateComboBox             ( CGUIElement_Impl* pParent = NULL, const char* szCaption = "" );
 	
-    void                            SubscribeToMouseEvents();
-    CGUIFont*                       CreateFntFromWinFont        ( const char* szFontName, const char* szFontWinReg, const char* szFontWinFile, unsigned int uSize = 8, unsigned int uFlags = 0, bool bAutoScale = false );
-    void                            ApplyGuiWorkingDirectory       ( void );
-
     IDirect3DDevice9*               m_pDevice;
 
     CEGUI::Renderer*                m_pRenderer;
@@ -250,7 +222,6 @@ private:
 
     CEGUI::DefaultWindow*           m_pTop;
     const CEGUI::Image*             m_pCursor;
-    float                           m_fCurrentServerCursorAlpha;
 
     CGUIFont_Impl*                  m_pDefaultFont;
     CGUIFont_Impl*                  m_pSmallFont;
@@ -259,13 +230,12 @@ private:
     CGUIFont_Impl*                  m_pSAHeaderFont;
     CGUIFont_Impl*                  m_pSAGothicFont;
     CGUIFont_Impl*                  m_pSansFont;
-    CGUIFont_Impl*                  m_pUniFont;
                 
     std::list < CGUIElement* >      m_RedrawQueue;
 
     unsigned long                   m_ulPreviousUnique;
 
-    eInputMode                      m_eInputMode;
+    bool                            m_bSwitchGUIInput;
 
     GUI_CALLBACK_KEY                m_CharacterKeyHandlers[ INPUT_CHANNEL_COUNT ];
     GUI_CALLBACK_KEY                m_KeyDownHandlers[ INPUT_CHANNEL_COUNT ];
@@ -279,18 +249,12 @@ private:
     GUI_CALLBACK_MOUSE              m_MouseWheelHandlers[ INPUT_CHANNEL_COUNT ];
     GUI_CALLBACK                    m_MovedHandlers[ INPUT_CHANNEL_COUNT ];
     GUI_CALLBACK                    m_SizedHandlers[ INPUT_CHANNEL_COUNT ];
-    GUI_CALLBACK_FOCUS              m_FocusGainedHandlers[ INPUT_CHANNEL_COUNT ];
-    GUI_CALLBACK_FOCUS              m_FocusLostHandlers[ INPUT_CHANNEL_COUNT ];
 
     eInputChannel                   m_Channel;
 
-    std::list < SString >           m_GuiWorkingDirectoryStack;
+    char                            m_szWorkingDirectory [ MAX_PATH + 1 ];
 
     bool                            m_bTransferBoxVisible;
-
-    bool                            m_HasSchemeLoaded;
-    SString                         m_CurrentSchemeName;
-    CElapsedTime                    m_RenderOkTimer;
 };
 
 #endif

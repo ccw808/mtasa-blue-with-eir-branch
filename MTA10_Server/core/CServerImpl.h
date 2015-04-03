@@ -27,16 +27,18 @@ class CServerImpl;
 
 #include "CDynamicLibrary.h"
 #include "CModManagerImpl.h"
+#include "sockets/CTCPImpl.h"
+#include "sockets/CTCPServerSocketImplManager.h"
 #include <xml/CXML.h>
 #include "CThreadCommandQueue.h"
 
 #ifndef WIN32
-#include <ncursesw/curses.h>
+#include <curses.h>
 #endif
 
 #define SERVER_RESET_RETURN 500
 
-typedef CXML* (*InitXMLInterface) ( const char* szSaveFlagDirectory );
+typedef CXML* (*InitXMLInterface) ( void );
 typedef CNetServer* (*InitNetServerInterface) ( void );
 
 #ifdef WIN32
@@ -56,38 +58,34 @@ public:
 
     CNetServer*         GetNetwork          ( void );
     CModManager*        GetModManager       ( void );
+    CTCP*               GetTCP              ( void );
     CXML*               GetXML              ( void );
 
-    const char*         GetServerModPath    ( void )                { return m_strServerModPath; };
-    SString             GetAbsolutePath     ( const char* szRelative );
+    inline const char*  GetServerModPath   ( void )                { return m_strServerModPath; };
+    const char*         GetAbsolutePath     ( const char* szRelative, char* szBuffer, unsigned int uiBufferSize );
 
     void                Printf              ( const char* szText, ... );
-    bool                IsRequestingExit    ( void );
 
     int                 Run                 ( int iArgumentCount, char* szArguments [] );
-#ifndef WIN32
-    void                Daemonize           () const;
-#else
-    bool                HasConsole          ( void )                { return m_hConsole != NULL; }
-#endif
 
 private:
     void                MainLoop            ( void );
-    bool                CheckLibVersions    ( void );
 
     bool                ParseArguments      ( int iArgumentCount, char* szArguments [] );
+    bool                IsKeyPressed        ( int iKey );
+    void                WaitForKey          ( int iKey );
 
     void                ShowInfoTag         ( char *szTag );
     void                HandleInput         ( void );
-    void                HandlePulseSleep    ( void );
-    void                ApplyFrameRateLimit ( uint uiUseRate );
 
+    void                SleepMs             ( unsigned long ulMs );
     void                DestroyWindow       ( void );
 
     CDynamicLibrary     m_NetworkLibrary;
     CDynamicLibrary     m_XMLLibrary;
     CNetServer*         m_pNetwork;
     CModManagerImpl*    m_pModManager;
+    CTCPImpl*           m_pTCP;
     CXML*               m_pXML;
 
 #ifdef WIN32
@@ -100,19 +98,19 @@ private:
     bool                m_bRequestedQuit;
     bool                m_bRequestedReset;
 
-    wchar_t             m_szInputBuffer[255];
+    char                m_szInputBuffer[255];
     unsigned int        m_uiInputCount;
     
     char                m_szTag[80];
-
-    double              m_dLastTimeMs;
-    double              m_dPrevOverrun;
 
 #ifdef WIN32
     HANDLE              m_hConsole;
     CHAR_INFO           m_ScrnBuffer[256];
 
     CThreadCommandQueue*    m_pThreadCommandQueue;
+#else
+    WINDOW*             m_wndMenu;
+    WINDOW*             m_wndInput;
 #endif
 };
 

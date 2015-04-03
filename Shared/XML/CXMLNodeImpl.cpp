@@ -15,10 +15,8 @@
 using std::list;
 
 CXMLNodeImpl::CXMLNodeImpl ( CXMLFileImpl* pFile, CXMLNodeImpl* pParent, TiXmlElement& Node ) :
-    m_ulID ( INVALID_XML_ID ),
-    m_bUsingIDs ( pFile && pFile->IsUsingIDs () ),
     m_pNode ( &Node ),
-    m_Attributes ( Node, pFile && pFile->IsUsingIDs () )
+    m_Attributes ( Node )
 {
     // Init
     m_pFile = pFile;
@@ -37,16 +35,14 @@ CXMLNodeImpl::CXMLNodeImpl ( CXMLFileImpl* pFile, CXMLNodeImpl* pParent, TiXmlEl
     }
 
     // Add to array over XML stuff
-    if ( m_bUsingIDs )
-        m_ulID = CXMLArray::PopUniqueID ( this );
+    m_ulID = CXMLArray::PopUniqueID ( this );
 }
 
 
 CXMLNodeImpl::~CXMLNodeImpl ( void )
 {
     // Remove from array over XML stuff
-    if ( m_bUsingIDs )
-        CXMLArray::PushUniqueID ( this );
+    CXMLArray::PushUniqueID ( this );
 
     // Delete our children
     DeleteAllSubNodes ();
@@ -260,7 +256,7 @@ bool CXMLNodeImpl::GetTagContent ( unsigned int& uiContent )
         return false;
 
     // Check the range
-    if ( lValue < 0 /*|| lValue > UINT_MAX*/ )
+    if ( lValue < 0 || lValue > UINT_MAX )
         return false;
     else
     {
@@ -281,13 +277,11 @@ bool CXMLNodeImpl::GetTagContent ( float& fContent )
 }
 
 
-void CXMLNodeImpl::SetTagContent ( const char* szText, bool bCDATA )
+void CXMLNodeImpl::SetTagContent ( const char* szText )
 {
     m_pNode->Clear();
     TiXmlText* pNewNode = new TiXmlText ( szText );
-    pNewNode->SetCDATA ( bCDATA );
     m_pNode->LinkEndChild ( pNewNode );
-    m_Children.clear();
 }
 
 
@@ -336,7 +330,7 @@ void CXMLNodeImpl::SetTagContentf ( const char* szFormat, ... )
     char szBuffer [1024];
     va_list va;
     va_start ( va, szFormat );
-    VSNPRINTF ( szBuffer, 1024, szFormat, va );
+    _VSNPRINTF ( szBuffer, 1024, szFormat, va );
     va_end ( va );
     SetTagContent ( szBuffer );
 }
@@ -359,7 +353,7 @@ CXMLNode* CXMLNodeImpl::CopyNode ( CXMLNode *pParent )
     list < CXMLNode* > ::iterator iter;
     for ( iter = ChildrenCopy.begin (); iter != ChildrenCopy.end (); iter++ )
     {
-        (*iter)->CopyNode ( pNew );
+        pNew->AddToList ( (*iter)->CopyNode ( pNew ) );
     }
 
     return dynamic_cast < CXMLNode* > ( pNew );
@@ -484,8 +478,12 @@ void CXMLNodeImpl::RemoveAllFromList ( void )
 
 bool CXMLNodeImpl::StringToLong ( const char* szString, long& lValue )
 {
+    // Convert to string
+    char szBuffer [33];
+    assert ( strlen ( szString ) < 32 );
     char* pEnd;
-    lValue = strtol ( szString, &pEnd, 0 );
+    strcpy ( szBuffer, szString );
+    lValue = strtol ( szBuffer, &pEnd, 0 );
 
 #ifndef WIN32
     if ( ERANGE == errno )
@@ -493,7 +491,7 @@ bool CXMLNodeImpl::StringToLong ( const char* szString, long& lValue )
         return false;
     }
     else
-    if ( pEnd == szString )
+    if ( pEnd == szBuffer )
     {
         return false;
     }
@@ -504,9 +502,3 @@ bool CXMLNodeImpl::StringToLong ( const char* szString, long& lValue )
     }
 }
 
-
-SString CXMLNodeImpl::GetAttributeValue ( const SString& strAttributeName )
-{
-    CXMLAttribute* pAttribute = GetAttributes ().Find ( strAttributeName );
-    return pAttribute ? pAttribute->GetValue () : "";
-}

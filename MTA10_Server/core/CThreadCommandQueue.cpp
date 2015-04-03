@@ -45,8 +45,7 @@ void CThreadCommandQueue::Process ( bool& bRequestedQuit, CModManagerImpl* pModM
         else
         {
             // Otherwise, pass the command to the mod's input handler
-            if ( pModManager )
-                pModManager->HandleInput ( str.c_str () );
+            pModManager->HandleInput ( str.c_str () );
         }
 
         // Remove it from the queue

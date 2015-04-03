@@ -5,7 +5,6 @@
 *  FILE:        game_sa/CColModelSA.h
 *  PURPOSE:     Header file for collision model entity class
 *  DEVELOPERS:  Cecill Etheredge <ijsf@gmx.net>
-*               Alberto Alonso <rydencillo@gmail.com>
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *
@@ -22,73 +21,15 @@
 
 typedef struct
 {
-    CVector     vecMin;
-    CVector     vecMax;
-    CVector     vecOffset;
-    FLOAT       fRadius;
-} CBoundingBoxSA;
-
-
-typedef struct
-{
-    CVector     vecCenter;
-    float       fRadius;
-} CColSphereSA;
-
-
-typedef struct
-{
-    CVector     min;
-    CVector     max;
-} CColBoxSA;
-
-
-typedef struct
-{
-    unsigned short  v1;
-    unsigned short  v2;
-    unsigned short  v3;
-    EColSurface     material;
-    CColLighting    lighting;
-} CColTriangleSA;
-
-
-typedef struct
-{
-    BYTE pad0 [ 12 ];
-} CColTrianglePlaneSA;
-
-
-typedef struct
-{
     char version[4];
     DWORD size;
     char name[0x18];
 } ColModelFileHeader;
 
-typedef struct
-{
-    WORD                            numColSpheres;
-    WORD                            numColBoxes;
-    WORD                            numColTriangles;
-    BYTE                            ucNumWheels;
-    BYTE                            pad3;
-    CColSphereSA*                   pColSpheres;
-    CColBoxSA*                      pColBoxes;
-    void*                           pSuspensionLines;
-    void*                           pUnknown;
-    CColTriangleSA*                 pColTriangles;
-    CColTrianglePlaneSA*            pColTrianglePlanes;
-} CColDataSA;
-
 class CColModelSAInterface
 {
-public:
-    CBoundingBoxSA                  boundingBox;
-    BYTE                            level;
-    BYTE                            unknownFlags;
-    BYTE                            pad [ 2 ];
-    CColDataSA*                     pColData;
+    BYTE                            pad [ 44 ];
+    void *                          pCollision;     // CCollision
 };
 
 class CColModelSA : public CColModel

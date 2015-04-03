@@ -14,6 +14,7 @@
 #ifndef __CVEHICLECOLORMANAGER_H
 #define __CVEHICLECOLORMANAGER_H
 
+#include "CVehicleColor.h"
 #include <list>
 
 class CVehicleColors
@@ -40,7 +41,7 @@ public:
     CVehicleColor           GetRandomColor                      ( unsigned short usModel );
 
 private:
-    SFixedArray < CVehicleColors, 212 >    m_Colors;
+    CVehicleColors          m_Colors [212];
 };
 
 #endif

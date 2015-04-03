@@ -15,7 +15,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-CClientCivilian::CClientCivilian ( CClientManager* pManager, ElementID ID, int iModel ) : ClassInit ( this ), CClientEntity ( ID )
+CClientCivilian::CClientCivilian ( CClientManager* pManager, ElementID ID, int iModel ) : CClientEntity ( ID )
 {
     // Initialize members
     m_pManager = pManager;
@@ -32,7 +32,7 @@ CClientCivilian::CClientCivilian ( CClientManager* pManager, ElementID ID, int i
 }
 
 
-CClientCivilian::CClientCivilian ( CClientManager* pManager, ElementID ID, CCivilianPed * pCivilianPed ) : ClassInit ( this ), CClientEntity ( ID )
+CClientCivilian::CClientCivilian ( CClientManager* pManager, ElementID ID, CCivilianPed * pCivilianPed ) : CClientEntity ( ID )
 {
     // Initialize members
     m_pManager = pManager;
@@ -98,13 +98,13 @@ int CClientCivilian::GetRotation ( void )
 }
 
 
-void CClientCivilian::GetRotationRadians ( CVector& vecRotation ) const
+void CClientCivilian::GetRotation ( CVector& vecRotation ) const
 {
 //    vecRotation = m_vecRotation;
 }
 
 
-void CClientCivilian::SetRotationRadians ( const CVector& vecRotation )
+void CClientCivilian::SetRotation ( const CVector& vecRotation )
 {
     if ( m_pCivilianPed )
     {
@@ -142,7 +142,7 @@ float CClientCivilian::GetDistanceFromCentreOfMassToBaseOfModel ( void )
     {
         return m_pCivilianPed->GetDistanceFromCentreOfMassToBaseOfModel ();
     }
-   return 0.0f;
+   return 0.0f;;
 }
 
 

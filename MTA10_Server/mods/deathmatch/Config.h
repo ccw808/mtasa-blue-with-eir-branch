@@ -46,10 +46,8 @@ public:
 #define MIN_NAMETAG_LENGTH 1
 #define MAX_NAMETAG_LENGTH 22
 
-#define MAX_TEAM_NAME_LENGTH 255
-
 // Min and max number of characters in passwords
-#define MIN_PASSWORD_LENGTH 1
+#define MIN_PASSWORD_LENGTH 0
 #define MAX_PASSWORD_LENGTH 30
 
 // Min and max number of characters in chat messages
@@ -63,10 +61,6 @@ public:
 // Min and max number of characters in chat echos
 #define MIN_CHATECHO_LENGTH 1
 #define MAX_CHATECHO_LENGTH 128
-
-// Min and max number of characters in outputChatBox from the server
-#define MIN_OUTPUTCHATBOX_LENGTH 1
-#define MAX_OUTPUTCHATBOX_LENGTH 256
 
 // Min and max number of characters in debug echos
 #define MIN_DEBUGECHO_LENGTH 1
@@ -85,14 +79,13 @@ public:
 #define MAX_DISCONNECT_REASON_LENGTH 127
 
 // Max kick string length that can be sent
-#define MIN_KICK_REASON_LENGTH      1
-#define MAX_KICK_REASON_LENGTH      64
-#define MAX_KICK_RESPONSIBLE_LENGTH 30
+#define MIN_KICK_REASON_LENGTH 1
+#define MAX_KICK_REASON_LENGTH 64
 
 // Max ban string length that can be sent
-#define MIN_BAN_REASON_LENGTH      1
-#define MAX_BAN_REASON_LENGTH      64
-#define MAX_BAN_RESPONSIBLE_LENGTH 30
+#define MIN_BAN_REASON_LENGTH 1
+#define MAX_BAN_REASON_LENGTH 64
+
 
 // Couple of defines to ensure proper configuration
 #if MAX_CHAT_LENGTH > 255
@@ -106,9 +99,9 @@ public:
 #define MAX_VALID_WEATHER 255
 
 // Upper player limit
-#define MAX_PLAYER_COUNT 4096
-#if MAX_PLAYER_COUNT > 65535
-    #error MAX_PLAYER_COUNT "macro can't exceed 65535"
+#define MAX_PLAYER_COUNT 250
+#if MAX_PLAYER_COUNT > 254
+    #error MAX_PLAYER_COUNT "macro can't exceed 254"
 #endif
 
 // Game Type
@@ -145,19 +138,13 @@ public:
 // Server FPS limit (in milliseconds)
 #define FPS_LIMIT                   16
 
+// Default MTU size
+#define MTU_SIZE_DEFAULT            1264
+
 // Max garages
 #define MAX_GARAGES                 50
 
 // Game-monitor.com query URL (use %u for port input)
 #define QUERY_URL_GAME_MONITOR      "http://master.game-monitor.com/heartbeat.php?p=%u&e=3"
-
-// MTA master server query URL (Inputs: game port, ase port, http port, version, extra, serverip)
-#define QUERY_URL_MTA_MASTER_SERVER "http://master.mtasa.com/ase/add.php?g=%u&a=%u&h=%u&v=%s&x=%s&ip=%s"
-
-// MTA port tester URL
-#define PORT_TESTER_URL             "http://nightly.mtasa.com/ports/"
-
-// MTA minclientversion auto update and others
-#define HQCOMMS_URL                 "http://updatesa.multitheftauto.com/sa/server/hqcomms/"
 
 #endif

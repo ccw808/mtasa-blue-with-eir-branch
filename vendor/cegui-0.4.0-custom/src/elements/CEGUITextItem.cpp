@@ -103,12 +103,7 @@ void TextItem::populateRenderCache()
 
     float zBase = System::getSingleton().getRenderer()->getZLayer(2) - System::getSingleton().getRenderer()->getCurrentZ();
 
-    const Font* font = getFont();
-
-    if ( font )
-    {
-        d_renderCache.cacheText(getText(true), font, d_textFormatting, absrect, zBase, colours);
-    }
+    d_renderCache.cacheText(getText(), getFont(), d_textFormatting, absrect, zBase, colours);
 }
 
 

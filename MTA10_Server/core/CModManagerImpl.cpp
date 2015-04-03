@@ -67,8 +67,11 @@ bool CModManagerImpl::Load ( const char* szModName, int iArgumentCount, char* sz
     // Make the string path to the mod library
     m_strModPath = SString ( "%s/mods/%s", m_strServerPath.c_str (), szModName );
 
-    SString strLibFilename( "%s%s", szModName, MTA_LIB_SUFFIX MTA_LIB_EXTENSION );
-    SString strFilename = PathJoin( m_strServerPath, SERVER_BIN_PATH_MOD, strLibFilename );
+    #if defined( WIN32 ) && defined( _DEBUG )
+        SString strFilename ( "%s/%s_d%s", m_strModPath.c_str (), szModName, MTA_LIB_EXTENSION );
+    #else
+        SString strFilename ( "%s/%s%s", m_strModPath.c_str (), szModName, MTA_LIB_EXTENSION );
+    #endif
 
     // Attempt to load it
     if ( !m_Library.Load ( strFilename ) )
@@ -109,7 +112,7 @@ bool CModManagerImpl::Load ( const char* szModName, int iArgumentCount, char* sz
     if ( !m_pBase->ServerStartup ( iArgumentCount, szArguments ) )
     {
         // Unload the mod again
-        Unload ( true );
+        Unload ();
         return false;
     }
 
@@ -118,7 +121,7 @@ bool CModManagerImpl::Load ( const char* szModName, int iArgumentCount, char* sz
 }
 
 
-void CModManagerImpl::Unload ( bool bKeyPressBeforeTerm )
+void CModManagerImpl::Unload ( void )
 {
     // Got a mod loaded?
     if ( m_pBase )
@@ -127,18 +130,6 @@ void CModManagerImpl::Unload ( bool bKeyPressBeforeTerm )
         m_pBase->ServerShutdown ();
         m_pBase = NULL;
 
-#ifdef WIN32
-        // Exit crash test
-        if ( m_pServer->HasConsole() )
-        {
-            if ( bKeyPressBeforeTerm )
-            {
-                Print ( "Press Q to shut down the server!\n" );
-                WaitForKey ( 'q' );
-            }
-            TerminateProcess( GetCurrentProcess(), 0 );
-        }
-#endif
         // Unload the library
         m_Library.Unload ();
     }
@@ -164,32 +155,6 @@ bool CModManagerImpl::IsFinished ( void )
     }
 
     return true;
-}
-
-
-bool CModManagerImpl::PendingWorkToDo ( void )
-{
-    if ( m_pBase )
-    {
-        return m_pBase->PendingWorkToDo ();
-    }
-
-    return false;
-}
-
-
-bool CModManagerImpl::GetSleepIntervals( int& iSleepBusyMs, int& iSleepIdleMs, int& iLogicFpsLimit )
-{
-    iSleepBusyMs = 20;
-    iSleepIdleMs = 40;
-    iLogicFpsLimit = 0;
-
-    if ( m_pBase )
-    {
-        return m_pBase->GetSleepIntervals( iSleepBusyMs, iSleepIdleMs, iLogicFpsLimit );
-    }
-
-    return false;
 }
 
 

@@ -20,7 +20,7 @@
 class CGUIWindow_Impl : public CGUIWindow, public CGUIElement_Impl, public CGUITabList
 {
 public:
-                        CGUIWindow_Impl         ( class CGUI_Impl* pGUI, CGUIElement* pParent = NULL, const char* szCaption = "", const SString& strLayoutFile = "" );
+                        CGUIWindow_Impl         ( class CGUI_Impl* pGUI, CGUIElement* pParent = NULL, const char* szCaption = "" );
                         ~CGUIWindow_Impl        ( void );
 
     void                SetMovable              ( bool bMovable );
@@ -35,6 +35,8 @@ public:
     bool                IsTitlebarEnabled       ( void );
 
     void                SetCloseClickHandler    ( GUI_CALLBACK Callback );
+    void                SetKeyDownHandler       ( GUI_CALLBACK Callback );
+    void                SetEnterKeyHandler      ( GUI_CALLBACK Callback );
 
     eCGUIType           GetType                 ( void ) { return CGUI_WINDOW; };
 
@@ -42,8 +44,11 @@ public:
 
 protected:
     bool                Event_OnCloseClick      ( const CEGUI::EventArgs& e );
+    bool                Event_OnKeyDown         ( const CEGUI::EventArgs& e );
 
     GUI_CALLBACK        m_OnCloseClick;
+    GUI_CALLBACK        m_OnKeyDown;
+    GUI_CALLBACK        m_OnEnter;
 };
 
 #endif

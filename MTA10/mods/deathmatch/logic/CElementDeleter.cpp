@@ -51,7 +51,7 @@ void CElementDeleter::DeleteRecursive ( class CClientEntity* pElement )
 {
     // Gather a list over children (we can't use the list as it changes)
     list < CClientEntity* > Children;
-    CChildListType ::const_iterator iterCopy = pElement->IterBegin ();
+    list < CClientEntity* > ::const_iterator iterCopy = pElement->IterBegin ();
     for ( ; iterCopy != pElement->IterEnd (); ++iterCopy )
     {
         Children.push_back ( *iterCopy );
@@ -109,7 +109,17 @@ void CElementDeleter::DoDeleteAll ( void )
 
 bool CElementDeleter::IsBeingDeleted ( CClientEntity* pElement )
 {
-    return m_List.Contains ( pElement );
+    // Return true if the given element is in the list
+    list < CClientEntity* > ::const_iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
+    {
+        if ( pElement == *iter )
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -123,14 +133,6 @@ void CElementDeleter::Unreference ( class CClientEntity* pElement )
 }
 
 
-void CElementDeleter::CleanUpForVM ( CLuaMain* pLuaMain )
-{
-    list < CClientEntity* > ::const_iterator iter = m_List.begin ();
-    for ( ; iter != m_List.end () ; ++iter )
-        (*iter)->DeleteEvents ( pLuaMain, false );
-}
-
-
 bool CElementDeleter::CanBeDestroyed ( void )
 {
     // Delete list empty? We can be destroyed
@@ -138,8 +140,8 @@ bool CElementDeleter::CanBeDestroyed ( void )
         return true;
 
     // Check if there are any elements that can't be destroyed ye
-    list < CClientEntity* > ::const_iterator iter = m_List.begin ();
-    for ( ; iter != m_List.end (); ++iter )
+    list < CClientEntity* > ::iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
     {
         // Can this element be destroyed yet?
         if ( !(*iter)->CanBeDeleted () )

@@ -12,12 +12,12 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#include "net/SimHeaders.h"
 
 CPlayerManager::CPlayerManager ( void )
 {
     // Init
     m_pScriptDebugging = NULL;
+    m_bCanRemoveFromList = true;
 }
 
 
@@ -29,23 +29,7 @@ CPlayerManager::~CPlayerManager ( void )
 
 void CPlayerManager::DoPulse ( void )
 {
-    // TODO: Low Priorityy: No need to do this every frame. Could be done every minute or so.
-    // Remove any players that have been connected for very long (90 sec) but hasn't reached the verifying step
-    unsigned long long ullTimeNow = GetTickCount64_ ();
-    for ( list < CPlayer* > ::const_iterator iter = m_Players.begin () ; iter != m_Players.end (); iter++ )
-    {
-        if ( (*iter)->GetStatus () == STATUS_CONNECTED && ullTimeNow > (*iter)->GetTimeConnected () + 90000 )
-        {
-            // Tell the console he timed out due during connect
-            CLogger::LogPrintf ( "INFO: %s (%s) timed out during connect\n", (*iter)->GetNick (), (*iter)->GetSourceIP () );
-
-            // Remove him
-            delete *iter;
-            break;
-        }
-    }
-
-    list < CPlayer* > ::const_iterator iter = m_Players.begin ();
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
     for ( ; iter != m_Players.end (); iter++ )
     {
         (*iter)->DoPulse ();
@@ -55,14 +39,6 @@ void CPlayerManager::DoPulse ( void )
 
 CPlayer* CPlayerManager::Create ( const NetServerPlayerID& PlayerSocket )
 {
-    // Check socket is free
-    CPlayer* pOtherPlayer = MapFindRef( m_SocketPlayerMap, PlayerSocket );
-    if ( pOtherPlayer )
-    {
-        CLogger::ErrorPrintf ( "Attempt to re-use existing connection for player '%s'\n", pOtherPlayer->GetName().c_str() );
-        return NULL;     
-    }
-
     // Create the new player
     CPlayer* pPlayer = new CPlayer ( this, m_pScriptDebugging, PlayerSocket );
 
@@ -82,7 +58,7 @@ unsigned int CPlayerManager::CountWithStatus ( int iStatus )
 {
     // Count each ingame player
     unsigned int uiCount = 0;
-    list < CPlayer* > ::const_iterator iter = m_Players.begin ();
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
     for ( ; iter != m_Players.end (); iter++ )
     {
         if ( (*iter)->GetStatus () == iStatus )
@@ -98,13 +74,34 @@ unsigned int CPlayerManager::CountWithStatus ( int iStatus )
 
 bool CPlayerManager::Exists ( CPlayer* pPlayer )
 {
-    return m_Players.Contains ( pPlayer );
+    // Try to find it in our list
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
+    for ( ; iter != m_Players.end (); iter++ )
+    {
+        if ( (*iter) == pPlayer )
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
-CPlayer* CPlayerManager::Get ( const NetServerPlayerID& PlayerSocket )
+CPlayer* CPlayerManager::Get ( NetServerPlayerID& PlayerSocket )
 {
-    return MapFindRef ( m_SocketPlayerMap, PlayerSocket );
+    // Try to find it in our list
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
+    for ( ; iter != m_Players.end (); iter++ )
+    {
+        if ( (*iter)->GetSocket () == PlayerSocket )
+        {
+            return *iter;
+        }
+    }
+
+    // If not, return NULL
+    return NULL;
 }
 
 
@@ -112,7 +109,7 @@ CPlayer* CPlayerManager::Get ( const char* szNick, bool bCaseSensitive )
 {
     // Try to find it in our list
     const char* szTemp;
-    list < CPlayer* > ::const_iterator iter = m_Players.begin ();
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
     for ( ; iter != m_Players.end (); iter++ )
     {
         // Grab the nick pointer
@@ -135,173 +132,157 @@ CPlayer* CPlayerManager::Get ( const char* szNick, bool bCaseSensitive )
 
 void CPlayerManager::DeleteAll ( void )
 {
-    // Delete all the items in the list
-    while ( !m_Players.empty () )
-        delete *m_Players.begin ();
-}
+    // Do this first to save some cycles and avoid a crash
+    // if there are synctimes in the list. As the unreferencing
+    // can't be done inside the deleteloop.
+    ClearSyncTimes ();
 
-
-void CPlayerManager::BroadcastOnlyJoined ( const CPacket& Packet, CPlayer* pSkip )
-{
-    // Make a list of players to send this packet to
-    CSendList sendList;
-
-    // Send the packet to each ingame player on the server except the skipped one
-    list < CPlayer* > ::const_iterator iter = m_Players.begin ();
+    // Delete all the items in the list (without letting them remove themselves)
+    m_bCanRemoveFromList = false;
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
     for ( ; iter != m_Players.end (); iter++ )
     {
-        CPlayer* pPlayer = *iter;
-        if ( pPlayer != pSkip && pPlayer->IsJoined () )
-        {
-            sendList.push_back ( pPlayer );
-        }
+        delete *iter;
     }
 
-    CPlayerManager::Broadcast ( Packet, sendList );
+    m_bCanRemoveFromList = true;
+
+    // Clear the list
+    m_Players.clear ();
 }
 
 
-void CPlayerManager::BroadcastDimensionOnlyJoined ( const CPacket& Packet, ushort usDimension, CPlayer* pSkip )
+CPlayer* CPlayerManager::GetBefore ( ElementID PlayerID )
 {
-    // Make a list of players to send this packet to
-    CSendList sendList;
-
-    // Send the packet to each ingame player on the server except the skipped one
-    list < CPlayer* > ::const_iterator iter = m_Players.begin ();
-    for ( ; iter != m_Players.end (); iter++ )
-    {
-        CPlayer* pPlayer = *iter;
-        if ( pPlayer != pSkip && pPlayer->IsJoined () )
-        {
-            if ( pPlayer->GetDimension() == usDimension )
-                sendList.push_back ( pPlayer );
-        }
-    }
-
-    CPlayerManager::Broadcast ( Packet, sendList );
+    return NULL;
 }
 
 
-// Send one packet to a list of players, grouped by bitstream version
-static void DoBroadcast( const CPacket& Packet, const std::multimap < ushort, CPlayer* >& groupMap )
+CPlayer* CPlayerManager::GetAfter ( ElementID PlayerID )
 {
-    if ( !CNetBufferWatchDog::CanSendPacket ( Packet.GetPacketID () ) )
-        return; 
-
-    // Use the flags to determine how to send it
-    NetServerPacketReliability Reliability;
-    unsigned long ulFlags = Packet.GetFlags ();
-    if ( ulFlags & PACKET_RELIABLE )
+    // Got any items?
+    if ( m_Players.size () > 0 )
     {
-        if ( ulFlags & PACKET_SEQUENCED )
+        // If the list only contains one player, the next item has to be the requested one
+        // (we'd get the correct result anyway, but do this to save time)
+        if ( m_Players.size () == 1 )
         {
-            Reliability = PACKET_RELIABILITY_RELIABLE_ORDERED;
+            return m_Players.front ();
         }
-        else
-        {
-            Reliability = PACKET_RELIABILITY_RELIABLE;
-        }
-    }
-    else
-    {
-        if ( ulFlags & PACKET_SEQUENCED )
-        {
-            Reliability = PACKET_RELIABILITY_UNRELIABLE_SEQUENCED;
-        }
-        else
-        {
-            Reliability = PACKET_RELIABILITY_UNRELIABLE;
-        }
-    }
-    NetServerPacketPriority packetPriority = PACKET_PRIORITY_MEDIUM;
-    if ( ulFlags & PACKET_HIGH_PRIORITY )
-    {
-        packetPriority = PACKET_PRIORITY_HIGH;
-    }
-    else if ( ulFlags & PACKET_LOW_PRIORITY )
-    {
-        packetPriority = PACKET_PRIORITY_LOW;
-    }
 
-    // For each bitstream version, make and send a packet
-    typedef std::multimap < ushort, CPlayer* > ::const_iterator mapIter;
-    mapIter m_it, s_it;
-    for ( m_it = groupMap.begin () ; m_it != groupMap.end () ; m_it = s_it )
-    {
-        ushort usBitStreamVersion = (*m_it).first;
-
-        // Allocate a bitstream
-        NetBitStreamInterface* pBitStream = g_pNetServer->AllocateNetServerBitStream ( usBitStreamVersion );
-
-        // Write the content
-        if ( Packet.Write ( *pBitStream ) )
+        // Find the player with an ID just above usPlayerID
+        // TODO: 31 bit limitation here on element id's
+        CPlayer* pPlayer = NULL;
+        int iLast = -1;
+        list < CPlayer* > ::iterator iter = m_Players.begin ();
+        for ( ; iter != m_Players.end (); iter++ )
         {
-            g_pGame->SendPacketBatchBegin ( Packet.GetPacketID (), pBitStream );
-
-            // For each player, send the packet
-            const pair < mapIter , mapIter > keyRange = groupMap.equal_range ( usBitStreamVersion );
-            for ( s_it = keyRange.first ; s_it != keyRange.second ; ++s_it )
+            ElementID ThisID = (*iter)->GetID ();
+            if ( ( ThisID > PlayerID && iLast == -1 ) || ( ThisID > PlayerID && ThisID < static_cast < ElementID > ( iLast ) ) )
             {
-                CPlayer* pPlayer = s_it->second;
-                dassert ( usBitStreamVersion == pPlayer->GetBitStreamVersion () );
-                g_pGame->SendPacket ( Packet.GetPacketID (), pPlayer->GetSocket (), pBitStream, FALSE, packetPriority, Reliability, Packet.GetPacketOrdering() );
+                pPlayer = *iter;
+                iLast = ThisID;
             }
-
-            g_pGame->SendPacketBatchEnd ();
         }
-        else
+
+        // If we found any, return it
+        if ( pPlayer )
         {
-            // Skip
-            const pair < mapIter , mapIter > keyRange = groupMap.equal_range ( usBitStreamVersion );
-            for ( s_it = keyRange.first ; s_it != keyRange.second ; ++s_it )
-            {}
+            return pPlayer;
         }
 
-        // Destroy the bitstream
-        g_pNetServer->DeallocateNetServerBitStream ( pBitStream );
+        // If not, grab the player with the lowest ID
+        iLast = MAX_SERVER_ELEMENTS;
+        for ( iter = m_Players.begin (); iter != m_Players.end (); iter++ )
+        {
+            if ( (*iter)->GetID () < static_cast < ElementID > ( iLast ) )
+            {
+                pPlayer = *iter;
+                iLast = pPlayer->GetID ();
+            }
+        }
+
+        // Return the player we found
+        return pPlayer;
+    }
+
+    // Nothing
+    return NULL;
+}
+
+
+list < CPlayer* > ::const_iterator CPlayerManager::IterGet ( CPlayer* pPlayer )
+{
+    // Find the player in the list
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
+    for ( ; iter != m_Players.end (); iter++ )
+    {
+        if ( *iter == pPlayer )
+        {
+            return iter;
+        }
+    }
+
+    // Couldn't find it, return the first item
+    return m_Players.begin ();
+}
+
+
+list < CPlayer* > ::const_iterator CPlayerManager::IterGet ( ElementID PlayerID )
+{
+    // Find the player in the list
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
+    for ( ; iter != m_Players.end (); iter++ )
+    {
+        if ( (*iter)->GetID () == PlayerID )
+        {
+            return iter;
+        }
+    }
+
+    // Couldn't find it, return the first item
+    return m_Players.begin ();
+}
+
+
+void CPlayerManager::Broadcast ( const CPacket& Packet, CPlayer* pSkip )
+{
+    // Send the packet to each player on the server except the skipped one
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
+    for ( ; iter != m_Players.end (); iter++ )
+    {
+        if ( *iter != pSkip )
+        {
+            (*iter)->Send ( Packet );
+        }
     }
 }
 
 
-// Send one packet to a list of players
-template < class T >
-static void DoBroadcast ( const CPacket& Packet, const T& sendList )
+void CPlayerManager::Broadcast ( const CPacket& Packet, list < CPlayer * > & playersList )
 {
-    // Group players by bitstream version
-    std::multimap < ushort, CPlayer* > groupMap;
-    for ( typename T::const_iterator iter = sendList.begin () ; iter != sendList.end () ; ++iter )
+    // Send the packet to each player on the server except the skipped one
+    list < CPlayer* > ::iterator iter = playersList.begin ();
+    for ( ; iter != playersList.end (); iter++ )
+    {
+        (*iter)->Send ( Packet );
+    }
+}
+
+// TODO [28-Feb-2009] packetOrdering is currently always PACKET_ORDERING_GAME
+void CPlayerManager::BroadcastOnlyJoined ( const CPacket& Packet, CPlayer* pSkip, NetServerPacketOrdering packetOrdering, unsigned short usMinBitstreamVersion )
+{
+    // Send the packet to each ingame player on the server except the skipped one
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
+    for ( ; iter != m_Players.end (); iter++ )
     {
         CPlayer* pPlayer = *iter;
-        MapInsert ( groupMap, pPlayer->GetBitStreamVersion (), pPlayer );
+        if ( pPlayer != pSkip && pPlayer->IsJoined () )
+        {
+            if ( pPlayer->GetBitStreamVersion () >= usMinBitstreamVersion )
+                pPlayer->Send ( Packet, packetOrdering );
+        }
     }
-
-    DoBroadcast( Packet, groupMap );
-}
-
-
-
-// Send one packet to a list of players
-void CPlayerManager::Broadcast ( const CPacket& Packet, const std::set < CPlayer* >& sendList )
-{
-    DoBroadcast ( Packet, sendList );
-}
-
-// Send one packet to a list of players
-void CPlayerManager::Broadcast ( const CPacket& Packet, const std::list < CPlayer* >& sendList )
-{
-    DoBroadcast ( Packet, sendList );
-}
-
-// Send one packet to a list of players
-void CPlayerManager::Broadcast ( const CPacket& Packet, const std::vector < CPlayer* >& sendList )
-{
-    DoBroadcast ( Packet, sendList );
-}
-
-// Send one packet to a list of players
-void CPlayerManager::Broadcast ( const CPacket& Packet, const std::multimap < ushort, CPlayer* >& groupMap )
-{
-    DoBroadcast ( Packet, groupMap );
 }
 
 
@@ -329,7 +310,7 @@ bool CPlayerManager::IsValidPlayerModel ( unsigned short usPlayerModel )
 
 void CPlayerManager::ResetAll ( void )
 {
-    list < CPlayer* > ::const_iterator iter = m_Players.begin ();
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
     for ( ; iter != m_Players.end (); iter++ )
     {
         (*iter)->Reset ();
@@ -337,47 +318,45 @@ void CPlayerManager::ResetAll ( void )
 }
 
 
-void CPlayerManager::AddToList ( CPlayer* pPlayer )
+void CPlayerManager::ClearSyncTime ( CPlayer& Player )
 {
-    for ( std::list < CPlayer* > ::const_iterator iter = m_Players.begin () ; iter != m_Players.end (); iter++ )
+    // Only do this if we're not working on deleting all the players. Otherwize
+    // we get a crash.
+    if ( m_bCanRemoveFromList )
     {
-        // Add other players to near/far lists
-        pPlayer->AddPlayerToDistLists ( *iter );
-
-        // Add to other players near/far lists
-        (*iter)->AddPlayerToDistLists ( pPlayer );
+        // Call ClearSyncTime on every player. This makes sure this
+        // player no longer references it in its synctime stuff.
+        list < CPlayer* > ::iterator iter = m_Players.begin ();
+        for ( ; iter != m_Players.end (); iter++ )
+        {
+            (*iter)->ClearSyncTime ( Player );
+        }
     }
+}
 
-    assert( !m_Players.Contains( pPlayer ) );
-    m_Players.push_back ( pPlayer );
-    MapSet ( m_SocketPlayerMap, pPlayer->GetSocket (), pPlayer );
-    assert ( m_Players.size () == m_SocketPlayerMap.size () );
+
+void CPlayerManager::ClearSyncTimes ( void )
+{
+    // Only do this if we're not working on deleting all the players. Otherwize
+    // we get a crash.
+    if ( m_bCanRemoveFromList )
+    {
+        // Call ClearSyncTimes on every player. This clears
+        // all synctimes on the server.
+        list < CPlayer* > ::iterator iter = m_Players.begin ();
+        for ( ; iter != m_Players.end (); iter++ )
+        {
+            (*iter)->ClearSyncTimes ();
+        }
+    }
 }
 
 
 void CPlayerManager::RemoveFromList ( CPlayer* pPlayer )
 {
-    m_Players.remove ( pPlayer );
-    MapRemove ( m_SocketPlayerMap, pPlayer->GetSocket () );
-    assert( !m_Players.Contains( pPlayer ) );
-    assert ( m_Players.size () == m_SocketPlayerMap.size () );
-
-    m_strLowestConnectedPlayerVersion.clear();
-    for ( std::list < CPlayer* > ::const_iterator iter = m_Players.begin () ; iter != m_Players.end (); iter++ )
+    if ( m_bCanRemoveFromList && !m_Players.empty() )
     {
-        // Remove from other players near/far lists
-        (*iter)->RemovePlayerFromDistLists ( pPlayer );
-
-        // Update lowest player version
-        if ( (*iter)->GetPlayerVersion() < m_strLowestConnectedPlayerVersion || m_strLowestConnectedPlayerVersion.empty() )
-            m_strLowestConnectedPlayerVersion = (*iter)->GetPlayerVersion();
+        m_Players.remove ( pPlayer );
     }
-    g_pGame->CalculateMinClientRequirement();    
 }
 
-void CPlayerManager::OnPlayerJoin ( CPlayer* pPlayer )
-{
-    if ( pPlayer->GetPlayerVersion() < m_strLowestConnectedPlayerVersion || m_strLowestConnectedPlayerVersion.empty() )
-        m_strLowestConnectedPlayerVersion = pPlayer->GetPlayerVersion();
-    g_pGame->CalculateMinClientRequirement();
-}

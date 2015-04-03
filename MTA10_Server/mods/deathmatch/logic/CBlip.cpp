@@ -22,7 +22,7 @@ CBlip::CBlip ( CElement* pParent, CXMLNode* pNode, CBlipManager* pBlipManager ) 
     m_ucSize = 2;
     m_ucIcon = 0;
     m_sOrdering = 0;
-    m_usVisibleDistance = 16383;
+    m_fVisibleDistance = 99999.0f;
 
     // Add us to manager's list
     m_pBlipManager->m_List.push_back ( this );
@@ -39,7 +39,10 @@ CBlip::~CBlip ( void )
 void CBlip::Unlink ( void )
 {
     // Remove us from the manager's list
-    m_pBlipManager->m_List.remove ( this );
+    if ( m_pBlipManager->m_bRemoveFromList && !m_pBlipManager->m_List.empty() )
+    {
+        m_pBlipManager->m_List.remove ( this );
+    }
 }
 
 
@@ -143,6 +146,7 @@ void CBlip::SetPosition ( const CVector& vecPosition )
     if ( m_vecPosition != vecPosition )
     {
         // Remember our position vectors
+        m_vecLastPosition = m_vecPosition;
         m_vecPosition = vecPosition;
     }
 }

@@ -86,22 +86,20 @@ bool CMarker::ReadSpecialData ( void )
 
     // Grab the "type" data
     char szBuffer [128];
-    unsigned char ucType;
     if ( GetCustomDataString ( "type", szBuffer, 128, true ) )
     {
         // Convert it to a type
-        ucType = static_cast < unsigned char > ( CMarkerManager::StringToType ( szBuffer ) );
-        if ( ucType == CMarker::TYPE_INVALID )
+        m_ucType = static_cast < unsigned char > ( CMarkerManager::StringToType ( szBuffer ) );
+        if ( m_ucType == CMarker::TYPE_INVALID )
         {
             CLogger::LogPrintf ( "WARNING: Unknown 'type' value specified in <marker>; defaulting to \"default\" (line %u)\n", m_uiLine );
-            ucType = CMarker::TYPE_CHECKPOINT;
+            m_ucType = CMarker::TYPE_CHECKPOINT;
         }
     }
     else
     {
-        ucType = CMarker::TYPE_CHECKPOINT;
+        m_ucType = CMarker::TYPE_CHECKPOINT;
     }
-    SetMarkerType(ucType);
 
     // Grab the "color" data
     if ( GetCustomDataString ( "color", szBuffer, 128, true ) )
@@ -136,6 +134,9 @@ bool CMarker::ReadSpecialData ( void )
 
 void CMarker::SetPosition ( const CVector& vecPosition )
 {
+    // Remember our last position
+    m_vecLastPosition = m_vecPosition;
+
     // Different from our current position?
     if ( m_vecPosition != vecPosition )
     {
@@ -145,21 +146,18 @@ void CMarker::SetPosition ( const CVector& vecPosition )
             m_pCollision->SetPosition ( vecPosition );
         UpdateSpatialData ();
 
-        // If attached, client should handle the position correctly
-        if (  m_pAttachedTo )
-            return;
-
         // We need to make sure the time context is replaced 
         // before that so old packets don't arrive after this.
         GenerateSyncTimeContext ();
 
         // Tell all the players that know about us
         CBitStream BitStream;
+        BitStream.pBitStream->Write ( m_ID );
         BitStream.pBitStream->Write ( vecPosition.fX );
         BitStream.pBitStream->Write ( vecPosition.fY );
         BitStream.pBitStream->Write ( vecPosition.fZ );
         BitStream.pBitStream->Write ( GetSyncTimeContext () );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_ELEMENT_POSITION, *BitStream.pBitStream ) );
+        BroadcastOnlyVisible ( CLuaPacket ( SET_ELEMENT_POSITION, *BitStream.pBitStream ) );
     }
 }
 
@@ -181,11 +179,12 @@ void CMarker::SetTarget ( const CVector* pTargetVector )
 
                 // Tell everyone that knows about this marker
                 CBitStream BitStream;
+                BitStream.pBitStream->Write ( m_ID );
                 BitStream.pBitStream->Write ( static_cast < unsigned char > ( 1 ) );
                 BitStream.pBitStream->Write ( m_vecTarget.fX );
                 BitStream.pBitStream->Write ( m_vecTarget.fY );
                 BitStream.pBitStream->Write ( m_vecTarget.fZ );
-                BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_MARKER_TARGET, *BitStream.pBitStream ) );
+                BroadcastOnlyVisible ( CLuaPacket ( SET_MARKER_TARGET, *BitStream.pBitStream ) );
             }
             else
             {
@@ -207,8 +206,9 @@ void CMarker::SetTarget ( const CVector* pTargetVector )
             {
                 // Tell everyone that knows about this marker
                 CBitStream BitStream;
+                BitStream.pBitStream->Write ( m_ID );
                 BitStream.pBitStream->Write ( static_cast < unsigned char > ( 0 ) );
-                BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_MARKER_TARGET, *BitStream.pBitStream ) );
+                BroadcastOnlyVisible ( CLuaPacket ( SET_MARKER_TARGET, *BitStream.pBitStream ) );
             }
         }
     }
@@ -227,8 +227,9 @@ void CMarker::SetMarkerType ( unsigned char ucType )
 
         // Tell all players
         CBitStream BitStream;
+        BitStream.pBitStream->Write ( m_ID );
         BitStream.pBitStream->Write ( ucType );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_MARKER_TYPE, *BitStream.pBitStream ) );
+        BroadcastOnlyVisible ( CLuaPacket ( SET_MARKER_TYPE, *BitStream.pBitStream ) );
 
         // Is the new type not a checkpoint or a ring? Remove the target
         if ( ucType != CMarker::TYPE_CHECKPOINT && ucType != CMarker::TYPE_RING )
@@ -250,8 +251,9 @@ void CMarker::SetSize ( float fSize )
 
         // Tell all players
         CBitStream BitStream;
+        BitStream.pBitStream->Write ( m_ID );
         BitStream.pBitStream->Write ( fSize );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_MARKER_SIZE, *BitStream.pBitStream ) );
+        BroadcastOnlyVisible ( CLuaPacket ( SET_MARKER_SIZE, *BitStream.pBitStream ) );
     }
 }
 
@@ -266,11 +268,12 @@ void CMarker::SetColor ( const SColor color )
 
         // Tell all the players
         CBitStream BitStream;
+        BitStream.pBitStream->Write ( m_ID );
         BitStream.pBitStream->Write ( color.B  );
         BitStream.pBitStream->Write ( color.G );
         BitStream.pBitStream->Write ( color.R );
         BitStream.pBitStream->Write ( color.A );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_MARKER_COLOR, *BitStream.pBitStream ) );
+        BroadcastOnlyVisible ( CLuaPacket ( SET_MARKER_COLOR, *BitStream.pBitStream ) );
     }
 }
 
@@ -283,8 +286,9 @@ void CMarker::SetIcon ( unsigned char ucIcon )
 
         // Tell everyone that knows about this marker
         CBitStream BitStream;
+        BitStream.pBitStream->Write ( m_ID );
         BitStream.pBitStream->Write ( m_ucIcon );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_MARKER_ICON, *BitStream.pBitStream ) );
+        BroadcastOnlyVisible ( CLuaPacket ( SET_MARKER_ICON, *BitStream.pBitStream ) );
     }
 }
 
@@ -352,13 +356,13 @@ void CMarker::UpdateCollisionObject ( unsigned char ucOldType )
         {
             if ( m_pCollision )
                 g_pGame->GetElementDeleter()->Delete ( m_pCollision );
-            m_pCollision = new CColCircle ( m_pColManager, NULL, m_vecPosition, m_fSize, NULL, true );
+            m_pCollision = new CColCircle ( m_pColManager, NULL, m_vecPosition, m_fSize, NULL );
         }
         else if ( ucOldType == CMarker::TYPE_CHECKPOINT )
         {
             if ( m_pCollision )
                 g_pGame->GetElementDeleter()->Delete ( m_pCollision );
-            m_pCollision = new CColSphere ( m_pColManager, NULL, m_vecPosition, m_fSize, NULL, true );
+            m_pCollision = new CColSphere ( m_pColManager, NULL, m_vecPosition, m_fSize, NULL );
         }
 
         m_pCollision->SetCallback ( this );

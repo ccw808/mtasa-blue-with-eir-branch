@@ -39,7 +39,6 @@ public:
 
     bool                    ProcessMessage              ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
 protected:
-    bool                    ProcessCharacter            ( WPARAM wChar );
     bool                    ProcessKeyStroke            ( const SBindableKey * pKey, bool bState );
 public:
 
@@ -54,31 +53,30 @@ public:
     std::list < CKeyBind* > ::const_iterator IterBegin  ( void )    { return m_pList->begin (); }
     std::list < CKeyBind* > ::const_iterator IterEnd    ( void )    { return m_pList->end (); }
 
+
     // Command-bind funcs
-    bool                    AddCommand                  ( const char* szKey, const char* szCommand, const char* szArguments, bool bState, const char* szResource = NULL , bool bScriptCreated = false, const char* szOriginalScriptKey = NULL );
+    bool                    AddCommand                  ( const char* szKey, const char* szCommand, const char* szArguments = NULL, bool bState = true, const char* szResource = NULL, bool bAltKey = false );
     bool                    AddCommand                  ( const SBindableKey* pKey, const char* szCommand, const char* szArguments = NULL, bool bState = true );
-    bool                    RemoveCommand               ( const char* szKey, const char* szCommand, bool bCheckState = false, bool bState = true );
+    bool                    RemoveCommand               ( const char* szKey, const char* szCommand, bool bCheckState = false, bool bState = true, const char* szResource = NULL );
     bool                    RemoveAllCommands           ( const char* szKey, bool bCheckState = false, bool bState = true );
     bool                    RemoveAllCommands           ( void );
-    bool                    CommandExists               ( const char* szKey, const char* szCommand, bool bCheckState = false, bool bState = true, const char* szArguments = NULL, const char* szResource = NULL, bool bCheckScriptCreated = false, bool bScriptCreated = false );
+    bool                    CommandExists               ( const char* szKey, const char* szCommand, bool bCheckState = false, bool bState = true, const char* szArguments = NULL, const char* szResource = NULL );
     bool                    SetCommandActive            ( const char* szKey, const char* szCommand, bool bState, const char* szArguments, const char* szResource, bool bActive, bool checkHitState );
     void                    SetAllCommandsActive        ( const char* szResource, bool bActive, const char* szCommand = NULL, bool bState = true, const char* szArguments = NULL, bool checkHitState = false );
     CCommandBind*           GetBindFromCommand          ( const char* szCommand, const char* szArguments = NULL, bool bMatchCase = true, const char* szKey = NULL, bool bCheckHitState = false, bool bState = NULL );
     bool                    GetBoundCommands            ( const char* szCommand, std::list < CCommandBind * > & commandsList );
-    void                    UserChangeCommandBoundKey   ( CCommandBind* pBind, const SBindableKey* pNewBoundKey );
-    void                    UserRemoveCommandBoundKey   ( CCommandBind* pBind );
-    CCommandBind*           FindMatchingUpBind          ( CCommandBind* pBind );
-    CCommandBind*           FindCommandMatch            ( const char* szKey, const char* szCommand, const char* szArguments, const char* szResource, const char* szOriginalScriptKey, bool bCheckState, bool bState, bool bCheckScriptCreated, bool bScriptCreated );
-    void                    SortCommandBinds            ( void );
-
+    
     // Control-bind funcs
     bool                    AddGTAControl               ( const char* szKey, const char* szControl );
+    bool                    AddGTAControl               ( const char* szKey, eControllerAction action );
     bool                    AddGTAControl               ( const SBindableKey* pKey, SBindableGTAControl* pControl );
     bool                    RemoveGTAControl            ( const char* szKey, const char* szControl );
+    void                    RemoveGTAControls           ( const char* szControl, bool bDestroy = true );
     bool                    RemoveAllGTAControls        ( const char* szKey );
     bool                    RemoveAllGTAControls        ( void );
     bool                    GTAControlExists            ( const char* szKey, const char* szControl );
     bool                    GTAControlExists            ( const SBindableKey* pKey, SBindableGTAControl* pControl );
+    unsigned int            GTAControlsCount            ( void );
     void                    CallGTAControlBind          ( CGTAControlBind* pBind, bool bState );
     void                    CallAllGTAControlBinds      ( eControlType controlType, bool bState );
     bool                    GetBoundControls            ( SBindableGTAControl * pControl, std::list < CGTAControlBind * > & controlsList );
@@ -112,14 +110,17 @@ public:
     bool                    ControlFunctionExists       ( SBindableGTAControl* pControl, ControlFunctionBindHandler Handler, bool bCheckState = false, bool bState = true );
 
     // Key/code funcs
+    char*                   GetKeyFromCode              ( unsigned long ulCode );
+    bool                    GetCodeFromKey              ( const char* szKey, unsigned long& ucCode );
     const SBindableKey*     GetBindableFromKey          ( const char* szKey );
     const SBindableKey*     GetBindableFromGTARelative  ( int iGTAKey );
     bool                    IsKey                       ( const char* szKey );
+    char*                   GetKeyFromGTARelative       ( int iGTAKey );
     const SBindableKey*     GetBindableFromMessage      ( UINT uMsg, WPARAM wParam, LPARAM lParam, bool& bState );
-    void                    SetKeyStrokeHandler         ( KeyStrokeHandler Handler )    { m_KeyStrokeHandler = Handler; }
-    void                    SetCharacterKeyHandler      ( CharacterKeyHandler Handler ) { m_CharacterKeyHandler = Handler; }
 
     // Control/action funcs
+    char*                   GetControlFromAction        ( eControllerAction action );
+    bool                    GetActionFromControl        ( const char* szControl, eControllerAction& action );
     SBindableGTAControl*    GetBindableFromControl      ( const char* szControl );
     SBindableGTAControl*    GetBindableFromAction       ( eControllerAction action );
     bool                    IsControl                   ( const char* szControl );
@@ -137,6 +138,7 @@ public:
     bool                    LoadFromXML                 ( CXMLNode* pMainNode );
     bool                    SaveToXML                   ( CXMLNode* pMainNode );
     void                    LoadDefaultBinds            ( void );
+    void                    LoadDefaultControls         ( void );
     void                    LoadDefaultCommands         ( bool bForce );
     void                    LoadControlsFromGTA         ( void );
 
@@ -146,20 +148,19 @@ public:
 
     static bool             IsFakeCtrl_L                ( UINT message, WPARAM wParam, LPARAM lParam );
 
-
-    bool                    TriggerKeyStrokeHandler     ( const SString& strKey, bool bState, bool bIsConsoleInputKey );
+    void                    AddSection                  ( char* szSection );
+    void                    RemoveSection               ( char* szSection );
+    void                    RemoveAllSections           ( void );
 
 private:    
     CCore*                      m_pCore;
 
     std::list < CKeyBind* >*    m_pList;
+    char*                       m_szFileName;
     bool                        m_bMouseWheel;
     bool                        m_bInVehicle;
     CCommandBind*               m_pChatBoxBind;
     bool                        m_bProcessingKeyStroke;
-    KeyStrokeHandler            m_KeyStrokeHandler;
-    CharacterKeyHandler         m_CharacterKeyHandler;
-    bool                        m_bWaitingToLoadDefaults;
 };
 
 #endif

@@ -45,6 +45,9 @@ public:
     {
         return !( operator== ( rhs ) );
     }
+
+    CRect2D&   operator=       ( const CRect2D& rhs );
+
 };
 
 #endif

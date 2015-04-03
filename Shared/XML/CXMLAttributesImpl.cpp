@@ -12,8 +12,7 @@
 
 #include "StdInc.h"
 
-CXMLAttributesImpl::CXMLAttributesImpl ( TiXmlElement& Node, bool bUseIDs ) :
-    m_bUsingIDs ( bUseIDs ),
+CXMLAttributesImpl::CXMLAttributesImpl ( TiXmlElement& Node ) :
     m_Node ( Node )
 {
     // Init
@@ -93,26 +92,6 @@ CXMLAttribute* CXMLAttributesImpl::Create ( const CXMLAttribute& Copy )
 }
 
 
-bool CXMLAttributesImpl::Delete ( const char* szName )
-{
-    // Find the attribute in our attributelist
-    std::list < CXMLAttribute* > ::const_iterator iter = m_Attributes.begin ();
-    for ( ; iter != m_Attributes.end (); iter++ )
-    {
-        // Names match?
-        if ( strcmp ( szName, (*iter)->GetName ().c_str () ) == 0 )
-        {
-            // Remove from list
-            delete *iter;
-            return true;
-        }
-    }
-
-    // Couldn't find it
-    return false;
-}
-
-
 void CXMLAttributesImpl::DeleteAll ( void )
 {
     // Delete each attribute
@@ -161,7 +140,7 @@ void CXMLAttributesImpl::CreateAttributes ( void )
             // Add it
             new CXMLAttributeImpl ( *this, m_Node, *pAttrib );
         }
-        while ( ( pAttrib = pAttrib->Next () ) );
+        while ( pAttrib = pAttrib->Next () );
     }
 }
 

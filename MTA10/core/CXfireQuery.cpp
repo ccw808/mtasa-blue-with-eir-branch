@@ -40,7 +40,7 @@ bool CXfireServerInfo::ParseQuery ( const char * szBuffer, unsigned int nLength 
     unsigned int i = 4;
 
     // Game
-    if ( !ReadString ( strGameName, szBuffer, i, nLength ) )
+    if ( !ReadString ( strGame, szBuffer, i, nLength ) )
         return false;
 
     // Server name
@@ -48,7 +48,7 @@ bool CXfireServerInfo::ParseQuery ( const char * szBuffer, unsigned int nLength 
         return false;
 
     // Game type
-    if ( !ReadString ( strGameMode, szBuffer, i, nLength ) )
+    if ( !ReadString ( strType, szBuffer, i, nLength ) )
         return false;
 
     // Map name
@@ -68,18 +68,6 @@ bool CXfireServerInfo::ParseQuery ( const char * szBuffer, unsigned int nLength 
     bPassworded = ( szBuffer[i++] == 1 );
     nPlayers = (unsigned char)szBuffer[i++];
     nMaxPlayers = (unsigned char)szBuffer[i++];
-
-    // Recover large player count if present
-    SString strPlayerCount = strMap.Right ( strMap.length () - strlen ( strMap ) - 1 );
-    if ( !strPlayerCount.empty () )
-    {
-        SString strJoinedPlayers, strMaxPlayers;
-        if ( strPlayerCount.Split ( "/", &strJoinedPlayers, &strMaxPlayers ) )
-        {
-            nPlayers = atoi ( strJoinedPlayers );
-            nMaxPlayers = atoi ( strMaxPlayers );
-        }
-    }
 
     return true;
 }
@@ -122,7 +110,7 @@ void CXfireServerInfo::Query ( void )
     memset ( &addr, 0, sizeof(addr) );
     addr.sin_family = AF_INET;
     addr.sin_addr = Address;
-    addr.sin_port = htons ( GetQueryPort () );
+    addr.sin_port = htons ( usQueryPort );
 
     int ret = sendto ( m_Socket, "x", 1, 0, (sockaddr *) &addr, sizeof(addr) );
     if ( ret == 1 )

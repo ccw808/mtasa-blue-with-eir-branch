@@ -19,7 +19,7 @@
 
 #include <CClientCommon.h>
 #include "CDeathmatchVehicle.h"
-#define MIN_ROTATION_DIFF   0.1
+
 class CUnoccupiedVehicleSync
 {
 public:
@@ -49,7 +49,7 @@ private:
     bool                            WriteVehicleInformation             ( NetBitStreamInterface* pBitStream, CDeathmatchVehicle* pVehicle );
 
     CClientVehicleManager*          m_pVehicleManager;
-    CMappedList < CDeathmatchVehicle* > m_List;
+    std::list < CDeathmatchVehicle* > m_List;
     unsigned long                   m_ulLastSyncTime;
 };
 

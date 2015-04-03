@@ -4,7 +4,6 @@
 	Version="9.00"
 	Name="Client - Game SA"
 	ProjectGUID="{E13D1441-438B-4A03-AB79-5E8EF08EE414}"
-	RootNamespace="Client - Game SA"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -17,8 +16,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Release"
+			IntermediateDirectory=".\Release"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -56,13 +55,16 @@
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
 				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows"
-				PreprocessorDefinitions="WIN32;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
+				PreprocessorDefinitions="WIN32;MTA_RELEASE;COMPILE_FOR_SA;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Release/"
+				ObjectFile=".\Release/"
+				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -81,17 +83,19 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="C:\Program Files\MTA San Andreas 1.4\MTA\game_sa.dll"
+				OutputFile="C:\Program Files\MTA San Andreas\MTA\game_sa.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				ProgramDatabaseFile="C:/Symbols/$(ConfigurationName)_$(SafeParentName).pdb"
+				GenerateMapFile="true"
+				MapFileName="C:/Symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Release/game_sa.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -118,8 +122,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Debug"
+			IntermediateDirectory=".\Debug"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -151,8 +155,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="0"
 				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows"
-				PreprocessorDefinitions="WIN32;_DEBUG;MTA_DEBUG;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
-				StringPooling="true"
+				PreprocessorDefinitions="WIN32;_DEBUG;MTA_DEBUG;COMPILE_FOR_SA;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
 				EnableFunctionLevelLinking="true"
@@ -160,6 +163,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Debug/"
+				ObjectFile=".\Debug/"
+				ProgramDataBaseFileName=".\Debug/"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
@@ -179,14 +185,14 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="C:\Program Files\MTA San Andreas 1.4\mta\game_sa_d.dll"
+				OutputFile="C:\Program Files\MTA San Andreas\mta\game_sa_d.dll"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
+				ProgramDatabaseFile=".\Debug/game_sa_d.pdb"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Debug/game_sa_d.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -213,8 +219,8 @@
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\obj\x86\$(ConfigurationName)\$(SafeRootNamespace)"
+			OutputDirectory="..\..\obj\client\game_sa"
+			IntermediateDirectory="..\..\obj\client\game_sa"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -251,13 +257,16 @@
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
 				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows"
-				PreprocessorDefinitions="WIN32;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
+				PreprocessorDefinitions="WIN32;MTA_RELEASE;COMPILE_FOR_SA;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
 				RuntimeTypeInfo="true"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=""
+				ObjectFile="$(IntDir)/"
+				ProgramDataBaseFileName="$(IntDir)/vc70.pdb"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -280,13 +289,15 @@
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				ProgramDatabaseFile="C:/Symbols/$(ConfigurationName)_$(SafeParentName).pdb"
+				GenerateMapFile="true"
+				MapFileName="C:/Symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Release/game_sa.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -360,15 +371,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CAudioContainerLookupTableSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CAudioContainerSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CAudioEngineSA.cpp"
+				RelativePath="CAudioSA.cpp"
 				>
 			</File>
 			<File
@@ -389,10 +392,6 @@
 			</File>
 			<File
 				RelativePath="CBuildingSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CBuoyancySA.cpp"
 				>
 			</File>
 			<File
@@ -492,15 +491,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CFxManagerSA.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CFxSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CFxSystemSA.cpp"
 				>
 			</File>
 			<File
@@ -628,10 +619,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CPointLightsSA.cpp"
-				>
-			</File>
-			<File
 				RelativePath="CPoolsSA.cpp"
 				>
 			</File>
@@ -664,23 +651,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CRenderWareSA.ClothesReplacing.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CRenderWareSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CRenderWareSA.ShaderMatching.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CRenderWareSA.ShaderSupport.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CRenderWareSA.TextureReplacing.cpp"
 				>
 			</File>
 			<File
@@ -693,10 +664,6 @@
 			</File>
 			<File
 				RelativePath=".\CSettingsSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CShadowDataSA.cpp"
 				>
 			</File>
 			<File
@@ -761,14 +728,6 @@
 			</File>
 			<File
 				RelativePath="CWeaponSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CWeaponStatManagerSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CWeaponStatSA.cpp"
 				>
 			</File>
 			<File
@@ -909,15 +868,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CAudioContainerLookupTableSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CAudioContainerSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CAudioEngineSA.h"
+				RelativePath="CAudioSA.h"
 				>
 			</File>
 			<File
@@ -937,15 +888,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CBoundingBoxSA.h"
-				>
-			</File>
-			<File
 				RelativePath="CBuildingSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CBuoyancySA.h"
 				>
 			</File>
 			<File
@@ -981,35 +924,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CColBoxSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CColLineSA.h"
-				>
-			</File>
-			<File
 				RelativePath=".\CColModelSA.h"
 				>
 			</File>
 			<File
 				RelativePath=".\CColPointSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CColSphereSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CColTrianglePlaneSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CColTriangleSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CCompressedVectorSA.h"
 				>
 			</File>
 			<File
@@ -1069,19 +988,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CFxManagerSA.h"
-				>
-			</File>
-			<File
 				RelativePath=".\CFxSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CFxSystemBPSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CFxSystemSA.h"
 				>
 			</File>
 			<File
@@ -1213,10 +1120,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CPointLightsSA.h"
-				>
-			</File>
-			<File
 				RelativePath="CPoolsSA.h"
 				>
 			</File>
@@ -1253,14 +1156,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CRenderWareSA.ShaderMatching.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CRenderWareSA.ShaderSupport.h"
-				>
-			</File>
-			<File
 				RelativePath="CRestartSA.h"
 				>
 			</File>
@@ -1270,10 +1165,6 @@
 			</File>
 			<File
 				RelativePath=".\CSettingsSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CShadowDataSA.h"
 				>
 			</File>
 			<File
@@ -1338,14 +1229,6 @@
 			</File>
 			<File
 				RelativePath="CWeaponSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CWeaponStatManagerSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CWeaponStatSA.h"
 				>
 			</File>
 			<File

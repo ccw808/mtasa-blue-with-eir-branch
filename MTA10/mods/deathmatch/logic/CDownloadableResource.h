@@ -16,12 +16,16 @@
 
 #ifndef _WINDOWS_
 
-#define WIN32_LEAN_AND_MEAN     // Exclude all uncommon functions from windows.h to reduce build time by 100ms
+#define WIN32_LEAN_AND_MEAN     // Exclude all uncommon functions from windows.h to reduce executable size
+
+#ifndef _WIN32_WINNT
+#define _WIN32_WINNT 0x0400     // So we can use IsDebuggerPresent()
+#endif
 
 #include <windows.h>
 #endif
 
-#include <bochs_internal/crc32.h>
+#include "../../shared_logic/utils/zip/crc32.h"
 #include "CChecksum.h"
 
 class CDownloadableResource
@@ -39,14 +43,14 @@ public:
     };
 
 public:
-    CDownloadableResource           ( eResourceType resourceType, const char* szName, const char* szNameShort, CChecksum checksum = CChecksum (), bool bGenerateClientChecksum = false, bool bAutoDownload = true );
+    CDownloadableResource           ( eResourceType resourceType, const char* szName, const char* szNameShort, CChecksum checksum = CChecksum (), bool bGenerateClientChecksum = false );
     virtual ~CDownloadableResource  ( void );
 
     bool DoesClientAndServerChecksumMatch ( void );
 
     eResourceType GetResourceType   ( void ) { return m_resourceType; };
-    const char* GetName             ( void ) { return m_strName; };
-    const char* GetShortName        ( void ) { return m_strNameShort; };
+    const char* GetName             ( void ) { return m_szName; };
+    const char* GetShortName        ( void ) { return m_szNameShort; };
 
     // CRC-based methods
     CChecksum GenerateClientChecksum ( void );
@@ -55,22 +59,14 @@ public:
 
     CChecksum GetServerChecksum      ( void );
     void SetServerChecksum           ( CChecksum serverChecksum );
-
-    bool     IsAutoDownload         ( void )    { return m_bAutoDownload; };
-    void     SetDownloaded          ( void )    { m_bDownloaded = true; };
-    bool     IsDownloaded           ( void )    { return m_bDownloaded; };
-
 protected:
     eResourceType       m_resourceType;
 
-    SString             m_strName;
-    SString             m_strNameShort;
+    char*               m_szName;
+    char*               m_szNameShort;
 
     CChecksum           m_LastClientChecksum;
     CChecksum           m_ServerChecksum;
-
-    bool                m_bAutoDownload;
-    bool                m_bDownloaded;        // File has been downloaded and is ready to use
 };
 
 #endif

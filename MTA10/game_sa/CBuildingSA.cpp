@@ -85,8 +85,8 @@ CBuildingSA::CBuildingSA( DWORD dwModel )
     }*/
 
     /*building->m_pLod = (CBuildingSAInterface*)-1;
-    MemPutFast < DWORD > ( 0xBCC0D8, 1 );
-    MemPutFast < DWORD > ( 0xBCC0E0, (DWORD)building );
+    *(DWORD *)0xBCC0D8 = 1;
+    *(DWORD *)0xBCC0E0 = (DWORD)building;
     dwFunc = 0x5B51E0;
     _asm
     {
@@ -113,8 +113,8 @@ CBuildingSA::CBuildingSA( DWORD dwModel )
     this->SetInterface((CEntitySAInterface*)dwThis);
     
     //DWORD * Index = (DWORD *)0xBCC0D8;
-    MemPutFast < DWORD > ( 0xBCC0E0, dwThis );
-    MemPutFast < DWORD > ( 0xBCC0D8, 1 );
+    *(DWORD *)(0xBCC0E0) = dwThis;
+    *(DWORD *)0xBCC0D8 = 1;
 
     dwFunc = 0x404DE0; // CIplStore__SetupRelatedIpls
     DWORD dwTemp = 0;
@@ -166,7 +166,7 @@ CBuildingSA::~CBuildingSA( )
         DWORD dwInterface = (DWORD)this->GetInterface();
         
         CWorldSA * world = (CWorldSA *)pGame->GetWorld();
-        world->Remove(this->GetInterface(), CBuilding_Destructor);
+        world->Remove(this->GetInterface());
     
         DWORD dwThis = (DWORD)this->GetInterface();
         DWORD dwFunc = this->GetInterface()->vtbl->SCALAR_DELETING_DESTRUCTOR; // we use the vtbl so we can be type independent

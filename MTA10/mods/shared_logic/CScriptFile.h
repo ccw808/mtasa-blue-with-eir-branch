@@ -18,9 +18,8 @@
 #include <stdio.h>
 #include <string>
 
-class CScriptFile : public CClientEntity
+class CScriptFile: public CClientEntity
 {
-    DECLARE_CLASS( CScriptFile, CClientEntity )
 public:
     enum eMode
     {
@@ -31,10 +30,6 @@ public:
 
                             CScriptFile             ( const char* szFilename, unsigned long ulMaxSize );
                             ~CScriptFile            ( void );
-
-    // Functions required for linking
-    void                    GetPosition             ( CVector& vecPosition ) const {};
-    void                    SetPosition             ( const CVector& vecPosition ) {};
 
     // Functions required by CClientEntity
     eClientEntityType       GetType                 ( void ) const  { return SCRIPTFILE; };
@@ -53,18 +48,16 @@ public:
     long                    GetSize                 ( void );
 
     long                    SetPointer              ( unsigned long ulPosition );
+    void                    SetSize                 ( unsigned long ulNewSize );
 
     void                    Flush                   ( void );
     long                    Read                    ( unsigned long ulSize, char* pData );
     long                    Write                   ( unsigned long ulSize, const char* pData );
 
 private:
-    void                    DoResourceFileCheck     ( void );
-
-    CBinaryFileInterface*   m_pFile;
+    FILE*                   m_pFile;
     std::string             m_strFilename;
     unsigned long           m_ulMaxSize;
-    bool                    m_bDoneResourceFileCheck;
 };
 
 #endif

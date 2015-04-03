@@ -41,13 +41,8 @@ void CClientPlayerManager::DoPulse ( void )
     for ( ; iter != m_Players.end (); ++iter )
     {
         pPlayer = *iter;
-
         if ( !pPlayer->IsLocalPlayer () )
         {
-            // Pulse voice data if voice is enabled
-            if ( g_pClientGame->GetVoiceRecorder()->IsEnabled() && pPlayer->GetVoice() )
-                pPlayer->GetVoice()->DoPulse();
-
             // Flag him with connection error if its been too long since last puresync and force his position
             unsigned long ulLastPuresyncTime = pPlayer->GetLastPuresyncTime ();
             bool bHasConnectionTrouble = ( ulLastPuresyncTime != 0 && ulCurrentTime >= ulLastPuresyncTime + REMOTE_PLAYER_CONNECTION_TROUBLE_TIME );
@@ -174,7 +169,16 @@ CClientPlayer* CClientPlayerManager::Get ( CPlayerPed* pPlayer, bool bValidatePo
 
 bool CClientPlayerManager::Exists ( CClientPlayer* pPlayer )
 {
-    return m_Players.Contains ( pPlayer );
+    vector < CClientPlayer* > ::const_iterator iter = m_Players.begin ();
+    for ( ; iter != m_Players.end () ; iter++ )
+    {
+        if ( *iter == pPlayer )
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -221,10 +225,44 @@ void CClientPlayerManager::ResetAll ( void )
 }
 
 
+vector < CClientPlayer* > ::const_iterator CClientPlayerManager::IterGet ( CClientPlayer* pPlayer )
+{
+    // Find it in our list
+    vector < CClientPlayer* > ::const_iterator iter = m_Players.begin ();
+    for ( ; iter != m_Players.end (); iter++ )
+    {
+        if ( *iter == pPlayer )
+        {
+            return iter;
+        }
+    }
+
+    // We couldn't find it
+    return m_Players.begin ();
+}
+
+
+vector < CClientPlayer* > ::const_reverse_iterator CClientPlayerManager::IterGetReverse ( CClientPlayer* pPlayer )
+{
+    // Find it in our list
+    vector < CClientPlayer* > ::reverse_iterator iter = m_Players.rbegin ();
+    for ( ; iter != m_Players.rend (); iter++ )
+    {
+        if ( *iter == pPlayer )
+        {
+            return iter;
+        }
+    }
+
+    // We couldn't find it
+    return m_Players.rbegin ();
+}
+
+
 void CClientPlayerManager::RemoveFromList ( CClientPlayer* pPlayer )
 {
     if ( m_bCanRemoveFromList )
     {
-        m_Players.remove ( pPlayer );
+        ListRemove ( m_Players, pPlayer );
     }
 }

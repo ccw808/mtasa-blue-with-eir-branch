@@ -31,9 +31,6 @@ public:
     void                                RemoveColumn            ( unsigned int uiColumn );
     void                                AutoSizeColumn          ( unsigned int hColumn );
     void                                SetColumnWidth          ( int hColumn, float fWidth, bool bRelative = true );
-    bool                                GetColumnWidth          ( int hColumn, float& fOutWidth, bool bRelative = true );
-    void                                SetColumnTitle          ( int hColumn, const char* szTitle );
-    const char*                         GetColumnTitle          ( int hColumn );
 
     void                                SetSelectionMode        ( SelectionMode mode );
 
@@ -43,9 +40,9 @@ public:
     int                                 InsertRowAfter          ( int iRow );
     void                                Clear                   ( void );
     CGUIListItem*                       GetItem                 ( int iRow, int hColumn );
-    const char*                         GetItemText             ( int iRow, int hColumn );
-    int                                 SetItemText             ( int iRow, int hColumn, const char* szText, bool bNumber = false, bool bSection = false, bool bFast = false, const char* szSortText = NULL );
-    void                                SetItemData             ( int iRow, int hColumn, void* pData, CGUICallback<void,void*> deleteDataCallback = NULL );
+    char*                               GetItemText             ( int iRow, int hColumn );
+    int                                 SetItemText             ( int iRow, int hColumn, const char* szText, bool bNumber = false, bool bSection = false, bool bFast = false );
+    void                                SetItemData             ( int iRow, int hColumn, void* pData );
     void                                SetItemData             ( int iRow, int hColumn, const char* pszData );
     void*                               GetItemData             ( int iRow, int hColumn );
     void                                SetItemColor            ( int iRow, int hColumn, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue, unsigned char ucAlpha );
@@ -56,34 +53,27 @@ public:
     void                                SetSorting              ( bool bEnabled );
     void                                SetItemImage            ( int iRow, int hColumn, CGUIStaticImage* pImage );
 
-    float                               GetHorizontalScrollPosition ( void );
-    float                               GetVerticalScrollPosition   ( void );
-    void                                SetHorizontalScrollPosition ( float fPosition );
-    void                                SetVerticalScrollPosition   ( float fPosition );
-
     int                                 GetColumnIndex          ( int hColumn );
     int                                 GetItemColumnIndex      ( CGUIListItem* pItem );
     int                                 GetItemRowIndex         ( CGUIListItem* pItem );
-    void                                GetVisibleRowRange      ( int& iFirst, int& iLast );
     int                                 GetSelectedCount        ( void );
     CGUIListItem*                       GetSelectedItem         ( void );
     CGUIListItem*                       GetNextSelectedItem     ( CGUIListItem* pItem );
     int                                 GetSelectedItemRow      ( void );
     int                                 GetSelectedItemColumn   ( void );
     int                                 GetRowCount             ( void );
-    int                                 GetColumnCount          ( void );
 
     bool                                IsColumnSegmentSizingEnabled     ( int hColumn );
     void                                SetColumnSegmentSizingEnabled    ( int hColumn, bool bEnabled );
 
     void                                Sort                    ( unsigned int uiColumn, SortDirection direction );
-    void                                GetSort                 ( unsigned int& uiColumn, SortDirection& direction );
 
     void                                SetSelectedItem         ( int iRow, int hColumn, bool bReset );
 
     void                                SetSortColumnHandler    ( GUI_CALLBACK Callback );
 
     void                                SetIgnoreTextSpacer     ( bool bIgnoreTextSpacer ) { m_bIgnoreTextSpacer = bIgnoreTextSpacer; };
+
     eCGUIType                           GetType                 ( void ) { return CGUI_GRIDLIST; };
 
     #include "CGUIElement_Inc.h"
@@ -97,7 +87,7 @@ private:
     CGUIListItem_Impl*                  GetListItem             ( CEGUI::ListboxItem* pItem );
     unsigned int                        m_hUniqueHandle;
 
-    CFastHashMap < CEGUI::ListboxItem*, CGUIListItem_Impl* > m_Items;
+    google::dense_hash_map < CEGUI::ListboxItem*, CGUIListItem_Impl* > m_Items;
 
     GUI_CALLBACK                        m_OnSortColumn;
 

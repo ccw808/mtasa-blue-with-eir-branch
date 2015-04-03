@@ -12,12 +12,8 @@
 
 #include "StdInc.h"
 #include <game/CPad.h>
-#include "XInput.h"
-#include <dinputd.h>
 
 using std::string;
-
-extern IDirectInput8* g_pDirectInput8;
 
 //////////////////////////////////////////////////////////
 //
@@ -36,7 +32,7 @@ extern IDirectInput8* g_pDirectInput8;
     void* operator new ( size_t size, void* where ) { memset(where,0,size); return where; }
 
 
-SString GUIDToString ( const GUID& g )
+static SString GUIDToString ( const GUID& g )
 {
     return SString (
                     "%08x-%04x-%04x-%02x%02x-%02x%02x%02x%02x%02x%02x",
@@ -113,7 +109,6 @@ struct SInputDeviceInfo
         bool    bEnabled;
         long    lMax;
         long    lMin;
-        DWORD   dwType;
     } axis[7];
 };
 
@@ -126,7 +121,6 @@ struct SJoystickState
     BYTE    rgbButtons[32];         /* 32 buttons                           */
     BYTE    rgbButtonsWas[32];
     BYTE    povButtonsWas[4];
-    BYTE    axisButtonsWas[14];     // Axis as buttons
 };
 
 
@@ -143,7 +137,7 @@ public:
                         ~CJoystickManager           ( void );
 
     // CJoystickManagerInterface methods
-    virtual void        OnSetDataFormat             ( IDirectInputDevice8A* pDevice, LPCDIDATAFORMAT a ) {}
+    virtual void        OnSetDataFormat             ( IDirectInputDevice8A* pDevice, LPCDIDATAFORMAT a );
     virtual void        RemoveDevice                ( IDirectInputDevice8A* pDevice );
     virtual void        DoPulse                     ( void );
     virtual void        ApplyAxes                   ( CControllerState& cs, bool bInVehicle );
@@ -171,36 +165,23 @@ public:
     virtual void        CancelCaptureAxis           ( bool bClearBinding );
 
     // CJoystickManager methods
-    BOOL                DoEnumJoysticksCallback     ( const DIDEVICEINSTANCE* pdidInstance );
     BOOL                DoEnumObjectsCallback       ( const DIDEVICEOBJECTINSTANCE* pdidoi );
 private:
-    bool                ReadInputSubsystem          ( DIJOYSTATE2& js );
-    bool                HandleXInputGetState        ( XINPUT_STATE& XInputState );
-    bool                IsXInputDeviceAttached      ( void );
     bool                IsJoypadValid               ( void );
     void                EnumAxes                    ( void );
-    void                InitDirectInput             ( void );
     void                ReadCurrentState            ( void );
     CXMLNode*           GetConfigNode               ( bool bCreateIfRequired );
     bool                LoadFromXML                 ( void );
 
-    bool                    m_bDoneInit;
     int                     m_SettingsRevision;
     SInputDeviceInfo        m_DevInfo;
     SJoystickState          m_JoystickState;
     SMappingLine            m_currentMapping[10];
-    bool                    m_bUseXInput;
-    bool                    m_bXInputDeviceAttached;
-    uint                    m_uiXInputReattachDelay;
-    CElapsedTime            m_XInputReattachTimer;
 
     // Used during axis binding
     bool                    m_bCaptureAxis;
     int                     m_iCaptureOutputIndex;
     SJoystickState          m_PreBindJoystickState;
-
-    DIJOYCONFIG*            m_pPreferredJoyCfg;
-    bool                    m_bPreferredJoyCfgValid;
 };
 
 
@@ -232,34 +213,6 @@ CJoystickManagerInterface* GetJoystickManager ( void )
 ///////////////////////////////////////////////////////////////
 CJoystickManager::CJoystickManager ( void )
 {
-    // See if we have a XInput compatible device
-    XINPUT_CAPABILITIES Capabilities;
-    DWORD dwStatus = XInputGetCapabilities( 0, XINPUT_FLAG_GAMEPAD, &Capabilities );
-    if ( dwStatus == ERROR_SUCCESS )
-    {
-        WriteDebugEvent( SString( "XInput device detected. Type:%d SubType:%d Flags:0x%04x"
-                                    ,Capabilities.Type
-                                    ,Capabilities.SubType
-                                    ,Capabilities.Flags
-                               ));
-        WriteDebugEvent( SString( "XInput - wButtons:0x%04x  bLeftTrigger:0x%02x  bRightTrigger:0x%02x"
-                                    ,Capabilities.Gamepad.wButtons
-                                    ,Capabilities.Gamepad.bLeftTrigger
-                                    ,Capabilities.Gamepad.bRightTrigger
-                               ));
-        WriteDebugEvent( SString( "XInput - sThumbLX:0x%04x  sThumbLY:0x%04x  sThumbRX:0x%04x  sThumbRY:0x%04x"
-                                    ,Capabilities.Gamepad.sThumbLX
-                                    ,Capabilities.Gamepad.sThumbLY
-                                    ,Capabilities.Gamepad.sThumbRX
-                                    ,Capabilities.Gamepad.sThumbRY
-                               ));
-        WriteDebugEvent( SString( "XInput - wLeftMotorSpeed:0x%04x  wRightMotorSpeed:0x%04x"
-                                    ,Capabilities.Vibration.wLeftMotorSpeed
-                                    ,Capabilities.Vibration.wRightMotorSpeed
-                               ));
-        m_bUseXInput = true;
-    }
-
     SetDefaults();
 }
 
@@ -271,43 +224,22 @@ CJoystickManager::~CJoystickManager ( void )
 
 ///////////////////////////////////////////////////////////////
 //
-// CJoystickManager EnumJoysticksCallback
+// CJoystickManager::OnSetDataFormat
 //
-// Called once for each enumerated Joystick. If we find one, create a
-//       device interface on it so we can play with it.
+// Figure out device type by intercepting and looking at the SetDataFormat parameter.
+// Comparing dwNumObjs seems to work. Could do with a more bullet proof way of determining the device type.
 //
 ///////////////////////////////////////////////////////////////
-BOOL CALLBACK EnumJoysticksCallback( const DIDEVICEINSTANCE* pdidInstance, VOID* pContext )
+void CJoystickManager::OnSetDataFormat ( IDirectInputDevice8A* pDevice, LPCDIDATAFORMAT a )
 {
-    // Redir to instance
-    return (( CJoystickManager* ) pContext )->DoEnumJoysticksCallback ( pdidInstance );
-}
-
-BOOL CJoystickManager::DoEnumJoysticksCallback ( const DIDEVICEINSTANCE* pdidInstance )
-{
-
-    WriteDebugEvent( SString( "DInput EnumJoysticksCallback - guidProduct:%s  ProductName:%s"
-                                ,*GUIDToString( pdidInstance->guidProduct )
-                                ,pdidInstance->tszProductName
-                           ));
-
-    // Skip anything other than the perferred Joystick device as defined by the control panel.  
-    // Instead you could store all the enumerated Joysticks and let the user pick.
-    if( m_bPreferredJoyCfgValid &&
-        !IsEqualGUID( pdidInstance->guidInstance, m_pPreferredJoyCfg->guidInstance ) )
-        return DIENUM_CONTINUE;
-
-    // Obtain an interface to the enumerated Joystick.
-    HRESULT hr = g_pDirectInput8->CreateDevice( pdidInstance->guidInstance, &m_DevInfo.pDevice, NULL );
-
-    // If it failed, then we can't use this Joystick. (Maybe the user unplugged
-    // it while we were in the middle of enumerating it.)
-    if( FAILED( hr ) )
-        return DIENUM_CONTINUE;
-
-    // Stop enumeration. Note: we're just taking the first Joystick we get. You
-    // could store all the enumerated Joysticks and let the user pick.
-    return DIENUM_STOP;
+    if ( a->dwNumObjs == c_dfDIJoystick2.dwNumObjs )
+    {
+        if ( !m_DevInfo.pDevice )
+        {
+            // This is the first Joystick2 device
+            m_DevInfo.pDevice = pDevice;
+        }
+    }
 }
 
 
@@ -341,17 +273,6 @@ BOOL CALLBACK EnumObjectsCallback ( const DIDEVICEOBJECTINSTANCE* pdidoi, VOID* 
 
 BOOL CJoystickManager::DoEnumObjectsCallback ( const DIDEVICEOBJECTINSTANCE* pdidoi )
 {
-    SString strGuid = GUIDToString( pdidoi->guidType );
-    SString strName = pdidoi->tszName;
-    WriteDebugEvent( SString( "DInput - EnumObjectsCallback. dwSize:%d  strGuid:%s  dwOfs:%d  dwType:0x%08x  dwFlags:0x%08x strName:%s"
-                                ,pdidoi->dwSize
-                                ,*strGuid
-                                ,pdidoi->dwOfs
-                                ,pdidoi->dwType
-                                ,pdidoi->dwFlags
-                                ,*strName
-                           ));
-
     // For axes that are found, do things
     if ( pdidoi->dwType & DIDFT_AXIS )
     {
@@ -361,20 +282,12 @@ BOOL CJoystickManager::DoEnumObjectsCallback ( const DIDEVICEOBJECTINSTANCE* pdi
         range.diph.dwHeaderSize = sizeof ( DIPROPHEADER );
         range.diph.dwHow = DIPH_BYID;
         range.diph.dwObj = pdidoi->dwType; // Specify the enumerated axis
-        range.lMin = -1000;
-        range.lMax = +1000;
+        range.lMin = -2000;
+        range.lMax = +2000;
 
         if ( FAILED ( m_DevInfo.pDevice->SetProperty ( DIPROP_RANGE, &range.diph ) ) )
-        {
-            WriteDebugEvent( SStringX( "                    Failed to set DIPROP_RANGE" ));
-            return DIENUM_CONTINUE;
-        }
+            return DIENUM_STOP;
 
-        if ( FAILED ( m_DevInfo.pDevice->GetProperty ( DIPROP_RANGE, &range.diph ) ) )
-        {
-            WriteDebugEvent( SStringX( "                    Failed to get DIPROP_RANGE" ));
-            return DIENUM_CONTINUE;
-        }
 
         // Remove Deadzone and Saturation
         DIPROPDWORD dead,
@@ -410,15 +323,9 @@ BOOL CJoystickManager::DoEnumObjectsCallback ( const DIDEVICEOBJECTINSTANCE* pdi
             m_DevInfo.axis[axisIndex].lMin      = range.lMin;
             m_DevInfo.axis[axisIndex].lMax      = range.lMax;
             m_DevInfo.axis[axisIndex].bEnabled  = true;
-            m_DevInfo.axis[axisIndex].dwType    = pdidoi->dwType;
 
             m_DevInfo.iAxisCount++;
-            WriteDebugEvent( SString( "                    Added axis index %d. lMin:%d lMax:%d (iAxisCount:%d)", axisIndex, range.lMin, range.lMax, m_DevInfo.iAxisCount ));
-        }
-        else
-        {
-            WriteDebugEvent( SStringX( "                 Failed to recognise axis" ));
-        }
+       }
 
 #ifdef MTA_DEBUG
 #if 0
@@ -482,72 +389,6 @@ void CJoystickManager::EnumAxes ( void )
 
 ///////////////////////////////////////////////////////////////
 //
-// CJoystickManager::InitDirectInput
-//
-// Create a joystick device if possible
-//
-///////////////////////////////////////////////////////////////
-void CJoystickManager::InitDirectInput( void )
-{
-    if ( m_bUseXInput )
-        return;
-
-    DIJOYCONFIG PreferredJoyCfg = {0};
-    m_pPreferredJoyCfg = &PreferredJoyCfg;
-    m_bPreferredJoyCfgValid = false;
-
-    IDirectInputJoyConfig8* pJoyConfig = NULL;
-    if( FAILED( g_pDirectInput8->QueryInterface( IID_IDirectInputJoyConfig8, ( void** )&pJoyConfig ) ) )
-    {
-        WriteDebugEvent ( "InitDirectInput - QueryInterface IDirectInputJoyConfig8 failed" );
-        return;
-    }
-
-    PreferredJoyCfg.dwSize = sizeof( PreferredJoyCfg );
-    if( SUCCEEDED( pJoyConfig->GetConfig( 0, &PreferredJoyCfg, DIJC_GUIDINSTANCE ) ) ) // This function is expected to fail if no Joystick is attached
-        m_bPreferredJoyCfgValid = true;
-    SAFE_RELEASE( pJoyConfig );
-
-    // Look for a simple Joystick we can use for this sample program.
-    if( FAILED( g_pDirectInput8->EnumDevices( DI8DEVCLASS_GAMECTRL, EnumJoysticksCallback, this, DIEDFL_ATTACHEDONLY ) ) )
-    {
-        WriteDebugEvent ( "InitDirectInput - EnumDevices failed" );
-    }
-
-    // Make sure we got a Joystick
-    if( NULL == m_DevInfo.pDevice )
-    {
-        WriteDebugEvent ( "InitDirectInput - No Joystick found" );
-        return;
-    }
-
-    // In case device did not identify itself as a joysitck during creation,
-    // set flag again to ensure input data will not be dropped when the mouse cursor is showing.
-    CProxyDirectInputDevice8* pProxyInputDevice = dynamic_cast < CProxyDirectInputDevice8* > ( m_DevInfo.pDevice );
-    if ( pProxyInputDevice )
-        pProxyInputDevice->m_bDropDataIfInputGoesToGUI = false;
-
-    // Set the data format to "simple Joystick" - a predefined data format 
-    //
-    // A data format specifies which controls on a device we are interested in,
-    // and how they should be reported. This tells DInput that we will be
-    // passing a DIJOYSTATE2 structure to IDirectInputDevice::GetDeviceState().
-    if( FAILED( m_DevInfo.pDevice->SetDataFormat( &c_dfDIJoystick2 ) ) )
-    {
-        WriteDebugEvent ( "InitDirectInput - SetDataFormat failed" );
-    }
-
-    // Set the cooperative level to let DInput know how this device should
-    // interact with the system and with other DInput applications.
-    if( FAILED( m_DevInfo.pDevice->SetCooperativeLevel( g_pCore->GetHookedWindow(), DISCL_NONEXCLUSIVE | DISCL_FOREGROUND ) ) )
-    {
-        WriteDebugEvent ( "InitDirectInput - SetCooperativeLevel failed" );
-    }
-}
-
-
-///////////////////////////////////////////////////////////////
-//
 // CJoystickManager::DoPulse
 //
 // Updates the joystick state and sends keydown/up messages for any
@@ -556,17 +397,6 @@ void CJoystickManager::InitDirectInput( void )
 ///////////////////////////////////////////////////////////////
 void CJoystickManager::DoPulse ( void )
 {
-    if ( !m_bDoneInit )
-    {
-        if ( !g_pDirectInput8 )
-            return;
-
-        // Init DInput if not done yet
-        InitDirectInput();
-        m_bDoneInit = true;
-    }
-
-
     // Stop if no joystick
     if ( !IsJoypadConnected () )
         return;
@@ -639,37 +469,6 @@ void CJoystickManager::DoPulse ( void )
         }
     }
 
-    // Turn axis movement into button style messages
-    {
-        for ( uint i = 0; i < NUMELMS ( m_JoystickState.axisButtonsWas ) ; i++ )
-        {
-            uint uiAxisIndex = i >> 1;
-            uint uiAxisDir = i & 1;
-
-            if ( uiAxisIndex >= NUMELMS( m_JoystickState.rgfAxis ) )
-                break;
-
-            BYTE NowPress;
-            if ( uiAxisDir )
-                NowPress = m_JoystickState.rgfAxis[uiAxisIndex] > 0.75f;
-            else
-                NowPress = m_JoystickState.rgfAxis[uiAxisIndex] < -0.75f;
-
-            BYTE& WasPress = m_JoystickState.axisButtonsWas[i];
-
-            // Edge detection
-            if ( NowPress != WasPress )
-            {
-                WasPress = NowPress;
-
-                if ( NowPress )
-                    SendMessage ( hWnd, WM_KEYDOWN, VK_AXIS(i+1), 0x00000001 );
-                else
-                    SendMessage ( hWnd, WM_KEYUP, VK_AXIS(i+1), 0xC0000001 );
-            }
-        }
-    }
-
 
     // Handle capture and binding
     if ( m_bCaptureAxis )
@@ -710,20 +509,29 @@ void CJoystickManager::ReadCurrentState ( void )
     for ( int i = 0; i < 32 ; i++ )
         m_JoystickState.rgbButtons[i] = 0;
 
+    if ( !m_DevInfo.pDevice )
+        return;
+
+    // Enumerate axes if not done yet
+    if ( !m_DevInfo.bDoneEnumAxes )
+    {
+        EnumAxes ();
+    }
+
+    // Try to poll
+    if ( FAILED ( m_DevInfo.pDevice->Poll() ) )
+    {
+        //HRESULT hr =
+        m_DevInfo.pDevice->Acquire ();
+        //CCore::GetSingleton ().GetConsole ()->Printf( "Joystick Poll failed, Acquire result:%d", hr );
+        return;
+    }
+
+
     DIJOYSTATE2 js;           // DInput joystick state 
 
-    if ( ReadInputSubsystem ( js ) )
+    if ( SUCCEEDED ( m_DevInfo.pDevice->GetDeviceState ( sizeof( DIJOYSTATE2 ), &js ) ) )
     {
-        SString strStatus;
-        bool bOutputStatus = ( g_pCore->GetDiagnosticDebug () == EDiagnosticDebug::JOYSTICK_0000 ) && !g_pCore->IsConnected();
-        if ( bOutputStatus )
-        {
-            strStatus += SString( "iSaturation:%d iDeadZone:%d\n"
-                                ,m_DevInfo.iSaturation
-                                ,m_DevInfo.iDeadZone
-                            );
-        }
-
         // Read axes
         for ( int a = 0 ; a < NUMELMS ( m_DevInfo.axis )  &&  a < NUMELMS ( m_JoystickState.rgfAxis ); a++ )
         {
@@ -757,60 +565,6 @@ void CJoystickManager::ReadCurrentState ( void )
 
                 // Clamp range: -1.f to 1.f
                 m_JoystickState.rgfAxis[a] = Clamp ( -1.f, fResult, 1.f );
-
-                if ( bOutputStatus )
-                {
-
-                    DIPROPRANGE range;
-                    range.diph.dwSize = sizeof ( DIPROPRANGE );
-                    range.diph.dwHeaderSize = sizeof ( DIPROPHEADER );
-                    range.diph.dwHow = DIPH_BYID;
-                    range.diph.dwObj = m_DevInfo.axis[a].dwType; // Specify the enumerated axis
-                    range.lMin = -2001;
-                    range.lMax = +2001;
-
-                    if ( m_DevInfo.pDevice )
-                        m_DevInfo.pDevice->GetProperty ( DIPROP_RANGE, &range.diph );
-
-                    // Remove Deadzone and Saturation
-                    DIPROPDWORD dead,
-                                sat;
-
-                    dead.diph.dwSize = sizeof dead;
-                    dead.diph.dwHeaderSize = sizeof dead.diph;
-                    dead.diph.dwHow = DIPH_BYID;
-                    dead.diph.dwObj = m_DevInfo.axis[a].dwType;
-                    dead.dwData = 1;
-
-                    sat = dead;
-                    sat.dwData = 9999;
-
-                    if ( m_DevInfo.pDevice )
-                    {
-                        m_DevInfo.pDevice->GetProperty ( DIPROP_DEADZONE, &dead.diph );
-                        m_DevInfo.pDevice->GetProperty ( DIPROP_SATURATION, &sat.diph );
-                    }
-
-                    strStatus += SString( "Axis:%d lMin:%d lMax:%d dead:%d sat:%d raw:%d result:%1.4f\n"
-                                        ,a
-                                        ,range.lMin
-                                        ,range.lMax
-                                        ,dead.dwData
-                                        ,sat.dwData
-                                        ,(&js.lX)[a]
-                                        ,fResult
-                                    );
-                }
-            }
-            else
-            {
-                if ( bOutputStatus )
-                {
-                    strStatus += SString( "Axis:%d raw:%d\n"
-                                        ,a
-                                        ,(&js.lX)[a]
-                                    );
-                }
             }
         }
 
@@ -822,213 +576,7 @@ void CJoystickManager::ReadCurrentState ( void )
         for ( int i = 0; i < 32 ; i++ )
             m_JoystickState.rgbButtons[i] = js.rgbButtons[i];
 
-
-        if ( bOutputStatus )
-        {
-            CGraphicsInterface* pGraphics = CCore::GetSingleton().GetGraphics();
-            int x = 20;
-            int y = 20;//pGraphics->GetViewportHeight() / 2;
-            pGraphics->DrawRectQueued( x, y, 350, 150, 0xaf000000, true );
-            pGraphics->DrawTextQueued( x+10, y+10, 0, 0, 0xFFFFFFFF, strStatus, 1, 1, DT_NOCLIP, NULL, true );
-        }
     }
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CJoystickManager::ReadInputSubsystem
-//
-//
-//
-///////////////////////////////////////////////////////////////
-bool CJoystickManager::ReadInputSubsystem ( DIJOYSTATE2& js )
-{
-    if ( !m_bUseXInput )
-    {
-        //
-        // DirectInput
-        //
-
-        if ( !m_DevInfo.pDevice )
-            return false;
-
-        // Enumerate axes if not done yet
-        if ( !m_DevInfo.bDoneEnumAxes )
-        {
-            EnumAxes ();
-        }
-
-        // Try to poll
-        if ( FAILED ( m_DevInfo.pDevice->Poll() ) )
-        {
-            m_DevInfo.pDevice->Acquire ();
-            return false;
-        }
-
-        if ( FAILED ( m_DevInfo.pDevice->GetDeviceState ( sizeof( DIJOYSTATE2 ), &js ) ) )
-            return false;
-    }
-    else
-    {
-        //
-        // XInput
-        //
-
-        XINPUT_STATE XInputState;
-        if ( !HandleXInputGetState( XInputState ) )
-            return false;
-
-        memset( &js, 0, sizeof( DIJOYSTATE2 ) );
-        LONG* pAxes = (&js.lX);
-        pAxes[0] = XInputState.Gamepad.sThumbLX;
-        pAxes[1] = XInputState.Gamepad.sThumbLY;
-        pAxes[2] = XInputState.Gamepad.bLeftTrigger;
-        pAxes[3] = XInputState.Gamepad.sThumbRX;
-        pAxes[4] = XInputState.Gamepad.sThumbRY;
-        pAxes[5] = XInputState.Gamepad.bRightTrigger;
-
-        js.rgbButtons[0] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_A ? 1 : 0;
-        js.rgbButtons[1] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_B ? 1 : 0;
-        js.rgbButtons[2] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_X ? 1 : 0;
-        js.rgbButtons[3] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_Y ? 1 : 0;
-        js.rgbButtons[4] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER ? 1 : 0;
-        js.rgbButtons[5] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER ? 1 : 0;
-        js.rgbButtons[6] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_BACK ? 1 : 0;
-        js.rgbButtons[7] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_START ? 1 : 0;
-        js.rgbButtons[8] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_LEFT_THUMB ? 1 : 0;
-        js.rgbButtons[9] = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_RIGHT_THUMB ? 1 : 0;
-
-        bool bPovUp    = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_UP ? 1 : 0;
-        bool bPovRight = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_RIGHT ? 1 : 0;
-        bool bPovDown  = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_DOWN ? 1 : 0;
-        bool bPovLeft  = XInputState.Gamepad.wButtons & XINPUT_GAMEPAD_DPAD_LEFT ? 1 : 0;
-
-        if ( bPovUp )
-        {
-            if ( bPovRight )        js.rgdwPOV[0] = 0     + 4500; 
-            else if ( bPovLeft )    js.rgdwPOV[0] = 36000 - 4500; 
-            else                    js.rgdwPOV[0] = 0; 
-        }
-        else
-        if ( bPovDown )
-        {
-            if ( bPovRight )        js.rgdwPOV[0] = 18000 - 4500; 
-            else if ( bPovLeft )    js.rgdwPOV[0] = 18000 + 4500; 
-            else                    js.rgdwPOV[0] = 18000; 
-        }
-        else
-        {
-            if ( bPovRight )        js.rgdwPOV[0] = 9000; 
-            else if ( bPovLeft )    js.rgdwPOV[0] = 27000; 
-            else                    js.rgdwPOV[0] = -1; 
-        }
-    }
-
-    return true;
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CJoystickManager::HandleXInputGetState
-//
-//
-//
-///////////////////////////////////////////////////////////////
-bool CJoystickManager::HandleXInputGetState ( XINPUT_STATE& XInputState )
-{
-    if ( !IsXInputDeviceAttached() )
-        return false;
-
-    DWORD dwStatus = XInputGetState( 0, &XInputState );
-
-    if ( dwStatus == ERROR_DEVICE_NOT_CONNECTED )
-    {
-        m_bXInputDeviceAttached = false;
-        return false;
-    }
-
-    if ( dwStatus != ERROR_SUCCESS )
-        return false;
-
-    return true;
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CJoystickManager::IsXInputDeviceAttached
-//
-// Also attempts reattach if required
-//
-///////////////////////////////////////////////////////////////
-bool CJoystickManager::IsXInputDeviceAttached ( void )
-{
-    if ( !m_bXInputDeviceAttached )
-    {
-        // Delay before reattached for performance
-        if ( m_XInputReattachTimer.Get() < m_uiXInputReattachDelay )
-            return false;
-        m_XInputReattachTimer.Reset();
-        m_uiXInputReattachDelay = 3000;
-
-        XINPUT_CAPABILITIES Capabilities;
-        DWORD dwStatus = XInputGetCapabilities( 0, XINPUT_FLAG_GAMEPAD, &Capabilities );
-        if ( dwStatus != ERROR_SUCCESS )
-            return false;
-
-        m_bXInputDeviceAttached = true;
-
-        // Axis ranges for XInput devices
-        m_DevInfo.axis[0].bEnabled = 1;
-        m_DevInfo.axis[0].lMin = -32767;
-        m_DevInfo.axis[0].lMax = 32767;
-
-        m_DevInfo.axis[1].bEnabled = 1;
-        m_DevInfo.axis[1].lMin = -32767;
-        m_DevInfo.axis[1].lMax = 32767;
-
-        m_DevInfo.axis[2].bEnabled = 1;
-        m_DevInfo.axis[2].lMin = -255;
-        m_DevInfo.axis[2].lMax = 255;
-
-        m_DevInfo.axis[3].bEnabled = 1;
-        m_DevInfo.axis[3].lMin = -32767;
-        m_DevInfo.axis[3].lMax = 32767;
-
-        m_DevInfo.axis[4].bEnabled = 1;
-        m_DevInfo.axis[4].lMin = -32767;
-        m_DevInfo.axis[4].lMax = 32767;
-
-        m_DevInfo.axis[5].bEnabled = 1;
-        m_DevInfo.axis[5].lMin = -255;
-        m_DevInfo.axis[5].lMax = 255;
-
-        m_DevInfo.axis[6].bEnabled = 0;
-
-        // Compose a guid for saving config
-        m_DevInfo.guidProduct.Data1 = 0x12345678;
-        m_DevInfo.guidProduct.Data2 = Capabilities.Type;
-        m_DevInfo.guidProduct.Data3 = Capabilities.SubType;
-
-        // Compose a product name
-        const char* subTypeNames[] = { "Unknown", "Gamepad", "Wheel", "Arcade stick", "Flight stick", "Dance pad", "Guitar", "Drum kit" };
-        if ( Capabilities.SubType < NUMELMS( subTypeNames ) )
-            m_DevInfo.strProductName = subTypeNames[ Capabilities.SubType ];
-        else
-            m_DevInfo.strProductName = SString ( "Subtype %d", Capabilities.SubType );
-
-        m_DevInfo.strGuid = GUIDToString ( m_DevInfo.guidProduct );
-
-        // Load config for this guid, or set defaults
-        if ( !LoadFromXML () )
-        {
-            SetDefaults();
-        }
-    }
-
-    return m_bXInputDeviceAttached;
 }
 
 
@@ -1171,8 +719,6 @@ void CJoystickManager::ApplyAxes ( CControllerState& cs, bool bInVehicle )
 
 bool CJoystickManager::IsJoypadConnected ( void )
 {
-    if ( m_bUseXInput )
-        return IsXInputDeviceAttached();
     return m_DevInfo.pDevice != NULL;
 }
 
@@ -1218,8 +764,6 @@ int CJoystickManager::GetSettingsRevision ( void )
 
 bool CJoystickManager::IsJoypadValid ( void )
 {
-    if ( m_bUseXInput )
-        return IsXInputDeviceAttached();
     return m_DevInfo.pDevice != NULL  &&  m_DevInfo.bDoneEnumAxes  &&  m_DevInfo.strGuid.size () > 0;
 }
 
@@ -1333,33 +877,11 @@ void CJoystickManager::SetDefaults ( void )
                                 eJoyZ,  eDirPos,    eBrake,         eDirPos,  true,  255, 
                             };
 
-    const SMappingLine defaultMappingXInput[] = {
-                                eJoyX,  eDirNeg,    eLeftStickX,    eDirNeg,  true,  128,
-                                eJoyX,  eDirPos,    eLeftStickX,    eDirPos,  true,  128, 
-                                eJoyY,  eDirPos,    eLeftStickY,    eDirNeg,  true,  128, 
-                                eJoyY,  eDirNeg,    eLeftStickY,    eDirPos,  true,  128, 
-                                eJoyRx, eDirNeg,    eRightStickX,   eDirNeg,  true,  128, 
-                                eJoyRx, eDirPos,    eRightStickX,   eDirPos,  true,  128, 
-                                eJoyRy, eDirPos,    eRightStickY,   eDirNeg,  true,  128, 
-                                eJoyRy, eDirNeg,    eRightStickY,   eDirPos,  true,  128, 
-                                eJoyRz, eDirPos,    eAccelerate,    eDirPos,  true,  255, 
-                                eJoyZ,  eDirPos,    eBrake,         eDirPos,  true,  255, 
-                            };
-
     memset( m_currentMapping, 0, sizeof(m_currentMapping) );
+
 
     // Select defaultMapping to use
 
-    if ( m_bUseXInput )
-    {
-        // If XInput device, then use default XInput mapping
-        for ( int i = 0 ; i < NUMELMS(m_currentMapping) ; i++ )
-            m_currentMapping[i] = defaultMappingXInput[i];
-
-        m_DevInfo.iDeadZone = 20;
-        m_DevInfo.iSaturation = 99;
-    }
-    else
     if ( m_DevInfo.pDevice && m_DevInfo.iAxisCount == 5 && m_DevInfo.guidProduct == GUID_Xbox360Controller )
     {
         // If GUID matches published 360 controller GUID and device has 5 axes, then use 360 mapping
@@ -1597,8 +1119,8 @@ static string ToString( eStick value )
     if ( value == eLeftStickY )   return "LeftStickY";
     if ( value == eRightStickX )  return "RightStickX";
     if ( value == eRightStickY )  return "RightStickY";
-    if ( value == eAccelerate )   return _("Accelerate Axis");
-    if ( value == eBrake )        return _("Brake Axis");
+    if ( value == eAccelerate )   return "Accelerate Axis";
+    if ( value == eBrake )        return "Brake Axis";
     return "unknown";
 }
 

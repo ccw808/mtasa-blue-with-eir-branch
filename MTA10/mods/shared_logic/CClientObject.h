@@ -19,21 +19,13 @@ class CClientObject;
 
 #include "CClientStreamElement.h"
 
-struct SLastSyncedObjectData
-{
-    CVector vecPosition;
-    CVector vecRotation;
-    float   fHealth;
-};
-
 class CClientObject : public CClientStreamElement
 {
-    DECLARE_CLASS( CClientObject, CClientStreamElement )
     friend class CClientObjectManager;
-    friend class CClientPed;
+    friend CClientPed;
 
 public:
-                                    CClientObject           ( class CClientManager* pManager, ElementID ID, unsigned short usModel, bool bLowLod );
+                                    CClientObject           ( class CClientManager* pManager, ElementID ID, unsigned short usModel );
                                     ~CClientObject          ( void );
 
     void                            Unlink                  ( void );
@@ -47,6 +39,8 @@ public:
     void                            GetPosition             ( CVector& vecPosition ) const;
     void                            SetPosition             ( const CVector& vecPosition );
     virtual CSphere                 GetWorldBoundingSphere  ( void );
+
+    void                            AttachTo                ( CClientEntity* pEntity );
 
     void                            GetRotationDegrees      ( CVector& vecRotation ) const;
     void                            GetRotationRadians      ( CVector& vecRotation ) const;
@@ -69,10 +63,6 @@ public:
     inline unsigned short           GetModel                ( void ) const                      { return m_usModel; };
     void                            SetModel                ( unsigned short usModel );
 
-    bool                            IsLowLod                ( void );
-    bool                            SetLowLodObject         ( CClientObject* pLowLodObject );
-    CClientObject*                  GetLowLodObject         ( void );
-
     void                            Render                  ( void );
 
     inline bool                     IsStatic                ( void )                            { return m_bIsStatic; }
@@ -80,31 +70,12 @@ public:
     
     inline unsigned char            GetAlpha                ( void )                            { return m_ucAlpha; }   
     void                            SetAlpha                ( unsigned char ucAlpha );
-    void                            GetScale                ( CVector& vecScale ) const;
-    void                            SetScale                ( const CVector& vecScale );
+    void                            SetScale                ( float fScale );
 
     inline bool                     IsCollisionEnabled      ( void )                            { return m_bUsesCollision; };
     void                            SetCollisionEnabled     ( bool bCollisionEnabled );
 
-    float                           GetHealth               ( void );
-    void                            SetHealth               ( float fHealth );
-
-    bool                            IsBreakable             ( bool bCheckModelList = true );
-    bool                            SetBreakable            ( bool bBreakable );
-    bool                            Break                   ( void );
-    inline bool                     IsRespawnEnabled        ( void )                            { return m_bRespawnEnabled; };
-    inline void                     SetRespawnEnabled       ( bool bRespawnEnabled )            { m_bRespawnEnabled = bRespawnEnabled; };
-
-    float                           GetMass                 ( void );
-    void                            SetMass                 ( float fMass );
-
     void                            ReCreate                ( void );
-    void                            UpdateVisibility        ( void );
-
-    inline bool                     IsBeingRespawned        ( void )                            { return m_bBeingRespawned; };
-    inline void                     SetBeingRespawned       ( bool bBeingRespawned )            { m_bBeingRespawned = bBeingRespawned; };
-
-
 protected:
     void                            StreamIn                ( bool bInstantly );
     void                            StreamOut               ( void );
@@ -128,23 +99,12 @@ protected:
     bool                                m_bIsStatic;
     bool                                m_bUsesCollision;
     unsigned char                       m_ucAlpha;
-    CVector                             m_vecScale;
-    float                               m_fHealth;
-    bool                                m_bBreakingDisabled;
-    bool                                m_bBeingRespawned;
-    bool                                m_bRespawnEnabled;
-    float                               m_fMass;
+    float                               m_fScale;
 
     CVector                             m_vecMoveSpeed;
 
-    const bool                          m_bIsLowLod;            // true if this object is low LOD
-    CClientObject*                      m_pLowLodObject;        // Pointer to low LOD version of this object
-    std::vector < CClientObject* >      m_HighLodObjectList;    // List of objects that use this object as a low LOD version
-    bool                                m_IsHiddenLowLod;       // true if this object is low LOD and should not be drawn
-
 public:
     CObject*                            m_pObject;
-    SLastSyncedObjectData               m_LastSyncedData;
 };
 
 #endif

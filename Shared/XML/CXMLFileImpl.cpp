@@ -11,11 +11,8 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-SString CXMLFileImpl::ms_strSaveFlagFile;
 
-CXMLFileImpl::CXMLFileImpl ( const char* szFilename, bool bUseIDs ) :
-    m_ulID ( INVALID_XML_ID ),
-    m_bUsingIDs ( bUseIDs )
+CXMLFileImpl::CXMLFileImpl ( const char* szFilename )
 {
     // Init
     m_pDocument = NULL;
@@ -32,16 +29,14 @@ CXMLFileImpl::CXMLFileImpl ( const char* szFilename, bool bUseIDs ) :
     }
 
     // Add to array over XML stuff
-    if ( m_bUsingIDs )
-        m_ulID = CXMLArray::PopUniqueID ( this );
+    m_ulID = CXMLArray::PopUniqueID ( this );
 }
 
 
 CXMLFileImpl::~CXMLFileImpl ( void )
 {
     // Remove from array over XML stuff
-    if ( m_bUsingIDs )
-        CXMLArray::PushUniqueID ( this );
+    CXMLArray::PushUniqueID ( this );
 
     // Delete our wrappers
     ClearWrapperTree ();
@@ -67,7 +62,7 @@ void CXMLFileImpl::SetFilename ( const char* szFilename )
 }
 
 
-bool CXMLFileImpl::Parse ( std::vector < char >* pOutFileContents )
+bool CXMLFileImpl::Parse ( void )
 {
     // Do we have a filename?
     if ( m_strFilename != "" )
@@ -76,23 +71,8 @@ bool CXMLFileImpl::Parse ( std::vector < char >* pOutFileContents )
         Reset ();
 
         // Parse from the current file
-        FILE* file;
-        if ( m_pDocument->LoadFile ( m_strFilename.c_str (), TIXML_DEFAULT_ENCODING, &file ) )
-        {        
-            // Also read the file bytes to a buffer if requested
-            if ( pOutFileContents )
-            {
-                fseek( file, 0, SEEK_END );
-                long size = ftell ( file );
-                fseek( file, 0, SEEK_SET );
-                if ( size > 0 )
-                {
-                    pOutFileContents->resize( size );
-                    fread( &pOutFileContents->at(0), 1, size, file );
-                }
-            }
-		    fclose( file );
-
+        if ( m_pDocument->LoadFile ( m_strFilename.c_str () ) )
+        {
             // Build our wrapper
             if ( BuildWrapperTree () )
             {
@@ -156,9 +136,6 @@ bool CXMLFileImpl::WriteSafer ( void )
         // Delete any leftover backup
         unlink ( strBackup );
 
-        // Save filename being saved
-        FileRecoveryPreSave( strFilename );
-
         // Rename current to backup
         rename ( strFilename, strBackup );
 
@@ -168,9 +145,6 @@ bool CXMLFileImpl::WriteSafer ( void )
             SetLastError ( CXMLErrorCodes::OtherError, "Could not rename temporary to current" );
             return false;
         }
-
-        // Unsave filename being saved
-        FileRecoveryPostSave();
 
         // Delete backup
         unlink ( strBackup );
@@ -296,11 +270,11 @@ bool CXMLFileImpl::BuildSubElements ( CXMLNodeImpl* pNode )
         // Iterate the children
         TiXmlNode* pChild = NULL;
         TiXmlElement* pElement;
-        while ( ( pChild = pRawNode->IterateChildren ( pChild ) ) )
+        while ( pChild = pRawNode->IterateChildren ( pChild ) )
         {
             // If it's not a comment or something else, build it to our tree
             // TODO: Support comments
-            if ( ( pElement = pChild->ToElement () ) )
+            if ( pElement = pChild->ToElement () )
             {
                 // Create the child and build its subnodes again
                 CXMLNodeImpl* pTempNode = new CXMLNodeImpl ( this, pNode, *pElement );
@@ -333,55 +307,3 @@ void CXMLFileImpl::ClearWrapperTree ( void )
         m_pRootNode = NULL;
     }
 }
-
-//
-// Initialize and do any file recovery as necessary
-//
-void CXMLFileImpl::InitFileRecovery( const char* szSaveFlagDirectory )
-{
-    if ( !szSaveFlagDirectory )
-        return;
-    ms_strSaveFlagFile = PathJoin( szSaveFlagDirectory, "_xml_save.info" );
-
-    // Check if recover is required
-    SString strFilename;
-    FileLoad( ms_strSaveFlagFile, strFilename );
-    if ( strFilename.empty() )
-        return;
-
-    if ( !FileExists( strFilename ) )
-    {
-        // Try to recover from new file
-        SString strTemp = strFilename + "_new_";
-        if ( FileExists( strTemp ) )
-        {
-            rename( strTemp, strFilename );
-        }
-    }
-
-    if ( !FileExists( strFilename ) )
-    {
-        // Try to recover from old file
-        SString strBackup = strFilename + "_old_";
-        if ( FileExists( strBackup ) )
-        {
-            rename( strBackup, strFilename );
-        }
-    }
-    FileDelete( ms_strSaveFlagFile );
-}
-
-// Store filename in case of problems during save
-void CXMLFileImpl::FileRecoveryPreSave( const SString& strFilename )
-{
-    if ( !ms_strSaveFlagFile.empty() )
-        FileSave( ms_strSaveFlagFile, strFilename );
-}
-
-// Unstore filename in case of problems during save
-void CXMLFileImpl::FileRecoveryPostSave( void )
-{
-    if ( !ms_strSaveFlagFile.empty() )
-        FileDelete( ms_strSaveFlagFile );
-}
-

@@ -19,13 +19,13 @@
 class CColCircle : public CColShape
 {
 public:
-                    CColCircle      ( CColManager* pManager, CElement* pParent, const CVector2D& vecPosition, float fRadius, CXMLNode* pNode = NULL, bool bIsPartnered = false );
+                    CColCircle      ( CColManager* pManager, CElement* pParent, const CVector& vecPosition, float fRadius, CXMLNode* pNode = NULL, bool bIsPartnered = false );
 
     virtual CSphere         GetWorldBoundingSphere  ( void );
 
     eColShapeType   GetShapeType    ( void )            { return COLSHAPE_CIRCLE; }
 
-    bool            DoHitDetection  ( const CVector& vecNowPosition );
+    bool            DoHitDetection  ( const CVector& vecLastPosition, const CVector& vecNowPosition, float fRadius );
 
     float           GetRadius       ( void )            { return m_fRadius; };
     void            SetRadius       ( float fRadius )   { m_fRadius = fRadius; SizeChanged (); };

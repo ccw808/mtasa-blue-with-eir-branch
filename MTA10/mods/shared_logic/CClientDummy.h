@@ -17,7 +17,6 @@
 
 class CClientDummy : public CClientEntity
 {
-    DECLARE_CLASS( CClientDummy, CClientEntity )
 public:
                                 CClientDummy            ( class CClientManager* pManager, ElementID ID, const char * szTypeName );
                                 ~CClientDummy           ( void );

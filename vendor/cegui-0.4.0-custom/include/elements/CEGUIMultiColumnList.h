@@ -535,8 +535,6 @@ public:
 	*/
 	uint	getNominatedSelectionRow(void) const;
 
-    // Return the range of visible rows
-    void    getVisibleRowRange(int &first, int& last) const;
 
 	/*!
 	\brief
@@ -1117,37 +1115,6 @@ public:
 	*/
 	void	setColumnHeaderWidth(uint col_idx, float width, bool relative = true);
 
-    /*!
-	\brief
-		Set the title of the specified column header (and therefore the column itself).
-
-	\param col_idx
-		Zero based column index of the column whos width is to be set.
-
-	\param title
-		const chart value specifying the new title for the column.
-		
-	\return
-		Nothing.
-
-	\exception InvalidRequestException	thrown if \a column is out of range.
-	*/
-
-    void	setColumnHeaderTitle(uint col_idx, const char* title);
-
-	/*!
-	\brief
-		Get the title of the specified column header (and therefore the column itself).
-
-	\param col_idx
-		Zero based column index of the column whos width is to be get.
-		
-	\return
-		const char with column title
-
-	*/
-
-    const char*	getColumnHeaderTitle(uint col_idx);
 
 	/*!
 	\brief
@@ -1250,7 +1217,7 @@ public:
 	virtual ~MultiColumnList(void);
 
 
-public:
+protected:
 	/*************************************************************************
 		Implementation Functions (abstract interface)
 	*************************************************************************/
@@ -1606,8 +1573,6 @@ public:
 	typedef std::vector<ListRow>		ListItemGrid;
 	ListItemGrid	d_grid;			//!< Holds the list box data.
 
-    uint    d_firstVisibleRow;
-    uint    d_lastVisibleRow;
 
 private:
 	/*************************************************************************

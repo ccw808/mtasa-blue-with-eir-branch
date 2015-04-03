@@ -25,10 +25,6 @@ This can be found in the 'COPYING' file.
 
 #include "ehs.h"
 #include <fstream>
-#include <assert.h>
-
-long long ms_HttpTotalBytesSent = 0;
-SAllocationStats ms_AllocationStats = { 0 };
 
 // Returns true if lock succeeded
 static bool MUTEX_TRY_LOCK( MUTEX_TYPE& x )
@@ -38,7 +34,7 @@ static bool MUTEX_TRY_LOCK( MUTEX_TYPE& x )
 
 int EHSServer::CreateFdSet ( )
 {
-    MUTEX_LOCK ( m_oMutex );
+
 	// don't lock mutex, as it is only called from within a locked section
 
 	FD_ZERO( &m_oReadFds );
@@ -77,8 +73,6 @@ int EHSServer::CreateFdSet ( )
 		}
 	}
 
-    MUTEX_UNLOCK ( m_oMutex );
-
 	return nHighestFd;
 
 }
@@ -102,8 +96,8 @@ int EHSServer::ClearIdleConnections ( )
 		// if it's been more than N seconds since a response has been
 		//   sent and there are no pending requests
 		if ( (*i)->StillReading ( ) &&
-			 ( time ( NULL ) - (*i)->LastActivity ( ) > m_nIdleTimeout || (*i)->m_iStopASAP ) &&
-			 !(*i)->RequestsPending ( )
+			 time ( NULL ) - (*i)->LastActivity ( ) > m_nIdleTimeout &&
+			 (*i)->RequestsPending ( )
 			  ) {
 
 			EHS_TRACE ( "Done reading because of idle timeout\n" );
@@ -165,8 +159,7 @@ EHSConnection::EHSConnection ( NetworkAbstraction * ipoNetworkAbstraction,
 	m_nResponses ( 0 ),
 	m_poNetworkAbstraction ( ipoNetworkAbstraction ),
 	m_poCurrentHttpRequest ( NULL ),
-	m_poEHSServer ( ipoEHSServer ),
-    m_iStopASAP ( 0 )
+	m_poEHSServer ( ipoEHSServer )
 {
     m_UnusedSyncId = 0;
 	UpdateLastActivity ( );
@@ -985,29 +978,7 @@ void EHSServer::CheckAcceptSocket ( )
 		if ( poNewClient == NULL ) {
 			return;
 		}
-
-        // Flood detection		
-        if ( !m_poTopLevelEHS->ShouldAllowConnection ( poNewClient->GetAddress ().c_str () ) )
-        {
-
-		    MUTEX_LOCK ( m_oMutex );
-            // Stop all other connections using this address
-	        for ( EHSConnectionList::iterator i = m_oEHSConnectionList.begin ( );
-		          i != m_oEHSConnectionList.end ( );
-		          i++ ) {
-
-		        if ( (*i)->GetNetworkAbstraction ( )->GetAddress ( ) == poNewClient->GetAddress () )
-                {
-                    (*i)->m_iStopASAP = true;
-                }
-            }
-		    MUTEX_UNLOCK ( m_oMutex );
-
-            // Reject connection
-            delete poNewClient;
-            return;
-        }
-
+		
 		// create a new EHSConnection object and initialize it
 		EHSConnection * poEHSConnection = 
 			new EHSConnection ( poNewClient, this );
@@ -1023,7 +994,6 @@ void EHSServer::CheckAcceptSocket ( )
 
 void EHSServer::CheckClientSockets ( )
 {
-    MUTEX_LOCK ( m_oMutex );
 
 	// go through all the sockets from which we're still reading
 	for ( EHSConnectionList::iterator i = m_oEHSConnectionList.begin ( );
@@ -1087,7 +1057,6 @@ void EHSServer::CheckClientSockets ( )
 		} // FD_ISSET
 		
 	} // for loop through connections
-    MUTEX_UNLOCK ( m_oMutex );
 
 } 
 
@@ -1577,13 +1546,3 @@ SslError * SecureSocket::poSslError = NULL;
 SSL_CTX * SecureSocket::poCtx;
 
 #endif // COMPILE_WITH_SSL
-
-long long EHS::StaticGetTotalBytesSent ( void )
-{
-    return ms_HttpTotalBytesSent;
-}
-
-void EHS::StaticGetAllocationStats ( SAllocationStats& outAllocationStats )
-{
-    outAllocationStats = ms_AllocationStats;
-}

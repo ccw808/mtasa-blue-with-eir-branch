@@ -96,6 +96,9 @@ bool CRadarArea::ReadSpecialData ( void )
 
 void CRadarArea::SetPosition ( const CVector& vecPosition )
 {
+    // Remember the last position
+    m_vecLastPosition = m_vecPosition;
+
     // Different from our current position?
     if ( vecPosition != m_vecPosition )
     {
@@ -108,11 +111,12 @@ void CRadarArea::SetPosition ( const CVector& vecPosition )
 
         // Tell all the players that know about us
         CBitStream BitStream;
+        BitStream.pBitStream->Write ( m_ID );
         BitStream.pBitStream->Write ( vecPosition.fX );
         BitStream.pBitStream->Write ( vecPosition.fY );
         BitStream.pBitStream->Write ( vecPosition.fZ );
         BitStream.pBitStream->Write ( GetSyncTimeContext () );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_ELEMENT_POSITION, *BitStream.pBitStream ) );
+        BroadcastOnlyVisible ( CLuaPacket ( SET_ELEMENT_POSITION, *BitStream.pBitStream ) );
     }
 }
 
@@ -127,9 +131,10 @@ void CRadarArea::SetSize ( const CVector2D& vecSize )
 
         // Tell all the players that know about us
         CBitStream BitStream;
+        BitStream.pBitStream->Write ( m_ID );
         BitStream.pBitStream->Write ( vecSize.fX );
         BitStream.pBitStream->Write ( vecSize.fY );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_RADAR_AREA_SIZE, *BitStream.pBitStream ) );
+        BroadcastOnlyVisible ( CLuaPacket ( SET_RADAR_AREA_SIZE, *BitStream.pBitStream ) );
     }
 }
 
@@ -144,11 +149,12 @@ void CRadarArea::SetColor ( const SColor color )
 
         // Tell all the players that know about us
         CBitStream BitStream;
+        BitStream.pBitStream->Write ( m_ID );
         BitStream.pBitStream->Write ( color.R );
         BitStream.pBitStream->Write ( color.G );
         BitStream.pBitStream->Write ( color.B );
         BitStream.pBitStream->Write ( color.A );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_RADAR_AREA_COLOR, *BitStream.pBitStream ) );
+        BroadcastOnlyVisible ( CLuaPacket ( SET_RADAR_AREA_COLOR, *BitStream.pBitStream ) );
     }
 }
 
@@ -163,7 +169,17 @@ void CRadarArea::SetFlashing ( bool bFlashing )
 
         // Tell all the players that know about us
         CBitStream BitStream;
-        BitStream.pBitStream->WriteBit ( bFlashing );
-        BroadcastOnlyVisible ( CElementRPCPacket ( this, SET_RADAR_AREA_FLASHING, *BitStream.pBitStream ) );
+        BitStream.pBitStream->Write ( m_ID );
+
+        if ( bFlashing )
+        {
+            BitStream.pBitStream->Write ( static_cast < unsigned char > ( 1 ) );
+        }
+        else
+        {
+            BitStream.pBitStream->Write ( static_cast < unsigned char > ( 0 ) );
+        }
+
+        BroadcastOnlyVisible ( CLuaPacket ( SET_RADAR_AREA_FLASHING, *BitStream.pBitStream ) );
     }
 }

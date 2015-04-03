@@ -21,48 +21,75 @@
 
 int CLuaFunctionDefs::CreateObject ( lua_State* luaVM )
 {
-//  object createObject ( int modelid, float x, float y, float z, [float rx, float ry, float rz, bool lowLOD] )
-    ushort usModelID;
-    CVector vecPosition;
-    CVector vecRotation;
-    bool bLowLod;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( usModelID );
-    argStream.ReadVector3D ( vecPosition );
-    argStream.ReadVector3D ( vecRotation, vecRotation );
-    argStream.ReadBool ( bLowLod, false );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
-        if ( CClientObjectManager::IsValidModel  ( usModelID ) )
-        {
-            CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-            if ( pLuaMain )
-            {
-                CResource* pResource = pLuaMain->GetResource ();
-                if ( pResource )
-                {
-                    CClientObject* pObject = CStaticFunctionDefinitions::CreateObject ( *pResource, usModelID, vecPosition, vecRotation, bLowLod );
-                    if ( pObject )
-                    {
-                        CElementGroup * pGroup = pResource->GetElementGroup();
-                        if ( pGroup )
-                        {
-                            pGroup->Add ( ( CClientEntity* ) pObject );
-                        }
+        unsigned short usModelID = static_cast < unsigned short > ( lua_tonumber ( luaVM, 1 ) );
 
-                        lua_pushelement ( luaVM, pObject );
-                        return 1;
+        if ( CClientObjectManager::IsValidModel ( usModelID ) )
+        {
+            int iArgument2 = lua_type ( luaVM, 2 );
+            int iArgument3 = lua_type ( luaVM, 3 );
+            int iArgument4 = lua_type ( luaVM, 4 );
+
+            if ( ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) &&
+                ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+                ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) )
+            {
+                CVector vecPosition;
+                vecPosition.fX = static_cast < float > ( atof ( lua_tostring ( luaVM, 2 ) ) );
+                vecPosition.fY = static_cast < float > ( atof ( lua_tostring ( luaVM, 3 ) ) );
+                vecPosition.fZ = static_cast < float > ( atof ( lua_tostring ( luaVM, 4 ) ) );
+
+                CVector vecRotation;
+                int iArgument5 = lua_type ( luaVM, 5 );
+
+                if ( iArgument5 == LUA_TNUMBER || iArgument5 == LUA_TSTRING )
+                {
+                    vecRotation.fX = static_cast < float > ( atof ( lua_tostring ( luaVM, 5 ) ) );
+                    int iArgument6 = lua_type ( luaVM, 6 );
+
+                    if ( iArgument6 == LUA_TNUMBER || iArgument6 == LUA_TSTRING )
+                    {
+                        vecRotation.fY = static_cast < float > ( atof ( lua_tostring ( luaVM, 6 ) ) );
+                        int iArgument7 = lua_type ( luaVM, 7 );
+
+                        if ( iArgument7 == LUA_TNUMBER || iArgument7 == LUA_TSTRING )
+                        {
+                            vecRotation.fZ = static_cast < float > ( atof ( lua_tostring ( luaVM, 7 ) ) );
+                        }
+                    }
+                }
+
+                CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+                if ( pLuaMain )
+                {
+                    CResource* pResource = pLuaMain->GetResource ();
+                    if ( pResource )
+                    {
+                        CClientObject* pObject = CStaticFunctionDefinitions::CreateObject ( *pResource, usModelID, vecPosition, vecRotation );
+                        if ( pObject )
+                        {
+                            CElementGroup * pGroup = pResource->GetElementGroup();
+                            if ( pGroup )
+                            {
+                                pGroup->Add ( ( CClientEntity* ) pObject );
+                            }
+
+                            lua_pushelement ( luaVM, pObject );
+                            return 1;
+                        }
                     }
                 }
             }
+            else
+                m_pScriptDebugging->LogBadType ( luaVM, "createObject" );
         }
         else
-            argStream.SetCustomError( "Invalid model id" );
+            m_pScriptDebugging->LogWarning ( luaVM, "Bad model id passed to createObject" );
     }
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "createObject" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -71,141 +98,81 @@ int CLuaFunctionDefs::CreateObject ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsObjectStatic ( lua_State* luaVM )
 {
-//  bool isObjectStatic ( object theObject )
-    CClientObject* pObject;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pObject );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        bool bStatic;
-        if ( CStaticFunctionDefinitions::IsObjectStatic ( *pObject, bStatic ) )
+        CClientObject* pObject = lua_toobject ( luaVM, 1 );
+        if ( pObject )
         {
-            lua_pushboolean ( luaVM, bStatic );
-            return 1;
+            bool bStatic;
+            if ( CStaticFunctionDefinitions::IsObjectStatic ( *pObject, bStatic ) )
+            {
+                lua_pushboolean ( luaVM, bStatic );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isObjectStatic", "object", 1 );
     }
     else
-        m_pScriptDebugging->LogBadType ( luaVM );
+        m_pScriptDebugging->LogBadType ( luaVM, "isObjectStatic" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
-
-int CLuaFunctionDefs::GetObjectScale ( lua_State* luaVM )
-{
-//  float getObjectScale ( object theObject )
-    CClientObject* pObject;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pObject );
-
-    if ( !argStream.HasErrors () )
-    {
-        CVector vecScale;
-        if ( CStaticFunctionDefinitions::GetObjectScale ( *pObject, vecScale ) )
-        {
-            lua_pushnumber ( luaVM, vecScale.fX );
-            lua_pushnumber ( luaVM, vecScale.fY );
-            lua_pushnumber ( luaVM, vecScale.fZ );
-            return 3;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::IsObjectBreakable ( lua_State* luaVM )
-{
-//  bool isObjectBreakable ( int modelId )
-    
-    CScriptArgReader argStream ( luaVM );
-
-    if ( argStream.NextIsNumber () )
-    {
-        unsigned short usModel;
-        argStream.ReadNumber ( usModel );
-
-        lua_pushboolean ( luaVM, CClientObjectManager::IsBreakableModel ( usModel ) );
-        return 1;
-    }
-
-//  bool isObjectBreakable ( object theObject )
-    CClientObject* pObject;
-
-    argStream.ReadUserData ( pObject );
-    if ( !argStream.HasErrors () )
-    {
-        bool bBreakable;
-        if ( CStaticFunctionDefinitions::IsObjectBreakable ( *pObject, bBreakable ) )
-        {
-            lua_pushboolean ( luaVM, bBreakable );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GetObjectMass ( lua_State* luaVM )
-{
-//  float getObjectMass ( object theObject )
-    CClientObject* pObject; float fMass;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pObject );
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::GetObjectMass ( *pObject, fMass ) )
-        {
-            lua_pushnumber ( luaVM, fMass );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
 
 int CLuaFunctionDefs::MoveObject ( lua_State* luaVM )
 {
-//  bool moveObject ( object theObject, int time, float targetx, float targety, float targetz,
-//      [ float moverx, float movery, float moverz, string strEasingType, float fEasingPeriod, float fEasingAmplitude, float fEasingOvershoot ] )
-    CClientEntity* pEntity; int iTime; CVector vecTargetPosition; CVector vecTargetRotation;
-    CEasingCurve::eType easingType; float fEasingPeriod; float fEasingAmplitude; float fEasingOvershoot;
+    int iArgument2 = lua_type ( luaVM, 2 );
+    int iArgument3 = lua_type ( luaVM, 3 );
+    int iArgument4 = lua_type ( luaVM, 4 );
+    int iArgument5 = lua_type ( luaVM, 5 );
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( iTime );
-    argStream.ReadVector3D ( vecTargetPosition );
-    argStream.ReadVector3D ( vecTargetRotation, CVector ( ) );
-    argStream.ReadEnumString ( easingType, CEasingCurve::Linear );
-    argStream.ReadNumber ( fEasingPeriod, 0.3f );
-    argStream.ReadNumber ( fEasingAmplitude, 1.0f );
-    argStream.ReadNumber ( fEasingOvershoot, 1.70158f );
-
-    if ( !argStream.HasErrors () )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) &&
+        ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+        ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) &&
+        ( iArgument5 == LUA_TNUMBER || iArgument5 == LUA_TSTRING ) )
     {
-        if ( CStaticFunctionDefinitions::MoveObject ( *pEntity, iTime, vecTargetPosition, vecTargetRotation, easingType, fEasingPeriod, fEasingAmplitude, fEasingOvershoot ) )
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            CVector vecTargetPosition;
+            CVector vecTargetRotation;
+            unsigned long ulTime = static_cast < unsigned long > ( lua_tonumber ( luaVM, 2 ) );
+            vecTargetPosition.fX = static_cast < float > ( atof ( lua_tostring ( luaVM, 3 ) ) );
+            vecTargetPosition.fY = static_cast < float > ( atof ( lua_tostring ( luaVM, 4 ) ) );
+            vecTargetPosition.fZ = static_cast < float > ( atof ( lua_tostring ( luaVM, 5 ) ) );
+
+            int iArgument6 = lua_type ( luaVM, 6 );
+            if ( iArgument6 == LUA_TNUMBER || iArgument6 == LUA_TSTRING )
+            {
+                vecTargetRotation.fX = static_cast < float > ( atof ( lua_tostring ( luaVM, 6 ) ) );
+
+                int iArgument7 = lua_type ( luaVM, 7 );
+                if ( iArgument7 == LUA_TNUMBER || iArgument7 == LUA_TSTRING )
+                {
+                    vecTargetRotation.fY = static_cast < float > ( atof ( lua_tostring ( luaVM, 7 ) ) );
+
+                    int iArgument8 = lua_type ( luaVM, 8 );
+                    if ( iArgument8 == LUA_TNUMBER || iArgument8 == LUA_TSTRING )
+                    {
+                        vecTargetRotation.fZ = static_cast < float > ( atof ( lua_tostring ( luaVM, 8 ) ) );
+                    }
+                }
+            }
+
+            if ( CStaticFunctionDefinitions::MoveObject ( *pEntity, ulTime, vecTargetPosition, vecTargetRotation ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "moveObject", "object", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "moveObject" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -214,22 +181,22 @@ int CLuaFunctionDefs::MoveObject ( lua_State* luaVM )
 
 int CLuaFunctionDefs::StopObject ( lua_State* luaVM )
 {
-//  bool stopObject ( object theobject )
-    CClientEntity* pEntity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        if ( CStaticFunctionDefinitions::StopObject ( *pEntity ) )
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::StopObject ( *pEntity ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "stopObject", "object", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "stopObject" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -238,40 +205,28 @@ int CLuaFunctionDefs::StopObject ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetObjectScale ( lua_State* luaVM )
 {
-//  bool setObjectScale ( object theObject, float scale )
-    CClientEntity* pEntity;
-    CVector vecScale;
+    int iArgumentType1 = lua_type ( luaVM, 1 );
+    int iArgumentType2 = lua_type ( luaVM, 2 );
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-
-    // Caz - This function looks totally wrong
-    // the function is designed to support the following syntaxes
-    // setObjectScale ( obj, 2 ) -- all other components are set to 2
-    // setObjectScale ( obj, 2, 1, 5 ) -- custom scaling on 3 axis
-
-    if ( argStream.NextIsVector3D ( ) )
+    if ( ( iArgumentType1 == LUA_TLIGHTUSERDATA ) &&
+        ( iArgumentType2 == LUA_TNUMBER || iArgumentType2 == LUA_TSTRING ) )
     {
-        argStream.ReadVector3D ( vecScale );
-    }
-    else
-    {
-        // Caz - Here is what I am talking about.
-        argStream.ReadNumber ( vecScale.fX );
-        argStream.ReadNumber ( vecScale.fY, vecScale.fX );
-        argStream.ReadNumber ( vecScale.fZ, vecScale.fX );
-    }
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetObjectScale ( *pEntity, vecScale ) )
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            float fScale = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+
+            if ( CStaticFunctionDefinitions::SetObjectScale ( *pEntity, fScale ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setObjectScale", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setObjectScale" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -280,147 +235,28 @@ int CLuaFunctionDefs::SetObjectScale ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetObjectStatic ( lua_State* luaVM )
 {
-//  bool setObjectStatic ( object theObject, bool toggle )
-    CClientEntity* pEntity; bool bStatic;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bStatic );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+        lua_type ( luaVM, 2 ) == LUA_TBOOLEAN )
     {
-        if ( CStaticFunctionDefinitions::SetObjectStatic ( *pEntity, bStatic ) )
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            bool bStatic = ( lua_toboolean ( luaVM, 2 ) ) ? true:false;
+
+            if ( CStaticFunctionDefinitions::SetObjectStatic ( *pEntity, bStatic ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setObjectStatic", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setObjectStatic" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
 
-int CLuaFunctionDefs::SetObjectBreakable ( lua_State* luaVM )
-{
-    //  bool setObjectBreakable ( object theObject, bool bBreakable )
-    CClientEntity* pEntity; 
-    bool bBreakable;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bBreakable );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetObjectBreakable ( *pEntity, bBreakable ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::BreakObject ( lua_State* luaVM )
-{
-//  bool breakObject( object theObject )
-    CClientEntity* pEntity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::BreakObject ( *pEntity ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::RespawnObject ( lua_State* luaVM )
-{
-//  bool respawnObject ( object theObject )
-    CClientEntity* pEntity;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::RespawnObject ( *pEntity ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::ToggleObjectRespawn ( lua_State* luaVM )
-{
-//  bool toggleObjectRespawn ( object theObject, bool respawn )
-    CClientEntity* pEntity; bool bRespawn;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bRespawn );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::ToggleObjectRespawn ( *pEntity, bRespawn ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::SetObjectMass ( lua_State* luaVM )
-{
-//  bool setObjectMass ( object theObject, float fMass )
-    CClientEntity* pEntity; float fMass;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( fMass );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetObjectMass ( *pEntity, fMass ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-    
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}

@@ -13,6 +13,7 @@
 #define __CGAME_3DMARKER
 
 #include "Common.h"
+#include "SharedUtil.h"
 
 class CVector;
 struct RpClump;

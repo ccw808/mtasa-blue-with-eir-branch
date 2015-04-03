@@ -19,33 +19,32 @@ class CLuaTimerManager;
 
 #include "LuaCommon.h"
 #include "CLuaTimer.h"
-#include <list>
+#include < list >
 
 class CLuaTimerManager
 {
 public:
-    inline                      CLuaTimerManager                ( void )                    { m_pPendingDelete = NULL; m_pProcessingTimer = NULL; }
+    inline                      CLuaTimerManager                ( void )                    { m_bIteratingList = false; }
     inline                      ~CLuaTimerManager               ( void )                    { RemoveAllTimers (); };
 
     void                        DoPulse                         ( CLuaMain* pLuaMain );
 
-    CLuaTimer*                  GetTimerFromScriptID            ( unsigned int uiScriptID );
+    bool                        Exists                          ( CLuaTimer* pLuaTimer );
+    CLuaTimer*                  GetTimer                        ( unsigned int uiID );
 
-    CLuaTimer*                  AddTimer                        ( const CLuaFunctionRef& iLuaFunction, CTickCount llTimeDelay, unsigned int uiRepeats, const CLuaArguments& Arguments );
+    CLuaTimer*                  AddTimer                        ( lua_State* luaVM );
     void                        RemoveTimer                     ( CLuaTimer* pLuaTimer );
     void                        RemoveAllTimers                 ( void );
-    unsigned long               GetTimerCount                   ( void ) const              { return m_TimerList.size (); }
 
     void                        ResetTimer                      ( CLuaTimer* pLuaTimer );
 
-    CFastList < CLuaTimer* > ::const_iterator   IterBegin       ( void )                    { return m_TimerList.begin (); }
-    CFastList < CLuaTimer* > ::const_iterator   IterEnd         ( void )                    { return m_TimerList.end (); }
+    void                        GetTimers                       ( unsigned long ulTime, CLuaMain* pLuaMain );
 
+    void                        TakeOutTheTrash                 ( void );
 private:
-    CFastList < CLuaTimer* >    m_TimerList;
-    std::deque < CLuaTimer* >   m_ProcessQueue;
-    CLuaTimer*                  m_pPendingDelete;
-    CLuaTimer*                  m_pProcessingTimer;
+    std::list < CLuaTimer* >    m_TimerList;
+    std::list < CLuaTimer* >    m_TrashCan;
+    bool                        m_bIteratingList;
 };
 
 #endif

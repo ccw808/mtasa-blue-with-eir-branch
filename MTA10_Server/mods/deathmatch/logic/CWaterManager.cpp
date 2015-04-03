@@ -14,9 +14,9 @@
 
 CWaterManager::CWaterManager ()
 {
-    m_WorldWaterLevelInfo.bNonSeaLevelSet = false;
-    m_WorldWaterLevelInfo.fSeaLevel = 0;
-    m_WorldWaterLevelInfo.fNonSeaLevel = 0;
+    m_bDontRemoveFromList = false;
+
+    m_fGlobalWaterLevel = 0.0f;
     m_fGlobalWaveHeight = 0.0f;
 }
 
@@ -47,56 +47,53 @@ CWater* CWaterManager::CreateFromXML ( CElement* pParent, CXMLNode& Node, CLuaMa
     return pWater;
 }
 
-
-void CWaterManager::SetElementWaterLevel ( CWater* pWater, float fLevel )
+void CWaterManager::SetGlobalWaterLevel ( float fLevel )
 {
-    pWater->SetLevel ( fLevel );
-}
-
-
-void CWaterManager::SetAllElementWaterLevel ( float fLevel )
-{
+    m_fGlobalWaterLevel = fLevel;
     std::list < CWater* > ::const_iterator iter = m_List.begin ();
-    for ( ; iter != m_List.end (); ++iter )
+    for ( ; iter != m_List.end (); iter++ )
     {
-        SetElementWaterLevel ( *iter, fLevel );
+        (*iter)->SetLevel ( fLevel );
     }
 }
-
-
-void CWaterManager::SetWorldWaterLevel ( float fLevel, bool bIncludeWorldNonSeaLevel )
-{
-    m_WorldWaterLevelInfo.fSeaLevel = fLevel;
-    if ( bIncludeWorldNonSeaLevel )
-    {
-        m_WorldWaterLevelInfo.bNonSeaLevelSet = true;
-        m_WorldWaterLevelInfo.fNonSeaLevel = fLevel;
-    }
-}
-
-
-void CWaterManager::ResetWorldWaterLevel ( void )
-{
-    m_WorldWaterLevelInfo.bNonSeaLevelSet = false;
-    m_WorldWaterLevelInfo.fSeaLevel = 0;
-    m_WorldWaterLevelInfo.fNonSeaLevel = 0;
-}
-
 
 void CWaterManager::DeleteAll ()
 {
     // Delete all items
-    DeletePointersAndClearList ( m_List );
+    m_bDontRemoveFromList = true;
+    std::list < CWater* > ::const_iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
+    {
+        delete *iter;
+    }
+
+    // Clear the list
+    m_List.clear ();
+    m_bDontRemoveFromList = false;
 }
 
 
 void CWaterManager::RemoveFromList ( CWater* pWater )
 {
-    m_List.remove ( pWater );
+    if ( !m_bDontRemoveFromList && !m_List.empty() )
+    {
+        m_List.remove ( pWater );
+    }
 }
 
 
 bool CWaterManager::Exists ( CWater* pWater )
 {
-    return ListContains ( m_List, pWater );
+    // Try to find the water ID in the list
+    std::list < CWater* > ::const_iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end (); iter++ )
+    {
+        if ( (*iter) == pWater )
+        {
+            return true;
+        }
+    }
+
+    // Couldn't find it
+    return false;
 }

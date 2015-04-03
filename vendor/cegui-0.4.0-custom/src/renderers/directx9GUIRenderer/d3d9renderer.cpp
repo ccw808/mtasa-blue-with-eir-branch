@@ -84,7 +84,7 @@ void DirectX9Renderer::constructor_impl(LPDIRECT3DDEVICE9 device, const Size& di
 	{
 		// Ideally, this would have been a RendererException, but we can't use that until the System object is created
 		// and that requires a Renderer passed to the constructor, so we throw this instead.
-		throw std::runtime_error("Creation of VertexBuffer for Renderer object failed");
+		throw std::exception("Creation of VertexBuffer for Renderer object failed");
 	}
 
 	// get the maximum available texture size.
@@ -93,7 +93,7 @@ void DirectX9Renderer::constructor_impl(LPDIRECT3DDEVICE9 device, const Size& di
 	{
 		// release vertex buffer
 		d_buffer->Release();
-		throw std::runtime_error("Unable to retrieve device capabilities from Direct3DDevice9.");
+		throw std::exception("Unable to retrieve device capabilities from Direct3DDevice9.");
 	}
 
 	// set max texture size the the smaller of max width and max height.
@@ -161,37 +161,12 @@ void DirectX9Renderer::addQuad(const Rect& dest_rect, float z, const Texture* te
 }
 
 
-//
-//	Check quadlist has valid image items
-//
-void DirectX9Renderer::NotifyImageInvalid ( Image* const image )
-{
-    // Quickest thing to do here is to clear the quad list
-    d_quadlist.clear ();
-#if 0
-	for (QuadList::iterator i = d_quadlist.begin(); i != d_quadlist.end(); )
-	{
-		const QuadInfo& quad = (*i);
-        if ( quad.image == image )
-        {
-            d_quadlist.erase ( i++ );
-        }
-        else
-            ++i;
-    }
-#endif
-}
-
-
 /*************************************************************************
 	perform final rendering for all queued renderable quads.
 *************************************************************************/
-bool DirectX9Renderer::doRender(void)
+void DirectX9Renderer::doRender(void)
 {
 	d_currTexture = NULL;
-
-    if ( !d_buffer )
-        return false;
 
 	initPerFrameStates();
 
@@ -223,14 +198,9 @@ bool DirectX9Renderer::doRender(void)
 
 		if (!locked)
 		{
-            buffmem = NULL;
 			if (FAILED(d_buffer->Lock(0, 0, (void**)&buffmem, D3DLOCK_DISCARD)))
 			{
-				return false;
-			}
-            if ( buffmem == NULL )
-			{
-				return false;
+				return;
 			}
 
 			locked = true;
@@ -241,11 +211,24 @@ bool DirectX9Renderer::doRender(void)
         {
             unsigned long ulCodepoint = quad.image->getCodepoint();
             // Is it a glyph?
-            if ( ulCodepoint != 0 && ulCodepoint > 127 && ulCodepoint < 65534 )
+            if ( ulCodepoint != 0 && ulCodepoint < 65534 && ulCodepoint > 127 )
             {
-                CEGUI::Font* pFont = quad.image->getFont();
-                if ( pFont )
-                    pFont->refreshCachedGlyph(ulCodepoint);
+                String strImgName = quad.image->getName();
+                if ( strImgName.substr(0,6) == "glyph_" )
+                {
+                    CEGUI::String::size_type pos = strImgName.find_last_of(95);
+                    // Is the last character a '_'? Account for this specially as it ruins the algorithm
+                    CEGUI::String::size_type size = strImgName.length();
+                    if ( strImgName.substr(size-1) == "_" )
+                        pos = size-2;
+
+
+                    // Grab the font this belongs to from the name
+                    CEGUI::String strFontName = strImgName.substr(6,pos-6);
+
+                    CEGUI::Font* pFont = System::getSingleton().getFontManager()->getFont(strFontName);
+                    pFont->OnGlyphDrawn(ulCodepoint, false);
+                }
             }
         }
 
@@ -365,7 +348,6 @@ bool DirectX9Renderer::doRender(void)
 	}
 
 	renderVBuffer();
-    return true;
 }
 
 
@@ -516,19 +498,16 @@ void DirectX9Renderer::sortQuads(void)
 *************************************************************************/
 void DirectX9Renderer::renderQuadDirect(const Rect& dest_rect, float z, const Texture* tex, const Rect& texture_rect, const ColourRect& colours, QuadSplitMode quad_split_mode)
 {
-    if ( !d_buffer )
-        return;
-
 	// ensure offset destination to ensure proper texel to pixel mapping from D3D.
 	Rect final_rect(dest_rect);
 	final_rect.offset(Point(-0.5f, -0.5f));
 
-	QuadVertex*	buffmem = NULL;
+	QuadVertex*	buffmem;
 
 	initPerFrameStates();
 	d_device->SetTexture(0, ((DirectX9Texture*)tex)->getD3DTexture());
 
-	if (SUCCEEDED(d_buffer->Lock(0, VERTEX_PER_QUAD * sizeof(QuadVertex), (void**)&buffmem, D3DLOCK_DISCARD)) && buffmem )
+	if (SUCCEEDED(d_buffer->Lock(0, VERTEX_PER_QUAD * sizeof(QuadVertex), (void**)&buffmem, D3DLOCK_DISCARD)))
 	{
 		// setup Vertex 1...
 		buffmem->x = final_rect.d_left;
@@ -637,15 +616,12 @@ void DirectX9Renderer::renderQuadDirect(const Rect& dest_rect, float z, const Te
 void DirectX9Renderer::preD3DReset(void)
 {
 	// release the buffer prior to the reset call (will be re-created later)
-    if ( d_buffer )
-    {
-        if (FAILED(d_buffer->Release()))
-        {
-            throw RendererException("DirectX9Renderer::preD3DReset - Failed to release the VertexBuffer used by the DirectX9Renderer object.");
-        }
+	if (FAILED(d_buffer->Release()))
+	{
+		throw RendererException("DirectX9Renderer::preD3DReset - Failed to release the VertexBuffer used by the DirectX9Renderer object.");
+	}
 
-        d_buffer = 0;
-    }
+	d_buffer = 0;
 
 	// perform pre-reset operations on all textures
 	std::list<DirectX9Texture*>::iterator ctex = d_texturelist.begin();
@@ -698,7 +674,7 @@ Size DirectX9Renderer::getViewportSize(void)
 
 	if (FAILED(d_device->GetViewport(&vp)))
 	{
-		throw std::runtime_error("Unable to access required view port information from Direct3DDevice9.");
+		throw std::exception("Unable to access required view port information from Direct3DDevice9.");
 	}
 	else
 	{

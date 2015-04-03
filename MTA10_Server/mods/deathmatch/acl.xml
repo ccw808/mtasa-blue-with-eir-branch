@@ -44,9 +44,6 @@
       <acl name="raceACL"/>
       <object name="resource.race"/>
    </group>
-   <group name="DevGroup">
-      <acl name="DevACL"/>
-   </group>
    <acl name="Default">
       <right name="general.ModifyOtherObjects" access="false"/>
       <right name="general.http" access="false"/>
@@ -77,7 +74,6 @@
       <right name="command.ban" access="false"/>
       <right name="command.banip" access="false"/>
       <right name="command.unbanip" access="false"/>
-      <right name="command.reloadbans" access="false"/>
       <right name="command.shutdown" access="false"/>
       <right name="command.install" access="false"/>
       <right name="command.aexec" access="false"/>
@@ -87,10 +83,6 @@
       <right name="function.setPlayerMuted" access="false"/>
       <right name="function.addAccount" access="false"/>
       <right name="function.addBan" access="false"/>
-      <right name="function.setUnbanTime" access="false"/>
-      <right name="function.setBanAdmin" access="false"/>
-      <right name="function.setBanReason" access="false"/>
-      <right name="function.setBanNick" access="false"/>
       <right name="function.removeBan" access="false"/>
       <right name="function.removeAccount" access="false"/>
       <right name="function.setAccountPassword" access="false"/>
@@ -101,11 +93,10 @@
       <right name="function.getBansXML" access="false"/>
       <right name="function.unbanIP" access="false"/>
       <right name="function.unbanSerial" access="false"/>
-      <right name="function.reloadBans" access="false"/>
+      <right name="function.getClientIP" access="false"/>
       <right name="function.setServerPassword" access="false"/>
       <right name="function.getServerPassword" access="false"/>
       <right name="function.callRemote" access="false"/>
-      <right name="function.fetchRemote" access="false"/>
       <right name="function.startResource" access="false"/>
       <right name="function.stopResource" access="false"/>
       <right name="function.restartResource" access="false"/>
@@ -129,10 +120,7 @@
       <right name="function.aclGroupRemoveACL" access="false"/>
       <right name="function.aclGroupAddObject" access="false"/>
       <right name="function.aclGroupRemoveObject" access="false"/>
-      <right name="function.refreshResources" access="false"/>
-      <right name="function.setServerConfigSetting" access="false" />
-      <right name="function.updateResourceACLRequest" access="false" />
-      <right name="command.aclrequest" access="false" />
+      <right name="function.setServerName" access="false"/>
    </acl>
    <acl name="Moderator">
       <right name="general.ModifyOtherObjects" access="false"/>
@@ -154,6 +142,7 @@
       <right name="function.getBansXML" access="true"/>
       <right name="function.unbanIP" access="true"/>
       <right name="function.unbanSerial" access="true"/>
+      <right name="function.getClientIP" access="true"/>
       <right name="function.startResource" access="true"/>
       <right name="function.stopResource" access="true"/>
       <right name="function.restartResource" access="true"/>
@@ -168,7 +157,6 @@
       <right name="command.ban" access="true"/>
       <right name="command.banip" access="true"/>
       <right name="command.unbanip" access="true"/>
-      <right name="command.reloadbans" access="true"/>
       <right name="command.refresh" access="true"/>
       <right name="command.refreshall" access="true"/>
       <right name="command.loadmodule" access="true"/>
@@ -191,12 +179,7 @@
       <right name="command.srun" access="true"/>
       <right name="command.run" access="true"/>
       <right name="function.addBan" access="true"/>
-      <right name="function.setUnbanTime" access="true"/>
-      <right name="function.setBanAdmin" access="true"/>
-      <right name="function.setBanReason" access="true"/>
-      <right name="function.setBanNick" access="true"/>
       <right name="function.removeBan" access="true"/>
-      <right name="function.reloadBans" access="true"/>
       <right name="function.executeCommandHandler" access="true"/>
       <right name="function.setServerPassword" access="true"/>
       <right name="function.getServerPassword" access="true"/>
@@ -219,14 +202,10 @@
       <right name="function.aclGroupRemoveACL" access="true"/>
       <right name="function.aclGroupAddObject" access="true"/>
       <right name="function.aclGroupRemoveObject" access="true"/>
-      <right name="function.refreshResources" access="true"/>
-      <right name="function.setServerConfigSetting" access="true" />
-      <right name="function.updateResourceACLRequest" access="true" />
-      <right name="command.aclrequest" access="true" />
+      <right name="function.setServerName" access="true"/>
    </acl>
    <acl name="RPC">
       <right name="function.callRemote" access="true"/>
-      <right name="function.fetchRemote" access="true"/>
    </acl>
    <acl name="MapEditor">
       <right name="general.ModifyOtherObjects" access="true"/>
@@ -235,15 +214,12 @@
       <right name="function.restartResource" access="true"/>
       <right name="function.createResource" access="true"/>
       <right name="function.copyResource" access="true"/>
-      <right name="function.renameResource" access="true"/>
-      <right name="function.deleteResource" access="true"/>
       <right name="function.addResourceMap" access="true"/>
       <right name="function.addResourceConfig" access="true"/>
       <right name="function.removeResourceFile" access="true"/>
       <right name="function.setResourceDefaultSetting" access="true"/>
       <right name="function.removeResourceDefaultSetting" access="true"/>
       <right name="function.xmlLoadFile" access="true"/>
-      <right name="function.refreshResources" access="true" />
    </acl>
    <acl name="raceACL">
       <right name="general.ModifyOtherObjects" access="true"/>
@@ -252,8 +228,4 @@
       <right name="function.stopResource" access="true"/>
       <right name="function.restartResource" access="true"/>
     </acl>
-   <acl name="DevACL">
-        <right name="resource.performancebrowser.http" access="true"></right>
-        <right name="resource.ajax.http" access="true"></right>
-   </acl>
 </acl>

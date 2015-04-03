@@ -85,11 +85,8 @@ void ListboxTextItem::setFont(const String& font_name)
 /*************************************************************************
 	Return the rendered pixel size of this list box item.
 *************************************************************************/
-Size ListboxTextItem::getPixelSize(void)
+Size ListboxTextItem::getPixelSize(void) const
 {
-    if ( !d_bSizeChanged )
-        return d_savedPixelSize;
-
 	Size tmp(0,0);
 
 	const Font* fnt = getFont();
@@ -100,8 +97,6 @@ Size ListboxTextItem::getPixelSize(void)
 		tmp.d_width		= PixelAligned(fnt->getTextExtent(d_itemText));
 	}
 
-    d_bSizeChanged = false; 
-    d_savedPixelSize = tmp;
 	return tmp;
 }
 

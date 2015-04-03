@@ -23,7 +23,6 @@ public:
     CXfireServerInfo ()
     {
         m_Socket = NULL;
-        m_ulQueryStart = 0;
     }
     //For XFire so we don't have an un-used socket laying around and so queries don't fail the second time they are ran
     void SocketClose ( void )
@@ -40,7 +39,5 @@ public:
     bool ParseQuery              ( const char * szBuffer, unsigned int nLength );
     void Query                   ( void );
     std::string Pulse            ( void );
-
-    ulong           m_ulQueryStart;
 };
 #endif

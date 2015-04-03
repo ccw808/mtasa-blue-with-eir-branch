@@ -45,7 +45,7 @@ public:
     virtual CTaskComplexEnterCarAsDriver        * CreateTaskComplexEnterCarAsDriver(CVehicle * pVehicle)=0;
     virtual CTaskComplexEnterCarAsPassenger     * CreateTaskComplexEnterCarAsPassenger(CVehicle * pVehicle, const int iTargetSeat=0, const bool bCarryOnAfterFallingOff=false )=0;
     virtual CTaskComplexEnterBoatAsDriver       * CreateTaskComplexEnterBoatAsDriver(CVehicle * pVehicle )=0;
-    virtual CTaskComplexLeaveCar                * CreateTaskComplexLeaveCar ( CVehicle* pVehicle, const int iTargetDoor=0xFF, const int iDelayTime=0, const bool bSensibleLeaveCar=true, const bool bForceGetOut=false )=0;
+    virtual CTaskComplexLeaveCar                * CreateTaskComplexLeaveCar ( CVehicle* pVehicle, const int iTargetDoor=0, const int iDelayTime=0, const bool bSensibleLeaveCar=true, const bool bForceGetOut=false )=0;
     virtual CTaskComplexUseMobilePhone          * CreateTaskComplexUseMobilePhone ( const int iDuration = -1 ) = 0;
 
     virtual CTaskSimpleDuck                     * CreateTaskSimpleDuck ( eDuckControlTypes nDuckControl, unsigned short nLengthOfDuck=0, unsigned short nUseShotsWhizzingEvents=-1 )=0;
@@ -59,8 +59,7 @@ public:
 
     virtual CTaskComplexDie                     * CreateTaskComplexDie                    ( const eWeaponType eMeansOfDeath=WEAPONTYPE_UNARMED, const AssocGroupId animGroup=0/*ANIM_STD_PED*/, const AnimationId anim=0/*ANIM_STD_KO_FRONT*/, const float fBlendDelta=4.0f, const float fAnimSpeed=0.0f, const bool bBeingKilledByStealth=false, const bool bFallingToDeath=false, const int iFallToDeathDir=0, const bool bFallToDeathOverRailing=false )=0;
     virtual CTaskSimpleStealthKill              * CreateTaskSimpleStealthKill             ( bool bAttacker, class CPed * pPed, const AnimationId anim )=0;
-    virtual CTaskSimpleDead                     * CreateTaskSimpleDead                    ( unsigned int uiDeathTimeMS, bool bUnk2 )=0;
-    virtual CTaskSimpleBeHit                    * CreateTaskSimpleBeHit                   ( CPed* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId )=0;
+
     virtual CTaskComplexSunbathe                * CreateTaskComplexSunbathe               ( class CObject* pTowel, const bool bStartStanding )=0;
 
     // IK

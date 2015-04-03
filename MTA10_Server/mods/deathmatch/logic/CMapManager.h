@@ -47,7 +47,6 @@ public:
                                                               CTeamManager* pTeamManager,
                                                               CPedManager* pPedManager,
                                                               CColManager* pColManager,
-                                                              CWaterManager* pWaterManager,
                                                               CClock* pClock,
                                                               class CLuaManager* pLuaManager,
                                                               CGroups* pGroups,
@@ -67,9 +66,9 @@ public:
     void                        SendBlips                   ( CPlayer& Player );
     void                        SendPerPlayerEntities       ( CPlayer& Player );
 
-    void                        BroadcastResourceElements   ( CElement* pResourceElement, CElementGroup* pElementGroup );
-    void                        BroadcastElementChildren    ( CElement* pElement, class CEntityAddPacket &Packet, std::vector < CPerPlayerEntity* > &pPerPlayerList, std::set < CElement* >& outDoneElements );
-    void                        BroadcastElement            ( CElement* pElement, class CEntityAddPacket &Packet, std::vector < CPerPlayerEntity* > &pPerPlayerList );
+    void                        BroadcastElements           ( CElement* pElement );
+    void                        BroadcastElements           ( CElement* pElement, bool bBroadcastAll );
+    void                        BroadcastElementChildren    ( CElement* pElement, class CEntityAddPacket &Packet, list < CPerPlayerEntity* > &pPerPlayerList, bool bBroadcastAll );
 
     void                        OnPlayerJoin                ( CPlayer& Player );
     void                        OnPlayerQuit                ( CPlayer& Player );
@@ -107,7 +106,6 @@ private:
     CTeamManager*               m_pTeamManager;
     CPedManager*                m_pPedManager;
     CColManager*                m_pColManager;
-    CWaterManager*              m_pWaterManager;
     CClock*                     m_pServerClock;
     class CLuaManager*          m_pLuaManager;
     CGroups*                    m_pGroups;
@@ -117,7 +115,7 @@ private:
 
     CDummy*                     m_pRootElement;
 
-    long long                   m_llLastRespawnTime;
+    unsigned int                m_ulLastRespawnTime;
 
     CBlendedWeather*            m_pBlendedWeather;
 };

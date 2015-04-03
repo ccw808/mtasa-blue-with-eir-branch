@@ -16,12 +16,12 @@
 
 extern CClientGame* g_pClientGame;
 
-CClientPickup::CClientPickup ( CClientManager* pManager, ElementID ID, unsigned short usModel, CVector vecPosition ) : ClassInit ( this ), CClientStreamElement ( pManager->GetPickupStreamer (), ID )
+CClientPickup::CClientPickup ( CClientManager* pManager, ElementID ID, unsigned short usModel, CVector vecPosition ) : CClientStreamElement ( pManager->GetPickupStreamer (), ID )
 {
     // Initialize
     m_pManager = pManager;
     m_pPickupManager = pManager->GetPickupManager ();
-    m_usModel = usModel;
+    m_usModel = usModel;    
     m_bVisible = true;
     m_pPickup = NULL;
     m_pObject = NULL;
@@ -89,15 +89,15 @@ void CClientPickup::SetModel ( unsigned short usModel )
 
 void CClientPickup::SetVisible ( bool bVisible )
 {
-    // Update the flag
-    m_bVisible = bVisible;
-
     // Only update visible state if we're streamed in
     if ( IsStreamedIn () )
     {
         if ( bVisible ) Create ();
         else Destroy ();
     }
+
+    // Update the flag
+    m_bVisible = bVisible;
 }
 
 
@@ -120,14 +120,14 @@ void CClientPickup::StreamOut ( void )
 
 void CClientPickup::Create ( void )
 {
-    if ( !m_pPickup && m_bVisible )
+    if ( !m_pPickup )
     {
         // Create the pickup
         m_pPickup = g_pGame->GetPickups ()->CreatePickup ( &m_vecPosition, m_usModel, PICKUP_ONCE );
-        m_pObject = NULL;
         if ( m_pPickup )
         {
             // Grab the attributes from the MTA interface for this pickup
+            m_pObject = NULL;
             unsigned char ucAreaCode = GetInterior ();
             unsigned short usDimension = GetDimension ();
 
@@ -188,19 +188,11 @@ void CClientPickup::Callback_OnCollision ( CClientColShape& Shape, CClientEntity
 {
     if ( IS_PLAYER ( &Entity ) )
     {
-        bool bMatchingDimensions = (GetDimension () == Entity.GetDimension ()); // Matching dimensions?
-
-        // Call the pickup hit event (source = pickup that was hit)
+        // Call the pickup hit event
         CLuaArguments Arguments;
-        Arguments.PushElement ( &Entity ); // The element that hit the pickup
-        Arguments.PushBoolean ( bMatchingDimensions );
+        Arguments.PushElement ( &Entity );            // player that hit it
+        Arguments.PushBoolean ( ( GetDimension () == Entity.GetDimension () ) ); // matching dimension?
         CallEvent ( "onClientPickupHit", Arguments, true );
-
-        // Call the player pickup hit (source = player that hit the pickup)
-        CLuaArguments Arguments2;
-        Arguments2.PushElement ( this ); // The pickup that was hit
-        Arguments2.PushBoolean ( bMatchingDimensions );
-        Entity.CallEvent ( "onClientPlayerPickupHit", Arguments2, true );
     }
 }
 
@@ -209,18 +201,10 @@ void CClientPickup::Callback_OnLeave ( CClientColShape& Shape, CClientEntity& En
 {
     if ( IS_PLAYER ( &Entity ) )
     {
-        bool bMatchingDimensions = (GetDimension () == Entity.GetDimension ()); // Matching dimensions?
-
-        // Call the pickup leave event (source = the pickup that was left)
+        // Call the pickup leave event
         CLuaArguments Arguments;
-        Arguments.PushElement ( &Entity ); // The element that left the pickup
-        Arguments.PushBoolean ( bMatchingDimensions );
-        CallEvent ( "onClientPickupLeave", Arguments, true);
-
-        // Call the player pickup leave event (source = the player that left the pickup)
-        CLuaArguments Arguments2;
-        Arguments2.PushElement ( this ); // The pickup that was left (this)
-        Arguments2.PushBoolean ( bMatchingDimensions );
-        Entity.CallEvent ( "onClientPlayerPickupLeave", Arguments2, true );
+        Arguments.PushElement ( &Entity );            // player that hit it
+        Arguments.PushBoolean ( ( GetDimension () == Entity.GetDimension () ) ); // matching dimension?
+        CallEvent ( "onClientPickupLeave", Arguments, true );
     }
 }

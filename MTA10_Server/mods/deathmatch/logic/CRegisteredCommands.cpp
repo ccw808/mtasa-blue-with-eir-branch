@@ -46,7 +46,8 @@ bool CRegisteredCommands::AddCommand ( CLuaMain* pLuaMain, const char* szKey, co
     // Create the entry
     pCommand = new SCommand;
     pCommand->pLuaMain = pLuaMain;
-    pCommand->strKey.AssignLeft ( szKey, MAX_REGISTERED_COMMAND_LENGTH );
+    strncpy ( pCommand->szKey, szKey, MAX_REGISTERED_COMMAND_LENGTH );
+    pCommand->szKey [MAX_REGISTERED_COMMAND_LENGTH] = 0;
     pCommand->iLuaFunction = iLuaFunction;
     pCommand->bRestricted = bRestricted;
     pCommand->bCaseSensitive = bCaseSensitive;
@@ -70,14 +71,14 @@ bool CRegisteredCommands::RemoveCommand ( CLuaMain* pLuaMain, const char* szKey,
     while ( iter != m_Commands.end () )
     {
         if ( (*iter)->bCaseSensitive )
-            iCompareResult = strcmp ( (*iter)->strKey, szKey );
+            iCompareResult = strcmp ( (*iter)->szKey, szKey );
         else
-            iCompareResult = stricmp ( (*iter)->strKey, szKey );
+            iCompareResult = stricmp ( (*iter)->szKey, szKey );
 
         // Matching vm's and names?
         if ( (*iter)->pLuaMain == pLuaMain && iCompareResult == 0 )
         {
-            if ( VERIFY_FUNCTION ( iLuaFunction ) && (*iter)->iLuaFunction != iLuaFunction )
+            if ( iLuaFunction != LUA_REFNIL && (*iter)->iLuaFunction != iLuaFunction )
             {
                 iter++;
                 continue;
@@ -162,9 +163,9 @@ bool CRegisteredCommands::ProcessCommand ( const char* szKey, const char* szArgu
     for ( ; iter != m_Commands.end (); iter++ )
     {
         if ( (*iter)->bCaseSensitive )
-            iCompareResult = strcmp ( (*iter)->strKey, szKey );
+            iCompareResult = strcmp ( (*iter)->szKey, szKey );
         else
-            iCompareResult = stricmp ( (*iter)->strKey, szKey );
+            iCompareResult = stricmp ( (*iter)->szKey, szKey );
 
         // Matching names?
         if ( iCompareResult == 0 )
@@ -200,9 +201,9 @@ CRegisteredCommands::SCommand* CRegisteredCommands::GetCommand ( const char* szK
     for ( ; iter != m_Commands.end (); iter++ )
     {
         if ( (*iter)->bCaseSensitive )
-            iCompareResult = strcmp ( (*iter)->strKey, szKey );
+            iCompareResult = strcmp ( (*iter)->szKey, szKey );
         else
-            iCompareResult = stricmp ( (*iter)->strKey, szKey );
+            iCompareResult = stricmp ( (*iter)->szKey, szKey );
 
         // Matching name and no given VM or matching VM
         if ( iCompareResult == 0 && ( !pLuaMain || pLuaMain == (*iter)->pLuaMain ) )
@@ -276,7 +277,7 @@ void CRegisteredCommands::TakeOutTheTrash ( void )
     list < SCommand* > ::iterator iter = m_TrashCan.begin ();
     for ( ; iter != m_TrashCan.end (); iter++ )
     {
-        m_Commands.remove ( *iter );
+        if ( !m_Commands.empty() ) m_Commands.remove ( *iter );
         delete *iter;
     }
     m_TrashCan.clear ();

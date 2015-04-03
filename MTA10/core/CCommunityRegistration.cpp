@@ -12,6 +12,7 @@
 *****************************************************************************/
 
 #include "StdInc.h"
+#include <utils/CMD5Hasher.h>
 
 using SharedUtil::CalcMTASAPath;
 extern CCore* g_pCore;
@@ -90,12 +91,10 @@ void CCommunityRegistration::CreateWindows ( void )
     m_pButtonRegister = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( m_pWindow, "Register" ) );
     m_pButtonRegister->SetPosition ( CVector2D ( 100.0f, 270.0f ), false );
     m_pButtonRegister->SetSize ( CVector2D ( 90.0f, 20.0f ), false );
-    m_pButtonRegister->SetZOrderingEnabled ( false );
 
     m_pButtonCancel = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( m_pWindow, "Cancel" ) );
     m_pButtonCancel->SetPosition ( CVector2D ( 200.0f, 270.0f ), false );
     m_pButtonCancel->SetSize ( CVector2D ( 70.0f, 20.0f ), false );
-    m_pButtonRegister->SetZOrderingEnabled ( false );
 
     m_pButtonRegister->SetClickHandler ( GUI_CALLBACK ( &CCommunityRegistration::OnButtonRegisterClick, this ) );
     m_pButtonCancel->SetClickHandler ( GUI_CALLBACK ( &CCommunityRegistration::OnButtonCancelClick, this ) );
@@ -195,11 +194,11 @@ void CCommunityRegistration::DoPulse ( void )
                         return;
                     }
                 }
-                g_pCore->ShowMessageBox ( _("Error")+_E("CC04"), _("Services currently unavailable"), MB_BUTTON_OK | MB_ICON_ERROR );
+                g_pCore->ShowMessageBox ( "Error", "Services currently unavaliable", MB_BUTTON_OK | MB_ICON_ERROR );
             }
             else if ( Result == REGISTRATION_ERROR_SUCCESS )
             {
-                g_pCore->ShowMessageBox ( _("Success")+_E("CC05"), _("Successfully registered!"), MB_BUTTON_OK | MB_ICON_INFO );
+                g_pCore->ShowMessageBox ( "Success", "Successfully registered!", MB_BUTTON_OK | MB_ICON_INFO );
 
                 m_pWindow->SetVisible ( false );
                 SetFrozen ( false );
@@ -209,21 +208,21 @@ void CCommunityRegistration::DoPulse ( void )
             else if ( Result == REGISTRATION_ERROR_ERROR )
             {
                 if ( strlen ( &szBuffer[1] ) > 0 )
-                    g_pCore->ShowMessageBox ( _("Error")+_E("CC06"), &szBuffer[1], MB_BUTTON_OK | MB_ICON_ERROR );
+                    g_pCore->ShowMessageBox ( "Error", &szBuffer[1], MB_BUTTON_OK | MB_ICON_ERROR );
                 else
-                    g_pCore->ShowMessageBox ( _("Error")+_E("CC07"), "Unexpected error", MB_BUTTON_OK | MB_ICON_ERROR );
+                    g_pCore->ShowMessageBox ( "Error", "Unexpected error", MB_BUTTON_OK | MB_ICON_ERROR );
 
                 SetFrozen ( false );
             }
             else
             {
-                g_pCore->ShowMessageBox ( _("Error")+_E("CC08"), _("Services currently unavailable"), MB_BUTTON_OK | MB_ICON_ERROR );
+                g_pCore->ShowMessageBox ( "Error", "Services currently unavaliable", MB_BUTTON_OK | MB_ICON_ERROR );
                 SetFrozen ( false );
             }
         }
         else if ( ( CClientTime::GetTime () - m_ulStartTime ) > REGISTRATION_DELAY )
         {
-            g_pCore->ShowMessageBox ( _("Error")+_E("CC10"), _("Services currently unavailable"), MB_BUTTON_OK | MB_ICON_ERROR );
+            g_pCore->ShowMessageBox ( "Error", "Services currently unavaliable", MB_BUTTON_OK | MB_ICON_ERROR );
             SetFrozen ( false );
             // Timed out
             m_ulStartTime = 0;
@@ -251,22 +250,22 @@ bool CCommunityRegistration::OnButtonCancelClick ( CGUIElement* pElement )
 bool CCommunityRegistration::OnButtonRegisterClick ( CGUIElement* pElement )
 {
     if ( m_pEditUsername->GetText().empty() )
-        g_pCore->ShowMessageBox ( _("Error")+_E("CC11"), _("Username missing"), MB_BUTTON_OK | MB_ICON_INFO );
+        g_pCore->ShowMessageBox ( "Error", "Username missing", MB_BUTTON_OK | MB_ICON_INFO );
     else if ( m_pEditEmail->GetText().empty() )
-        g_pCore->ShowMessageBox ( _("Error")+_E("CC12"), _("Email missing"), MB_BUTTON_OK | MB_ICON_INFO );
+        g_pCore->ShowMessageBox ( "Error", "Email missing", MB_BUTTON_OK | MB_ICON_INFO );
     else if ( m_pEditPassword->GetText().empty() || m_pEditConfirm->GetText().empty() )
-        g_pCore->ShowMessageBox ( _("Error")+_E("CC13"), _("Password missing"), MB_BUTTON_OK | MB_ICON_INFO );
+        g_pCore->ShowMessageBox ( "Error", "Password missing", MB_BUTTON_OK | MB_ICON_INFO );
     else if ( m_pEditPassword->GetText() != m_pEditConfirm->GetText() )
-        g_pCore->ShowMessageBox ( _("Error")+_E("CC14"), _("Passwords do not match"), MB_BUTTON_OK | MB_ICON_INFO );
+        g_pCore->ShowMessageBox ( "Error", "Passwords do not match", MB_BUTTON_OK | MB_ICON_INFO );
     else if ( m_pEditCode->GetText().empty() )
-        g_pCore->ShowMessageBox ( _("Error")+_E("CC15"), _("Validation code missing"), MB_BUTTON_OK | MB_ICON_INFO );
+        g_pCore->ShowMessageBox ( "Error", "Validation code missing", MB_BUTTON_OK | MB_ICON_INFO );
     else
     {
         if ( m_ulStartTime == 0 )
         {
             SetFrozen ( true );
             std::string strPassword;
-            Md5HashString ( m_pEditPassword->GetText().c_str(), strPassword );
+            HashString ( m_pEditPassword->GetText().c_str(), strPassword );
 
             // Create the URL
             std::string strURL =
@@ -288,7 +287,7 @@ bool CCommunityRegistration::OnButtonRegisterClick ( CGUIElement* pElement )
     return true;
 }
 
-bool CCommunityRegistration::Md5HashString ( const char* szString, std::string& strHashString )
+bool CCommunityRegistration::HashString ( const char* szString, std::string& strHashString )
 {
     char szHashed[33];
     if ( szString && strlen ( szString ) > 0 )

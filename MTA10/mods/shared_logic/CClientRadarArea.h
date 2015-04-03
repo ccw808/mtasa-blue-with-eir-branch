@@ -21,11 +21,9 @@
 #include "CClientEntity.h"
 #include <gui/CGUI.h>
 
-class CClientRadarAreaManager;
 
 class CClientRadarArea : public CClientEntity
 {
-    DECLARE_CLASS( CClientRadarArea, CClientEntity )
     friend class CClientRadarAreaManager;
 
 public:
@@ -52,8 +50,6 @@ public:
     inline bool                 IsFlashing                  ( void ) const                      { return m_bFlashing; };
     inline void                 SetFlashing                 ( bool bFlashing )                  { m_bFlashing = bFlashing; };
 
-    inline float                GetAlphaFactor              ( void ) const                      { return m_fAlphaFactor; };
-
     void                        SetDimension                ( unsigned short usDimension );
     void                        RelateDimension             ( unsigned short usDimension );
 
@@ -70,7 +66,6 @@ protected:
     bool                        m_bStreamedIn;
     bool                        m_bFlashing;
     unsigned long               m_ulFlashCycleStart;
-    float                       m_fAlphaFactor;
 
 };
 

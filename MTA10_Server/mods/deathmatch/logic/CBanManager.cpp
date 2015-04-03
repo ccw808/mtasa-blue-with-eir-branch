@@ -15,11 +15,10 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-bool CBanManager::ms_bSaveRequired = false;
 
 CBanManager::CBanManager ( void )
 {
-    m_strPath = g_pServerInterface->GetModManager ()->GetAbsolutePath ( FILENAME_BANLIST );
+    m_strPath = g_pServerInterface->GetModManager ()->GetAbsolutePath ( "banlist.xml" );
     m_tUpdate = 0;
     m_bAllowSave = false;
 }
@@ -28,13 +27,7 @@ CBanManager::CBanManager ( void )
 CBanManager::~CBanManager ( void )
 {
     SaveBanList ();
-    list < CBan* >::const_iterator iter = m_BanManager.begin ();
-    for ( ; iter != m_BanManager.end (); iter++ )
-    {
-        delete *iter;
-    }
-
-    m_BanManager.clear ();
+    RemoveAllBans ();
 }
 
 
@@ -53,7 +46,7 @@ void CBanManager::DoPulse ( void )
                 {
                     // Trigger the event
                     CLuaArguments Arguments;
-                    Arguments.PushBan ( *iter );
+                    Arguments.PushUserData ( *iter );
                     g_pGame->GetMapManager()->GetRootElement()->CallEvent ( "onUnban", Arguments );
 
                     RemoveBan ( *iter );
@@ -65,23 +58,26 @@ void CBanManager::DoPulse ( void )
         }
         m_tUpdate = tTime + 1;
     }
-
-    if ( ms_bSaveRequired )
-        SaveBanList();
 }
 
 
-CBan* CBanManager::AddBan ( CPlayer* pPlayer, const SString& strBanner, const SString& strReason, time_t tTimeOfUnban )
+CBan* CBanManager::AddBan ( CPlayer* pPlayer, CClient* pBanner, const char* szReason, time_t tTimeOfUnban )
 {
     if ( pPlayer )
     {
-        SString strIP = pPlayer->GetSourceIP ();
+        char szIP[256] = { '\0' };
+        pPlayer->GetSourceIP ( szIP );
 
-        if ( IsValidIP ( strIP ) && !IsSpecificallyBanned ( strIP ) )
+        if ( IsValidIP ( szIP ) && !IsSpecificallyBanned ( szIP ) )
         {
-            CBan* pBan = AddBan ( strBanner, strReason, tTimeOfUnban );
+            CBan* pBan = AddBan ( pBanner, szReason, tTimeOfUnban );
             pBan->SetNick ( pPlayer->GetNick() );
-            pBan->SetIP ( strIP );
+            pBan->SetIP ( szIP );
+
+            g_pNetServer->AddBan ( szIP );
+
+            // Save the list
+            SaveBanList ();
             return pBan;
         }
     }
@@ -90,12 +86,17 @@ CBan* CBanManager::AddBan ( CPlayer* pPlayer, const SString& strBanner, const SS
 }
 
 
-CBan* CBanManager::AddBan ( const SString& strIP, const SString& strBanner, const SString& strReason, time_t tTimeOfUnban )
+CBan* CBanManager::AddBan ( const char* szIP, CClient* pBanner, const char* szReason, time_t tTimeOfUnban )
 {
-    if ( IsValidIP ( strIP.c_str() ) && !IsSpecificallyBanned ( strIP.c_str() ) )
+    if ( IsValidIP ( szIP ) && !IsSpecificallyBanned ( szIP ) )
     {
-        CBan* pBan = AddBan ( strBanner, strReason, tTimeOfUnban );
-        pBan->SetIP ( strIP );
+        CBan* pBan = AddBan ( pBanner, szReason, tTimeOfUnban );
+        pBan->SetIP ( szIP );
+
+        g_pNetServer->AddBan ( szIP );
+
+        // Save the list
+        SaveBanList ();
         return pBan;
     }
 
@@ -103,15 +104,17 @@ CBan* CBanManager::AddBan ( const SString& strIP, const SString& strBanner, cons
 }
 
 
-CBan* CBanManager::AddSerialBan ( CPlayer* pPlayer, CClient* pBanner, const SString& strReason, time_t tTimeOfUnban )
+CBan* CBanManager::AddSerialBan ( CPlayer* pPlayer, CClient* pBanner, const char* szReason, time_t tTimeOfUnban )
 {
     if ( pPlayer )
     {
         if ( !pPlayer->GetSerial ().empty() && !IsSerialBanned ( pPlayer->GetSerial ().c_str () ) )
         {
-            CBan* pBan = AddBan ( pBanner->GetNick(), strReason, tTimeOfUnban );
+            CBan* pBan = AddBan ( pBanner, szReason, tTimeOfUnban );
             pBan->SetNick ( pPlayer->GetNick() );
             pBan->SetSerial ( pPlayer->GetSerial () );
+            SaveBanList ();
+
             return pBan;
         }
     }
@@ -120,12 +123,14 @@ CBan* CBanManager::AddSerialBan ( CPlayer* pPlayer, CClient* pBanner, const SStr
 }
 
 
-CBan* CBanManager::AddSerialBan ( const SString& strSerial, CClient* pBanner, const SString& strReason, time_t tTimeOfUnban )
+CBan* CBanManager::AddSerialBan ( const char* szSerial, CClient* pBanner, const char* szReason, time_t tTimeOfUnban )
 {
-    if ( /*IsValidSerial ( szSerial ) &&*/ !IsSerialBanned ( strSerial.c_str() ) )
+    if ( /*IsValidSerial ( szSerial ) &&*/ !IsSerialBanned ( szSerial ) )
     {
-        CBan* pBan = AddBan ( pBanner->GetNick(), strReason, tTimeOfUnban );
-        pBan->SetSerial ( strSerial );
+        CBan* pBan = AddBan ( pBanner, szReason, tTimeOfUnban );
+        pBan->SetSerial ( szSerial );
+        SaveBanList ();
+
         return pBan;
     }
 
@@ -133,15 +138,17 @@ CBan* CBanManager::AddSerialBan ( const SString& strSerial, CClient* pBanner, co
 }
 
 
-CBan* CBanManager::AddAccountBan ( CPlayer* pPlayer, CClient* pBanner, const SString& strReason, time_t tTimeOfUnban )
+CBan* CBanManager::AddAccountBan ( CPlayer* pPlayer, CClient* pBanner, const char* szReason, time_t tTimeOfUnban )
 {
     if ( pPlayer )
     {
         if ( !pPlayer->GetSerialUser ().empty() && !IsAccountBanned ( pPlayer->GetSerialUser ().c_str () ) )
         {
-            CBan* pBan = AddBan ( pBanner->GetNick(), strReason, tTimeOfUnban );
+            CBan* pBan = AddBan ( pBanner, szReason, tTimeOfUnban );
             pBan->SetNick ( pPlayer->GetNick() );
             pBan->SetAccount ( pPlayer->GetSerialUser () );
+            SaveBanList ();
+
             return pBan;
         }
     }
@@ -150,12 +157,14 @@ CBan* CBanManager::AddAccountBan ( CPlayer* pPlayer, CClient* pBanner, const SSt
 }
 
 
-CBan* CBanManager::AddAccountBan ( const SString& strAccount, CClient* pBanner, const SString& strReason, time_t tTimeOfUnban )
+CBan* CBanManager::AddAccountBan ( const char* szAccount, CClient* pBanner, const char* szReason, time_t tTimeOfUnban )
 {
-    if ( !IsAccountBanned ( strAccount.c_str() ) )
+    if ( !IsAccountBanned ( szAccount ) )
     {
-        CBan* pBan = AddBan ( pBanner->GetNick(), strReason, tTimeOfUnban );
-        pBan->SetSerial ( strAccount );
+        CBan* pBan = AddBan ( pBanner, szReason, tTimeOfUnban );
+        pBan->SetSerial ( szAccount );
+        SaveBanList ();
+
         return pBan;
     }
 
@@ -163,18 +172,18 @@ CBan* CBanManager::AddAccountBan ( const SString& strAccount, CClient* pBanner, 
 }
 
 
-CBan* CBanManager::AddBan ( const SString& strBanner, const SString& strReason, time_t tTimeOfUnban )
+CBan* CBanManager::AddBan ( CClient* pBanner, const char* szReason, time_t tTimeOfUnban )
 {
     // Create the ban and assign its values
     CBan* pBan = new CBan;
     pBan->SetTimeOfBan ( time ( NULL ) );
     pBan->SetTimeOfUnban ( tTimeOfUnban );
 
-    if ( strReason.length() > 0 )
-        pBan->SetReason ( strReason.c_str() );
+    if ( szReason )
+        pBan->SetReason ( szReason );
 
-    if ( strBanner.length() > 0 )
-        pBan->SetBanner ( strBanner );
+    if ( pBanner )
+        pBan->SetBanner ( pBanner->GetNick () );
 
     // Add it to the back of our banned list, add it to net server's ban list
     m_BanManager.push_back ( pBan );
@@ -183,11 +192,24 @@ CBan* CBanManager::AddBan ( const SString& strBanner, const SString& strReason, 
 }
 
 
-CBan* CBanManager::GetBanFromScriptID ( uint uiScriptID )
+bool CBanManager::Exists ( CBan* pBan )
 {
-    CBan* pBan = (CBan*) CIdArray::FindEntry ( uiScriptID, EIdClass::BAN );
-    dassert ( !pBan || ListContains ( m_BanManager, pBan ) );
-    return pBan;
+    list < CBan* >::const_iterator iter = m_BanManager.begin ();
+    for ( ; iter != m_BanManager.end (); iter++ )
+    {
+        if ( *iter == pBan )
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+
+bool CBanManager::IsBanned ( const char* szIP )
+{
+    return g_pNetServer->IsBanned ( szIP );
 }
 
 
@@ -235,80 +257,69 @@ bool CBanManager::IsAccountBanned ( const char* szAccount )
     return false;
 }
 
-CBan* CBanManager::GetBanFromAccount ( const char* szAccount )
-{
-    list < CBan* >::const_iterator iter = m_BanManager.begin ();
-    for ( ; iter != m_BanManager.end (); iter++ )
-    {
-        if ( (*iter)->GetAccount () == szAccount )
-        {
-            return (*iter);
-        }
-    }
-
-    return NULL;
-}
-
 
 void CBanManager::RemoveBan ( CBan* pBan )
 {
     if ( pBan )
     {
-        m_BanManager.remove ( pBan );
+        if ( !pBan->GetIP ().empty() )
+            g_pNetServer->RemoveBan ( pBan->GetIP ().c_str () );
+        if ( !m_BanManager.empty() ) m_BanManager.remove ( pBan );
         delete pBan;
     }
+    SaveBanList ();
 }
 
 
-// Include wildcard checks
-CBan* CBanManager::GetBanFromIP ( const char* szIP )
+void CBanManager::RemoveAllBans ( bool bPermanentDelete )
 {
-    CBan* pBanWildcardMatch = NULL;
-
     list < CBan* >::const_iterator iter = m_BanManager.begin ();
     for ( ; iter != m_BanManager.end (); iter++ )
     {
-        const SString& strIP = (*iter)->GetIP ().c_str ();
+        delete *iter;
+    }
 
-        if ( strIP.Contains ( "*" ) )
+    m_BanManager.clear ();
+
+    if ( bPermanentDelete )
+    {
+        SaveBanList ();
+    }
+}
+
+
+CBan* CBanManager::GetBan ( const char* szIP )
+{
+    list < CBan* >::const_iterator iter = m_BanManager.begin ();
+    for ( ; iter != m_BanManager.end (); iter++ )
+    {
+        if ( (*iter)->GetIP () == szIP )
         {
-            for ( uint i = 0 ; i < 17 ; i++ )
-            {
-                char a = szIP[i];
-                char b = strIP[i];
-                if ( a == b )
-                {
-                    if ( a == 0 )
-                        return *iter;   // Full match
-                }
-                else
-                {
-                    if ( b == '*' )
-                        pBanWildcardMatch = *iter;
+            return *iter;
+        }
+    }
+    
+    return NULL;
+}
 
-                    // Characters do not match
-                    break;
-                }
+
+CBan* CBanManager::GetBan ( const char* szNick, unsigned int uiOccurrance )
+{
+    unsigned int uiOccurrances = 0;
+    list < CBan* >::const_iterator iter = m_BanManager.begin ();
+    for ( ; iter != m_BanManager.end (); iter++ )
+    {
+        if ( (*iter)->GetNick () == szNick )
+        {
+            uiOccurrances++;
+
+            if ( uiOccurrance == uiOccurrances )
+            {
+                return *iter;
             }
         }
-        else
-        if ( strIP == szIP )
-        {
-            return *iter;   // Full match
-        }
     }
-    return pBanWildcardMatch;
-}
 
-
-CBan* CBanManager::GetBanFromSerial ( const char* szSerial )
-{
-    list < CBan* >::const_iterator iter = m_BanManager.begin ();
-    for ( ; iter != m_BanManager.end (); iter++ )
-    {
-        if ( (*iter)->GetSerial () == szSerial )
-            return *iter;
-    }
     return NULL;
 }
 
@@ -401,6 +412,7 @@ bool CBanManager::LoadBanList ( void )
                     if ( IsValidIP ( strIP.c_str() ) )
                     {
                         pBan->SetIP ( strIP );
+                        g_pNetServer->AddBan ( strIP.c_str() );
                     }
                     pBan->SetAccount ( strAccount );
                     pBan->SetSerial ( strSerial );
@@ -419,26 +431,7 @@ bool CBanManager::LoadBanList ( void )
     }
 
     delete pFile;
-    ms_bSaveRequired = false;
     return true;
-}
-
-
-bool CBanManager::ReloadBanList ( void )
-{
-    // Flush any pending saves - This is ok because reloadbans is for loading manual changes to banlist.xml
-    // and manual changes are subject to being overwritten by server actions at any time.
-    if ( ms_bSaveRequired )
-        SaveBanList();
-
-    list < CBan* >::const_iterator iter = m_BanManager.begin ();
-    for ( ; iter != m_BanManager.end (); iter++ )
-    {
-        delete *iter;
-    }
-    m_BanManager.clear ();
-
-    return LoadBanList();
 }
 
 
@@ -482,14 +475,12 @@ void CBanManager::SaveBanList ( void )
             }
 
             // Write the XML file
-            if ( !pFile->Write () )
-                CLogger::ErrorPrintf ( "Error saving '%s'\n", FILENAME_BANLIST );
+            pFile->Write ();
         }
 
         // Delete the file pointer
         delete pFile;
     }
-    ms_bSaveRequired = false;
 }
 
 

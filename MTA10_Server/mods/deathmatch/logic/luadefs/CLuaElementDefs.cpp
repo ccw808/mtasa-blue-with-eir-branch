@@ -33,10 +33,6 @@ void CLuaElementDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "isElementWithinColShape", CLuaElementDefs::isElementWithinColShape );
     CLuaCFunctions::AddFunction ( "isElementWithinMarker", CLuaElementDefs::isElementWithinMarker );
     CLuaCFunctions::AddFunction ( "isElementInWater", CLuaElementDefs::isElementInWater );
-    CLuaCFunctions::AddFunction ( "isElementFrozen", CLuaElementDefs::isElementFrozen );
-    CLuaCFunctions::AddFunction ( "isElementLowLOD", CLuaElementDefs::isElementLowLOD );
-    CLuaCFunctions::AddFunction ( "setElementCallPropagationEnabled", CLuaElementDefs::setElementCallPropagationEnabled );
-    CLuaCFunctions::AddFunction ( "isElementCallPropagationEnabled", CLuaElementDefs::isElementCallPropagationEnabled );
 
     CLuaCFunctions::AddFunction ( "getElementByID", CLuaElementDefs::getElementByID );
     CLuaCFunctions::AddFunction ( "getElementByIndex", CLuaElementDefs::getElementByIndex );
@@ -46,7 +42,6 @@ void CLuaElementDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "getAllElementData", CLuaElementDefs::getAllElementData );
     CLuaCFunctions::AddFunction ( "getElementID", CLuaElementDefs::getElementID );
     CLuaCFunctions::AddFunction ( "getElementParent", CLuaElementDefs::getElementParent );
-    CLuaCFunctions::AddFunction ( "getElementMatrix", CLuaElementDefs::getElementMatrix );
     CLuaCFunctions::AddFunction ( "getElementPosition", CLuaElementDefs::getElementPosition );
     CLuaCFunctions::AddFunction ( "getElementRotation", CLuaElementDefs::getElementRotation );
     CLuaCFunctions::AddFunction ( "getElementVelocity", CLuaElementDefs::getElementVelocity );
@@ -62,8 +57,6 @@ void CLuaElementDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "getElementHealth", CLuaElementDefs::getElementHealth );
     CLuaCFunctions::AddFunction ( "getElementModel", CLuaElementDefs::getElementModel );
     CLuaCFunctions::AddFunction ( "getElementSyncer", CLuaElementDefs::getElementSyncer );
-    CLuaCFunctions::AddFunction ( "getElementCollisionsEnabled", CLuaElementDefs::getElementCollisionsEnabled );
-    CLuaCFunctions::AddFunction ( "getLowLODElement", CLuaElementDefs::getLowLODElement );
 
     // Attachement
     CLuaCFunctions::AddFunction ( "attachElements", CLuaElementDefs::attachElements );
@@ -82,7 +75,6 @@ void CLuaElementDefs::LoadFunctions ( void )
     // Set
     CLuaCFunctions::AddFunction ( "setElementID", CLuaElementDefs::setElementID );
     CLuaCFunctions::AddFunction ( "setElementParent", CLuaElementDefs::setElementParent );
-    CLuaCFunctions::AddFunction ( "setElementMatrix", CLuaElementDefs::setElementMatrix );
     CLuaCFunctions::AddFunction ( "setElementPosition", CLuaElementDefs::setElementPosition );
     CLuaCFunctions::AddFunction ( "setElementRotation", CLuaElementDefs::setElementRotation );
     CLuaCFunctions::AddFunction ( "setElementVelocity", CLuaElementDefs::setElementVelocity );
@@ -96,23 +88,33 @@ void CLuaElementDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "setElementHealth", CLuaElementDefs::setElementHealth );
     CLuaCFunctions::AddFunction ( "setElementModel", CLuaElementDefs::setElementModel );
     CLuaCFunctions::AddFunction ( "setElementSyncer", CLuaElementDefs::setElementSyncer );
-    CLuaCFunctions::AddFunction ( "setElementCollisionsEnabled", CLuaElementDefs::setElementCollisionsEnabled );
-    CLuaCFunctions::AddFunction ( "setElementFrozen", CLuaElementDefs::setElementFrozen );
-    CLuaCFunctions::AddFunction ( "setLowLODElement", CLuaElementDefs::setLowLODElement );
 }
 
 
 int CLuaElementDefs::createElement ( lua_State* luaVM )
 {
-//  element createElement ( string elementType, [ string elementID ] )
-    SString strTypeName; SString strId;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strTypeName );
-    argStream.ReadString ( strId, "" );
-
-    if ( !argStream.HasErrors () )
+    // Grab the optional name argument
+    char szDefaultID [] = "";
+    const char* szID = szDefaultID;
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( iArgument2 == LUA_TSTRING )
     {
+        szID = lua_tostring ( luaVM, 2 );
+    }
+    else if ( iArgument2 != LUA_TNONE )
+    {
+        m_pScriptDebugging->LogBadType ( luaVM, "createElement" );
+        lua_pushboolean ( luaVM, false );
+        return 1;
+    }
+
+    // Verify argument types
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TSTRING )
+    {
+        // Grab the string
+        const char* szTypeName = lua_tostring ( luaVM, 1 );
+
         // Get the virtual machine
         CLuaMain * pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
         if ( pLuaMain )
@@ -122,7 +124,7 @@ int CLuaElementDefs::createElement ( lua_State* luaVM )
             if ( pResource )
             {
                 // Try to create
-                CDummy* pDummy = CStaticFunctionDefinitions::CreateElement ( pResource, strTypeName, strId );
+                CDummy* pDummy = CStaticFunctionDefinitions::CreateElement ( pResource, szTypeName, szID );
                 if ( pDummy )
                 {
                     // Get the group
@@ -134,13 +136,11 @@ int CLuaElementDefs::createElement ( lua_State* luaVM )
                     lua_pushelement ( luaVM, pDummy );
                     return 1;
                 }
-                argStream.SetCustomError ( SString ( "element type '%s' cannot be used", *strTypeName ) );
             }
         }
     }
-
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "createElement" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -149,22 +149,22 @@ int CLuaElementDefs::createElement ( lua_State* luaVM )
 
 int CLuaElementDefs::destroyElement ( lua_State* luaVM )
 {
-//  bool destroyElement ( element elementToDestroy )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        if ( CStaticFunctionDefinitions::DestroyElement ( pElement ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::DestroyElement ( pElement ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "destroyElement", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "destroyElement" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -172,37 +172,54 @@ int CLuaElementDefs::destroyElement ( lua_State* luaVM )
 
 int CLuaElementDefs::cloneElement ( lua_State* luaVM )
 {
-//  element cloneElement ( element theElement, [ float xPos = 0, float yPos = 0, float zPos = 0, bool cloneChildren = false ] )
-    CElement* pElement; CVector vecPosition; bool bCloneChildren = false;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        argStream.ReadVector3D ( vecPosition, pElement->GetPosition ( ) );
-        argStream.ReadBool ( bCloneChildren, false );
-    }
-
-    if ( !argStream.HasErrors () )
-    {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( pLuaMain )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            CResource * pResource = pLuaMain->GetResource();
-            if ( pResource )
+            CVector vecPosition = pElement->GetPosition ();
+            bool bCloneChildren = false;
+            int iArgument2 = lua_type ( luaVM, 2 );
+            if ( ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
             {
-                CElement* pNewElement = CStaticFunctionDefinitions::CloneElement ( pResource, pElement, vecPosition, bCloneChildren );
-
-                if ( pNewElement )
+                vecPosition.fX = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+                int iArgument3 = lua_type ( luaVM, 3 );
+                if ( ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) )
                 {
-                    lua_pushelement ( luaVM, pNewElement );
-                    return 1;
+                    vecPosition.fY = static_cast < float > ( lua_tonumber ( luaVM, 3 ) );
+                    int iArgument4 = lua_type ( luaVM, 4 );
+                    if ( ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) )
+                    {
+                        vecPosition.fZ = static_cast < float > ( lua_tonumber ( luaVM, 4 ) );
+
+                        if ( lua_type ( luaVM, 5 ) == LUA_TBOOLEAN )
+                        {
+                            bCloneChildren = ( lua_toboolean ( luaVM, 5 ) ) ? true:false;
+                        }
+                    }
+                }
+            }
+            CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+            if ( pLuaMain )
+            {
+                CResource * pResource = pLuaMain->GetResource();
+                if ( pResource )
+                {
+                    CElement* pNewElement = CStaticFunctionDefinitions::CloneElement ( pResource, pElement, vecPosition, bCloneChildren );
+
+                    if ( pNewElement )
+                    {
+                        lua_pushelement ( luaVM, pNewElement );
+                        return 1;
+                    }
                 }
             }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "cloneElement", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "cloneElement" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -211,16 +228,14 @@ int CLuaElementDefs::cloneElement ( lua_State* luaVM )
 
 int CLuaElementDefs::isElement ( lua_State* luaVM )
 {
-//  bool isElement ( var theValue )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
+        {
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
     }
 
     lua_pushboolean ( luaVM, false );
@@ -230,28 +245,29 @@ int CLuaElementDefs::isElement ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementChildren ( lua_State* luaVM )
 {
-//  table getElementChildren ( element parent, [ string theType = nil ] )
-    CElement* pElement; SString strType;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadString ( strType, "" );
-
-    if ( !argStream.HasErrors () )
+    // Find our VM
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        // Create a new table
-        lua_newtable ( luaVM );
+        if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
+        {
+            // Grab the argument
+            CElement* pElement = lua_toelement ( luaVM, 1 );
+            if ( pElement )
+            {
+                // Create a new table
+                lua_newtable ( luaVM );
 
-        // Add all the elements with a matching type to it
-        if ( strType == "" )
-            pElement->GetChildren ( luaVM );
+                // Add all the elements with a matching type to it
+                pElement->GetChildren ( luaVM );
+                return 1;
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "getElementChildren", "element", 1 );
+        }
         else
-            pElement->GetChildrenByType ( strType, luaVM );
-
-        return 1;
+            m_pScriptDebugging->LogBadType ( luaVM, "getElementChildren" );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -260,24 +276,27 @@ int CLuaElementDefs::getElementChildren ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementChild ( lua_State* luaVM )
 {
-//  element getElementChild ( element parent, int index )
-    CElement* pElement; uint uiIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadNumber ( uiIndex );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( ( iArgument1 == LUA_TLIGHTUSERDATA ) &&
+         ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
-        CElement* pChild = CStaticFunctionDefinitions::GetElementChild ( pElement, uiIndex );
-        if ( pChild )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        unsigned int uiIndex = static_cast < unsigned int > ( lua_tonumber ( luaVM, 2  ) );
+        if ( pElement )
         {
-            lua_pushelement ( luaVM, pChild );
-            return 1;
+            CElement* pChild = CStaticFunctionDefinitions::GetElementChild ( pElement, uiIndex );
+            if ( pChild )
+            {
+                lua_pushelement ( luaVM, pChild );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementChild", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementChild" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -286,23 +305,23 @@ int CLuaElementDefs::getElementChild ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementChildrenCount ( lua_State* luaVM )
 {
-//  int getElementChildrenCount ( element parent )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        unsigned int uiCount;
-        if ( CStaticFunctionDefinitions::GetElementChildrenCount ( pElement, uiCount ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushnumber ( luaVM, static_cast < lua_Number > ( uiCount ) );
-            return 1;
+            unsigned int uiCount;
+            if ( CStaticFunctionDefinitions::GetElementChildrenCount ( pElement, uiCount ) )
+            {
+                lua_pushnumber ( luaVM, static_cast < lua_Number > ( uiCount ) );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementChildrenCount", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementChildrenCount" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -311,19 +330,19 @@ int CLuaElementDefs::getElementChildrenCount ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementID ( lua_State* luaVM )
 {
-//  string getElementID ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        lua_pushstring ( luaVM, pElement->GetName ().c_str () );
-        return 1;
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
+        {
+            lua_pushstring ( luaVM, pElement->GetName ().c_str () );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementID", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementID" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -332,16 +351,19 @@ int CLuaElementDefs::getElementID ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementByID ( lua_State* luaVM )
 {
-//  element getElementByID ( string id, [ int index = 0 ] )
-    SString strId; uint uiIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strId );
-    argStream.ReadNumber ( uiIndex, 0 );
-
-    if ( !argStream.HasErrors () )
+    // Eventually read out the index
+    int iArgument2 = lua_type ( luaVM, 2 );
+    unsigned int uiIndex = 0;
+    if ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING )
     {
-        CElement* pElement = CStaticFunctionDefinitions::GetElementByID ( strId, uiIndex );
+        uiIndex = static_cast < unsigned int > ( lua_tonumber ( luaVM, 2 ) );
+    }
+
+    // Check that we got the name in plac
+    if ( lua_type ( luaVM, 1 ) == LUA_TSTRING )
+    {
+        const char* szID = lua_tostring ( luaVM, 1 );
+        CElement* pElement = CStaticFunctionDefinitions::GetElementByID ( szID, uiIndex );
         if ( pElement )
         {
             lua_pushelement ( luaVM, pElement );
@@ -349,7 +371,7 @@ int CLuaElementDefs::getElementByID ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementByID" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -358,16 +380,15 @@ int CLuaElementDefs::getElementByID ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementByIndex ( lua_State* luaVM )
 {
-//  element getElementByIndex ( string type, int index )
-    SString strType; uint uiIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strType );
-    argStream.ReadNumber ( uiIndex );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( ( iArgument1 == LUA_TSTRING ) &&
+         ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
-        CElement* pElement = CStaticFunctionDefinitions::GetElementByIndex ( strType, uiIndex );
+        const char* szType = lua_tostring ( luaVM, 1 );
+        unsigned int uiIndex = static_cast < unsigned int > ( lua_tonumber ( luaVM, 2 ) );
+
+        CElement* pElement = CStaticFunctionDefinitions::GetElementByIndex ( szType, uiIndex );
         if ( pElement )
         {
             lua_pushelement ( luaVM, pElement );
@@ -375,7 +396,7 @@ int CLuaElementDefs::getElementByIndex ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementByIndex" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -384,61 +405,57 @@ int CLuaElementDefs::getElementByIndex ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementData ( lua_State* luaVM )
 {
-//  var getElementData ( element theElement, string key [, inherit = true] )
-    CElement* pElement; SString strKey; bool bInherit;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadString ( strKey );
-    argStream.ReadBool ( bInherit, true );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 2 ) == LUA_TSTRING )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( pLuaMain )
-        {
-            if ( strKey.length () > MAX_CUSTOMDATA_NAME_LENGTH )
-            {
-                // Warn and truncate if key is too long
-                m_pScriptDebugging->LogCustom ( luaVM, SString ( "Truncated argument @ '%s' [%s]", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ), *SString ( "string length reduced to %d characters at argument 2", MAX_CUSTOMDATA_NAME_LENGTH ) ) );
-                strKey = strKey.Left ( MAX_CUSTOMDATA_NAME_LENGTH );
-            }
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        const char* szName = lua_tostring ( luaVM, 2 );
+        bool bInherit = true;
 
-            CLuaArgument* pVariable = CStaticFunctionDefinitions::GetElementData ( pElement, strKey, bInherit );
+        if ( lua_type ( luaVM, 3) == LUA_TBOOLEAN )
+            bInherit = ( lua_toboolean ( luaVM, 3 ) ) ? true:false;
+
+        if ( pElement )
+        {
+            CLuaArgument* pVariable = CStaticFunctionDefinitions::GetElementData ( pElement, szName, bInherit );
             if ( pVariable )
             {
                 pVariable->Push ( luaVM );
                 return 1;
             }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementData", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementData" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
-
 int CLuaElementDefs::getAllElementData ( lua_State* luaVM )
 {
-//  table getAllElementData ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    // element
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        CLuaArguments Args;
-        if ( CStaticFunctionDefinitions::GetAllElementData ( pElement, &Args ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            Args.PushAsTable ( luaVM );
-            return 1;
+//          _asm int 3
+//          CLuaArguments * pTable = new CLuaArguments();
+            CLuaArguments Args;
+            if ( CStaticFunctionDefinitions::GetAllElementData ( pElement, &Args ) )
+            {
+                Args.PushAsTable ( luaVM );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getAllElementData", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getAllElementData" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -447,23 +464,23 @@ int CLuaElementDefs::getAllElementData ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementParent ( lua_State* luaVM )
 {
-//  element getElementParent ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        CElement* pParent = CStaticFunctionDefinitions::GetElementParent ( pElement );
-        if ( pParent && !pParent->IsBeingDeleted() )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushelement ( luaVM, pParent );
-            return 1;
+            CElement* pParent = CStaticFunctionDefinitions::GetElementParent ( pElement );
+            if ( pParent )
+            {
+                lua_pushelement ( luaVM, pParent );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementParent", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementParent" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -472,110 +489,30 @@ int CLuaElementDefs::getElementParent ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementPosition ( lua_State* luaVM )
 {
-//  float, float, float getElementPosition ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    // Verify the argument
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        // Grab the position
-        CVector vecPosition;
-        if ( CStaticFunctionDefinitions::GetElementPosition ( pElement, vecPosition ) )
+        // Grab the element, verify it
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            // Return it
-            lua_pushnumber ( luaVM, vecPosition.fX );
-            lua_pushnumber ( luaVM, vecPosition.fY );
-            lua_pushnumber ( luaVM, vecPosition.fZ );
-            return 3;
+            // Grab the position
+            CVector vecPosition;
+            if ( CStaticFunctionDefinitions::GetElementPosition ( pElement, vecPosition ) )
+            {
+                // Return it
+                lua_pushnumber ( luaVM, vecPosition.fX );
+                lua_pushnumber ( luaVM, vecPosition.fY );
+                lua_pushnumber ( luaVM, vecPosition.fZ );
+                return 3;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementPosition", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementPosition" );
 
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::getElementMatrix ( lua_State* luaVM )
-{
-    CElement* pElement = NULL;
-    bool bBadSyntax;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadBool ( bBadSyntax, true );
-
-    // Verify the arguments
-    if ( !argStream.HasErrors ( ) )
-    {
-        // Grab the position
-        CMatrix matrix;
-        if ( CStaticFunctionDefinitions::GetElementMatrix ( pElement, matrix ) )
-        {
-            // Apparently some scripts like the dirty syntax... should be 0.0f but was 1.0f post 1.3.2
-            float fData = bBadSyntax == true ? 1.0f : 0.0f;
-
-            // Return it
-            lua_createtable ( luaVM, 4, 0 );
-
-            // First row
-            lua_createtable ( luaVM, 4, 0 );
-            lua_pushnumber ( luaVM, matrix.vRight.fX );
-            lua_rawseti ( luaVM, -2, 1 );
-            lua_pushnumber ( luaVM, matrix.vRight.fY );
-            lua_rawseti ( luaVM, -2, 2 );
-            lua_pushnumber ( luaVM, matrix.vRight.fZ );
-            lua_rawseti ( luaVM, -2, 3 );
-            lua_pushnumber ( luaVM, fData );
-            lua_rawseti ( luaVM, -2, 4 );
-            lua_rawseti ( luaVM, -2, 1 );
-
-            // Second row
-            lua_createtable ( luaVM, 4, 0 );
-            lua_pushnumber ( luaVM, matrix.vFront.fX );
-            lua_rawseti ( luaVM, -2, 1 );
-            lua_pushnumber ( luaVM, matrix.vFront.fY );
-            lua_rawseti ( luaVM, -2, 2 );
-            lua_pushnumber ( luaVM, matrix.vFront.fZ );
-            lua_rawseti ( luaVM, -2, 3 );
-            lua_pushnumber ( luaVM, fData );
-            lua_rawseti ( luaVM, -2, 4 );
-            lua_rawseti ( luaVM, -2, 2 );
-
-            // Third row
-            lua_createtable ( luaVM, 4, 0 );
-            lua_pushnumber ( luaVM, matrix.vUp.fX );
-            lua_rawseti ( luaVM, -2, 1 );
-            lua_pushnumber ( luaVM, matrix.vUp.fY );
-            lua_rawseti ( luaVM, -2, 2 );
-            lua_pushnumber ( luaVM, matrix.vUp.fZ );
-            lua_rawseti ( luaVM, -2, 3 );
-            lua_pushnumber ( luaVM, fData );
-            lua_rawseti ( luaVM, -2, 4 );
-            lua_rawseti ( luaVM, -2, 3 );
-
-            // Fourth row
-            lua_createtable ( luaVM, 4, 0 );
-            lua_pushnumber ( luaVM, matrix.vPos.fX );
-            lua_rawseti ( luaVM, -2, 1 );
-            lua_pushnumber ( luaVM, matrix.vPos.fY );
-            lua_rawseti ( luaVM, -2, 2 );
-            lua_pushnumber ( luaVM, matrix.vPos.fZ );
-            lua_rawseti ( luaVM, -2, 3 );
-            lua_pushnumber ( luaVM, 1.0f );
-            lua_rawseti ( luaVM, -2, 4 );
-            lua_rawseti ( luaVM, -2, 4 );
-
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // Failed
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -583,57 +520,61 @@ int CLuaElementDefs::getElementMatrix ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementRotation ( lua_State* luaVM )
 {
-//  float float float getElementRotation ( element theElement [, string rotOrder = "default" ] )
-    CElement* pElement; eEulerRotationOrder rotationOrder;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadEnumString ( rotationOrder, EULER_DEFAULT );
-
-    if ( !argStream.HasErrors () )
+    // Verify the argument
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        // Grab the rotation
-        CVector vecRotation;
-        if ( CStaticFunctionDefinitions::GetElementRotation ( pElement, vecRotation, rotationOrder ) )
+        // Grab the element, verify it
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            // Return it
-            lua_pushnumber ( luaVM, vecRotation.fX );
-            lua_pushnumber ( luaVM, vecRotation.fY );
-            lua_pushnumber ( luaVM, vecRotation.fZ );
-            return 3;
+            // Grab the rotation
+            CVector vecRotation;
+            if ( CStaticFunctionDefinitions::GetElementRotation ( pElement, vecRotation ) )
+            {
+                // Return it
+                lua_pushnumber ( luaVM, vecRotation.fX );
+                lua_pushnumber ( luaVM, vecRotation.fY );
+                lua_pushnumber ( luaVM, vecRotation.fZ );
+                return 3;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementRotation", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementRotation" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
 
+
 int CLuaElementDefs::getElementVelocity ( lua_State* luaVM )
 {
-//  float float float getElementVelocity ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    // Verify the argument
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        // Grab the velocity
-        CVector vecVelocity;
-        if ( CStaticFunctionDefinitions::GetElementVelocity ( pElement, vecVelocity ) )
+        // Grab the element, verify it
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            // Return it
-            lua_pushnumber ( luaVM, vecVelocity.fX );
-            lua_pushnumber ( luaVM, vecVelocity.fY );
-            lua_pushnumber ( luaVM, vecVelocity.fZ );
-            return 3;
+            // Grab the velocity
+            CVector vecVelocity;
+            if ( CStaticFunctionDefinitions::GetElementVelocity ( pElement, vecVelocity ) )
+            {
+                // Return it
+                lua_pushnumber ( luaVM, vecVelocity.fX );
+                lua_pushnumber ( luaVM, vecVelocity.fY );
+                lua_pushnumber ( luaVM, vecVelocity.fZ );
+                return 3;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementVelocity", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementVelocity" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -642,19 +583,19 @@ int CLuaElementDefs::getElementVelocity ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementType ( lua_State* luaVM )
 {
-//  string getElementType ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        lua_pushstring ( luaVM, pElement->GetTypeName ().c_str () );
-        return 1;
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
+        {
+            lua_pushstring ( luaVM, pElement->GetTypeName ().c_str () );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementType", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementType" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -663,24 +604,43 @@ int CLuaElementDefs::getElementType ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementsByType ( lua_State* luaVM )
 {
-//  table getElementsByType ( string theType, [ element startat=getRootElement() ] )
-    SString strType; CElement* startAt;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strType );
-    argStream.ReadUserData ( startAt, m_pRootElement );
-
-    if ( !argStream.HasErrors () )
+    // Find our VM
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        // Create a new table
-        lua_newtable ( luaVM );
+        int iArgument2 = lua_type ( luaVM, 2 );
+        if ( lua_type ( luaVM, 1 ) == LUA_TSTRING &&
+            ( iArgument2 == LUA_TNONE || iArgument2 == LUA_TLIGHTUSERDATA ) )
+        {
+            // see if a root argument has been specified
+            CElement * startAt = m_pRootElement;
+            if ( iArgument2 == LUA_TLIGHTUSERDATA )
+            {
+                // if its valid, use that, otherwise, produce an error
+                CElement * pElement = lua_toelement ( luaVM, 2 );
+                if ( pElement )
+                    startAt = pElement;
+                else
+                {
+                    m_pScriptDebugging->LogBadPointer ( luaVM, "getElementsByType", "element", 2 );
+                    lua_pushboolean ( luaVM, false );
+                    return 1;
+                }
+            }
 
-        // Add all the elements with a matching type to it
-        startAt->FindAllChildrenByType ( strType, luaVM );
-        return 1;
+            // Grab the argument
+            const char* szType = lua_tostring ( luaVM, 1 );
+
+            // Create a new table
+            lua_newtable ( luaVM );
+
+            // Add all the elements with a matching type to it
+            startAt->FindAllChildrenByType ( szType, luaVM );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadType ( luaVM, "getElementsByType" );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -689,23 +649,23 @@ int CLuaElementDefs::getElementsByType ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementInterior ( lua_State* luaVM )
 {
-//  int getElementInterior ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        unsigned char ucInterior;
-        if ( CStaticFunctionDefinitions::GetElementInterior ( pElement, ucInterior ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushnumber ( luaVM, ucInterior );
-            return 1;
+            unsigned char ucInterior;
+            if ( CStaticFunctionDefinitions::GetElementInterior ( pElement, ucInterior ) )
+            {
+                lua_pushnumber ( luaVM, ucInterior );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementInterior", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementInterior" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -713,24 +673,30 @@ int CLuaElementDefs::getElementInterior ( lua_State* luaVM )
 
 int CLuaElementDefs::isElementWithinMarker ( lua_State* luaVM )
 {
-//  bool isElementWithinMarker ( element theElement, marker theMarker )
-    CElement* pElement; CMarker* pMarker;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadUserData ( pMarker );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 2 ) == LUA_TLIGHTUSERDATA )
     {
-        bool bWithin;
-        if ( CStaticFunctionDefinitions::IsElementWithinMarker ( pElement, pMarker, bWithin ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        CMarker* pMarker = lua_tomarker ( luaVM, 2 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, bWithin );
-            return 1;
+            if ( pMarker )
+            {
+                bool bWithin;
+                if ( CStaticFunctionDefinitions::IsElementWithinMarker ( pElement, pMarker, bWithin ) )
+                {
+                    lua_pushboolean ( luaVM, bWithin );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "isElementWithinMarker", "marker", 2 );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isElementWithinMarker", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isElementWithinMarker" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -739,24 +705,30 @@ int CLuaElementDefs::isElementWithinMarker ( lua_State* luaVM )
 
 int CLuaElementDefs::isElementWithinColShape ( lua_State* luaVM )
 {
-//  bool isElementWithinColShape ( element theElement, colshape theShape )
-    CElement* pElement; CColShape* pColShape;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadUserData ( pColShape );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 2 ) == LUA_TLIGHTUSERDATA )
     {
-        bool bWithin;
-        if ( CStaticFunctionDefinitions::IsElementWithinColShape ( pElement, pColShape, bWithin ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        CColShape* pColShape = lua_tocolshape ( luaVM, 2 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, bWithin );
-            return 1;
+            if ( pColShape )
+            {
+                bool bWithin;
+                if ( CStaticFunctionDefinitions::IsElementWithinColShape ( pElement, pColShape, bWithin ) )
+                {
+                    lua_pushboolean ( luaVM, bWithin );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "isElementWithinColShape", "colshape", 2 );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isElementWithinColShape", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isElementWithinColShape" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -765,34 +737,46 @@ int CLuaElementDefs::isElementWithinColShape ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementsWithinColShape ( lua_State* luaVM )
 {
-//  table getElementsWithinColShape ( colshape shape, [ string elemType ] )
-    CColShape* pColShape; SString strType;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pColShape );
-    argStream.ReadString ( strType, "" );
-
-    if ( !argStream.HasErrors () )
+    // Grab our VM
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        // Create a new table
-        lua_newtable ( luaVM );
-
-        // Add all the elements within the shape to it
-        unsigned int uiIndex = 0;
-        list < CElement* > ::iterator iter = pColShape->CollidersBegin ();
-        for ( ; iter != pColShape->CollidersEnd (); ++iter )
+        if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
         {
-            if ( (strType.empty () || strType == (*iter)->GetTypeName ()) && !(*iter)->IsBeingDeleted() )
+            const char* szType = NULL;
+            if ( lua_type ( luaVM, 2 ) == LUA_TSTRING )
             {
-                lua_pushnumber ( luaVM, ++uiIndex );
-                lua_pushelement ( luaVM, *iter );
-                lua_settable ( luaVM, -3 );
+                szType = lua_tostring ( luaVM, 2 );
+                if ( szType [ 0 ] == '\0' )
+                    szType = NULL;
             }
+
+            CColShape* pColShape = lua_tocolshape ( luaVM, 1 );
+            if ( pColShape )
+            {
+                // Create a new table
+                lua_newtable ( luaVM );
+
+                // Add all the elements within the shape to it
+                unsigned int uiIndex = 0;
+                list < CElement* > ::iterator iter = pColShape->CollidersBegin ();
+                for ( ; iter != pColShape->CollidersEnd (); iter++ )
+                {
+                    if ( szType == NULL || strcmp ( (*iter)->GetTypeName ().c_str (), szType ) == 0 )
+                    {
+                        lua_pushnumber ( luaVM, ++uiIndex );
+                        lua_pushelement ( luaVM, *iter );
+                        lua_settable ( luaVM, -3 );
+                    }
+                }
+                return 1;
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "getElementsWithinColShape", "colshape", 1 );
         }
-        return 1;
+        else
+            m_pScriptDebugging->LogBadType ( luaVM, "getElementsWithinColShape" );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -801,23 +785,23 @@ int CLuaElementDefs::getElementsWithinColShape ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementDimension ( lua_State* luaVM )
 {
-//  int getElementDimension ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        unsigned short usDimension;
-        if ( CStaticFunctionDefinitions::GetElementDimension ( pElement, usDimension ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushnumber ( luaVM, usDimension );
-            return 1;
+            unsigned short usDimension;
+            if ( CStaticFunctionDefinitions::GetElementDimension ( pElement, usDimension ) )
+            {
+                lua_pushnumber ( luaVM, usDimension );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementDimension", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementDimension" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -826,24 +810,27 @@ int CLuaElementDefs::getElementDimension ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementZoneName ( lua_State* luaVM )
 {
-//  string getElementZoneName ( element theElement, [bool citiesonly=false] )
-    CElement* pElement; bool bCitiesOnly;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadBool ( bCitiesOnly, false );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        SString strZoneName;
-        if ( CStaticFunctionDefinitions::GetElementZoneName ( pElement, strZoneName, bCitiesOnly ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        bool bCitiesOnly = false;
+        if ( lua_type ( luaVM, 2 ) == LUA_TBOOLEAN )
+            bCitiesOnly = ( lua_toboolean ( luaVM, 2 ) ) ? true:false;
+
+        if ( pElement )
         {
-            lua_pushstring ( luaVM, strZoneName );
-            return 1;
+            char szZoneName [ 128 ];
+            if ( CStaticFunctionDefinitions::GetElementZoneName ( pElement, szZoneName, 128, bCitiesOnly ) )
+            {
+                lua_pushstring ( luaVM, szZoneName );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementZoneName", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementZoneName" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -852,22 +839,22 @@ int CLuaElementDefs::getElementZoneName ( lua_State* luaVM )
 
 int CLuaElementDefs::isElementAttached ( lua_State* luaVM )
 {
-//  bool isElementAttached ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        if ( CStaticFunctionDefinitions::IsElementAttached ( pElement ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::IsElementAttached ( pElement ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isElementAttached", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isElementAttached" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -876,28 +863,29 @@ int CLuaElementDefs::isElementAttached ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementAttachedTo ( lua_State* luaVM )
 {
-//  element getElementAttachedTo ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        CElement* pElementAttachedTo = CStaticFunctionDefinitions::GetElementAttachedTo ( pElement );
-        if ( pElementAttachedTo )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+
+        if ( pElement )
         {
-            lua_pushelement ( luaVM, pElementAttachedTo );
-            return 1;
+            CElement* pElementAttachedTo = CStaticFunctionDefinitions::GetElementAttachedTo ( pElement );
+            if ( pElementAttachedTo )
+            {
+                lua_pushelement ( luaVM, pElementAttachedTo );
+                return 1;
+            }
+            else
+            {
+                lua_pushboolean ( luaVM, false );
+                return 1;
+            }
         }
         else
-        {
-            lua_pushboolean ( luaVM, false );
-            return 1;
-        }
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementAttachedTo", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementAttached" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -906,34 +894,37 @@ int CLuaElementDefs::getElementAttachedTo ( lua_State* luaVM )
 
 int CLuaElementDefs::getAttachedElements ( lua_State* luaVM )
 {
-//  table getAttachedElements ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        // Create a new table
-        lua_newtable ( luaVM );
-
-        // Add All Attached Elements
-        unsigned int uiIndex = 0;
-        list < CElement* > ::const_iterator iter = pElement->AttachedElementsBegin ();
-        for ( ; iter != pElement->AttachedElementsEnd () ; ++iter )
+        if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
         {
-            if ( ( *iter )->GetAttachedToElement() == pElement )
+            CElement* pElement = lua_toelement ( luaVM, 1 );
+            if ( pElement )
             {
-                lua_pushnumber ( luaVM, ++uiIndex );
-                lua_pushelement ( luaVM, *iter );
-                lua_settable ( luaVM, -3 );
-            }
-        }
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+                // Create a new table
+                lua_newtable ( luaVM );
 
+                // Add All Attached Elements
+                unsigned int uiIndex = 0;
+                list < CElement* > ::const_iterator iter = pElement->AttachedElementsBegin ();
+                for ( ; iter != pElement->AttachedElementsEnd () ; iter++ )
+                {
+                    if ( ( *iter )->GetAttachedToElement() == pElement )
+                    {
+                        lua_pushnumber ( luaVM, ++uiIndex );
+                        lua_pushelement ( luaVM, *iter );
+                        lua_settable ( luaVM, -3 );
+                    }
+                }
+                return 1;
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "getAttachedElements", "element", 1 );
+        }
+        else
+            m_pScriptDebugging->LogBadType ( luaVM, "getAttachedElements" );
+    }
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -941,24 +932,63 @@ int CLuaElementDefs::getAttachedElements ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementAttachedOffsets ( lua_State* luaVM )
 {
-//  bool setElementAttachedOffsets ( element theElement, [ float xPosOffset, float yPosOffset, float zPosOffset, float xRotOffset, float yRotOffset, float zRotOffset ])
-    CElement* pElement; CVector vecPosition; CVector vecRotation;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadVector3D( vecPosition, vecPosition );
-    argStream.ReadVector3D( vecRotation, vecRotation );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        if ( CStaticFunctionDefinitions::SetElementAttachedOffsets ( pElement, vecPosition, vecRotation ) )
+        // Grab the element to attach and the target
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        CVector vecPosition, vecRotation;
+
+        // Grab the supplied arguments (pos: x y z, rot: x y z)
+        int iArgument2 = lua_type ( luaVM, 2 );
+        if ( iArgument2 == LUA_TSTRING || iArgument2 == LUA_TNUMBER )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            vecPosition.fX = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+
+            int iArgument3 = lua_type ( luaVM, 3 );
+            if ( iArgument3 == LUA_TSTRING || iArgument3 == LUA_TNUMBER )
+            {
+                vecPosition.fY = static_cast < float > ( lua_tonumber ( luaVM, 3 ) );
+
+                int iArgument4 = lua_type ( luaVM, 4 );
+                if ( iArgument4 == LUA_TSTRING || iArgument4 == LUA_TNUMBER )
+                {
+                    vecPosition.fZ = static_cast < float > ( lua_tonumber ( luaVM, 4 ) );
+
+                    int iArgument5 = lua_type ( luaVM, 5 );
+                    if ( iArgument5 == LUA_TSTRING || iArgument5 == LUA_TNUMBER )
+                    {
+                        vecRotation.fX = static_cast < float > ( lua_tonumber ( luaVM, 5 ) );
+
+                        int iArgument6 = lua_type ( luaVM, 6 );
+                        if ( iArgument6 == LUA_TSTRING || iArgument6 == LUA_TNUMBER )
+                        {
+                            vecRotation.fY = static_cast < float > ( lua_tonumber ( luaVM, 6 ) );
+
+                            int iArgument7 = lua_type ( luaVM, 7 );
+                            if ( iArgument7 == LUA_TSTRING || iArgument7 == LUA_TNUMBER )
+                            {
+                                vecRotation.fZ = static_cast < float > ( lua_tonumber ( luaVM, 7 ) );
+                            }
+                        }
+                    }
+                }
+            }
         }
+
+        // Valid element?
+        if ( pElement )
+        {
+            if ( CStaticFunctionDefinitions::SetElementAttachedOffsets ( pElement, vecPosition, vecRotation ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementAttachedOffsets", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementAttachedOffsets" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -968,28 +998,31 @@ int CLuaElementDefs::setElementAttachedOffsets ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementAttachedOffsets ( lua_State* luaVM )
 {
-//  float, float, float, float, float, float getElementAttachedOffsets ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
+        // Grab the attached element
+        CElement* pElement = lua_toelement ( luaVM, 1 );
         CVector vecPosition, vecRotation;
-        if ( CStaticFunctionDefinitions::GetElementAttachedOffsets ( pElement, vecPosition, vecRotation ) )
+
+        // Valid element?
+        if ( pElement )
         {
-            lua_pushnumber( luaVM, vecPosition.fX );
-            lua_pushnumber( luaVM, vecPosition.fY );
-            lua_pushnumber( luaVM, vecPosition.fZ );
-            lua_pushnumber( luaVM, vecRotation.fX );
-            lua_pushnumber( luaVM, vecRotation.fY );
-            lua_pushnumber( luaVM, vecRotation.fZ );
-            return 6;
+            if ( CStaticFunctionDefinitions::GetElementAttachedOffsets ( pElement, vecPosition, vecRotation ) )
+            {
+                lua_pushnumber( luaVM, vecPosition.fX );
+                lua_pushnumber( luaVM, vecPosition.fY );
+                lua_pushnumber( luaVM, vecPosition.fZ );
+                lua_pushnumber( luaVM, vecRotation.fX );
+                lua_pushnumber( luaVM, vecRotation.fY );
+                lua_pushnumber( luaVM, vecRotation.fZ );
+                return 6;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementAttachedOffsets", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementAttachedOffsets" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -999,23 +1032,23 @@ int CLuaElementDefs::getElementAttachedOffsets ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementColShape ( lua_State* luaVM )
 {
-//  colshape getElementColShape ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        CColShape* pColShape = CStaticFunctionDefinitions::GetElementColShape ( pElement );
-        if ( pColShape )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushelement ( luaVM, pColShape );
-            return 1;
+            CColShape* pColShape = CStaticFunctionDefinitions::GetElementColShape ( pElement );
+            if ( pColShape )
+            {
+                lua_pushelement ( luaVM, pColShape );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementColShape", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementColShape" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1024,23 +1057,23 @@ int CLuaElementDefs::getElementColShape ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementAlpha ( lua_State* luaVM )
 {
-//  int getElementAlpha ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        unsigned char ucAlpha;
-        if ( CStaticFunctionDefinitions::GetElementAlpha ( pElement, ucAlpha ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushnumber ( luaVM, ucAlpha );
-            return 1;
+            unsigned char ucAlpha;
+            if ( CStaticFunctionDefinitions::GetElementAlpha ( pElement, ucAlpha ) )
+            {
+                lua_pushnumber ( luaVM, ucAlpha );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementAlpha", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementAlpha" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1049,23 +1082,23 @@ int CLuaElementDefs::getElementAlpha ( lua_State* luaVM )
 
 int CLuaElementDefs::isElementDoubleSided ( lua_State* luaVM )
 {
-//  bool isElementDoubleSided ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        bool bDoubleSided;
-        if ( CStaticFunctionDefinitions::IsElementDoubleSided ( pElement, bDoubleSided ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, bDoubleSided );
-            return 1;
+            bool bDoubleSided;
+            if ( CStaticFunctionDefinitions::IsElementDoubleSided ( pElement, bDoubleSided ) )
+            {
+                lua_pushboolean ( luaVM, bDoubleSided );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isElementDoubleSided", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isElementDoubleSided" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1074,23 +1107,23 @@ int CLuaElementDefs::isElementDoubleSided ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementHealth ( lua_State* luaVM )
 {
-//  float getElementHealth ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        float fHealth;
-        if ( CStaticFunctionDefinitions::GetElementHealth ( pElement, fHealth ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushnumber ( luaVM, fHealth );
-            return 1;
+            float fHealth;
+            if ( CStaticFunctionDefinitions::GetElementHealth ( pElement, fHealth ) )
+            {
+                lua_pushnumber ( luaVM, fHealth );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementHealth", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementHealth" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1099,23 +1132,23 @@ int CLuaElementDefs::getElementHealth ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementModel ( lua_State* luaVM )
 {
-//  int getElementModel ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        unsigned short usModel;
-        if ( CStaticFunctionDefinitions::GetElementModel ( pElement, usModel ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushnumber ( luaVM, usModel );
-            return 1;
+            unsigned short usModel;
+            if ( CStaticFunctionDefinitions::GetElementModel ( pElement, usModel ) )
+            {
+                lua_pushnumber ( luaVM, usModel );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementModel", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementModel" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1124,68 +1157,23 @@ int CLuaElementDefs::getElementModel ( lua_State* luaVM )
 
 int CLuaElementDefs::getElementSyncer ( lua_State* luaVM )
 {
-//  element getElementSyncer ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        CElement* pSyncer = NULL;
-        if ( ( pSyncer = CStaticFunctionDefinitions::GetElementSyncer ( pElement ) ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushelement ( luaVM, pSyncer );
-            return 1;
+            CElement* pSyncer = NULL;
+            if ( pSyncer = CStaticFunctionDefinitions::GetElementSyncer ( pElement ) )
+            {
+                lua_pushelement ( luaVM, pSyncer );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getElementSyncer", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaElementDefs::getElementCollisionsEnabled ( lua_State* luaVM )
-{
-//  bool getElementCollisionsEnabled ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
-    {
-        lua_pushboolean ( luaVM, CStaticFunctionDefinitions::GetElementCollisionsEnabled ( pElement ) );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::isElementFrozen ( lua_State* luaVM )
-{
-//  bool isElementFrozen ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
-    {
-        bool bFrozen;
-        if ( CStaticFunctionDefinitions::IsElementFrozen ( pElement, bFrozen ) )
-        {
-            lua_pushboolean ( luaVM, bFrozen );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getElementSyncer" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1194,22 +1182,22 @@ int CLuaElementDefs::isElementFrozen ( lua_State* luaVM )
 
 int CLuaElementDefs::clearElementVisibleTo ( lua_State* luaVM )
 {
-//  bool clearElementVisibleTo ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        if ( CStaticFunctionDefinitions::ClearElementVisibleTo ( pElement ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::ClearElementVisibleTo ( pElement ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "clearElementVisibleTo", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "clearElementVisibleTo" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1218,33 +1206,41 @@ int CLuaElementDefs::clearElementVisibleTo ( lua_State* luaVM )
 
 int CLuaElementDefs::isElementVisibleTo ( lua_State* luaVM )
 {
-//  bool isElementVisibleTo ( element theElement, element visibleTo )
-    CElement* pElement; CElement* pVisibleTo;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadUserData ( pVisibleTo );
-
-    if ( !argStream.HasErrors () )
+    // Verify types
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 2 ) == LUA_TLIGHTUSERDATA )
     {
-        // Is it a per-player entity? If not return true as everything else is visible for everything.
-        if ( IS_PERPLAYER_ENTITY ( pElement ) )
+        // Grab/verify the elements
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            // Return true if we're visible for the given element
-            if ( static_cast < CPerPlayerEntity* > ( pElement )->IsVisibleToReferenced ( pVisibleTo ) )
+            CElement* pVisibleTo = lua_toelement ( luaVM, 2 );
+            if ( pVisibleTo )
             {
-                lua_pushboolean ( luaVM, true );
-                return 1;
+                // Is it a per-player entity? If not return true as everything else is visible for everything.
+                if ( IS_PERPLAYER_ENTITY ( pElement ) )
+                {
+                    // Return true if we're visible for the given element
+                    if ( static_cast < CPerPlayerEntity* > ( pElement )->IsVisibleToReferenced ( pVisibleTo ) )
+                    {
+                        lua_pushboolean ( luaVM, true );
+                        return 1;
+                    }
+                }
+                else
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
             }
-        }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "isElementVisibleTo", "element", 2 );
+            }
         else
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isElementVisibleTo", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isElementVisibleTo" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1253,23 +1249,21 @@ int CLuaElementDefs::isElementVisibleTo ( lua_State* luaVM )
 
 int CLuaElementDefs::isElementInWater ( lua_State* luaVM )
 {
-//  bool isElementInWater ( element theElement )
-    CElement* pElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        bool bInWater;
-        if ( CStaticFunctionDefinitions::IsElementInWater ( pElement, bInWater ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, bInWater );
-            return 1;
+            bool bInWater;
+            if ( CStaticFunctionDefinitions::IsElementInWater ( pElement, bInWater ) )
+            {
+                lua_pushboolean ( luaVM, bInWater );
+                return 1;
+            }
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isElementInWater" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1278,23 +1272,24 @@ int CLuaElementDefs::isElementInWater ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementID ( lua_State* luaVM )
 {
-//  bool setElementID ( element theElement, string name )
-    CElement* pElement; SString strId;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadString ( strId );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 2 ) == LUA_TSTRING )
     {
-        if ( CStaticFunctionDefinitions::SetElementID ( pElement, strId ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        const char* szID = lua_tostring ( luaVM, 2 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::SetElementID ( pElement, szID ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementID", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementID" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1303,36 +1298,36 @@ int CLuaElementDefs::setElementID ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementData ( lua_State* luaVM )
 {
-//  bool setElementData ( element theElement, string key, var value, [bool synchronize = true] )
-    CElement* pElement; SString strKey; CLuaArgument value; bool bSynchronize;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadString ( strKey );
-    argStream.ReadLuaArgument ( value );
-    argStream.ReadBool ( bSynchronize, true );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( pLuaMain )
+        if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+             lua_type ( luaVM, 2 ) == LUA_TSTRING &&
+             lua_type ( luaVM, 3 ) != LUA_TNONE )
         {
-            if ( strKey.length () > MAX_CUSTOMDATA_NAME_LENGTH )
-            {
-                // Warn and truncate if key is too long
-                m_pScriptDebugging->LogCustom ( luaVM, SString ( "Truncated argument @ '%s' [%s]", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ), *SString ( "string length reduced to %d characters at argument 2", MAX_CUSTOMDATA_NAME_LENGTH ) ) );
-                strKey = strKey.Left ( MAX_CUSTOMDATA_NAME_LENGTH );
-            }
+            CElement* pElement = lua_toelement ( luaVM, 1 );
+            const char* szName = lua_tostring ( luaVM, 2 );
+            bool bSynchronize = true;
+            CLuaArgument Variable;
+            Variable.Read ( luaVM, 3 );
 
-            if ( CStaticFunctionDefinitions::SetElementData ( pElement, strKey, value, pLuaMain, bSynchronize ) )
+            if ( lua_type ( luaVM, 4 ) == LUA_TBOOLEAN )
+                bSynchronize = ( lua_toboolean ( luaVM, 4 ) ) ? true:false;
+
+            if ( pElement )
             {
-                lua_pushboolean ( luaVM, true );
-                return 1;
+                if ( CStaticFunctionDefinitions::SetElementData ( pElement, const_cast < char* > ( szName ), Variable, pLuaMain, bSynchronize ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
             }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "setElementData", "element", 1 );
         }
+        else
+            m_pScriptDebugging->LogBadType ( luaVM, "setElementData" );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1341,73 +1336,30 @@ int CLuaElementDefs::setElementData ( lua_State* luaVM )
 
 int CLuaElementDefs::removeElementData ( lua_State* luaVM )
 {
-//  bool removeElementData ( element theElement, string key )
-    CElement* pElement; SString strKey;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadString ( strKey );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( pLuaMain )
+        if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+             lua_type ( luaVM, 2 ) == LUA_TSTRING )
         {
-            if ( strKey.length () > MAX_CUSTOMDATA_NAME_LENGTH )
+            CElement* pElement = lua_toelement ( luaVM, 1 );
+            const char* szName = lua_tostring ( luaVM, 2 );
+
+            if ( pElement )
             {
-                // Warn and truncate if key is too long
-                m_pScriptDebugging->LogCustom ( luaVM, SString ( "Truncated argument @ '%s' [%s]", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ), *SString ( "string length reduced to %d characters at argument 2", MAX_CUSTOMDATA_NAME_LENGTH ) ) );
-                strKey = strKey.Left ( MAX_CUSTOMDATA_NAME_LENGTH );
+                if ( CStaticFunctionDefinitions::RemoveElementData ( pElement, szName ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
             }
-
-            if ( CStaticFunctionDefinitions::RemoveElementData ( pElement, strKey ) )
-            {
-                lua_pushboolean ( luaVM, true );
-                return 1;
-            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "removeElementData", "element", 1 );
         }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::setElementMatrix ( lua_State* luaVM )
-{
-//  setElementMatrix ( element theElement, table matrix )
-    CElement* pElement; CMatrix matrix;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( argStream.NextIsTable ( ) )
-    {
-        if ( !ReadMatrix ( luaVM, argStream.m_iIndex, matrix ) )
-        {
-            argStream.SetCustomError ( "Matrix is not 4 x 4" );
-        }
-    }
-    else
-    {
-        argStream.ReadMatrix ( matrix );
+        else
+            m_pScriptDebugging->LogBadType ( luaVM, "removeElementData" );
     }
 
-    // Verify the arguments
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( CStaticFunctionDefinitions::SetElementMatrix ( pElement, matrix ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    // Failed
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -1415,23 +1367,29 @@ int CLuaElementDefs::setElementMatrix ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementParent ( lua_State* luaVM )
 {
-//  bool setElementParent ( element theElement, element parent )
-    CElement* pElement; CElement* pParent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadUserData ( pParent );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 2 ) == LUA_TLIGHTUSERDATA )
     {
-        if ( CStaticFunctionDefinitions::SetElementParent ( pElement, pParent ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            CElement* pParent = lua_toelement ( luaVM, 2 );
+            if ( pParent )
+            {
+                if ( CStaticFunctionDefinitions::SetElementParent ( pElement, pParent ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "setElementParent", "element", 2 );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementParent", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementParent" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1440,35 +1398,45 @@ int CLuaElementDefs::setElementParent ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementPosition ( lua_State* luaVM )
 {
-//  bool setElementPosition ( element theElement, float x, float y, float z [, bool warp = true ] )
-    CElement* pElement; CVector vecPosition; bool bWarp;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    if ( !argStream.HasErrors () && pElement->GetType () == CElement::RADAR_AREA )
+    // Verify the first argument
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        // radar areas only take x and y
-        argStream.ReadNumber ( vecPosition.fX );
-        argStream.ReadNumber ( vecPosition.fY );
-    }
-    else
-    {
-        argStream.ReadVector3D ( vecPosition );
-    }
-
-    argStream.ReadBool ( bWarp, true );
-
-    if ( !argStream.HasErrors () )
-    {
-        // Set the position
-        if ( CStaticFunctionDefinitions::SetElementPosition ( pElement, vecPosition, bWarp ) )
+        // Grab the element and verify it
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            // Verify the coordinate arguments (we don't need the third argument if it's a radar area)
+            int iArgument2 = lua_type ( luaVM, 2 );
+            int iArgument3 = lua_type ( luaVM, 3 );
+            int iArgument4 = lua_type ( luaVM, 4 );
+            if ( ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) &&
+                 ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+                 ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING || pElement->GetType () == CElement::RADAR_AREA ) )
+            {
+                // Grab the position
+                CVector vecPosition = CVector ( static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                                                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                                                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ) );
+
+                bool bWarp = true;
+                if ( lua_type ( luaVM, 5 ) == LUA_TBOOLEAN )
+                    bWarp = lua_toboolean ( luaVM, 5 ) ? true : false;
+
+                // Set the position
+                if ( CStaticFunctionDefinitions::SetElementPosition ( pElement, vecPosition, bWarp ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadType ( luaVM, "setElementPosition" );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementPosition", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementPosition" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1477,26 +1445,39 @@ int CLuaElementDefs::setElementPosition ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementRotation ( lua_State* luaVM )
 {
-//  bool setElementRotation ( element theElement, float rotX, float rotY, float rotZ [, string rotOrder = "default", bool fixPedRotation = false ] )
-    CElement* pElement; CVector vecRotation; eEulerRotationOrder rotationOrder; bool bNewWay;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadVector3D ( vecRotation );
-    argStream.ReadEnumString ( rotationOrder, EULER_DEFAULT );
-    argStream.ReadBool ( bNewWay, false );
-
-    if ( !argStream.HasErrors () )
+    // Verify the first argument
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        // Set the rotation
-        if ( CStaticFunctionDefinitions::SetElementRotation ( pElement, vecRotation, rotationOrder, bNewWay ) )
+        // Grab the element and verify it
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            int iArgument2 = lua_type ( luaVM, 2 );
+            int iArgument3 = lua_type ( luaVM, 3 );
+            int iArgument4 = lua_type ( luaVM, 4 );
+            if ( ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) &&
+                 ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+                 ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) )
+            {
+                // Grab the rotation
+                CVector vecRotation = CVector ( static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                                                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                                                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ) );
+                // Set the rotation
+                if ( CStaticFunctionDefinitions::SetElementRotation ( pElement, vecRotation ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadType ( luaVM, "setElementRotation" );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementRotation", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementRotation" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1505,24 +1486,39 @@ int CLuaElementDefs::setElementRotation ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementVelocity ( lua_State* luaVM )
 {
-//  bool setElementVelocity ( element theElement, float speedX, float speedY, float speedZ )
-    CElement* pElement; CVector vecVelocity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadVector3D ( vecVelocity );
-
-    if ( !argStream.HasErrors () )
+    // Verify the first argument
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        // Set the velocity
-        if ( CStaticFunctionDefinitions::SetElementVelocity ( pElement, vecVelocity ) )
+        // Grab the element and verify it
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            int iArgument2 = lua_type ( luaVM, 2 );
+            int iArgument3 = lua_type ( luaVM, 3 );
+            int iArgument4 = lua_type ( luaVM, 4 );
+            if ( ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) &&
+                 ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+                 ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING || pElement->GetType () == CElement::RADAR_AREA ) )
+            {
+                // Grab the velocity
+                CVector vecVelocity = CVector ( static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                                                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                                                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ) );
+                // Set the velocity
+                if ( CStaticFunctionDefinitions::SetElementVelocity ( pElement, vecVelocity ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadType ( luaVM, "setElementVelocity" );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementVelocity", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementVelocity" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1531,24 +1527,30 @@ int CLuaElementDefs::setElementVelocity ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementVisibleTo ( lua_State* luaVM )
 {
-//  bool setElementVisibleTo ( element theElement, element visibleTo, bool visible )
-    CElement* pElement; CElement* pReference; bool bVisible;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadUserData ( pReference );
-    argStream.ReadBool ( bVisible );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 2 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 3 ) == LUA_TBOOLEAN )
     {
-        if ( CStaticFunctionDefinitions::SetElementVisibleTo ( pElement, pReference, bVisible ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            CElement* pReference = lua_toelement ( luaVM, 2 );
+            if ( pReference )
+            {
+                if ( CStaticFunctionDefinitions::SetElementVisibleTo ( pElement, pReference, lua_toboolean ( luaVM, 3 ) ? true:false ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "setElementVisibleTo", "element", 2 );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementVisibleTo", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementVisibleTo" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1557,26 +1559,40 @@ int CLuaElementDefs::setElementVisibleTo ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementInterior ( lua_State* luaVM )
 {
-//  bool setElementInterior ( element theElement, int interior [, float x, float y, float z] )
-    CElement* pElement; uint uiInterior; CVector vecPosition;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadNumber ( uiInterior );
-    bool bSetPosition = argStream.NextIsVector3D ();
-    argStream.ReadVector3D ( vecPosition, vecPosition );
-
-    if ( !argStream.HasErrors () )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
-        unsigned char ucInterior = static_cast < unsigned char > ( uiInterior );
-        if ( CStaticFunctionDefinitions::SetElementInterior ( pElement, ucInterior, bSetPosition, vecPosition ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        unsigned char ucInterior = static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) );
+        bool bSetPosition = false;
+        CVector vecPosition;
+
+        int iArgument3 = lua_type ( luaVM, 3 );
+        int iArgument4 = lua_type ( luaVM, 4 );
+        int iArgument5 = lua_type ( luaVM, 5 );
+        if ( ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+             ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) &&
+             ( iArgument5 == LUA_TNUMBER || iArgument5 == LUA_TSTRING ) )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            vecPosition = CVector ( static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                                    static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                                    static_cast < float > ( lua_tonumber ( luaVM, 5 ) ) );
+            bSetPosition = true;
         }
+        if ( pElement )
+        {
+            if ( CStaticFunctionDefinitions::SetElementInterior ( pElement, ucInterior, bSetPosition, vecPosition ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementInterior", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementInterior" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1585,23 +1601,25 @@ int CLuaElementDefs::setElementInterior ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementDimension ( lua_State* luaVM )
 {
-//  bool setElementDimension ( element theElement, int dimension )
-    CElement* pElement; ushort usDimension;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadNumber ( usDimension );
-
-    if ( !argStream.HasErrors () )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
-        if ( CStaticFunctionDefinitions::SetElementDimension ( pElement, usDimension ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        unsigned short usDimension = static_cast < unsigned int > ( lua_tonumber ( luaVM, 2 ) );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::SetElementDimension ( pElement, usDimension ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementDimension", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementDimension" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1610,25 +1628,67 @@ int CLuaElementDefs::setElementDimension ( lua_State* luaVM )
 
 int CLuaElementDefs::attachElements ( lua_State* luaVM )
 {
-//  bool attachElements ( element theElement, element theAttachToElement, [ float xPosOffset, float yPosOffset, float zPosOffset, float xRotOffset, float yRotOffset, float zRotOffset ] )
-    CElement* pElement; CElement* pAttachedToElement; CVector vecPosition; CVector vecRotation;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadUserData ( pAttachedToElement );
-    argStream.ReadVector3D ( vecPosition, vecPosition );
-    argStream.ReadVector3D ( vecRotation, vecRotation );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         lua_type ( luaVM, 2 ) == LUA_TLIGHTUSERDATA )
     {
-        if ( CStaticFunctionDefinitions::AttachElements ( pElement, pAttachedToElement, vecPosition, vecRotation ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        CElement* pAttachedToElement = lua_toelement ( luaVM, 2 );
+        CVector vecPosition, vecRotation;
+
+        int iArgument3 = lua_type ( luaVM, 3 );
+        if ( iArgument3 == LUA_TSTRING || iArgument3 == LUA_TNUMBER )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            vecPosition.fX = static_cast < float > ( lua_tonumber ( luaVM, 3 ) );
+
+            int iArgument4 = lua_type ( luaVM, 4 );
+            if ( iArgument4 == LUA_TSTRING || iArgument4 == LUA_TNUMBER )
+            {
+                vecPosition.fY = static_cast < float > ( lua_tonumber ( luaVM, 4 ) );
+
+                int iArgument5 = lua_type ( luaVM, 5 );
+                if ( iArgument5 == LUA_TSTRING || iArgument5 == LUA_TNUMBER )
+                {
+                    vecPosition.fZ = static_cast < float > ( lua_tonumber ( luaVM, 5 ) );
+
+                    int iArgument6 = lua_type ( luaVM, 6 );
+                    if ( iArgument6 == LUA_TSTRING || iArgument6 == LUA_TNUMBER )
+                    {
+                        vecRotation.fX = static_cast < float > ( lua_tonumber ( luaVM, 6 ) );
+
+                        int iArgument7 = lua_type ( luaVM, 7 );
+                        if ( iArgument7 == LUA_TSTRING || iArgument7 == LUA_TNUMBER )
+                        {
+                            vecRotation.fY = static_cast < float > ( lua_tonumber ( luaVM, 7 ) );
+
+                            int iArgument8 = lua_type ( luaVM, 8 );
+                            if ( iArgument8 == LUA_TSTRING || iArgument8 == LUA_TNUMBER )
+                            {
+                                vecRotation.fZ = static_cast < float > ( lua_tonumber ( luaVM, 8 ) );
+                            }
+                        }
+                    }
+                }
+            }
         }
+
+        if ( pElement )
+        {
+            if ( pAttachedToElement )
+            {
+                if ( CStaticFunctionDefinitions::AttachElements ( pElement, pAttachedToElement, vecPosition, vecRotation ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "attachElements", "element", 2 );
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "attachElements", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "attachElements" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1637,23 +1697,31 @@ int CLuaElementDefs::attachElements ( lua_State* luaVM )
 
 int CLuaElementDefs::detachElements ( lua_State* luaVM )
 {
-//  bool detachElements ( element theElement, [ element theAttachToElement ] )
-    CElement* pElement; CElement* pAttachedToElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadUserData ( pAttachedToElement, NULL );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
-        if ( CStaticFunctionDefinitions::DetachElements ( pElement, pAttachedToElement ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        CElement* pAttachedToElement = NULL;
+
+        if ( lua_type ( luaVM, 2 ) == LUA_TLIGHTUSERDATA )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            pAttachedToElement = lua_toelement ( luaVM, 2 );
+            if ( !pAttachedToElement )
+                m_pScriptDebugging->LogBadPointer ( luaVM, "detachElements", "element", 2 );
         }
+
+        if ( pElement )
+        {
+            if ( CStaticFunctionDefinitions::DetachElements ( pElement, pAttachedToElement ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "detachElements", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "detachElements" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1662,23 +1730,25 @@ int CLuaElementDefs::detachElements ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementAlpha ( lua_State* luaVM )
 {
-//  bool setElementAlpha ( element theElement, int alpha )
-    CElement* pElement; uchar ucAlpha;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadNumber ( ucAlpha );
-
-    if ( !argStream.HasErrors () )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         ( iArgument2 == LUA_TSTRING || iArgument2 == LUA_TNUMBER ) )
     {
-        if ( CStaticFunctionDefinitions::SetElementAlpha ( pElement, ucAlpha ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            unsigned char ucAlpha = static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) );
+            if ( CStaticFunctionDefinitions::SetElementAlpha ( pElement, ucAlpha ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementAlpha", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementAlpha" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1687,23 +1757,25 @@ int CLuaElementDefs::setElementAlpha ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementDoubleSided ( lua_State* luaVM )
 {
-//  bool setElementDoubleSided ( element theElement, bool enable )
-    CElement* pElement; bool bDoubleSided;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadBool ( bDoubleSided );
-
-    if ( !argStream.HasErrors () )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         iArgument2 == LUA_TBOOLEAN )
     {
-        if ( CStaticFunctionDefinitions::SetElementDoubleSided ( pElement, bDoubleSided ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            bool bDoubleSided = lua_toboolean ( luaVM, 2 ) ? true : false;
+            if ( CStaticFunctionDefinitions::SetElementDoubleSided ( pElement, bDoubleSided ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementDoubleSided", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementDoubleSided" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1712,23 +1784,25 @@ int CLuaElementDefs::setElementDoubleSided ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementHealth ( lua_State* luaVM )
 {
-//  bool setElementHealth ( element theElement, float newHealth )
-    CElement* pElement = NULL;
-    float fHealth = 0.0f;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadNumber ( fHealth );
-
-    if ( !argStream.HasErrors() )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         ( iArgument2 == LUA_TSTRING || iArgument2 == LUA_TNUMBER ) )
     {
-        if ( CStaticFunctionDefinitions::SetElementHealth ( pElement, fHealth ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            float fHealth = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+            if ( CStaticFunctionDefinitions::SetElementHealth ( pElement, fHealth ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementHealth", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementHealth" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1737,23 +1811,25 @@ int CLuaElementDefs::setElementHealth ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementModel ( lua_State* luaVM )
 {
-//  bool setElementModel ( element theElement, int model )
-    CElement* pElement; ushort usModel;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadNumber ( usModel );
-
-    if ( !argStream.HasErrors () )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+         ( iArgument2 == LUA_TSTRING || iArgument2 == LUA_TNUMBER ) )
     {
-        if ( CStaticFunctionDefinitions::SetElementModel ( pElement, usModel ) )
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            unsigned short usModel = static_cast < unsigned short > ( lua_tonumber ( luaVM, 2 ) );
+            if ( CStaticFunctionDefinitions::SetElementModel ( pElement, usModel ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementModel", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementModel" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1761,196 +1837,33 @@ int CLuaElementDefs::setElementModel ( lua_State* luaVM )
 
 int CLuaElementDefs::setElementSyncer ( lua_State* luaVM )
 {
-//  bool setElementSyncer ( element theElement, player thePlayer )
-    CElement* pElement; CPlayer* pPlayer = NULL; bool bEnable = true;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    if ( argStream.NextIsBool () )
-        argStream.ReadBool ( bEnable );
-    else
-        argStream.ReadUserData ( pPlayer );
-
-    if ( !argStream.HasErrors () )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA && ( iArgument2 == LUA_TLIGHTUSERDATA || iArgument2 == LUA_TBOOLEAN ) )
     {
-        bool bResult = CStaticFunctionDefinitions::SetElementSyncer ( pElement, pPlayer, bEnable );
-        lua_pushboolean ( luaVM, bResult );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        CElement* pElement = lua_toelement ( luaVM, 1 );
+        CPlayer* pPlayer = NULL;
+        bool bEnable = true;
 
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
+        if ( iArgument2 == LUA_TLIGHTUSERDATA )
+            pPlayer = lua_toplayer ( luaVM, 2 );
+        if ( iArgument2 == LUA_TBOOLEAN )
+            bEnable = lua_toboolean ( luaVM, 2 ) ? true : false;
 
-int CLuaElementDefs::setElementCollisionsEnabled ( lua_State* luaVM )
-{
-//  bool setElementCollisionsEnabled ( element theElement, bool enabled )
-    CElement* pElement; bool bEnable;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadBool ( bEnable );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetElementCollisionsEnabled ( pElement, bEnable ) )
+        if ( pElement )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( pPlayer || iArgument2 == LUA_TBOOLEAN )
+            {
+                lua_pushboolean ( luaVM, CStaticFunctionDefinitions::SetElementSyncer ( pElement, pPlayer, bEnable ) );
+                return 1;
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "setElementSyncer", "player", 2 );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setElementSyncer", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaElementDefs::setElementFrozen ( lua_State* luaVM )
-{
-//  bool setElementFrozen ( element theElement, bool freezeStatus )
-    CElement* pElement; bool bFrozen;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadBool ( bFrozen );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetElementFrozen ( pElement, bFrozen ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::getLowLODElement ( lua_State* luaVM )
-{
-//  element getLowLODElement ( element theElement )
-    CElement* pEntity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
-    {
-        CElement* pLowLodEntity;
-        if ( CStaticFunctionDefinitions::GetLowLodElement ( pEntity, pLowLodEntity ) )
-        {
-            lua_pushelement ( luaVM, pLowLodEntity );
-            return 1;
-        }        
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaElementDefs::setLowLODElement ( lua_State* luaVM )
-{
-//  bool setLowLODElement ( element theElement )
-    CElement* pEntity; CElement* pLowLodEntity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadUserData ( pLowLodEntity, NULL );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetLowLodElement ( pEntity, pLowLodEntity ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }        
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::isElementLowLOD ( lua_State* luaVM )
-{
-//  bool isElementLowLOD ( element theElement )
-    CElement* pEntity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
-    {
-        bool bIsLowLod;
-        if ( CStaticFunctionDefinitions::IsElementLowLod ( pEntity, bIsLowLod ) )
-        {
-            lua_pushboolean ( luaVM, bIsLowLod );
-            return 1;
-        }        
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::setElementCallPropagationEnabled ( lua_State* luaVM )
-{
-//  bool setElementCallPropagationEnabled ( element theElement, bool enable )
-    CElement* pEntity; bool bEnable;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bEnable );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetElementCallPropagationEnabled ( pEntity, bEnable ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::isElementCallPropagationEnabled ( lua_State* luaVM )
-{
-//  bool isElementCallPropagationEnabled ( element theElement )
-    CElement* pEntity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
-    {
-        bool bEnabled;
-        if ( CStaticFunctionDefinitions::IsElementCallPropagationEnabled ( pEntity, bEnabled ) )
-        {
-            lua_pushboolean ( luaVM, bEnabled );
-            return 1;
-        }        
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setElementSyncer" );
 
     lua_pushboolean ( luaVM, false );
     return 1;

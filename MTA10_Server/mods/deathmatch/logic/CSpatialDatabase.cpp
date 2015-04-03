@@ -136,6 +136,16 @@ void CSpatialDatabaseImpl::SphereQuery ( CElementResult& outResult, const CSpher
 
     // Find all entiites which overlap the box
     m_Tree.Search( &box.vecMin.fX, &box.vecMax.fX, outResult );
+
+    #ifdef SPATIAL_DATABASE_DEBUG_OUTPUTA
+        OutputDebugLine ( SString ( "SpatialDatabase::SphereQuery %d results for %2.0f,%2.0f,%2.0f  %2.2f"
+                                            ,outResult.size ()
+                                            ,sphere.vecPosition.fX
+                                            ,sphere.vecPosition.fY
+                                            ,sphere.vecPosition.fZ
+                                            ,sphere.fRadius
+                                            ) );
+    #endif
 }
 
 
@@ -167,9 +177,9 @@ void CSpatialDatabaseImpl::AllQuery ( CElementResult& outResult )
 ///////////////////////////////////////////////////////////////
 void CSpatialDatabaseImpl::FlushUpdateQueue ( void )
 {
-    std::map < CElement*, int > updateQueueCopy = m_UpdateQueue;
-    m_UpdateQueue.clear ();
-    for ( std::map < CElement*, int >::iterator it = updateQueueCopy.begin (); it != updateQueueCopy.end (); ++it )
+    int iTotalUpdated = 0;
+
+    for ( std::map < CElement*, int >::iterator it = m_UpdateQueue.begin (); it != m_UpdateQueue.end (); ++it )
     {
         CElement* pEntity = it->first;
 
@@ -200,7 +210,26 @@ void CSpatialDatabaseImpl::FlushUpdateQueue ( void )
 
         // Update info map
         MapSet ( m_InfoMap, pEntity, newInfo );
+        iTotalUpdated++;
+        #ifdef SPATIAL_DATABASE_DEBUG_OUTPUTA
+            OutputDebugLine ( SString ( "SpatialDatabase::UpdateEntity %08x  %2.0f,%2.0f,%2.0f   %2.0f,%2.0f,%2.0f"
+                                                ,pEntity
+                                                ,info.box.vecMin.fX
+                                                ,info.box.vecMin.fY
+                                                ,info.box.vecMin.fZ
+                                                ,info.box.vecMax.fX
+                                                ,info.box.vecMax.fY
+                                                ,info.box.vecMax.fZ
+                                                ) );
+        #endif
     }
+    m_UpdateQueue.clear ();
+
+    #ifdef SPATIAL_DATABASE_DEBUG_OUTPUTB
+        int iTotalToUpdate = m_UpdateQueue.size ();
+        if ( iTotalToUpdate )
+            OutputDebugLine ( SString ( "SpatialDatabase::FlushUpdateQueue  TotalToUpdate: %d   TotalUpdated: %d  m_InfoMap: %d    tree: %d  ", iTotalToUpdate, iTotalUpdated, m_InfoMap.size (), m_Tree.Count () ) );
+    #endif
 }
 
 
@@ -218,12 +247,12 @@ bool CSpatialDatabaseImpl::IsValidSphere ( const CSphere& sphere )
         return false;
 
     // Check radius within limits
-    if ( sphere.fRadius < -12000 || sphere.fRadius > 12000 )        // radius = sqrt(worldlimits*worldlimits + worldlimits*worldlimits)
+    if ( sphere.fRadius < -10000 || sphere.fRadius > 10000 )
         return false;
 
     // Check position within limits
     float fDistSquared2D = sphere.vecPosition.fX * sphere.vecPosition.fX + sphere.vecPosition.fY * sphere.vecPosition.fY;
-    if ( fDistSquared2D > 12000 * 12000 )
+    if ( fDistSquared2D > 10000 * 10000 )
         return false;
 
     return true;

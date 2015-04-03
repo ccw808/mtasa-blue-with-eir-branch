@@ -17,6 +17,7 @@ CMarkerManager::CMarkerManager ( CColManager* pColManager )
 {
     // Init
     m_pColManager = pColManager;
+    m_bDontRemove = false;
 }
 
 
@@ -58,13 +59,31 @@ CMarker* CMarkerManager::CreateFromXML ( CElement* pParent, CXMLNode& Node, CLua
 void CMarkerManager::DeleteAll ( void )
 {
     // Delete all markers in the list
-    DeletePointersAndClearList ( m_Markers );
+    m_bDontRemove = true;
+    list < CMarker* > ::iterator iter = m_Markers.begin ();
+    for ( ; iter != m_Markers.end (); iter++ )
+    {
+        delete *iter;
+    }
+    m_bDontRemove = false;
+
+     // Clear the list
+    m_Markers.clear ();
 }
 
 
 bool CMarkerManager::Exists ( CMarker* pMarker )
 {
-    return ListContains ( m_Markers, pMarker );
+    list < CMarker* > ::const_iterator iter = m_Markers.begin ();
+    for ( ; iter != m_Markers.end (); iter++ )
+    {
+        if ( *iter == pMarker )
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -130,7 +149,10 @@ bool CMarkerManager::TypeToString ( unsigned int uiType, char* szString )
 
 void CMarkerManager::RemoveFromList ( CMarker* pMarker )
 {
-    m_Markers.remove ( pMarker );
+    if ( !m_bDontRemove && !m_Markers.empty() )
+    {
+        m_Markers.remove ( pMarker );
+    }
 }
 
 

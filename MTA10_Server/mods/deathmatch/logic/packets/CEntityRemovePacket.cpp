@@ -16,9 +16,9 @@ bool CEntityRemovePacket::Write ( NetBitStreamInterface& BitStream ) const
 {
     // Write each entity type then id to it
     vector < CElement* > ::const_iterator iter = m_List.begin ();
-    for ( ; iter != m_List.end (); ++iter )
+    for ( ; iter != m_List.end (); iter++ )
     {
-        BitStream.Write ( (*iter)->GetID () );
+        BitStream.WriteCompressed ( (*iter)->GetID () );
     }
 
     return m_List.size () > 0;

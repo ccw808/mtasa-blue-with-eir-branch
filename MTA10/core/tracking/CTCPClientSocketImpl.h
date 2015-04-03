@@ -20,6 +20,8 @@
 #include <windows.h>
 #include <winsock.h>
 
+#define CloseSocket closesocket
+
 //typedef void (*PFNEVENT) ( CTCPSocket * );
 
 #include <stdio.h>
@@ -47,7 +49,7 @@ public:
     bool            Initialize                      ( unsigned int uiID );
 
     // Async related functions
-    void            FireEvent                       ( bool bIsResolveEvent, uint uiResolveId, LPARAM lType );
+    void            FireEvent                       ( LPARAM lType );
 
     // Callback functions
     void            SetEventClass                   ( void* pClass );
@@ -57,21 +59,10 @@ public:
     void            SetEventClose                   ( PFNEVENT pEvent );
 
 private:
-    void            ConnectContinue                 ( void );
-
-    unsigned int    m_uiID;
-
-    unsigned short  m_usPort;
-
     int             m_iRefCount;
-    bool            m_bIsResolvingHost;
     bool            m_bIsConnected;
     char            m_szLastError [128];
 
-    // That's not for string - WSAAsyncGetHostByName wants this type as buffer
-    char            m_pHostInfo [ MAXGETHOSTSTRUCT ];
-
-    void*           m_pAsyncHostResolving;
     unsigned int    m_Socket;
 
     void*           m_pClass;

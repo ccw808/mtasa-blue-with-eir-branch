@@ -26,10 +26,10 @@ class CBikeSAInterface : public CVehicleSAInterface
 class CBikeSA : public virtual CBike, public virtual CVehicleSA
 {
 public:
-    CBikeSA (  ){};
+    CBikeSA::CBikeSA (  ){};
 
     CBikeSA( CBikeSAInterface * bike );
-    CBikeSA( eVehicleTypes dwModelID, unsigned char ucVariation, unsigned char ucVariation2 );
+    CBikeSA( eVehicleTypes dwModelID );
 
     //void                    PlaceOnRoadProperly ( void );
 };

@@ -17,12 +17,7 @@ extern "C" bool g_bNoTopBar;
 
 /** Operating system identifiers **/
 #if defined(WIN32)
-    #ifdef _WIN64
-        #define MTA_OS_STRING   "Windows x64"
-    #else
-        #define MTA_OS_STRING   "Windows"
-    #endif
-
+    #define MTA_OS_STRING       "Windows"
     #define MTA_LIB_EXTENSION   ".dll"
     #if defined(_DEBUG)
         #define MTA_LIB_SUFFIX  "_d"
@@ -30,11 +25,7 @@ extern "C" bool g_bNoTopBar;
         #define MTA_LIB_SUFFIX
     #endif
 #elif defined(__linux__)
-    #ifdef __x86_64__
-        #define MTA_OS_STRING   "GNU/Linux x64"
-    #else
-        #define MTA_OS_STRING   "GNU/Linux"
-    #endif
+    #define MTA_OS_STRING       "GNU/Linux"
     #define MTA_LIB_EXTENSION   ".so"
     #define MTA_LIB_SUFFIX
 #elif defined(__FreeBSD__) || defined(__NetBSD__) || defined(__OpenBSD__)
@@ -62,7 +53,7 @@ extern "C" bool g_bNoTopBar;
     #define Print printf
 
     // Define types
-    typedef int socklen_t;
+    #define socklen_t int
 
     // Define keys
     #define KEY_BACKSPACE   0x08
@@ -81,7 +72,7 @@ extern "C" bool g_bNoTopBar;
     #include <string.h>
     #include <string>
     #include <fcntl.h>
-    #include <ncursesw/curses.h>
+    #include <curses.h>
     #include <dlfcn.h>
     #include <sys/time.h>
     #include <sys/times.h>
@@ -96,12 +87,14 @@ extern "C" bool g_bNoTopBar;
     #define MAX_PATH 255
     #define Print printw
 
+    #define _vsnprintf vsnprintf
+    #define _snprintf snprintf
+
     #ifndef stricmp
     #define stricmp strcasecmp
     #endif
-
-    #ifndef strnicmp
-    #define strnicmp strncasecmp
+    #ifndef strcmpi
+    #define strcmpi strcasecmp
     #endif
 
     #define _copysign copysign
@@ -109,6 +102,9 @@ extern "C" bool g_bNoTopBar;
     #ifndef Sleep
         #define Sleep(duration) usleep(duration * 1000)
     #endif
+
+    // Win32 wrapper function
+    unsigned long GetTickCount ( void );
 
     // Itoa replacement function
     char* itoa ( int value, char* result, int base );
@@ -129,5 +125,12 @@ extern "C" bool g_bNoTopBar;
 // This function should be used instead of mkdir to preserve multiplatform
 // compatibility
 extern int mymkdir ( const char* dirname );
+
+// Set up export type definition for Win32
+#ifdef WIN32
+    #define MTAEXPORT extern "C" __declspec(dllexport)
+#else
+    #define MTAEXPORT extern "C"
+#endif
 
 #endif

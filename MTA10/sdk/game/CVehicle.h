@@ -17,8 +17,6 @@
 #include "CPhysical.h"
 #include "CDamageManager.h"
 #include "CHandlingManager.h"
-#include "CDoor.h"
-#include "CWeaponInfo.h"
 
 #include <CVector.h>
 
@@ -34,47 +32,8 @@ enum eWinchType
 // forward declaration, avoid compile error
 class CPed;
 class CObject;
+enum eWeaponType;
 class CColModel;
-
-#define SIREN_TYPE_FIRST 1
-#define SIREN_TYPE_LAST 6
-#define SIREN_ID_MAX 7
-#define SIREN_COUNT_MAX 8
-
-struct SSirenBeaconInfo
-{
-    CVector                     m_vecSirenPositions;
-    SColor                      m_RGBBeaconColour;
-    DWORD                       m_dwMinSirenAlpha;
-};
-struct SSirenInfo
-{
-    // Flags
-    bool                        m_b360Flag;
-    bool                        m_bDoLOSCheck;
-    bool                        m_bUseRandomiser;
-    bool                        m_bSirenSilent;
-    // End of flags
-    bool                        m_bOverrideSirens;
-    unsigned char               m_ucSirenType;
-    unsigned char               m_ucSirenCount;
-    unsigned char               m_ucCurrentSirenID;
-    unsigned char               m_ucCurrentSirenRandomiser;
-    SFixedArray < SSirenBeaconInfo, 8 > m_tSirenInfo;
-    SColor                      m_tPointLightColour;
-};
-
-struct SVehicleFrame
-{
-    SVehicleFrame ( RwFrame * pFrame = NULL, bool bReadOnly = true )
-        : pFrame( pFrame )
-        , bReadOnly( bReadOnly )
-    {}
-
-    RwFrame * pFrame;
-    bool bReadOnly;
-    std::vector < RwFrame* > frameList; // Frames from root to parent
-};
 
 class CVehicle : public virtual CPhysical
 {
@@ -88,14 +47,9 @@ public:
     virtual bool                IsBeingDriven               () = 0;
 
     virtual CVehicle *          GetNextTrainCarriage        () = 0;
-    virtual void                SetNextTrainCarriage        ( CVehicle* pNext ) = 0;
+    virtual void                SetNextTrainCarriage        ( CVehicle * next ) = 0;
     virtual CVehicle *          GetPreviousTrainCarriage    () = 0;
-    virtual void                SetPreviousTrainCarriage    ( CVehicle* pPrevious ) = 0;
-    virtual float               GetDistanceToCarriage       ( CVehicle* pCarriage ) = 0;
-    virtual void                AttachTrainCarriage         ( CVehicle* pCarriage ) = 0;
-    virtual void                DetachTrainCarriage         ( CVehicle* pCarriage ) = 0;
-    virtual bool                IsChainEngine               ( void ) = 0;
-    virtual void                SetIsChainEngine            ( bool bChainEngine = true ) = 0;
+    virtual void                SetPreviousTrainCarriage    ( CVehicle * previous ) = 0;
 
     virtual bool                IsDerailed                  () = 0;
     virtual void                SetDerailed                 ( bool bDerailed ) = 0;
@@ -107,21 +61,14 @@ public:
     virtual void                SetTrainDirection           ( bool bDirection ) = 0;
     virtual BYTE                GetRailTrack                () = 0;
     virtual void                SetRailTrack                ( BYTE ucTrackID ) = 0;
-    virtual float               GetTrainPosition            ( void ) = 0;
-    virtual void                SetTrainPosition            ( float fPosition, bool bRecalcOnRailDistance = true ) = 0;
 
     virtual bool                CanPedEnterCar              () = 0;
     virtual bool                CanPedJumpOutCar            ( CPed* pPed ) = 0;
     virtual void                AddVehicleUpgrade           ( DWORD dwModelID ) = 0;
     virtual void                RemoveVehicleUpgrade        ( DWORD dwModelID ) = 0;
-    virtual bool                DoesSupportUpgrade          ( const SString& strFrameName ) = 0;
     virtual bool                CanPedLeanOut               ( CPed* pPed ) = 0;
     virtual bool                CanPedStepOutCar            ( bool bUnknown ) = 0;
 
-    virtual CDoor*              GetDoor                     ( unsigned char ucDoor ) = 0;
-    virtual void                OpenDoor                    ( unsigned char ucDoor, float fRatio, bool bMakeNoise = false ) = 0;
-    virtual void                SetSwingingDoorsAllowed     ( bool bAllowed ) = 0;
-    virtual bool                AreSwingingDoorsAllowed     () const = 0;
     virtual bool                AreDoorsLocked              () = 0;
     virtual void                LockDoors                   ( bool bLocked ) = 0;
     virtual bool                AreDoorsUndamageable        () = 0;
@@ -138,7 +85,7 @@ public:
     virtual float               GetGasPedal                 () = 0;
     virtual float               GetHeightAboveRoad          () = 0;
     virtual float               GetSteerAngle               () = 0;
-    virtual bool                GetTowBarPos                ( CVector* pVector, CVehicle* pTrailer ) = 0;
+    virtual bool                GetTowBarPos                ( CVector* pVector ) = 0;
     virtual bool                GetTowHitchPos              ( CVector* pVector ) = 0;
     virtual bool                IsOnItsSide                 () = 0;
     virtual bool                IsLawEnforcementVehicle     () = 0;
@@ -154,8 +101,8 @@ public:
 
     virtual void                PlaceBikeOnRoadProperly     () = 0;
     virtual void                PlaceAutomobileOnRoadProperly() = 0;
-    virtual void                SetColor                    ( SColor color1, SColor color2, SColor color3, SColor color4, int ) = 0;
-    virtual void                GetColor                    ( SColor* color1, SColor* color2, SColor* color3, SColor* color4, bool bFixedForGTA ) = 0;
+    virtual void                SetColor                    ( unsigned char color1, unsigned char color2, unsigned char color3, unsigned char color4 ) = 0;
+    virtual void                GetColor                    ( unsigned char* color1, unsigned char* color2, unsigned char* color3, unsigned char* color4 ) = 0;
     virtual void                Fix                         () = 0;
     virtual bool                IsSirenOrAlarmActive        () = 0;
     virtual void                SetSirenOrAlarmActive       ( bool bActive ) = 0;
@@ -170,7 +117,7 @@ public:
     virtual void                FadeOut                     ( bool bFadeOut ) = 0;
     virtual bool                IsFadingOut                 () = 0;
 
-    virtual void                SetTowLink                  ( CVehicle* pVehicle ) = 0;
+    virtual bool                SetTowLink                  ( CVehicle* pVehicle ) = 0;
     virtual bool                BreakTowLink                () = 0;
     virtual CVehicle *          GetTowedVehicle             () = 0;
     virtual CVehicle *          GetTowedByVehicle           () = 0;
@@ -205,9 +152,6 @@ public:
     virtual float               GetHeliRotorSpeed                       () = 0;
     virtual unsigned long       GetExplodeTime                          () = 0;
     
-    virtual char                GetNitroCount                           () = 0;
-    virtual float               GetNitroLevel                           () = 0;
-
     virtual void                SetAlwaysLeaveSkidMarks                 ( bool bAlwaysLeaveSkidMarks ) = 0;
     virtual void                SetCanBeDamaged                         ( bool bCanBeDamaged ) = 0;
     virtual void                SetCanBeTargettedByHeatSeekingMissiles  ( bool bEnabled ) = 0;
@@ -225,9 +169,6 @@ public:
     virtual void                SetHeliRotorSpeed                       ( float fSpeed ) = 0;
     virtual void                SetTaxiLightOn                          ( bool bLightState ) = 0;
     virtual void                SetExplodeTime                          ( unsigned long ulTime ) = 0;
-
-    virtual void                SetNitroCount                           ( char cNitroCount ) = 0;
-    virtual void                SetNitroLevel                           ( float fNitroLevel ) = 0;
 
     virtual CHandlingEntry*     GetHandlingData                         () = 0;
     virtual void                SetHandlingData                         ( CHandlingEntry* pHandling ) = 0;
@@ -265,7 +206,6 @@ public:
 
     virtual CObject *            SpawnFlyingComponent                   ( int i_1, unsigned int ui_2 ) = 0;
     virtual void                 SetWheelVisibility                     ( eWheels wheel, bool bVisible ) = 0;
-    virtual CVector              GetWheelPosition                       ( eWheels wheel ) = 0;
 
     virtual bool                 IsHeliSearchLightVisible               ( void ) = 0;
     virtual void                 SetHeliSearchLightVisible              ( bool bVisible ) = 0;
@@ -273,48 +213,7 @@ public:
     virtual CColModel*           GetSpecialColModel                     ( void ) = 0;
     virtual bool                 UpdateMovingCollision                  ( float fAngle ) = 0;
 
-    virtual void                 RecalculateHandling                    ( void ) = 0;
-
-    virtual void*                GetPrivateSuspensionLines              ( void ) = 0;
-
-    virtual bool                 CheckVTBL                              ( void ) = 0;
-
-    virtual bool                 DoesVehicleHaveSirens                  ( void ) = 0;
-
-    virtual void                 RemoveVehicleSirens                    ( void ) = 0;
-    virtual void                 GiveVehicleSirens                      ( unsigned char ucSirenType, unsigned char ucSirenCount ) = 0;
-    virtual void                 SetVehicleSirenMinimumAlpha            ( unsigned char ucSirenID, DWORD dwPercentage ) = 0;
-    virtual void                 SetVehicleSirenPosition                ( unsigned char ucSirenID, CVector vecPos ) = 0;
-    virtual void                 GetVehicleSirenPosition                ( unsigned char ucSirenID, CVector & vecPos ) = 0;
-    virtual unsigned char        GetVehicleSirenCount                   ( void ) = 0;
-    virtual unsigned char        GetVehicleSirenType                    ( void ) = 0;
-    virtual DWORD                GetVehicleSirenMinimumAlpha            ( unsigned char ucSirenID ) = 0;
-    virtual SColor               GetVehicleSirenColour                  ( unsigned char ucSirenCount ) = 0;
-    virtual void                 SetVehicleSirenColour                  ( unsigned char ucSirenID, SColor tVehicleSirenColour ) = 0;
-    virtual void                 SetVehicleCurrentSirenID               ( unsigned char ucCurrentSirenID ) = 0;
-    virtual unsigned char        GetVehicleCurrentSirenID               ( void ) = 0;
-    virtual unsigned char        GetSirenRandomiser                     ( void ) = 0;
-    virtual void                 SetSirenRandomiser                     ( unsigned char ucSirenRandomiser ) = 0;
-    virtual void                 SetPointLightColour                    ( SColor tPointLightColour ) = 0;
-    virtual SColor               GetPointLightColour                    ( void ) = 0;
-    virtual bool                 IsSiren360EffectEnabled                ( void ) = 0;
-    virtual bool                 IsSirenLOSCheckEnabled                 ( void ) = 0;
-    virtual bool                 IsSirenRandomiserEnabled               ( void ) = 0;
-    virtual bool                 IsSirenSilentEffectEnabled             ( void ) = 0;
-    virtual void                 SetVehicleFlags                        ( bool bEnable360, bool bEnableRandomiser, bool bEnableLOSCheck, bool bEnableSilent ) = 0;
-    virtual bool                 SetComponentRotation                   ( const SString& vehicleComponent, const CVector& vecRotation ) = 0;
-    virtual bool                 GetComponentRotation                   ( const SString& vehicleComponent, CVector &vecRotation ) = 0;
-    virtual bool                 SetComponentPosition                   ( const SString& vehicleComponent, const CVector& vecPosition ) = 0;
-    virtual bool                 GetComponentPosition                   ( const SString& vehicleComponent, CVector &vecPositionModelling ) = 0;
-    virtual bool                 IsComponentPresent                     ( const SString& vehicleComponent ) = 0;
-    virtual bool                 SetComponentMatrix                     ( const SString& vehicleComponent, const CMatrix& matOrientation ) = 0;
-    virtual bool                 GetComponentMatrix                     ( const SString& vehicleComponent, CMatrix& matOutOrientation ) = 0;
-    virtual bool                 GetComponentParentToRootMatrix         ( const SString& vehicleComponent, CMatrix& matOutParentToRoot ) = 0;
-    virtual bool                 SetComponentVisible                    ( const SString& vehicleComponent, bool bVisible ) = 0;
-    virtual bool                 GetComponentVisible                    ( const SString& vehicleComponent, bool &bVisible ) = 0;
-    virtual std::map < SString, SVehicleFrame > & GetComponentMap       ( void ) = 0;
-    virtual void                 UpdateLandingGearPosition              ( void ) = 0;
-    virtual bool                 SetPlateText                           ( const SString& strText ) = 0;
+    virtual void                 UpdateHandlingStatus                   ( void ) = 0;
 };
 
 #endif

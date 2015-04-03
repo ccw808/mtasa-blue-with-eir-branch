@@ -27,20 +27,14 @@
 class CTransferBox
 {
 public:
-    enum Type
-    {
-        NORMAL,
-        PACKET,
-        MAX_TYPES
-    };
-    
                                         CTransferBox                            ( void );
     virtual                             ~CTransferBox                           ( void );
 
     void                                Show                                    ( void );
     void                                Hide                                    ( void );
 
-    void                                SetInfo                                 ( double dDownloadSizeNow, CTransferBox::Type eTransferType = CTransferBox::NORMAL );
+    void                                SetInfoSingleDownload                   ( const char* szFileName, double dDownloadSizeNow );
+    void                                SetInfoMultipleDownload                 ( double dDownloadSizeNow, double dDownloadSizeTotal, int iDownloadsRemaining, int iDownloadsTotal );
 
     void                                DoPulse                                 ( void );
 
@@ -52,17 +46,15 @@ public:
 
 private:
     CGUIWindow*                         m_pWindow;
-    SFixedArray < CGUIStaticImage*, TRANSFERBOX_FRAMES >    m_pIcon;
+    CGUIStaticImage*                    m_pIcon[TRANSFERBOX_FRAMES];
     CGUILabel*                          m_pInfo;
     CGUIProgressBar*                    m_pProgress;
 
     bool                                m_bMultipleDownloads;
 
     unsigned int                        m_uiVisible;
-    CElapsedTime                        m_AnimTimer;
+    unsigned long                       m_ulTime;
     double                              m_dTotalSize;
-
-    SString                             m_strTransferText[Type::MAX_TYPES];
 };
 
 #endif

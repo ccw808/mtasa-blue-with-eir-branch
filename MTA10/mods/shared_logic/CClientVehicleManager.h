@@ -16,20 +16,21 @@
 #ifndef __CCLIENTVEHICLEMANAGER_H
 #define __CCLIENTVEHICLEMANAGER_H
 
-#include "CClientVehicle.h"
+#include "CClientCommon.h"
+#include <list>
 
 class CClientManager;
 class CClientVehicle;
+enum eClientVehicleType;
 
-extern const SFixedArray < unsigned char, 212 > g_ucMaxPassengers;
+extern unsigned char g_ucMaxPassengers [];
 
 class CClientVehicleManager
 {
-public:
-    ZERO_ON_NEW
-                                    CClientVehicleManager   ( CClientManager* pManager );
-                                    ~CClientVehicleManager  ( void );
+    friend CClientManager;
+    friend CClientVehicle;
 
+public:
     void                            DeleteAll               ( void );
 
     inline unsigned int             Count                   ( void )                        { return static_cast < unsigned int > ( m_List.size () ); };
@@ -45,7 +46,6 @@ public:
     static eClientVehicleType       GetVehicleType          ( unsigned long ulModel );
     static unsigned char            GetMaxPassengerCount    ( unsigned long ulModel );
     static unsigned char            ConvertIndexToGameSeat  ( unsigned long ulModel, unsigned char ucIndex );
-    static void                     GetRandomVariation      ( unsigned short usModel, unsigned char &ucVariant, unsigned char &ucVariant2 );
 
     static bool                     HasTurret               ( unsigned long ulModel );
     static bool                     HasSirens               ( unsigned long ulModel );
@@ -56,32 +56,38 @@ public:
     static bool                     HasSearchLight          ( unsigned long ulModel );
     static bool                     HasDamageModel          ( unsigned long ulModel );
     static bool                     HasDamageModel          ( enum eClientVehicleType Type );
-    static bool                     HasDoors                ( unsigned long ulModel );
 
     bool                            Exists                  ( CClientVehicle* pVehicle );
 
     static bool                     IsVehicleLimitReached   ( void );
 
     void                            RestreamVehicles        ( unsigned short usModel );
-    void                            RestreamVehicleUpgrades ( unsigned short usModel );
 
-    std::vector < CClientVehicle* > ::const_iterator            IterBegin           ( void )    { return m_List.begin (); };
-    std::vector < CClientVehicle* > ::const_iterator            IterEnd             ( void )    { return m_List.end (); };
-    std::vector < CClientVehicle* > ::const_iterator            StreamedBegin       ( void )    { return m_StreamedIn.begin (); };
-    std::vector < CClientVehicle* > ::const_iterator            StreamedEnd         ( void )    { return m_StreamedIn.end (); };
+    std::vector < CClientVehicle* > ::iterator            IterGet             ( CClientVehicle* pVehicle );
+    std::vector < CClientVehicle* > ::reverse_iterator    IterGetReverse      ( CClientVehicle* pVehicle );
+    std::vector < CClientVehicle* > ::iterator            IterBegin           ( void )    { return m_List.begin (); };
+    std::vector < CClientVehicle* > ::iterator            IterEnd             ( void )    { return m_List.end (); };
+    std::vector < CClientVehicle* > ::reverse_iterator    IterReverseBegin    ( void )    { return m_List.rbegin (); };
+    std::vector < CClientVehicle* > ::reverse_iterator    IterReverseEnd      ( void )    { return m_List.rend (); };
+    std::vector < CClientVehicle* > ::iterator            StreamedBegin       ( void )    { return m_StreamedIn.begin (); };
+    std::vector < CClientVehicle* > ::iterator            StreamedEnd         ( void )    { return m_StreamedIn.end (); };
+    
+private:
+                                    CClientVehicleManager   ( CClientManager* pManager );
+                                    ~CClientVehicleManager  ( void );
 
     inline void                     AddToList               ( CClientVehicle* pVehicle )    { m_List.push_back ( pVehicle ); };
-    void                            RemoveFromLists         ( CClientVehicle* pVehicle );
+    void                            RemoveFromList          ( CClientVehicle* pVehicle );
 
     void                            OnCreation              ( CClientVehicle* pVehicle );
     void                            OnDestruction           ( CClientVehicle* pVehicle );
 
-protected:
-
     CClientManager*                 m_pManager;
     bool                            m_bCanRemoveFromList;
-    CMappedArray < CClientVehicle* >  m_List;
-    CMappedArray < CClientVehicle* >  m_StreamedIn;
+    std::vector < CClientVehicle* >   m_List;
+    std::vector < CClientVehicle* >   m_StreamedIn;
+    std::list < CClientVehicle* >   m_Attached;
+
 };
 
 #endif

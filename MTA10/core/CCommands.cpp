@@ -43,20 +43,22 @@ CCommands::~CCommands ( void )
 }
 
 
-void CCommands::Add ( const char* szCommand, const char* szDescription, PFNCOMMANDHANDLER pfnHandler, bool bModCommand, bool bAllowScriptedBind )
+void CCommands::Add ( const char* szCommand, const char* szDescription, PFNCOMMANDHANDLER pfnHandler, bool bModCommand )
 {
     COMMANDENTRY* pCommand = new COMMANDENTRY;
 
     // Copy the command name and description to the new command entry.
-    STRNCPY ( pCommand->szCommandName, szCommand, MAX_COMMAND_NAME_LENGTH );
-    STRNCPY ( pCommand->szDescription, szDescription, MAX_COMMAND_DESCRIPTION_LENGTH );
+    strncpy ( pCommand->szCommandName, szCommand,
+              GET_LENGTH_BOUND ( MAX_COMMAND_NAME_LENGTH, strlen ( szCommand ) + 1 ) );
+
+    strncpy ( pCommand->szDescription, szDescription,
+              GET_LENGTH_BOUND ( MAX_COMMAND_DESCRIPTION_LENGTH, strlen ( szDescription ) + 1 ) );
 
     // Set the command.
     pCommand->pfnCmdFunc = pfnHandler;
 
     // Set the mod bool
     pCommand->bModCommand = bModCommand;
-    pCommand->bAllowScriptedBind = bAllowScriptedBind;
 
     // Set the enabled bool
     pCommand->bEnabled = true;
@@ -89,7 +91,7 @@ bool CCommands::Execute ( const char* szCommandLine )
 }
 
 
-bool CCommands::Execute ( const char* szCommand, const char* szParametersIn, bool bHandleRemotely, bool bIsScriptedBind )
+bool CCommands::Execute ( const char* szCommand, const char* szParametersIn, bool bHandleRemotely )
 {
     // Copy szParametersIn so the contents can be changed
     char* szParameters = NULL;
@@ -102,7 +104,7 @@ bool CCommands::Execute ( const char* szCommand, const char* szParametersIn, boo
 
     // HACK: if its a 'chatboxsay' command, use the next parameter
     // Is the command "say" and the arguments start with /? (command comes from the chatbox)
-    if ( !bIsScriptedBind && !stricmp ( szCommand, "chatboxsay" ) )
+    if ( !stricmp ( szCommand, "chatboxsay" ) )
     {
         if ( szParameters )
         {
@@ -117,13 +119,9 @@ bool CCommands::Execute ( const char* szCommand, const char* szParametersIn, boo
                 // Split it into command and arguments
                 szCommand = strtok ( szBuffer, " " );
                 szParameters = strtok ( NULL, "\0" );
-                if ( szCommand == NULL )
+                if ( szCommand == 0 )
                 {
                     return false;
-                }
-                if ( szParameters == NULL )
-                {
-                    szParameters = "";
                 }
             }
         }
@@ -139,8 +137,7 @@ bool CCommands::Execute ( const char* szCommand, const char* szParametersIn, boo
         if ( !pEntry->bModCommand || pEntry->bEnabled )
         {
             // Execute it
-            if ( !bIsScriptedBind || pEntry->bAllowScriptedBind )
-                ExecuteHandler ( pEntry->pfnCmdFunc, szParameters );
+            ExecuteHandler ( pEntry->pfnCmdFunc, szParameters );
             return true;
         }
     }
@@ -152,7 +149,7 @@ bool CCommands::Execute ( const char* szCommand, const char* szParametersIn, boo
     if (val.find(" = ") != std::string::npos) {
         key = val.substr ( 0, nOpIndex-1 );
     }
-    if ( CClientVariables::GetSingleton ().Exists ( key ) && !bIsScriptedBind ) {
+    if ( CClientVariables::GetSingleton ().Exists ( key ) ) {
         std::stringstream ss;
 
         // Determine whether this is an atomic get or set query
@@ -172,35 +169,32 @@ bool CCommands::Execute ( const char* szCommand, const char* szParametersIn, boo
     }
 
     // HACK: if its a 'nick' command, save it here
-    bool bIsNickCommand = !stricmp(szCommand, "nick");
-    if (bIsNickCommand && szParameters && !bIsScriptedBind)
+    if ( !stricmp ( szCommand, "nick" ) && szParameters )
     {
         if ( CCore::GetSingleton ().IsValidNick ( szParameters ) )
         {
             CVARS_SET ( "nick", std::string ( szParameters ) );
-
-            if (!CCore::GetSingleton().IsConnected())
-            {
-                CCore::GetSingleton().GetConsole()->Printf("nick: You are now known as %s", szParameters);
-            }
         }
-        else if (!CCore::GetSingleton().IsConnected())
+
+        if ( strlen ( szParameters ) >= MAX_PLAYER_NICK_LENGTH &&
+             CCore::GetSingleton ().GetNetwork () &&
+             CCore::GetSingleton ().GetNetwork ()->GetServerBitStreamVersion () < 0x06 )
         {
-            CCore::GetSingleton().GetConsole()->Print("nick: Chosen nickname contains illegal characters");
+            // Limit the nick length for servers that have a problem with max length nicks
+            szParameters [ MAX_PLAYER_NICK_LENGTH - 1 ] = 0;             
         }
     }
 
     // Try to execute the handler
     if ( m_pfnExecuteHandler )
     {
-        if ( m_pfnExecuteHandler ( szCommand, szParameters, bHandleRemotely, ( pEntry != NULL ), bIsScriptedBind ) )
+        if ( m_pfnExecuteHandler ( szCommand, szParameters, bHandleRemotely, ( pEntry != NULL ) ) )
             return true;
     }
 
     // Unknown command
-    val = _( "Unknown command or cvar: " ) + szCommand;
-    if (!bIsScriptedBind && !bIsNickCommand)
-        CCore::GetSingleton ().GetConsole ()->Print ( val.c_str () );
+    val = std::string ( "Unknown command or cvar: " ) + szCommand;
+    CCore::GetSingleton ().GetConsole ()->Print ( val.c_str () );
     return false;
 }
 

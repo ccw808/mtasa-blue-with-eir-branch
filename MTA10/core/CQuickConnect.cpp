@@ -24,7 +24,6 @@ CQuickConnect::CQuickConnect ( void )
     // Create the window
     m_pWindow = reinterpret_cast < CGUIWindow* > ( pManager->CreateWnd ( NULL, "QUICK CONNECT" ) );
     m_pWindow->SetCloseButtonEnabled ( false );
-    m_pWindow->SetVisible(false);
     //m_pWindow->SetMovable ( false );
 
     CVector2D resolution = CCore::GetSingleton().GetGUI()->GetResolution();
@@ -77,13 +76,11 @@ CQuickConnect::CQuickConnect ( void )
     m_pButtonConnect = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( m_pWindow, "Connect" ) );
     m_pButtonConnect->SetPosition ( CVector2D ( 0.04f, 0.71f ), true );
     m_pButtonConnect->SetSize ( CVector2D ( 112.0f, 24.0f ) );
-    m_pButtonConnect->SetZOrderingEnabled ( false );
 
     //  Cancel button
     m_pButtonBack = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( m_pWindow, "Back" ) );
     m_pButtonBack->SetPosition ( CVector2D ( 0.56f, 0.71f ), true );
     m_pButtonBack->SetSize ( CVector2D ( 112.0f, 24.0f ) );
-    m_pButtonBack->SetZOrderingEnabled ( false );
 
     // Set up event handlers
     m_pButtonConnect->SetClickHandler ( GUI_CALLBACK ( &CQuickConnect::OnConnectButtonClick, this ) );
@@ -146,7 +143,7 @@ bool CQuickConnect::OnConnectButtonClick ( CGUIElement* pElement )
     const std::string& strHost = m_pEditHost->GetText ();
     if ( strHost.length () == 0 )
     {
-        CCore::GetSingleton ().ShowMessageBox ( _("Error")+_E("CC60"), _("No host specified!"), MB_BUTTON_OK | MB_ICON_INFO );
+        CCore::GetSingleton ().ShowMessageBox ( "Error", "No host specified!", MB_BUTTON_OK | MB_ICON_INFO );
         return true;
     }
 
@@ -155,12 +152,12 @@ bool CQuickConnect::OnConnectButtonClick ( CGUIElement* pElement )
     int iPort = atoi ( strPort.c_str () );
     if ( strPort.length () == 0 )
     {
-        CCore::GetSingleton ().ShowMessageBox ( _("Error")+_E("CC61"), _("No port specified!"), MB_BUTTON_OK | MB_ICON_INFO );
+        CCore::GetSingleton ().ShowMessageBox ( "Error", "No port specified!", MB_BUTTON_OK | MB_ICON_INFO );
         return true;
     }
     else if ( iPort == 0 || iPort > 0xFFFF )
     {
-        CCore::GetSingleton ().ShowMessageBox ( _("Error")+_E("CC62"), _("Invalid port specified!"), MB_BUTTON_OK | MB_ICON_INFO );
+        CCore::GetSingleton ().ShowMessageBox ( "Error", "Invalid port specified!", MB_BUTTON_OK | MB_ICON_INFO );
         return true;
     }
 
@@ -169,7 +166,7 @@ bool CQuickConnect::OnConnectButtonClick ( CGUIElement* pElement )
     CVARS_GET ( "nick", strNick );
     if ( !CCore::GetSingleton ().IsValidNick ( strNick.c_str () ) )
     {
-        CCore::GetSingleton ().ShowMessageBox ( _("Error")+_E("CC63"), _("Invalid nickname! Please go to Settings and set a new one!"), MB_BUTTON_OK | MB_ICON_INFO );
+        CCore::GetSingleton ().ShowMessageBox ( "Error", "Invalid nickname! Please go to Settings and set a new!", MB_BUTTON_OK | MB_ICON_INFO );
         return true;
     }
 
@@ -262,7 +259,7 @@ bool CQuickConnect::OnHostChanged( CGUIElement *pElement )
             if ( strNewPort.length () > 0 )
             {
                 m_pEditPass->Activate ();
-                m_pEditPass->SetCaretAtEnd ();
+                m_pEditPass->SetCaratAtEnd ();
             }
         }
     }

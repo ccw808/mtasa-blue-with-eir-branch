@@ -21,14 +21,14 @@ CGUIListItem_Impl::CGUIListItem_Impl ( const char* szText, unsigned int uiType, 
     // Create the requested list item type
     switch ( uiType )
     {
-        case TextItem:
-            m_pListItem = new CEGUI::ListboxTextItem ( CGUI_Impl::GetUTFString ( szText ) );
+        case Type::TextItem:
+            m_pListItem = new CEGUI::ListboxTextItem ( CEGUI::String ( szText ) );
             break;
-        case ImageItem:
-            m_pListItem = new CEGUI::ListboxImageItem ( pImage ? pImage->GetDirectImage () : NULL );
+        case Type::ImageItem:
+            m_pListItem = new CEGUI::ListboxImageItem ( *pImage->GetDirectImage () );
             break;
-        case NumberItem:
-            m_pListItem = new CEGUI::ListboxNumberItem ( CGUI_Impl::GetUTFString ( szText ) );
+        case Type::NumberItem:
+            m_pListItem = new CEGUI::ListboxNumberItem ( CEGUI::String ( szText ) );
             break;
     }
 
@@ -45,8 +45,6 @@ CGUIListItem_Impl::CGUIListItem_Impl ( const char* szText, unsigned int uiType, 
 
 CGUIListItem_Impl::~CGUIListItem_Impl ( void )
 {
-    if ( m_deleteDataCallback )
-        m_deleteDataCallback(m_pData);
     delete m_pListItem;
 }
 
@@ -64,9 +62,11 @@ void CGUIListItem_Impl::SetFont ( const char *szFontName )
 }
 
 
-void CGUIListItem_Impl::SetText ( const char *pszText, const char *pszSortText )
+void CGUIListItem_Impl::SetText ( const char *pszText )
 {
-    m_pListItem->setText( CGUI_Impl::GetUTFString(pszText), pszSortText );
+    CEGUI::String strText;
+    strText.assign ( (CEGUI::utf8*) pszText );
+    m_pListItem->setText( strText );
 }
 
 
@@ -86,17 +86,17 @@ void CGUIListItem_Impl::SetData ( const char* pszData )
 
 void CGUIListItem_Impl::SetImage ( CGUIStaticImage* pImage )
 {
-    if ( ItemType == ImageItem )
+    if ( ItemType == Type::ImageItem )
     {
         CGUIStaticImage_Impl* pImageImpl = (CGUIStaticImage_Impl*) pImage;
-        reinterpret_cast < CEGUI::ListboxImageItem* > ( m_pListItem ) -> setImage ( pImageImpl ? pImageImpl->GetDirectImage () : NULL );
+        reinterpret_cast < CEGUI::ListboxImageItem* > ( m_pListItem ) -> setImage ( pImageImpl->GetDirectImage () );
     }
 }
 
 
 std::string CGUIListItem_Impl::GetText ( void ) const
 {
-    return CGUI_Impl::GetUTFString(m_pListItem->getText ().c_str ()).c_str();
+    return m_pListItem->getText ().c_str ();
 }
 
 
@@ -117,11 +117,11 @@ void CGUIListItem_Impl::SetSelectedState ( bool bState )
 
 void CGUIListItem_Impl::SetColor ( unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue, unsigned char ucAlpha )
 {
-    if ( ItemType == TextItem )
+    if ( ItemType == Type::TextItem )
     {
         reinterpret_cast < CEGUI::ListboxTextItem* > ( m_pListItem )->setTextColours( CEGUI::colour( ( float ) ucRed / 255.0f, ( float ) ucGreen / 255.0f, ( float ) ucBlue / 255.0f, ( float ) ucAlpha / 255.0f ) );
     }
-    else if ( ItemType == NumberItem )
+    else if ( ItemType == Type::NumberItem )
     {
         reinterpret_cast < CEGUI::ListboxNumberItem* > ( m_pListItem )->setTextColours( CEGUI::colour( ( float ) ucRed / 255.0f, ( float ) ucGreen / 255.0f, ( float ) ucBlue / 255.0f, ( float ) ucAlpha / 255.0f ) );
     }
@@ -129,7 +129,7 @@ void CGUIListItem_Impl::SetColor ( unsigned char ucRed, unsigned char ucGreen, u
 
 bool CGUIListItem_Impl::GetColor ( unsigned char & ucRed, unsigned char & ucGreen, unsigned char & ucBlue, unsigned char & ucAlpha )
 {
-    if ( ItemType == TextItem )
+    if ( ItemType == Type::TextItem )
     {
         CEGUI::colour color = reinterpret_cast < CEGUI::ListboxTextItem* > ( m_pListItem )->getTextColours ().d_top_left;
         ucRed = static_cast < unsigned char > ( color.getRed () * 255 );
@@ -138,7 +138,7 @@ bool CGUIListItem_Impl::GetColor ( unsigned char & ucRed, unsigned char & ucGree
         ucAlpha = static_cast < unsigned char > ( color.getAlpha () * 255 );
         return true;
     }
-    else if ( ItemType == NumberItem )
+    else if ( ItemType == Type::NumberItem )
     {
         CEGUI::colour color = reinterpret_cast < CEGUI::ListboxNumberItem* > ( m_pListItem )->getTextColours ().d_top_left;
         ucRed = static_cast < unsigned char > ( color.getRed () * 255 );

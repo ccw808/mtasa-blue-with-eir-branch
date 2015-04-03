@@ -18,20 +18,18 @@
 
 struct SWhoWasEntry
 {
-    SString         strNick;
+    char            szNick [MAX_NICK_LENGTH + 1];
     unsigned long   ulIP;
     std::string     strSerial;
     SString         strPlayerVersion;
-    SString         strAccountName;
 };
 
 class CWhoWas
 {
 public:
-    void                                                Add                 ( const char* szNick, unsigned long ulIP, std::string strSerial, const SString& strPlayerVersion, const SString& strAccountName );
+    void                                                Add                 ( const char* szNick, unsigned long ulIP, std::string strSerial, const SString& strPlayerVersion );
     inline void                                         Clear               ( void )        { m_List.clear (); };
 
-    void                                                OnPlayerLogin       ( CPlayer* pPlayer );
     inline unsigned int                                 Count               ( void )        { return m_List.size (); };
     inline std::list < SWhoWasEntry > ::const_iterator  IterBegin           ( void )        { return m_List.begin (); };
     inline std::list < SWhoWasEntry > ::const_iterator  IterEnd             ( void )        { return m_List.end (); };

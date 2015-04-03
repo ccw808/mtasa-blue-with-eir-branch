@@ -19,19 +19,18 @@
 class CConsoleEchoPacket : public CPacket
 {
 public:
-    inline                  CConsoleEchoPacket          ( const char* szMessage )   { m_strMessage.AssignLeft ( szMessage, MAX_CONSOLEECHO_LENGTH ); }
+    inline                  CConsoleEchoPacket          ( const char* szMessage )   { strncpy ( m_szMessage, szMessage, MAX_CONSOLEECHO_LENGTH ); m_szMessage [MAX_CONSOLEECHO_LENGTH] = 0; };
 
-    inline ePacketID                GetPacketID                 ( void ) const              { return PACKET_ID_CONSOLE_ECHO; };
-    inline unsigned long            GetFlags                    ( void ) const              { return PACKET_HIGH_PRIORITY | PACKET_RELIABLE | PACKET_SEQUENCED; };
-    virtual ePacketOrdering         GetPacketOrdering           ( void ) const              { return PACKET_ORDERING_CHAT; }
+    inline ePacketID        GetPacketID                 ( void ) const              { return PACKET_ID_CONSOLE_ECHO; };
+    inline unsigned long    GetFlags                    ( void ) const              { return PACKET_RELIABLE | PACKET_SEQUENCED; };
 
     bool                    Write                       ( NetBitStreamInterface& BitStream ) const;
 
-    inline const char*      GetMessage                  ( void )                    { return m_strMessage; };
-    void                    SetMessage                  ( const char* szMessage )   { m_strMessage.AssignLeft ( szMessage, MAX_CONSOLEECHO_LENGTH ); }
+    inline const char*      GetMessage                  ( void )                    { return m_szMessage; };
+    void                    SetMessage                  ( const char* szMessage )   { strncpy ( m_szMessage, szMessage, MAX_CONSOLEECHO_LENGTH ); };
 
 private:
-    SString                 m_strMessage;
+    char                    m_szMessage [MAX_CONSOLEECHO_LENGTH + 1];
 };
 
 #endif

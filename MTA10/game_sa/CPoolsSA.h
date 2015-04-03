@@ -21,7 +21,8 @@
 #include "CVehicleSA.h"
 #include "CObjectSA.h"
 #include "CBuildingSA.h"
-#define INVALID_POOL_ARRAY_ID    0xFFFFFFFF
+
+#include <google/dense_hash_map>
 
 class CEntryInfoNodePoolSA : public CEntryInfoNodePool
 {
@@ -49,7 +50,7 @@ public:
 
     
     // Vehicles pool
-    CVehicle*               AddVehicle          ( eVehicleTypes eVehicleType, unsigned char ucVariation, unsigned char ucVariation2 );
+    CVehicle*               AddVehicle          ( eVehicleTypes eVehicleType );
     CVehicle*               AddVehicle          ( DWORD* pGameInterface );
 private:
     bool                    AddVehicleToPool    ( CVehicleSA* pVehicle );
@@ -65,7 +66,8 @@ public:
     void                    DeleteAllVehicles   ( );
 
     // Objects pool
-    CObject*                AddObject           ( DWORD dwModelID, bool bLowLod, bool bBreakingDisabled );
+    CObject*                AddObject           ( DWORD dwModelID );
+    CObject*                AddObject           ( DWORD* pGameInterface );
 private:
     bool                    AddObjectToPool     ( CObjectSA* pObject );
 public:
@@ -102,14 +104,10 @@ public:
     // Others
     CBuilding*              AddBuilding         ( DWORD dwModelID );
     void                    DeleteAllBuildings  ( );
-    CVehicle*               AddTrain            ( CVector* vecPosition, DWORD dwModels[], int iSize, bool bDirection, uchar ucTrackId = 0xFF );
+    CVehicle*               AddTrain            ( CVector* vecPosition, DWORD dwModels[], int iSize, bool bDirection );
 
     int                     GetNumberOfUsedSpaces   ( ePools pools );
     void                    DumpPoolsStatus         ( );
-
-    int                     GetPoolDefaultCapacity  ( ePools pool );
-    int                     GetPoolCapacity         ( ePools pool );
-    void                    SetPoolCapacity         ( ePools pool, int iValue );
 
     // stuff that really maybe should be elsewhere or not, perhaps
     CEntryInfoNodePool*             GetEntryInfoNodePool            ( );
@@ -122,7 +120,7 @@ private:
     template < class T, class I, unsigned long MAX >
     struct SPoolData
     {
-        typedef         CFastHashMap < I*, T* >  mapType;
+        typedef         google::dense_hash_map < I*, T* >  mapType;
         mapType         map;
         T*              array [ MAX ];
         unsigned long   ulCount;

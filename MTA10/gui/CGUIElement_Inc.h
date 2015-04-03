@@ -21,15 +21,11 @@ CGUIPropertyIter GetPropertiesEnd ( void )                  { return CGUIElement
 bool SetFont ( const char *szFontName )                     { return CGUIElement_Impl::SetFont ( szFontName ); };
 std::string GetFont ( void )                                { return CGUIElement_Impl::GetFont (); };
 
-#ifndef SETVISIBLE_HACK
 void SetVisible ( bool bVisible )                           { CGUIElement_Impl::SetVisible ( bVisible ); };
 bool IsVisible ( void )                                     { return CGUIElement_Impl::IsVisible (); };
-#endif
 
-#ifndef SETENABLED_HACK
 void SetEnabled ( bool bEnabled )                           { CGUIElement_Impl::SetEnabled ( bEnabled ); };
 bool IsEnabled ( void )                                     { return CGUIElement_Impl::IsEnabled (); };
-#endif
 void SetZOrderingEnabled ( bool bZOrderingEnabled )         { CGUIElement_Impl::SetZOrderingEnabled ( bZOrderingEnabled ); };
 bool IsZOrderingEnabled ( void )                            { return CGUIElement_Impl::IsZOrderingEnabled (); };
 
@@ -47,8 +43,6 @@ void SetSize ( const CVector2D& vecSize, bool bRelative = false )           { CG
 CVector2D GetSize ( bool bRelative = false )                                { return CGUIElement_Impl::GetSize ( bRelative ); };
 void GetSize ( CVector2D& vecSize, bool bRelative = false )                 { CGUIElement_Impl::GetSize ( vecSize, bRelative ); };
 
-void AutoSize ( const char* Text = NULL, float fPaddingX = 0.0f, float fPaddingY = 2.0f )        { CGUIElement_Impl::AutoSize ( Text, fPaddingX, fPaddingY ); };
-
 void SetMinimumSize ( const CVector2D& vecSize )            { CGUIElement_Impl::SetMinimumSize ( vecSize ); };
 CVector2D GetMinimumSize ( void )                           { return CGUIElement_Impl::GetMinimumSize (); };
 void GetMinimumSize ( CVector2D& vecSize )                  { CGUIElement_Impl::GetMinimumSize ( vecSize ); };
@@ -65,7 +59,6 @@ std::string GetText ( void )                                { return CGUIElement
 
 void SetAlpha ( float fAlpha )                              { CGUIElement_Impl::SetAlpha ( fAlpha ); };
 float GetAlpha ( void )                                     { return CGUIElement_Impl::GetAlpha (); };
-float GetEffectiveAlpha ( void )                            { return CGUIElement_Impl::GetEffectiveAlpha (); };
 void SetInheritsAlpha ( bool bInheritsAlpha )               { CGUIElement_Impl::SetInheritsAlpha ( bInheritsAlpha ); };
 bool GetInheritsAlpha ( void )                              { return CGUIElement_Impl::GetInheritsAlpha (); };
 
@@ -92,20 +85,7 @@ void SetUserData ( void* pData )                            { CGUIElement_Impl::
 void* GetUserData ( void )                                  { return CGUIElement_Impl::GetUserData (); };
 
 void SetClickHandler ( GUI_CALLBACK Callback )              { CGUIElement_Impl::SetClickHandler ( Callback ); };
-void SetDoubleClickHandler ( GUI_CALLBACK Callback )        { CGUIElement_Impl::SetDoubleClickHandler ( Callback ); };
 void SetMovedHandler ( GUI_CALLBACK Callback )              { CGUIElement_Impl::SetMovedHandler ( Callback ); };
 void SetSizedHandler ( GUI_CALLBACK Callback )              { CGUIElement_Impl::SetSizedHandler ( Callback ); };
 void SetMouseEnterHandler ( GUI_CALLBACK Callback )         { CGUIElement_Impl::SetMouseEnterHandler ( Callback ); };
 void SetMouseLeaveHandler ( GUI_CALLBACK Callback )         { CGUIElement_Impl::SetMouseLeaveHandler ( Callback ); };
-void SetMouseButtonDownHandler ( GUI_CALLBACK Callback )    { CGUIElement_Impl::SetMouseButtonDownHandler ( Callback ); };
-void SetActivateHandler ( GUI_CALLBACK Callback )           { CGUIElement_Impl::SetActivateHandler ( Callback ); };
-void SetDeactivateHandler ( GUI_CALLBACK Callback )         { CGUIElement_Impl::SetDeactivateHandler ( Callback ); };
-void SetKeyDownHandler ( GUI_CALLBACK Callback )            { CGUIElement_Impl::SetKeyDownHandler ( Callback ); };
-void SetKeyDownHandler ( const GUI_CALLBACK_KEY & Callback ){ CGUIElement_Impl::SetKeyDownHandler ( Callback ); };
-void SetEnterKeyHandler ( GUI_CALLBACK Callback )           { CGUIElement_Impl::SetEnterKeyHandler ( Callback ); };
-
-bool Event_OnClick ( void )                                 { return CGUIElement_Impl::Event_OnClick ( ); };
-bool Event_OnDoubleClick ( void )                           { return CGUIElement_Impl::Event_OnDoubleClick ( ); };
-bool Event_OnMouseEnter ( void )                            { return CGUIElement_Impl::Event_OnMouseEnter ( ); };
-bool Event_OnMouseLeave ( void )                            { return CGUIElement_Impl::Event_OnMouseLeave ( ); };
-bool Event_OnMouseButtonDown ( void )                       { return CGUIElement_Impl::Event_OnMouseButtonDown ( ); };

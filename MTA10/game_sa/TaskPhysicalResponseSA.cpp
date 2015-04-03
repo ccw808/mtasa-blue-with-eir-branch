@@ -29,7 +29,6 @@ CTaskSimpleChokingSA::CTaskSimpleChokingSA ( CPed* pAttacker, bool bIsTearGas )
     if ( pAttackerSA ) pAttackerInterface = pAttackerSA->GetPedInterface ();
 
     this->CreateTaskInterface ( sizeof ( CTaskSimpleChokingSAInterface ) );
-    if ( !IsValid () ) return;
     DWORD dwThisInterface = (DWORD)this->GetInterface();
     _asm
     {

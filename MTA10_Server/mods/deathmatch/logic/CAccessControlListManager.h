@@ -29,9 +29,8 @@ public:
                                                 CAccessControlListManager   ( void );
     virtual                                     ~CAccessControlListManager  ( void );
 
-    void                                        DoPulse                     ( void );
-    bool                                        Load                        ( void );
-    bool                                        Save                        ( void );
+    bool                                        Load                        ( const char* szFilename );
+    bool                                        Save                        ( const char* szFilename );
 
     class CAccessControlListGroup*              GetGroup                    ( const char* szGroupName );
     class CAccessControlList*                   GetACL                      ( const char* szACLName );
@@ -47,8 +46,8 @@ public:
     void                                        ClearACLs                   ( void );
     void                                        ClearGroups                 ( void );
 
-    CAccessControlListGroup*                    GetGroupFromScriptID        ( uint uiScriptID );
-    CAccessControlList*                         GetACLFromScriptID          ( uint uiScriptID );
+    bool                                        VerifyGroup                 ( class CAccessControlListGroup* pGroup );
+    bool                                        VerifyACL                   ( class CAccessControlList* pACL );
 
     list < class CAccessControlList* > ::const_iterator             ACL_Begin       ( void )    { return m_ACLs.begin (); };
     list < class CAccessControlList* > ::const_iterator             ACL_End         ( void )    { return m_ACLs.end (); };
@@ -64,12 +63,7 @@ public:
     static const char*                          ExtractRightName            ( const char* szRightName,
                                                                               CAccessControlListRight::ERightType& eType );
 
-    void                                        OnChange                    ( void );
-    uint                                        GetGlobalRevision           ( void )        { return m_uiGlobalRevision; }
-
 private:
-    void                                        ClearReadCache              ( void );
-    bool                                        InternalCanObjectUseRight   ( const char* szObjectName, CAccessControlListGroupObject::EObjectType, const char* szRightName, CAccessControlListRight::ERightType eRightType, bool bDefaultAccessRight );
     void                                        RemoveACLDependencies       ( class CAccessControlList* pACL );
 
     list < class CAccessControlListGroup* >     m_Groups;
@@ -80,13 +74,6 @@ private:
     CXMLFile*                                   m_pXML;
     CXMLNode*                                   m_pRootNode;
 
-    bool                                        m_bReadCacheDirty;
-    long long                                   m_llLastTimeReadCacheCleared;
-    CFastHashMap < SString, bool >              m_ReadCacheMap;
-
-    bool                                        m_bNeedsSave;
-    CElapsedTime                                m_AutoSaveTimer;
-    uint                                        m_uiGlobalRevision;
 };
 
 #endif

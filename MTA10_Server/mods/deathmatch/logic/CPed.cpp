@@ -15,7 +15,7 @@
 #include "StdInc.h"
 
 char szBodyPartNameEmpty [] = "";
-struct SBodyPartName { const char szName [32]; };
+struct SBodyPartName { char szName [32]; };
 SBodyPartName BodyPartNames [10] =
 { {"Unknown"}, {"Unknown"}, {"Unknown"}, {"Torso"}, {"Ass"},
 {"Left Arm"}, {"Right Arm"}, {"Left Leg"}, {"Right Leg"}, {"Head"} };
@@ -34,9 +34,11 @@ CPed::CPed ( CPedManager* pPedManager, CElement* pParent, CXMLNode* pNode, unsig
     m_bWearingGoggles = false;
 
     m_fHealth = 0.0f;
+    m_ulHealthChangeTime = 0;
     m_fArmor = 0.0f;
+    m_ulArmorChangeTime = 0;
     
-    memset ( &m_fStats[0], 0, sizeof ( m_fStats ) );
+    memset ( m_fStats, 0, sizeof ( m_fStats ) );
     m_fStats [ 24 ] = 569.0f;           // default max_health
 
     m_pClothes = new CPlayerClothes;
@@ -47,20 +49,20 @@ CPed::CPed ( CPedManager* pPedManager, CElement* pParent, CXMLNode* pNode, unsig
     m_bOnGround = true;
     m_bIsPlayer = false;
     m_bFrozen = false;
-    m_bIsOnFire = false;
 
     m_pTasks = new CPlayerTasks;
 
     m_ucWeaponSlot = 0;
-    memset ( &m_Weapons[0], 0, sizeof ( m_Weapons ) );
+    memset ( m_Weapons, 0, sizeof ( m_Weapons ) );
     m_ucAlpha = 255;
     m_pContactElement = NULL;
     m_bIsDead = true;
+    m_ulLastDieTime = 0;
     m_bSpawned = false;
     m_fRotation = 0.0f;
     m_pTargetedEntity = NULL;
     m_ucFightingStyle = 15; // STYLE_GRAB_KICK
-    m_iMoveAnim = MOVE_DEFAULT;
+    m_iMoveAnim = 54; // MOVE_PLAYER
     m_fGravity = 0.008f;
     m_bDoingGangDriveby = false;
     m_bStealthAiming = false;
@@ -68,12 +70,12 @@ CPed::CPed ( CPedManager* pPedManager, CElement* pParent, CXMLNode* pNode, unsig
     m_pVehicle = NULL;
     m_uiVehicleSeat = INVALID_VEHICLE_SEAT;
     m_uiVehicleAction = CPed::VEHICLEACTION_NONE;
+    m_ulVehicleActionStartTime = 0;
+    m_pJackingVehicle = NULL;
 
     m_vecVelocity.fX = m_vecVelocity.fY = m_vecVelocity.fZ = 0.0f;
 
     m_pSyncer = NULL;
-
-    m_bCollisionsEnabled = true;
 
     // Add us to the Ped manager
     if ( pPedManager )
@@ -85,6 +87,22 @@ CPed::CPed ( CPedManager* pPedManager, CElement* pParent, CXMLNode* pNode, unsig
 
 CPed::~CPed ( void )
 {
+    if ( m_pJackingVehicle )
+    {
+        if ( m_uiVehicleAction == VEHICLEACTION_JACKING )
+        {
+            CPed * pOccupant = m_pJackingVehicle->GetOccupant ( 0 );
+            if ( pOccupant )
+            {
+                m_pJackingVehicle->SetOccupant ( NULL, 0 );
+                pOccupant->SetOccupiedVehicle ( NULL, 0 );
+                pOccupant->SetVehicleAction ( VEHICLEACTION_NONE );
+            }
+        }
+        if ( m_pJackingVehicle->GetJackingPlayer () == this )
+            m_pJackingVehicle->SetJackingPlayer ( NULL );
+    }
+
     // Make sure we've no longer occupied any vehicle
     if ( m_pVehicle )
     {
@@ -111,30 +129,6 @@ void CPed::Unlink ( void )
     {
         m_pPedManager->RemoveFromList ( this );
     }
-}
-
-
-void CPed::GetRotation( CVector & vecRotation )
-{
-    vecRotation = CVector( 0, 0, GetRotation() );
-}
-
-
-void CPed::GetMatrix( CMatrix& matrix )
-{
-    CVector vecRotation;
-    vecRotation.fZ = GetRotation();
-    matrix.SetRotation( vecRotation );
-    matrix.vPos = GetPosition();
-}
-
-
-void CPed::SetMatrix( const CMatrix& matrix )
-{
-    // Set position and rotation from matrix
-    SetPosition( matrix.vPos );
-    CVector vecRotation = matrix.GetRotation();
-    SetRotation( vecRotation.fZ );
 }
 
 
@@ -196,16 +190,6 @@ bool CPed::ReadSpecialData ( void )
 
     if ( GetCustomDataInt ( "dimension", iTemp, true ) )
         m_usDimension = static_cast < unsigned short > ( iTemp );
-
-    if ( !GetCustomDataBool ( "collisions", m_bCollisionsEnabled, true ) )
-        m_bCollisionsEnabled = true;
-
-    if ( GetCustomDataInt ( "alpha", iTemp, true ) )
-        m_ucAlpha = static_cast < unsigned char > ( iTemp );
-
-    bool bFrozen;
-    if ( GetCustomDataBool ( "frozen", bFrozen, true ) )
-        m_bFrozen = bFrozen;
 
     return true;
 }
@@ -306,6 +290,29 @@ void CPed::SetWeaponTotalAmmo ( unsigned short usTotalAmmo, unsigned char ucSlot
     }
 }
 
+float CPed::GetWeaponRange ( unsigned char ucSlot )
+{
+    static const float s_fWeaponRanges [ 60 ] = {
+        1.6f,  1.6f,  1.6f,  1.6f,   1.6f,   1.6f,   1.6f,  1.6f,  1.6f,  1.6f,
+        1.6f,  1.6f,  1.6f,  0.0f,   1.6f,   1.6f,   40.0f, 40.0f, 40.0f, 0.0f,
+        0.0f,  0.0f,  35.0f, 35.0f,  35.0f,  40.0f,  35.0f, 40.0f, 35.0f, 45.0f,
+        70.0f, 90.0f, 35.0f, 100.0f, 300.0f, 55.0f,  55.0f, 5.1f,  75.0f, 40.0f,
+        25.0f, 6.1f,  10.1f, 100.0f, 100.0f, 100.0f, 1.6f,  0.0f,  0.0f,  0.0f,
+        0.0f,  0.0f,  0.0f,  0.0f,   0.0f,   0.0f,   0.0f,  0.0f,  0.0f,  0.0f
+    };
+
+    if ( ucSlot == 0xFF )
+        ucSlot = m_ucWeaponSlot;
+    if ( ucSlot < WEAPON_SLOTS )
+    {
+        unsigned char ucWeaponType = m_Weapons [ ucSlot ].ucType;
+        if ( ucWeaponType < 60 )
+            return s_fWeaponRanges [ ucWeaponType ];
+    }
+    return 0.0f;
+}
+
+
 float CPed::GetMaxHealth ( void )
 {
     // TODO: Verify this formula
@@ -325,7 +332,7 @@ float CPed::GetMaxHealth ( void )
 
 const char* CPed::GetBodyPartName ( unsigned char ucID )
 {
-    if ( ucID <= NUMELMS( BodyPartNames ) )
+    if ( ucID <= 10 )
     {
         return BodyPartNames [ucID].szName;
     }
@@ -351,6 +358,11 @@ void CPed::SetContactElement ( CElement* pElement )
 
 void CPed::SetIsDead ( bool bDead )
 {
+    if ( !m_bIsDead && bDead )
+    {
+        m_ulLastDieTime = GetTime ();
+    }
+
     m_bIsDead = bDead;
 }
 
@@ -380,6 +392,7 @@ CVehicle* CPed::SetOccupiedVehicle ( CVehicle* pVehicle, unsigned int uiSeat )
 void CPed::SetVehicleAction ( unsigned int uiAction )
 {
     m_uiVehicleAction = uiAction;
+    m_ulVehicleActionStartTime = GetTime ();
 }
 
 

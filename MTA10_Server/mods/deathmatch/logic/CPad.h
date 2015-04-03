@@ -135,7 +135,7 @@ enum eControlType
 
 struct SGTAControl
 {
-    const char* szControl;
+    char szControl [25];
     eControllerAction action;
     eControlType controlType;
 };
@@ -147,7 +147,6 @@ struct SGTAControlState
 };
 
 #define NUM_CONTROL_STATES 45
-#define NUM_MTA_CONTROL_STATES 19
 
 class CPad
 {
@@ -156,28 +155,29 @@ public:
 
     const CControllerState&     GetCurrentControllerState       ( void )                            { return m_csCurrentState; }
     void                        SetCurrentControllerState       ( const CControllerState& State );
+    const CControllerState&     GetLastControllerState          ( void )                            { return m_csLastState; }
+    void                        SetLastControllerState          ( const CControllerState& State )   { m_csLastState.Copy ( State ); }
 
     void                        NewControllerState              ( const CControllerState& State );
 
-    bool                        GetControlState                 ( const char* szControl, bool& bState );
-    bool                        SetControlState                 ( const char* szControl, bool bState );
-    static const SGTAControl*   GetControlFromString            ( const char* szControl );
-
-    bool                        IsControlEnabled                ( const char* szControl, bool& bEnabled );
-    bool                        SetControlEnabled               ( const char* szControl, bool bEnabled );
-
-    void                        SetAllGTAControlsEnabled        ( bool bEnabled );
-    void                        SetAllMTAControlsEnabled        ( bool bEnabled );
-
-protected:
     void                        UpdateKeys                      ( void );
 
+    bool                        GetControlState                 ( char* szControl, bool& bState );
+    bool                        SetControlState                 ( char* szControl, bool bState );
+    static SGTAControl*         GetControlFromString            ( char* szControl );
+
+    bool                        IsControlEnabled                ( char* szControl, bool& bEnabled );
+    bool                        SetControlEnabled               ( char* szControl, bool bEnabled );
+
+    void                        SetAllControlsEnabled           ( bool bEnabled );
+
+protected:
     CPlayer*                    m_pPlayer;
 
     CControllerState            m_csCurrentState;
+    CControllerState            m_csLastState;
 
-    SFixedArray < SGTAControlState, NUM_CONTROL_STATES >    m_ControlStates;
-    SFixedArray < bool, NUM_MTA_CONTROL_STATES >            m_MTAEnabledControls;
+    SGTAControlState            m_ControlStates [ NUM_CONTROL_STATES ];
     bool                        m_bUpdatedKeys;
 };
 

@@ -21,7 +21,6 @@ CPickup::CPickup ( CElement* pParent, CXMLNode* pNode, CPickupManager* pPickupMa
     // Init
     m_pPickupManager = pPickupManager;
     m_pCollision = new CColSphere ( pColManager, NULL, m_vecPosition, 2.0f, NULL, true );
-    m_pCollision->SetEnabled( false );
     m_pCollision->SetCallback ( this );
     m_pCollision->SetAutoCallEvent ( false );
 
@@ -36,7 +35,7 @@ CPickup::CPickup ( CElement* pParent, CXMLNode* pNode, CPickupManager* pPickupMa
     m_usAmmo = 0;
     m_fAmount = 0;
     m_ulRespawnIntervals = 30000;
-    m_CreationTime = CTickCount::Now();
+    m_ulLastUsedTime = 0;
     m_usModel = CPickupManager::GetWeaponModel ( m_ucWeaponType );
     m_bVisible = true;
     m_bSpawned = true;
@@ -44,7 +43,6 @@ CPickup::CPickup ( CElement* pParent, CXMLNode* pNode, CPickupManager* pPickupMa
     m_bIsTypeRandom = false;
     m_bIsWeaponTypeRandom = false;
     m_bIsHealthRandom = false;
-    m_bDoneDelayHack = false;
 
     UpdateSpatialData ();
 }
@@ -256,6 +254,7 @@ bool CPickup::ReadSpecialData ( void )
 
 void CPickup::SetPosition ( const CVector& vecPosition )
 {
+    m_vecLastPosition = m_vecPosition;
     m_vecPosition = vecPosition;
     if ( m_pCollision )
         m_pCollision->SetPosition ( vecPosition );
@@ -407,7 +406,7 @@ void CPickup::Use ( CPlayer& Player )
             if ( m_ulRespawnIntervals > 0 )
             {
                 // Save our last used time
-                m_LastUsedTime = CTickCount::Now();
+                m_ulLastUsedTime = GetTime ();
                 // Mark us as not spawned
                 m_bSpawned = false;
         

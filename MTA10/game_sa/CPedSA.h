@@ -50,7 +50,6 @@ class CPedIntelligenceSAInterface;
 
 #define FUNC_CPedClothesDesc__SetTextureAndModel    0x5A8080
 #define FUNC_CClothes__RebuildPlayer                0x5A82C0
-#define FUNC_CAEPedWeaponAudioEntity__AddAudioEvent 0x4E69F0
 
 #define FUNC_QuitEnteringCar                        0x650130 // really belongs in CCarEnterExit
 
@@ -107,7 +106,6 @@ class CPedIntelligenceSAInterface;
 #define FUNC_WarpPedIntoCar             0x4EF8B0
 #define FUNC_DetachPedFromEntity        0x5E7EC0
 #define FUNC_CPed_RemoveBodyPart        0x5f0140
-#define FUNC_PreRenderAfterTest         0x5E65A0
 
 #define VAR_LocalPlayer                 0x94AD28
 
@@ -266,11 +264,6 @@ unsigned int bUsedForReplay : 1; // This ped is controlled by replay and should 
 
 };
 
-class CPedWeaponAudioEntitySAInterface
-{
-public:
-};
-
 class CPedSAInterface : public CPhysicalSAInterface // +1420  = current vehicle   312 first byte
 {
 public:
@@ -279,9 +272,7 @@ public:
     //CWeaponSAInterface    Weapons[9]; // 1032
     BYTE bPad[348];
     CPedSoundSAInterface pedSound;
-    BYTE bPad11[256 - sizeof(CPedSoundSAInterface)];
-    CPedWeaponAudioEntitySAInterface weaponAudioEntity;
-    BYTE bPad12[216 - sizeof(CPedWeaponAudioEntitySAInterface)];
+    BYTE bPad11[472 - sizeof(CPedSoundSAInterface)];
     CPedFlags pedFlags; // 1132 (16 bytes long including alignment probably)
     CPedIntelligenceSAInterface * pPedIntelligence;
     CPlayerPedDataSAInterface * pPlayerData; //1152
@@ -332,8 +323,6 @@ private:
 
     DWORD               m_dwType;
     unsigned char       m_ucOccupiedSeat;
-protected:
-    int                 m_iCustomMoveAnim;
 public:
                         CPedSA(  );
                         CPedSA( CPedSAInterface * pedInterface );
@@ -343,7 +332,6 @@ public:
     CPedSAInterface *   GetPedInterface ( void ) { return ( CPedSAInterface * ) GetInterface (); }
     void                Init();
     void                SetModelIndex ( DWORD dwModelIndex );
-    void                RemoveGeometryRef ( void );
     void                AttachPedToBike(CEntity * entity, CVector * vector, unsigned short sUnk, FLOAT fUnk, FLOAT fUnk2, eWeaponType weaponType);
     void                AttachPedToEntity(DWORD dwEntityInterface, CVector * vector, unsigned short sDirection, FLOAT fRotationLimit, eWeaponType weaponType, bool bChangeCamera);
     void                DetachPedFromEntity ( void );
@@ -359,10 +347,7 @@ public:
     float               GetArmor        ( void );
     void                SetArmor        ( float fArmor );
 
-    float               GetOxygenLevel  ( void );
-    void                SetOxygenLevel  ( float fOxygen );
-
-    CWeapon *           GiveWeapon      ( eWeaponType weaponType, unsigned int uiAmmo, eWeaponSkill skill );
+    CWeapon *           GiveWeapon      ( eWeaponType weaponType, unsigned int uiAmmo );
     CWeapon *           GetWeapon       ( eWeaponSlot weaponSlot );
     CWeapon *           GetWeapon       ( eWeaponType weaponType );
     void                ClearWeapons    ( void );
@@ -376,7 +361,6 @@ public:
     void                SetType ( DWORD dwType );
     DWORD               * GetMemoryValue ( DWORD dwOffset );
 
-    virtual void        RestoreLastGoodPhysicsState ( void );
     FLOAT               GetCurrentRotation();
     FLOAT               GetTargetRotation();
     void                SetCurrentRotation(FLOAT fRotation);
@@ -387,7 +371,6 @@ public:
 
     CVector *           GetBonePosition ( eBone bone, CVector * vecPosition );
     CVector *           GetTransformedBonePosition ( eBone bone, CVector * vecPosition );
-    void                ApplySwimAndSlopeRotations ( void );
 
     bool                IsDucking ( void );
     void                SetDucking ( bool bDuck );
@@ -401,7 +384,7 @@ public:
     bool                IsWearingGoggles ( void );
     void                SetGogglesState ( bool bIsWearingThem );
 
-    void                SetClothesTextureAndModel ( const char* szTexture, const char* szModel, int textureType );
+    void                SetClothesTextureAndModel ( char * szTexture, char * szModel, int textureType );
     void                RebuildPlayer ( void );
 
     eFightingStyle      GetFightingStyle ( void );
@@ -440,14 +423,6 @@ public:
     void                GetVoice                ( const char** pszVoiceType, const char** pszVoice );
     void                SetVoice                ( short sVoiceType, short sVoiceID );
     void                SetVoice                ( const char* szVoiceType, const char* szVoice );
-
-    CWeaponStat*        GetCurrentWeaponStat    ( void );
-    float               GetCurrentWeaponRange   ( void );
-    void                AddWeaponAudioEvent     ( EPedWeaponAudioEventType audioEventType );
-
-    virtual int         GetCustomMoveAnim       ( void );
-
-    static void         StaticSetHooks          ( void );
 };
 
 #endif

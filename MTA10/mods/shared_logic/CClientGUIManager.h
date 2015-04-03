@@ -49,7 +49,7 @@ private:
 
 private:
     bool                                    m_bCanRemoveFromList;
-    CMappedList < CClientGUIElement* >      m_Elements;
+    std::list < CClientGUIElement* >        m_Elements;
     std::map < ElementID, bool >            m_QueuedGridListUpdates;
 };
 

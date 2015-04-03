@@ -4,13 +4,8 @@
 #pragma warning (disable:4250)
 
 #include <windows.h>
-#define MTA_CLIENT
-#define SHARED_UTIL_WITH_HASH_MAP
-#define SHARED_UTIL_WITH_FAST_HASH_MAP
-#define SHARED_UTIL_WITH_SYS_INFO
-#include "SharedUtil.h"
-#include "SharedUtil.MemAccess.h"
 #include <stdio.h>
+#include <assert.h>
 
 #include <algorithm>
 #include <list>
@@ -19,11 +14,10 @@
 #include <vector>
 
 // SDK includes
-#include <core/CCoreInterface.h>
-#include <net/CNet.h>
+#include "SharedUtil.h"
 #include <game/CGame.h>
 #include <CMatrix_Pad.h>
-#include <../version.h>
+#include "SString.h"
 
 // Multiplayer includes
 #include "multiplayersa_init.h"
@@ -34,5 +28,3 @@
 #include "COffsets.h"
 #include "CPopulationSA.h"
 #include "CRemoteDataSA.h"
-
-extern CMultiplayerSA* pMultiplayer;

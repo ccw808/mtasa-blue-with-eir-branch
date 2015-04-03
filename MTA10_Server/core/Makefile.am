@@ -1,22 +1,15 @@
 INCLUDES += -I$(srcdir)/../sdk/
 INCLUDES += -I$(srcdir)/../../Shared/sdk/
-INCLUDES += -I$(srcdir)/../../vendor/google-breakpad/src/
 
 if PRECOMPILE_HEADERS
 BUILT_SOURCES = StdInc.h.gch
 AM_CXXFLAGS += -Winvalid-pch
 
-StdInc.h.gch:
-	$(LIBTOOL) --tag=CXX $(core_la_LIBTOOLFLAGS) $(LIBTOOLFLAGS) --mode=compile \
-		$(CXX) $(DEFS) $(DEFAULT_INCLUDES) $(INCLUDES) \
-		$(AM_CPPFLAGS) $(CPPFLAGS) $(AM_CXXFLAGS) $(CXXFLAGS)  \
-		-o core_la-StdInc.h.lo $(srcdir)/StdInc.h \
-		-MT core_la-StdInc.h.gch -MD -MP -MF $(DEPDIR)/core_la-StdInc.h.Tpo
-
-	mv -f $(DEPDIR)/core_la-StdInc.h.Tpo $(DEPDIR)/core_la-StdInc.h.Plo
-	mv -f .libs/core_la-StdInc.h.o $@
-
-include ./$(DEPDIR)/core_la-StdInc.h.Plo
+StdInc.h.gch: StdInc.h
+	-rm -f StdInc.h.gch
+	$(CXX) -fPIC -DPIC $(DEFS) $(DEFAULT_INCLUDES) \
+		$(AM_CXXFLAGS) $(CXXFLAGS) $(CPPFLAGS) \
+		$(INCLUDES) -o StdInc.h.gch -xc++-header StdInc.h
 
 clean-local:
 	-rm -f StdInc.h.gch
@@ -25,12 +18,9 @@ endif
 libdir = $(outputdir)
 lib_LTLIBRARIES = core.la
 core_la_LIBTOOLFLAGS = --tag=disable-static
-core_la_LIBADD = $(CURSES_LIB) \
-        -L$(srcdir)/../../vendor/google-breakpad/src/client/linux \
-        -lbreakpad_client
-
-core_la_LDFLAGS = -module -avoid-version
+core_la_LDFLAGS = -lcurses -module -avoid-version
 core_la_SOURCES = \
+	StdInc.cpp \
 	CCrashHandlerAPI.cpp \
 	CCrashHandlerAPI.h \
 	CCrashHandler.cpp \
@@ -45,4 +35,12 @@ core_la_SOURCES = \
 	CThreadCommandQueue.cpp \
 	CThreadCommandQueue.h \
 	ErrorCodes.h \
-	Server.cpp
+	Server.cpp \
+	sockets/CTCPClientSocketImpl.cpp \
+	sockets/CTCPClientSocketImpl.h \
+	sockets/CTCPImpl.cpp \
+	sockets/CTCPImpl.h \
+	sockets/CTCPServerSocketImpl.cpp \
+	sockets/CTCPServerSocketImpl.h \
+	sockets/CTCPServerSocketImplManager.cpp \
+	sockets/CTCPServerSocketImplManager.h

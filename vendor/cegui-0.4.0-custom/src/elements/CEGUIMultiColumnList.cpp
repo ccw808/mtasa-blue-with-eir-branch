@@ -81,9 +81,7 @@ MultiColumnList::MultiColumnList(const String& type, const String& name) :
 	d_forceHorzScroll(false),
 	d_nominatedSelectCol(0),
 	d_nominatedSelectRow(0),
-	d_lastSelected(NULL),
-	d_firstVisibleRow(-1),
-	d_lastVisibleRow(-1)
+	d_lastSelected(NULL)
 {
 	// add multi-column list box specific events
 	addMultiColumnListboxEvents();
@@ -706,7 +704,7 @@ void MultiColumnList::insertColumn(const String& text, uint col_id, float width,
 	// Insert a blank entry at the appropriate position in each row.
 	for (uint i = 0; i < getRowCount(); ++i)
 	{
-		d_grid[i].d_items.insert(d_grid[i].d_items.begin() + position, reinterpret_cast < CEGUI::ListboxItem * > ( NULL ) );
+		d_grid[i].d_items.insert(d_grid[i].d_items.begin() + position, NULL);
 	}
 
 	// update stored nominated selection column if that has changed.
@@ -758,10 +756,6 @@ void MultiColumnList::removeColumn(uint col_idx)
 
 		// remove header segment
 		d_header->removeColumn(col_idx);
-
-        // remove all rows entirely if no column is remaining (mta fix)
-        if (getColumnCount() == 0)
-            d_grid.clear();
 
 		// signal a change to the list contents
 		WindowEventArgs args(this);
@@ -1322,25 +1316,6 @@ void MultiColumnList::setColumnHeaderWidth(uint col_idx, float width, bool relat
 
 
 /*************************************************************************
-	Set the title of the specified column header (and therefore the
-	column itself).	
-*************************************************************************/
-void MultiColumnList::setColumnHeaderTitle(uint col_idx, const char* szTitle)
-{
-    d_header->setColumnTitle(col_idx, szTitle);
-}
-
-
-/*************************************************************************
-	Get the title of the specified column header (and therefore the
-	column itself).	
-*************************************************************************/
-const char* MultiColumnList::getColumnHeaderTitle(uint col_idx)
-{
-	return d_header->getColumnTitle(col_idx);
-}
-
-/*************************************************************************
 	Add multi column list box specific events	
 *************************************************************************/
 void MultiColumnList::addMultiColumnListboxEvents(bool bCommon)
@@ -1609,16 +1584,6 @@ bool MultiColumnList::clearAllSelections_impl(void)
 
 
 /*************************************************************************
-	Return the range of visible rows	
-*************************************************************************/
-void MultiColumnList::getVisibleRowRange(int &first, int& last) const
-{
-    first = d_firstVisibleRow;
-    last = d_lastVisibleRow;
-}
-
-
-/*************************************************************************
 	Return the ListboxItem under the given window local pixel co-ordinate.	
 *************************************************************************/
 ListboxItem* MultiColumnList::getItemAtPoint(const Point& pt) const
@@ -1835,9 +1800,6 @@ void MultiColumnList::populateRenderCache()
 
     float alpha = getEffectiveAlpha();
 
-    d_firstVisibleRow = -1;
-    d_lastVisibleRow = -1;
-
     // loop through the items
     for (uint i = 0; i < getRowCount(); ++i)
     {
@@ -1877,10 +1839,6 @@ void MultiColumnList::populateRenderCache()
 
                 // draw this item
                 item->draw(d_renderCache, itemRect, itemPos.d_z, alpha, &itemClipper);
-
-                if ( d_firstVisibleRow == -1 )
-                    d_firstVisibleRow = i;
-                d_lastVisibleRow = i;
             }
 
             // update position for next column.
@@ -2176,11 +2134,11 @@ bool MultiColumnList::handleSortColumnChange(const EventArgs& e)
 
 	if (dir == ListHeaderSegment::Descending)
 	{
-		std::stable_sort(d_grid.begin(), d_grid.end());
+		std::sort(d_grid.begin(), d_grid.end());
 	}
 	else if (dir == ListHeaderSegment::Ascending)
 	{
-		std::stable_sort(d_grid.begin(), d_grid.end(), pred_descend);
+		std::sort(d_grid.begin(), d_grid.end(), pred_descend);
 	}
 
 	// else, no direction, so do not sort.
@@ -2203,11 +2161,11 @@ bool MultiColumnList::handleSortDirectionChange(const EventArgs& e)
 
 	if (dir == ListHeaderSegment::Descending)
 	{
-		std::stable_sort(d_grid.begin(), d_grid.end());
+		std::sort(d_grid.begin(), d_grid.end());
 	}
 	else if (dir == ListHeaderSegment::Ascending)
 	{
-		std::stable_sort(d_grid.begin(), d_grid.end(), pred_descend);
+		std::sort(d_grid.begin(), d_grid.end(), pred_descend);
 	}
 
 

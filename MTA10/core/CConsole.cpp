@@ -18,7 +18,7 @@
 using SharedUtil::CalcMTASAPath;
 using std::string;
 
-#define CONSOLE_HISTORY_LENGTH 128
+#define CONSOLE_HISTORY_LENGTH 64
 #define CONSOLE_SIZE 4096
 
 #define NATIVE_RES_X    1152.0f
@@ -53,7 +53,7 @@ CConsole::CConsole ( CGUI* pManager, CGUIElement* pParent )
     m_pHistory->SetTextChangedHandler ( GUI_CALLBACK ( &CConsole::History_OnTextChanged, this ) );
 
     // Load the console history from a file
-    m_pConsoleHistory->LoadFromFile ();
+    m_pConsoleHistory->LoadFromFile ( CalcMTASAPath ( "\\MTA\\console.log" ), true );
 }
 
 CConsole::~CConsole ( void )
@@ -65,26 +65,31 @@ CConsole::~CConsole ( void )
     delete m_pConsoleHistory;
 }
 
+
 void CConsole::Echo ( const char* szText )
 {
-    // Add to add buffer
-    m_strPendingAdd += szText;
-    if ( !m_strPendingAdd.EndsWith ( "\n" ) )
-        m_strPendingAdd += "\n";
+    // Grab the scroll and the max scroll
+    float fScroll = m_pHistory->GetVerticalScrollPosition ();
+    float fMaxScroll = m_pHistory->GetScrollbarDocumentSize () - m_pHistory->GetScrollbarPageSize ();
 
-    // Trim add buffer
-    if ( m_strPendingAdd.length () > CONSOLE_SIZE )
+    // Grab the previous text and append this text
+    std::string& strBuffer = m_pHistory->GetText ();
+    strBuffer += szText;
+
+    // Is it too long? Shrink it
+    const char* szNewText = strBuffer.c_str ();
+    size_t sizeConsole = strBuffer.size ();
+    if ( sizeConsole > CONSOLE_SIZE )
+        szNewText += ( sizeConsole - CONSOLE_SIZE );
+
+    // Set the new text
+    m_pHistory->SetText ( szNewText );
+
+    // Are we not at the end? Keep the scrollbar position
+    if ( fScroll < fMaxScroll )
     {
-        m_strPendingAdd = m_strPendingAdd.Right ( CONSOLE_SIZE );
-        m_strPendingAdd = m_strPendingAdd.SplitRight ( "\n" );
-        m_pHistory->SetText ( "" );
+        m_pHistory->SetVerticalScrollPosition ( fScroll );
     }
-
-    // Flush add buffer is window is visible
-    if ( m_pWindow->IsVisible () )
-        FlushPendingAdd ();
-
-    CConsoleLogger::GetSingleton().LinePrintf ( "[Output] : %s", szText );
 }
 
 
@@ -100,7 +105,7 @@ void CConsole::Printf ( const char* szFormat, ... )
     char szBuffer [1024];
     va_list ap;
     va_start ( ap, szFormat );
-    VSNPRINTF ( szBuffer, 1024, szFormat, ap );
+    _VSNPRINTF ( szBuffer, 1024, szFormat, ap );
     va_end ( ap );
 
     // Echo it
@@ -115,7 +120,6 @@ void CConsole::Clear ( void )
     if ( m_pHistory )
     {       
         m_pHistory->SetText ( "" );
-        m_strPendingAdd = "";
     }
 }
 
@@ -166,8 +170,6 @@ void CConsole::SetVisible ( bool bVisible )
         if ( bVisible )
         {
             m_pInput->Activate ();
-            // Flush pending stuff if becoming visible
-            FlushPendingAdd ();
         }
         else
         {
@@ -188,10 +190,6 @@ void CConsole::Hide ( void )
     SetVisible ( false );
 }
 
-bool CConsole::IsInputActive ( void )
-{
-    return IsVisible() && m_pInput->IsActive();
-}
 
 void CConsole::ActivateInput ( void )
 {
@@ -235,9 +233,6 @@ bool CConsole::Edit_OnTextAccepted ( CGUIElement* pElement )
     // Add the text to the history buffer.
     //Echo ( strInput.c_str () );
 
-    // Write to console log
-    CConsoleLogger::GetSingleton().LinePrintf ( "[Input]  : %s", strInput.c_str() );
-
     // Parse out the command name and command line.
     GetCommandInfo ( strInput.c_str (), strCmd, strCmdLine );
 
@@ -269,12 +264,6 @@ void CConsole::GetCommandInfo ( const string &strIn, string & strCmdOut, string 
 
 void CConsole::SetNextHistoryText ( void )
 {
-    // Don't set history back if we aren't focused.
-    if ( !m_pInput->IsActive ( ) )
-    {
-        return;
-    }
-
     // Next index
     if ( m_iHistoryIndex == CONSOLE_HISTORY_LENGTH )
     {        
@@ -304,8 +293,8 @@ void CConsole::SetNextHistoryText ( void )
     if ( szItem )
     {      
         m_pInput->SetText ( szItem );
-        m_pInput->SetCaretAtStart(); // Resetting so it scrolls the input back after long text
-        m_pInput->SetCaretAtEnd ();
+        m_pInput->SetCaratAtStart(); // Resetting so it scrolls the input back after long text
+        m_pInput->SetCaratAtEnd ();
     }
     else
     {
@@ -316,12 +305,6 @@ void CConsole::SetNextHistoryText ( void )
 
 void CConsole::SetPreviousHistoryText ( void )
 {
-    // Don't set history back if we aren't focused.
-    if ( !m_pInput->IsActive ( ) )
-    {
-        return;
-    }
-
     // Previous index
     if ( m_iHistoryIndex <= 0 )
     {
@@ -346,8 +329,8 @@ void CConsole::SetPreviousHistoryText ( void )
     if ( szItem )
     {       
         m_pInput->SetText ( szItem );
-        m_pInput->SetCaretAtStart(); // Resetting so it scrolls the input back after long text
-        m_pInput->SetCaretAtEnd ();
+        m_pInput->SetCaratAtStart(); // Resetting so it scrolls the input back after long text
+        m_pInput->SetCaratAtEnd ();
         --m_iHistoryIndex;
     }
 }
@@ -406,8 +389,8 @@ void CConsole::SetNextAutoCompleteMatch ( void )
     if ( szItem )
     {       
         m_pInput->SetText ( szItem );
-        m_pInput->SetCaretAtStart (); // Resetting so it scrolls the input back after long text
-        m_pInput->SetCaretAtEnd ();
+        m_pInput->SetCaratAtStart (); // Resetting so it scrolls the input back after long text
+        m_pInput->SetCaratAtEnd ();
     }
 }
 
@@ -420,7 +403,7 @@ void CConsole::CreateElements ( CGUIElement* pParent )
     m_fWindowY *= ScreenSize.fY / NATIVE_RES_Y;
 
     // Create window
-    m_pWindow = reinterpret_cast < CGUIWindow* > ( m_pManager->CreateWnd ( pParent, _("CONSOLE") ) );
+    m_pWindow = reinterpret_cast < CGUIWindow* > ( m_pManager->CreateWnd ( pParent, "CONSOLE" ) );
     m_pWindow->SetAlwaysOnTop ( true );
 
     CVector2D resolution = CCore::GetSingleton().GetGUI()->GetResolution();
@@ -517,35 +500,4 @@ bool CConsole::OnWindowSize ( CGUIElement* pElement )
     m_pInput->SetHeight ( m_fInputHeight );
 
     return true;
-}
-
-
-// Send saved console adds to the actual gui window
-void CConsole::FlushPendingAdd ( void )
-{
-    if ( !m_strPendingAdd.empty () )
-    {
-        // Grab the scroll and the max scroll
-        float fScroll = m_pHistory->GetVerticalScrollPosition ();
-        float fMaxScroll = m_pHistory->GetScrollbarDocumentSize () - m_pHistory->GetScrollbarPageSize ();
-
-        // Make new buffer
-        SString strBuffer = m_pHistory->GetText ();
-        strBuffer += m_strPendingAdd;
-        m_strPendingAdd = "";
-
-        // Trim new buffer
-        if ( strBuffer.length () > CONSOLE_SIZE )
-        {
-            strBuffer = strBuffer.Right ( CONSOLE_SIZE );
-            strBuffer = strBuffer.SplitRight ( "\n" );
-        }
-
-        // Set new buffer
-        m_pHistory->SetText ( strBuffer );
-
-        // If not at the end, keep the scrollbar position
-        if ( fScroll < fMaxScroll )
-            m_pHistory->SetVerticalScrollPosition ( fScroll );
-    }
 }

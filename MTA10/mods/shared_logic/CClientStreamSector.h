@@ -21,8 +21,8 @@ class CClientStreamSectorRow;
 
 class CClientStreamSector
 {
-    friend class CClientStreamer;
-    friend class CClientStreamSectorRow;
+    friend CClientStreamer;
+    friend CClientStreamSectorRow;
 public:
                                                     CClientStreamSector     ( CClientStreamSectorRow * pRow, CVector2D & vecBottomLeft, CVector2D & vecTopRight );
                                                     ~CClientStreamSector    ( void );

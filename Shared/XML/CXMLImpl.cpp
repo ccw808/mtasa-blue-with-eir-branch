@@ -11,12 +11,6 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#define ALLOC_STATS_MODULE_NAME "xml"
-#include <sys/stat.h>
-#ifndef MAX_PATH
-#define MAX_PATH 260
-#endif
-#include "SharedUtil.hpp"
 
 CXMLImpl::CXMLImpl ( void )
 {
@@ -31,9 +25,9 @@ CXMLImpl::~CXMLImpl ( void )
 }
 
 
-CXMLFile* CXMLImpl::CreateXML ( const char* szFilename, bool bUseIDs )
+CXMLFile* CXMLImpl::CreateXML ( const char* szFilename )
 {
-    CXMLFile* xmlFile = new CXMLFileImpl ( szFilename, bUseIDs );
+    CXMLFile* xmlFile = new CXMLFileImpl ( szFilename );
     if ( xmlFile->IsValid( ) )
         return xmlFile;
     else

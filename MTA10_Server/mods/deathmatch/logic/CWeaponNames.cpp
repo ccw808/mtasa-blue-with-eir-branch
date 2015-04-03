@@ -30,7 +30,7 @@ struct SWeaponSlot
 };
 
 SWeaponName WeaponNames [] =
-{ {"Fist"}, {"Brassknuckle"}, {"Golfclub"}, {"Nightstick"}, {"Knife"},
+{ {"Melee"}, {"Brassknuckle"}, {"Golfclub"}, {"Nightstick"}, {"Knife"},
 {"Bat"}, {"Shovel"}, {"Poolstick"}, {"Katana"}, {"Chainsaw"}, 
 {"Dildo"}, {"Dildo"}, {"Vibrator"}, {"Vibrator"}, {"Flower"},
 {"Cane"}, {"Grenade"}, {"Teargas"}, {"Molotov"}, {"Rocket"},
@@ -43,7 +43,7 @@ SWeaponName WeaponNames [] =
 {"Drowned"}, {"Fall"}, {"Unknown"}, {"Melee"}, {"Weapon"}, {"Flare"}, { "Tank Grenade" } };
 
 SWeaponSlot WeaponIDs [] =
-{{0},{0},{1},{1},{1},{1},{1},{1},{1},{1},{10},{10},{10},{-1},{10},{10},{8},{8},
+{{0},{0},{1},{1},{1},{1},{1},{1},{1},{1},{10},{10},{10},{-1},{10},{1},{8},{8},
 {8},{-1},{-1},{-1},{2},{2},{2},{3},{3},{3},{4},{4},{5},{5},{4},{6},{6},{7},
 {7},{7},{7},{8},{12},{9},{9},{9},{11},{11},{11},{-1}};
 
@@ -90,6 +90,7 @@ const char* CWeaponNames::GetWeaponName ( unsigned char ucID )
 
     return szWeaponNameEmpty;
 }
+
 
 char CWeaponNames::GetSlotFromWeapon ( unsigned char ucID )
 {

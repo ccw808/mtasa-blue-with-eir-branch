@@ -21,7 +21,7 @@
 class CXMLAttributesImpl : public CXMLAttributes
 {
 public:
-                                    CXMLAttributesImpl          ( TiXmlElement& Node, bool bUseIDs );
+                                    CXMLAttributesImpl          ( TiXmlElement& Node );
                                     ~CXMLAttributesImpl         ( void );
 
     unsigned int                    Count                       ( void );
@@ -30,7 +30,6 @@ public:
 
     class CXMLAttribute*            Create                      ( const char* szName );
     class CXMLAttribute*            Create                      ( const class CXMLAttribute& Copy );
-    bool                            Delete                      ( const char* szName );
     void                            DeleteAll                   ( void );
 
     TiXmlElement&                   GetNode                     ( void );
@@ -43,17 +42,14 @@ public:
     std::list < CXMLAttribute* > ::iterator
                                     ListEnd                     ( void )    { return m_Attributes.end (); }
 
-    bool                            IsUsingIDs                  ( void ) const  { return m_bUsingIDs; }
-
 private:
     void                            CreateAttributes            ( void );
     void                            DeleteAttributes            ( void );
 
-    const bool                      m_bUsingIDs;
-    bool                            m_bCanRemoveFromList;
     TiXmlElement&                   m_Node;
 
     std::list < CXMLAttribute* >    m_Attributes;
+    bool                            m_bCanRemoveFromList;
 };
 
 #endif

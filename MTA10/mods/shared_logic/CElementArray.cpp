@@ -14,12 +14,12 @@
 
 using namespace std;
 
-SFixedArray < CClientEntity*, MAX_SERVER_ELEMENTS + MAX_CLIENT_ELEMENTS > CElementIDs::m_Elements;
-CStack < ElementID, MAX_CLIENT_ELEMENTS - 2 > CElementIDs::m_ClientStack;
+CClientEntity* CElementIDs::m_Elements [MAX_SERVER_ELEMENTS + MAX_CLIENT_ELEMENTS];
+CStack < ElementID, MAX_CLIENT_ELEMENTS, INVALID_ELEMENT_ID > CElementIDs::m_ClientStack;
 
 void CElementIDs::Initialize ( void )
 {
-    memset ( &m_Elements[0], 0, sizeof ( m_Elements ) );
+    memset ( m_Elements, 0, sizeof ( m_Elements ) );
 }
 
 
@@ -27,7 +27,7 @@ CClientEntity* CElementIDs::GetElement ( ElementID ID )
 {
     if ( ID < MAX_SERVER_ELEMENTS + MAX_CLIENT_ELEMENTS )
     {
-        return m_Elements [ID.Value()];
+        return m_Elements [ID];
     }
 
 /*
@@ -42,7 +42,7 @@ CClientEntity* CElementIDs::GetElement ( ElementID ID )
 void CElementIDs::SetElement ( ElementID ID, CClientEntity* pEntity )
 {
     if ( ID < MAX_SERVER_ELEMENTS + MAX_CLIENT_ELEMENTS )
-        m_Elements [ID.Value()] = pEntity;
+        m_Elements [ID] = pEntity;
 #ifdef MTA_DEBUG
     else
         assert ( 0 );
@@ -53,12 +53,11 @@ void CElementIDs::SetElement ( ElementID ID, CClientEntity* pEntity )
 ElementID CElementIDs::PopClientID ( void )
 {
     // Pop an unique ID
-    ElementID ID;
-    
-    if ( m_ClientStack.Pop (ID) && ID != INVALID_ELEMENT_ID )
+    ElementID ID = m_ClientStack.Pop ();
+    if ( ID != INVALID_ELEMENT_ID )
     {
         // Make it at the beginning after server range ends
-        return ID.Value() + MAX_SERVER_ELEMENTS;
+        return ID + MAX_SERVER_ELEMENTS;
     }
 
     // Return it
@@ -72,7 +71,7 @@ void CElementIDs::PushClientID ( ElementID ID )
     if ( ID != INVALID_ELEMENT_ID )
     {
         // It's in the server element ID range, put it down to client
-        ID = ID.Value () - MAX_SERVER_ELEMENTS;
+        ID -= MAX_SERVER_ELEMENTS;
         m_ClientStack.Push ( ID );
     }
 }

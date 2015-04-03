@@ -1,19 +1,22 @@
 #pragma message("Compiling precompiled header.\n")
 
 #include <CEGUI.h>
+
 #include <windows.h>
-#define MTA_CLIENT
-#define SHARED_UTIL_WITH_FAST_HASH_MAP
-#include "SharedUtil.h"
 #include <list>
 #include <map>
 #include <string>
 #include <vector>
 
+
+#include <google/dense_hash_map>
+
 #include <d3dx9.h>
 #include <renderers/directx9GUIRenderer/d3d9renderer.h>
 #include <renderers/directx9GUIRenderer/d3d9texture.h>
 
+#include "SharedUtil.h"
+#include "SString.h"
 #include "CGUITabListItem.h"
 #include "CGUITabList.h"
 #include "CGUI_Impl.h"

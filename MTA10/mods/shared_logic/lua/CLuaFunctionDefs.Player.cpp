@@ -14,7 +14,6 @@
 *               Christian Myhre Lundheim <>
 *               Stanislav Bobrov <lil_toady@hotmail.com>
 *               Alberto Alonso <rydencillo@gmail.com>
-*               Sebas Lamers <sebasdevelopment@gmx.com>
 *
 *****************************************************************************/
 
@@ -32,24 +31,26 @@ int CLuaFunctionDefs::GetLocalPlayer ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPlayerName ( lua_State* luaVM )
 {
-//  string getPlayerName ( player thePlayer )
-    CClientPlayer* pPlayer;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPlayer );
-
-    if ( !argStream.HasErrors () )
+    // Right type?
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        // Grab his nametag text and return it
-        const char* szName = pPlayer->GetNick ();
-        if ( szName )
+        // Grab the player
+        CClientPlayer* pPlayer = lua_toplayer ( luaVM, 1 );
+        if ( pPlayer )
         {
-            lua_pushstring ( luaVM, szName );
-            return 1;
+            // Grab his nametag text and return it
+            const char* szName = pPlayer->GetNick ();
+            if ( szName )
+            {
+                lua_pushstring ( luaVM, szName );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPlayerName", "player", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPlayerName" );
 
     // Error
     lua_pushboolean ( luaVM, false );
@@ -58,16 +59,14 @@ int CLuaFunctionDefs::GetPlayerName ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPlayerFromName ( lua_State* luaVM )
 {
-//  player getPlayerFromName ( string playerName )
-    SString strNick;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strNick );
-
-    if ( !argStream.HasErrors () )
+    // Valid player nick argument?
+    if ( lua_istype ( luaVM, 1, LUA_TSTRING ) )
     {
+        // Grab the nick
+        const char* szNick = lua_tostring ( luaVM, 1 );
+
         // Grab the player with that nick
-        CClientPlayer* pPlayer = CStaticFunctionDefinitions::GetPlayerFromName ( strNick );
+        CClientPlayer* pPlayer = CStaticFunctionDefinitions::GetPlayerFromName ( szNick );
         if ( pPlayer )
         {
             // Return the player
@@ -76,7 +75,7 @@ int CLuaFunctionDefs::GetPlayerFromName ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPlayerFromName" );
 
     // Doesn't exist
     lua_pushboolean ( luaVM, false );
@@ -85,24 +84,26 @@ int CLuaFunctionDefs::GetPlayerFromName ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPlayerNametagText ( lua_State* luaVM )
 {
-//  string getPlayerNametagText ( player thePlayer )
-    CClientPlayer* pPlayer;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPlayer );
-
-    if ( !argStream.HasErrors () )
+    // Check the type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        // Grab his nametag text and return it
-        const char* szName = pPlayer->GetNametagText ();
-        if ( szName )
+        // Grab the player
+        CClientPlayer* pPlayer = lua_toplayer ( luaVM, 1 );
+        if ( pPlayer )
         {
-            lua_pushstring ( luaVM, szName );
-            return 1;
+            // Grab his nametag text and return it
+            const char* szName = pPlayer->GetNametagText ();
+            if ( szName )
+            {
+                lua_pushstring ( luaVM, szName );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPlayerNametagText", "player", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPlayerNametagText" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -112,25 +113,27 @@ int CLuaFunctionDefs::GetPlayerNametagText ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPlayerNametagColor ( lua_State* luaVM )
 {
-//  int, int, int getPlayerNametagColor ( player thePlayer )
-    CClientPlayer* pPlayer;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPlayer );
-
-    if ( !argStream.HasErrors () )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        // Grab his nametag color and return it
-        unsigned char ucR, ucG, ucB;
-        pPlayer->GetNametagColor ( ucR, ucG, ucB );
+        // Grab the player
+        CClientPlayer* pPlayer = lua_toplayer ( luaVM, 1 );
+        if ( pPlayer )
+        {
+            // Grab his nametag color and return it
+            unsigned char ucR, ucG, ucB;
+            pPlayer->GetNametagColor ( ucR, ucG, ucB );
 
-        lua_pushnumber ( luaVM, ucR );
-        lua_pushnumber ( luaVM, ucG );
-        lua_pushnumber ( luaVM, ucB );
-        return 3;
+            lua_pushnumber ( luaVM, ucR );
+            lua_pushnumber ( luaVM, ucG );
+            lua_pushnumber ( luaVM, ucB );
+            return 3;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPlayerNametagColor", "player", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPlayerNametagColor" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -139,20 +142,21 @@ int CLuaFunctionDefs::GetPlayerNametagColor ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPlayerNametagShowing ( lua_State* luaVM )
 {
-//  bool isPlayerNametagShowing ( player thePlayer )
-    CClientPlayer* pPlayer;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPlayer );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( ( iArgument1 == LUA_TLIGHTUSERDATA ) )
     {
-        bool bIsNametagShowing = pPlayer->IsNametagShowing ();
-        lua_pushboolean ( luaVM, bIsNametagShowing );
-        return 1;
+        CClientPlayer* pPlayer = lua_toplayer ( luaVM, 1 );
+        if ( pPlayer )
+        {
+            bool bIsNametagShowing = pPlayer->IsNametagShowing ();
+            lua_pushboolean ( luaVM, bIsNametagShowing );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPlayerNametagShowing", "player", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPlayerNametagShowing" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -161,21 +165,23 @@ int CLuaFunctionDefs::IsPlayerNametagShowing ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPlayerPing ( lua_State* luaVM )
 {
-//  int getPlayerPing ( player thePlayer )
-    CClientPlayer* pPlayer;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPlayer );
-
-    if ( !argStream.HasErrors () )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        // Grab his ping
-        unsigned int uiPing = pPlayer->GetPing ();
-        lua_pushnumber ( luaVM, uiPing );
-        return 1;
+        // Grab the player
+        CClientPlayer* pPlayer = lua_toplayer ( luaVM, 1 );
+        if ( pPlayer )
+        {
+            // Grab his ping
+            unsigned int uiPing = pPlayer->GetPing ();
+            lua_pushnumber ( luaVM, uiPing );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPlayerPing", "player", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPlayerPing" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -185,30 +191,57 @@ int CLuaFunctionDefs::GetPlayerPing ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPlayerTeam ( lua_State* luaVM )
 {
-//  team getPlayerTeam ( player thePlayer )
-    CClientPlayer* pPlayer;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPlayer );
-
-    if ( !argStream.HasErrors () )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        // Grab his team and return it
-        CClientTeam* pTeam = pPlayer->GetTeam ();
-        if ( pTeam )
+        // Grab the player
+        CClientPlayer* pPlayer = lua_toplayer ( luaVM, 1 );
+        if ( pPlayer )
         {
-            lua_pushelement ( luaVM, pTeam );
-            return 1;
+            // Grab his team and return it
+            CClientTeam* pTeam = pPlayer->GetTeam ();
+            if ( pTeam )
+            {
+                lua_pushelement ( luaVM, pTeam );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPlayerTeam", "player", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPlayerTeam" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
+
+int CLuaFunctionDefs::IsPlayerDead ( lua_State* luaVM )
+{
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
+    {
+        // Grab the ped
+        CClientPlayer* pPlayer = lua_toplayer ( luaVM, 1 );
+        if ( pPlayer )
+        {
+            // Grab his dead state and return it
+            bool bDead = pPlayer->IsDead ();
+            lua_pushboolean ( luaVM, bDead );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPlayerDead", "player", 1 );
+    }
+    else
+        m_pScriptDebugging->LogBadType ( luaVM, "isPlayerDead" );
+
+    // Failed
+    lua_pushnil ( luaVM );
+    return 1;
+}
 
 int CLuaFunctionDefs::GetPlayerMoney ( lua_State* luaVM )
 {
@@ -235,51 +268,54 @@ int CLuaFunctionDefs::GetPlayerWantedLevel ( lua_State* luaVM )
     return 1;
 }
 
+
 int CLuaFunctionDefs::ShowPlayerHudComponent ( lua_State* luaVM )
 {
-//  bool showPlayerHudComponent ( string component, bool show )
-    eHudComponent component; bool bShow;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadEnumString ( component );
-    argStream.ReadBool ( bShow );
-
-    if ( !argStream.HasErrors () )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TSTRING ) &&
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        if ( CStaticFunctionDefinitions::ShowPlayerHudComponent ( component, bShow ) )
+        // Hud components (TODO: Move somewhere else)
+        struct SHudComponent { char szName [ 15 ]; };
+        static SHudComponent hudComponents [] = { { "ammo" }, { "weapon" }, { "health" },
+        { "breath" }, { "armour" }, { "money" },
+        { "vehicle_name" }, { "area_name" }, { "radar" },
+        { "clock" }, { "all" }, { NULL } };
+
+        // Grab the component name and the bool deciding whether to show it or not
+        const char* szComponent = lua_tostring ( luaVM, 1 );
+        bool bShow = ( lua_toboolean ( luaVM, 2 ) ) ? true:false;
+
+        // Any component specified?
+        if ( szComponent && szComponent [ 0 ] )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            // Loop through the components and find the correct one (matching name)
+            unsigned char ucComponent = 0xFF;
+            for ( int i = 0 ; hudComponents [ i ].szName [ 0 ] != NULL ; i++ )
+            {
+                if ( !stricmp ( szComponent, hudComponents [ i ].szName ) )
+                {
+                    ucComponent = static_cast < unsigned char > ( i );
+                    break;
+                }
+            }
+
+            // Found it?
+            if ( ucComponent != 0xFF )
+            {
+                // Do it
+                if ( CStaticFunctionDefinitions::ShowPlayerHudComponent ( ucComponent, bShow ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "showPlayerHudComponent", "component", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // Failed
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::IsPlayerHudComponentVisible ( lua_State* luaVM )
-{
-//  bool isPlayerHudComponentVisible ( string componen )
-    eHudComponent component;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadEnumString ( component );
-
-    if ( !argStream.HasErrors () )
-    {
-        bool bIsVisible;
-        if ( CStaticFunctionDefinitions::IsPlayerHudComponentVisible ( component, bIsVisible ) )
-        {
-            lua_pushboolean ( luaVM, bIsVisible );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "showPlayerHudComponent" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -289,24 +325,18 @@ int CLuaFunctionDefs::IsPlayerHudComponentVisible ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPlayerMoney ( lua_State* luaVM )
 {
-//  bool setPlayerMoney ( int amount, bool instant = false )
-    int lMoney;
-    bool bInstant;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( lMoney );
-    argStream.ReadBool ( bInstant, false );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
-        if ( CStaticFunctionDefinitions::SetPlayerMoney ( lMoney, bInstant ) )
+        long lMoney = static_cast < long > ( lua_tonumber ( luaVM, 1 ) );
+        if ( CStaticFunctionDefinitions::SetPlayerMoney ( lMoney ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }        
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPlayerMoney" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -315,14 +345,10 @@ int CLuaFunctionDefs::SetPlayerMoney ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GivePlayerMoney ( lua_State* luaVM )
 {
-//  bool givePlayerMoney ( int amount )
-    int lMoney;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( lMoney );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
+        long lMoney = static_cast < long > ( lua_tonumber ( luaVM, 1 ) );
         if ( CStaticFunctionDefinitions::GivePlayerMoney ( lMoney ) )
         {
             lua_pushboolean ( luaVM, true );
@@ -330,7 +356,7 @@ int CLuaFunctionDefs::GivePlayerMoney ( lua_State* luaVM )
         }        
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "givelayerMoney" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -339,14 +365,10 @@ int CLuaFunctionDefs::GivePlayerMoney ( lua_State* luaVM )
 
 int CLuaFunctionDefs::TakePlayerMoney ( lua_State* luaVM )
 {
-//  bool takePlayerMoney ( int amount )
-    int lMoney;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( lMoney );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
+        long lMoney = static_cast < long > ( lua_tonumber ( luaVM, 1 ) );
         if ( CStaticFunctionDefinitions::TakePlayerMoney ( lMoney ) )
         {
             lua_pushboolean ( luaVM, true );
@@ -354,7 +376,7 @@ int CLuaFunctionDefs::TakePlayerMoney ( lua_State* luaVM )
         }        
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "takePlayerMoney" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -363,75 +385,48 @@ int CLuaFunctionDefs::TakePlayerMoney ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPlayerNametagText ( lua_State* luaVM )
 {
-//  bool setPlayerNametagText ( player thePlayer, string text )
-    CClientEntity* pPlayer; SString strText;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPlayer );
-    argStream.ReadString ( strText );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) )
     {
-        if ( CStaticFunctionDefinitions::SetPlayerNametagText ( *pPlayer, strText ) )
+        CClientPlayer * pPlayer = lua_toplayer ( luaVM, 1 );
+
+        const char * szText = lua_tostring ( luaVM, 2 );
+        if ( pPlayer && CStaticFunctionDefinitions::SetPlayerNametagText ( *pPlayer, const_cast < char * > ( szText ) ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPlayerNametagText" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
+
 int CLuaFunctionDefs::SetPlayerNametagColor ( lua_State* luaVM )
 {
-    CScriptArgReader argStream ( luaVM );
-    if ( !argStream.NextIsBool ( 1 ) )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    int iArgument3 = lua_type ( luaVM, 3 );
+    int iArgument4 = lua_type ( luaVM, 4 );
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) &&
+        ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+        ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) )
     {
-        // Call type 1
-        //  bool setPlayerNametagColor ( player thePlayer, int r, int g, int b )
-        CClientEntity* pPlayer; int iR; int iG; int iB;
-
-        argStream.ReadUserData ( pPlayer );
-        argStream.ReadNumber ( iR );
-        argStream.ReadNumber ( iG );
-        argStream.ReadNumber ( iB );
-
-        if ( !argStream.HasErrors () )
+        CClientPlayer * pPlayer = lua_toplayer ( luaVM, 1 );
+        unsigned char ucR = static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) );
+        unsigned char ucG = static_cast < unsigned char > ( lua_tonumber ( luaVM, 3 ) );
+        unsigned char ucB = static_cast < unsigned char > ( lua_tonumber ( luaVM, 4 ) );
+        if ( CStaticFunctionDefinitions::SetPlayerNametagColor ( *pPlayer, ucR, ucG, ucB ) )
         {
-            if ( CStaticFunctionDefinitions::SetPlayerNametagColor ( *pPlayer, false, iR, iG, iB ) )
-            {
-                lua_pushboolean ( luaVM, true );
-                return 1;
-            }
+            lua_pushboolean ( luaVM, true );
+            return 1;
         }
     }
     else
-    {
-        // Call type 2
-        //  bool setPlayerNametagColor ( player thePlayer, false )
-        CClientEntity* pPlayer; bool bFalse;
-
-        argStream.ReadUserData ( pPlayer );
-        argStream.ReadBool ( bFalse );
-
-        if ( !argStream.HasErrors () )
-        {
-            if ( bFalse == false )
-            {
-                if ( CStaticFunctionDefinitions::SetPlayerNametagColor ( *pPlayer, true, 255, 255, 255 ) )
-                {
-                    lua_pushboolean ( luaVM, true );
-                    return 1;
-                }
-            }
-        }
-    }
-
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPlayerNametagColor" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -439,24 +434,29 @@ int CLuaFunctionDefs::SetPlayerNametagColor ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPlayerNametagShowing ( lua_State* luaVM )
 {
-//  bool setPlayerNametagShowing ( player thePlayer, bool showing )
-    CClientEntity* pPlayer; bool bShowing;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPlayer );
-    argStream.ReadBool ( bShowing );
-
-    if ( !argStream.HasErrors () )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        // Set the new rotation
-        if ( CStaticFunctionDefinitions::SetPlayerNametagShowing ( *pPlayer, bShowing ) )
+        // Grab the entity
+        CClientPlayer * pPlayer = lua_toplayer ( luaVM, 1 );
+        bool bShowing = ( lua_toboolean ( luaVM, 2 ) ) ? true:false;
+
+        // Valid pPlayer?
+        if ( pPlayer )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            // Set the new rotation
+            if ( CStaticFunctionDefinitions::SetPlayerNametagShowing ( *pPlayer, bShowing ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPlayerNametagShowing", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPlayerNametagShowing" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -479,39 +479,7 @@ int CLuaFunctionDefs::GetPlayerUserName ( lua_State* luaVM )
     return 1;
 }
 
-int CLuaFunctionDefs::GetPlayerSerial ( lua_State* luaVM )
-{
-    char szSerial [ 64 ];
-    g_pCore->GetNetwork ()->GetSerial ( szSerial, sizeof ( szSerial ) );
-
-    lua_pushstring ( luaVM, szSerial );
-    return 1;
-}
-
-
 // Player Map
-
-int CLuaFunctionDefs::ForcePlayerMap ( lua_State* luaVM )
-{    
-    bool bForced;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadBool ( bForced );
-
-    if ( !argStream.HasErrors () )
-    {
-        // Force the map to open or close
-        if ( CStaticFunctionDefinitions::ForcePlayerMap ( bForced ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
 
 int CLuaFunctionDefs::IsPlayerMapForced ( lua_State* luaVM )
 {    
@@ -556,3 +524,4 @@ int CLuaFunctionDefs::GetPlayerMapBoundingBox ( lua_State* luaVM )
     lua_pushboolean ( luaVM, false );
     return 1;
 }
+

@@ -71,7 +71,7 @@ void DirectX9Texture::loadFromFile(const String& filename, const String& resourc
 
 	D3DXIMAGE_INFO texInfo;
 	HRESULT hr = D3DXCreateTextureFromFileInMemoryEx(((DirectX9Renderer*)getRenderer())->getDevice(), texFile.getDataPtr(),
-            static_cast<UINT>(texFile.getSize()), D3DX_DEFAULT_NONPOW2, D3DX_DEFAULT_NONPOW2, 1, 0, D3DFMT_UNKNOWN, D3DPOOL_MANAGED,
+            static_cast<UINT>(texFile.getSize()), D3DX_DEFAULT, D3DX_DEFAULT, 1, 0, D3DFMT_UNKNOWN, D3DPOOL_DEFAULT,
             D3DX_DEFAULT, D3DX_DEFAULT, 0, &texInfo, NULL, &d_d3dtexture);
 	
 	System::getSingleton().getResourceProvider()->unloadRawDataContainer(texFile);
@@ -83,7 +83,7 @@ void DirectX9Texture::loadFromFile(const String& filename, const String& resourc
 
 		d_filename = filename;
         d_resourceGroup = resourceGroup;
-		d_isMemoryTexture = true;
+		d_isMemoryTexture = false;
 		d_isRenderTarget = false;
 	}
 	else
@@ -125,10 +125,10 @@ void DirectX9Texture::loadFromMemory(const void* buffPtr, uint buffWidth, uint b
 		d_height	= (ushort)texdesc.Height;
 
 		// lock the D3D texture
-		D3DLOCKED_RECT	rect = { 0, NULL };
+		D3DLOCKED_RECT	rect;
 		hr = d_d3dtexture->LockRect(0, &rect, NULL, 0);
 
-		if (FAILED(hr) || rect.pBits == NULL )
+		if (FAILED(hr))
 		{
 			d_d3dtexture->Release();
 			d_d3dtexture = NULL;

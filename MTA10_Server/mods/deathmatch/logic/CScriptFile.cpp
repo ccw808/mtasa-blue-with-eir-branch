@@ -12,12 +12,12 @@
 
 #include "StdInc.h"
 
-CScriptFile::CScriptFile ( uint uiScriptId, const char* szFilename, unsigned long ulMaxSize ) : CElement ( NULL )
+CScriptFile::CScriptFile ( CResource* pResource, const char* szFilename, unsigned long ulMaxSize ) : CElement ( NULL )
 {
     // Init
     m_iType = CElement::SCRIPTFILE;
     SetTypeName ( "file" );
-    m_uiScriptId = uiScriptId;
+    m_pResource = pResource;
     m_pFile = NULL;
     m_strFilename = szFilename ? szFilename : "";
     m_ulMaxSize = ulMaxSize;
@@ -31,7 +31,7 @@ CScriptFile::~CScriptFile ( void )
 }
 
 
-bool CScriptFile::Load ( CResource* pResourceForFilePath, eMode Mode )
+bool CScriptFile::Load ( eMode Mode )
 {
     // If we haven't already got a file
     if ( !m_pFile )
@@ -42,32 +42,26 @@ bool CScriptFile::Load ( CResource* pResourceForFilePath, eMode Mode )
         {
             // Open file in read only binary mode
             case MODE_READ:
-                if ( pResourceForFilePath->GetFilePath ( m_strFilename.c_str(), strFilePath ) )
+                if ( m_pResource->GetFilePath ( m_strFilename.c_str(), strFilePath ) )
                     m_pFile = fopen ( strFilePath.c_str (), "rb" );
                 break;
 
             // Open file in read write binary mode.
             case MODE_READWRITE:
                 // Try to load the file in rw mode. Use existing content.
-                if ( pResourceForFilePath->GetFilePath ( m_strFilename.c_str(), strFilePath ) )
+                if ( m_pResource->GetFilePath ( m_strFilename.c_str(), strFilePath ) )
                     m_pFile = fopen ( strFilePath.c_str (), "rb+" );
                 break;
 
             // Open file in read write binary mode. Truncate size to 0.
             case MODE_CREATE:
-                strFilePath = pResourceForFilePath->GetResourceDirectoryPath () + m_strFilename;
+                strFilePath = m_pResource->GetResourceDirectoryPath () + m_strFilename;
                 MakeSureDirExists ( strFilePath.c_str () );
                 m_pFile = fopen ( strFilePath.c_str (), "wb+" );
                 break;
         }
 
         // Return whether we successfully opened it or not
-        if ( m_pFile )
-        {
-            CResource* pResource = g_pGame->GetResourceManager ()->GetResourceFromScriptID( m_uiScriptId );
-            if ( pResource && pResource->GetVirtualMachine() )
-                pResource->GetVirtualMachine()->OnOpenFile( m_strFilename );
-        }
         return m_pFile != NULL;
     }
 
@@ -84,9 +78,6 @@ void CScriptFile::Unload ( void )
         // Close the file
         fclose ( m_pFile );
         m_pFile = NULL;
-        CResource* pResource = g_pGame->GetResourceManager ()->GetResourceFromScriptID( m_uiScriptId );
-        if ( pResource && pResource->GetVirtualMachine() )
-            pResource->GetVirtualMachine()->OnCloseFile( m_strFilename );
     }
 }
 

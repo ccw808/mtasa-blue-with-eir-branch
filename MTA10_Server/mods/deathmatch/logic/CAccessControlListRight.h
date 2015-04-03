@@ -30,29 +30,22 @@ public:
 
 public:
                                                 CAccessControlListRight     ( const char* szRightName, ERightType eRightType, bool bAccess, class CAccessControlListManager* pACLManager );
-    virtual                                     ~CAccessControlListRight    ( void )            { OnChange (); }
+    virtual                                     ~CAccessControlListRight    ( void )            { };
 
-    void                                        WriteToXMLNode              ( CXMLNode* pNode );
-
-    inline const char*                          GetRightName                ( void )            { return m_strRightName; };
+    inline const char*                          GetRightName                ( void )            { return m_szRightName; };
     inline unsigned int                         GetRightNameHash            ( void )            { return m_uiNameHash; };
     inline ERightType                           GetRightType                ( void )            { return m_eRightType; };
 
     inline bool                                 GetRightAccess              ( void )            { return m_bAccess; };
-    inline void                                 SetRightAccess              ( bool bAccess)     { m_bAccess = bAccess; OnChange (); };
-
-    void                                        SetAttributeValue           ( const SString& strAttributeName, const SString& strAttributeValue );
-    SString                                     GetAttributeValue           ( const SString& strAttributeName );
+    inline void                                 SetRightAccess              ( bool bAccess)     { m_bAccess = bAccess; };
 
 private:
-    void                                        OnChange                    ( void );
-
-    SString                                     m_strRightName;
+    char                                        m_szRightName               [ MAX_ACL_RIGHT_NAME_LENGTH ];
     unsigned int                                m_uiNameHash;
     ERightType                                  m_eRightType;
     bool                                        m_bAccess;
     class CAccessControlListManager*            m_pACLManager;
-    std::map < SString, SString >               m_ExtraAttributeMap;
+
 };
 
 #endif

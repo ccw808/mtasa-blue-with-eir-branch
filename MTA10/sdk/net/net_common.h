@@ -32,88 +32,23 @@ enum NetPacketPriority
 {
     PACKET_PRIORITY_HIGH = 0,
     PACKET_PRIORITY_MEDIUM,
-    PACKET_PRIORITY_LOW,
-    PACKET_PRIORITY_COUNT
+    PACKET_PRIORITY_LOW
 };
 
 enum NetPacketReliability
 {
-    PACKET_RELIABILITY_UNRELIABLE = 0,          //  Can arrive out of order
+    PACKET_RELIABILITY_UNRELIABLE = 0,
     PACKET_RELIABILITY_UNRELIABLE_SEQUENCED,
-    PACKET_RELIABILITY_RELIABLE,                //  Can arrive out of order
+    PACKET_RELIABILITY_RELIABLE,
     PACKET_RELIABILITY_RELIABLE_ORDERED,
-    PACKET_RELIABILITY_RELIABLE_SEQUENCED       //  Can drop packets
+    PACKET_RELIABILITY_RELIABLE_SEQUENCED   //     Can drop packets
 };
 
-// Copy of raknet statistics
-struct NetRawStatistics
+enum NetPacketOrdering
 {
-    unsigned messageSendBuffer[ 4 ];
-    unsigned messagesSent[ 4 ];
-    long long messageDataBitsSent[ 4 ];
-    long long messageTotalBitsSent[ 4 ];
-    unsigned packetsContainingOnlyAcknowlegements;
-    unsigned acknowlegementsSent;
-    unsigned acknowlegementsPending;
-    long long acknowlegementBitsSent;
-    unsigned packetsContainingOnlyAcknowlegementsAndResends;
-    unsigned messageResends;
-    long long messageDataBitsResent;
-    long long messagesTotalBitsResent;
-    unsigned messagesOnResendQueue;
-    unsigned numberOfUnsplitMessages;
-    unsigned numberOfSplitMessages;
-    unsigned totalSplits;
-    unsigned packetsSent;
-    long long encryptionBitsSent;
-    long long totalBitsSent;
-    unsigned sequencedMessagesOutOfOrder;
-    unsigned sequencedMessagesInOrder;
-    unsigned orderedMessagesOutOfOrder;
-    unsigned orderedMessagesInOrder;
-    unsigned packetsReceived;
-    unsigned packetsWithBadCRCReceived;
-    long long bitsReceived;
-    long long bitsWithBadCRCReceived;
-    unsigned acknowlegementsReceived;
-    unsigned duplicateAcknowlegementsReceived;
-    unsigned messagesReceived;
-    unsigned invalidMessagesReceived;
-    unsigned duplicateMessagesReceived;
-    unsigned messagesWaitingForReassembly;
-    unsigned internalOutputQueueSize;
-    double bitsPerSecond;
-    long long connectionStartTime;
-    bool bandwidthExceeded;
-};
-
-struct NetStatistics
-{
-    // Needed for getNetworkStats()
-    unsigned long long  bytesReceived;
-    unsigned long long  bytesSent;
-    uint    packetsReceived;
-    uint    packetsSent;
-    float   packetlossTotal;
-    float   packetlossLastSecond;
-    uint    messagesInSendBuffer;
-    uint    messagesInResendBuffer;
-    bool    isLimitedByCongestionControl;
-    bool    isLimitedByOutgoingBandwidthLimit;
-
-    // Copy of raknet statistics
-    NetRawStatistics raw;
-};
-
-enum ePacketOrdering
-{
-    PACKET_ORDERING_DEFAULT = 0,
+    PACKET_ORDERING_GAME = 0,
     PACKET_ORDERING_CHAT,
-    PACKET_ORDERING_DATA_TRANSFER,
-    PACKET_ORDERING_VOICE,
+    PACKET_ORDERING_FILETRANSFER
 };
-
-// Typedefs to make shared code easier
-typedef int NetPlayerID;
 
 #endif

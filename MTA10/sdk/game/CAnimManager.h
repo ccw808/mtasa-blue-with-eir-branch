@@ -36,7 +36,7 @@ class CAnimBlockSAInterface;
 
 class CAnimManager
 {
-    friend class CAnimBlendAssociation;
+    friend CAnimBlendAssociation;
 public:
     virtual void                        Initialize                              ( void ) = 0;
     virtual void                        Shutdown                                ( void ) = 0;

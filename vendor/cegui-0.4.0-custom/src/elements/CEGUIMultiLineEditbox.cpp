@@ -108,8 +108,7 @@ MultiLineEditbox::MultiLineEditbox(const String& type, const String& name) :
 	addMultiLineEditboxProperties();
 
 	// we always need a terminating \n
-	d_text_raw.append(1, '\n');
-    d_text = d_text_raw.bidify ();
+	d_text.append(1, '\n');
 }
 
 
@@ -314,10 +313,9 @@ void MultiLineEditbox::setMaxTextLength(size_t max_len)
 		onMaximumTextLengthChanged(args);
 
 		// trim string
-		if (d_text_raw.length() > d_maxTextLen)
+		if (d_text.length() > d_maxTextLen)
 		{
-			d_text_raw.resize(d_maxTextLen);
-			d_text = d_text_raw.bidify ();
+			d_text.resize(d_maxTextLen);
 			onTextChanged(args);
 		}
 
@@ -712,10 +710,6 @@ void MultiLineEditbox::formatText(void)
 							{
 								// get point at which to break the token
 								lineLen = fnt->getCharAtPixel(paraText.substr(lineIndex, nextTokenSize), areaWidth);
-
-                                // If not enough room, pretend there is (to prevent infinite loop)
-							    if ( lineLen == 0 )
-							        lineLen = 1;
 							}
 
 							// text wraps, exit loop early with line info up until wrap point
@@ -893,8 +887,7 @@ void MultiLineEditbox::eraseSelectedText(bool modify_text)
 		// erase the selected characters (if required)
 		if (modify_text)
 		{
-			d_text_raw.erase(getSelectionStartIndex(), getSelectionLength());
-            d_text = d_text_raw.bidify();
+			d_text.erase(getSelectionStartIndex(), getSelectionLength());
 
 			// trigger notification that text has changed.
 			WindowEventArgs args(this);
@@ -920,9 +913,8 @@ void MultiLineEditbox::handleBackspace(void)
 		}
 		else if (d_caratPos > 0)
 		{
-			d_text_raw.erase(d_caratPos - 1, 1);
+			d_text.erase(d_caratPos - 1, 1);
 			setCaratIndex(d_caratPos - 1);
-            d_text = d_text_raw.bidify();
 
 			WindowEventArgs args(this);
 			onTextChanged(args);
@@ -945,9 +937,8 @@ void MultiLineEditbox::handleDelete(void)
 		}
 		else if (getCaratIndex() < d_text.length() - 1)
 		{
-			d_text_raw.erase(d_caratPos, 1);
+			d_text.erase(d_caratPos, 1);
 			ensureCaratIsVisible();
-            d_text = d_text_raw.bidify();
 
 			WindowEventArgs args(this);
 			onTextChanged(args);
@@ -1221,12 +1212,10 @@ void MultiLineEditbox::handleNewLine(uint sysKeys)
 		eraseSelectedText();
 
 		// if there is room
-		if (d_text_raw.length() - 1 < d_maxTextLen)
+		if (d_text.length() - 1 < d_maxTextLen)
 		{
-			d_text_raw.insert(getCaratIndex(), 1, 0x0a);
-            d_text = d_text_raw.bidify ();
+			d_text.insert(getCaratIndex(), 1, 0x0a);
 			d_caratPos++;
-
 
 			WindowEventArgs args(this);
 			onTextChanged(args);
@@ -1331,9 +1320,7 @@ void MultiLineEditbox::onMouseTripleClicked(MouseEventArgs& e)
 		// erroneous situation and select up to end at end of text.
 		if (paraEnd == String::npos)
 		{
-	        d_text_raw.append(1, '\n');
-            d_text = d_text_raw.bidify ();
-
+			d_text.append(1, '\n');
 			paraEnd = d_text.length() - 1;
 		}
 
@@ -1390,17 +1377,14 @@ void MultiLineEditbox::onCharacter(KeyEventArgs& e)
 	// only need to take notice if we have focus
 	if (hasInputFocus() && !isReadOnly() && getFont()->isCodepointAvailable(e.codepoint))
 	{
-        // erase selected text
+		// erase selected text
 		eraseSelectedText();
 
 		// if there is room
-		if ( d_text_raw.length() == 0 || ( d_text_raw.length() - 1 < d_maxTextLen ) )
+		if (d_text.length() - 1 < d_maxTextLen)
 		{
-			d_text_raw.insert(getCaratIndex(), 1, e.codepoint);
+			d_text.insert(getCaratIndex(), 1, e.codepoint);
 			d_caratPos++;
-
-            // Trigger our text setting
-            d_text = d_text_raw.bidify();
 
 			WindowEventArgs args(this);
 			onTextChanged(args);
@@ -1522,10 +1506,7 @@ void MultiLineEditbox::onTextChanged(WindowEventArgs& e)
 {
     // ensure last character is a new line
     if ((d_text.length() == 0) || (d_text[d_text.length() - 1] != '\n'))
-    {
-    	d_text_raw.append(1, '\n');
-        d_text = d_text_raw.bidify ();
-    }
+        d_text.append(1, '\n');
 
     // clear selection
     clearSelection();

@@ -56,13 +56,8 @@ typedef struct _tagFONT_PROPERTIES_ANSI
 
 typedef struct _tagTT_OFFSET_TABLE
 {
-    union {
-        struct {
-	        USHORT	uMajorVersion;
-	        USHORT	uMinorVersion;
-        };
-        ULONG uTag;
-    };
+	USHORT	uMajorVersion;
+	USHORT	uMinorVersion;
 	USHORT	uNumOfTables;
 	USHORT	uSearchRange;
 	USHORT	uEntrySelector;
@@ -113,18 +108,6 @@ BOOL GetFontProperties(LPCTSTR lpszFilePath, FONT_PROPERTIES * lpFontPropsX)
 						 OPEN_ALWAYS,
 						 FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
 						 NULL);
-
-	if (hFile == INVALID_HANDLE_VALUE)
-    {
-        // Windows 8 fix
-	    hFile = ::CreateFile(lpszFilePath,
-						     GENERIC_READ,// | GENERIC_WRITE,
-						     FILE_SHARE_READ,
-						     NULL,
-						     OPEN_ALWAYS,
-						     FILE_ATTRIBUTE_NORMAL | FILE_FLAG_SEQUENTIAL_SCAN,
-						     NULL);
-    }
 
 	if (hFile == INVALID_HANDLE_VALUE)
 	{
@@ -182,20 +165,13 @@ BOOL GetFontProperties(LPCTSTR lpszFilePath, FONT_PROPERTIES * lpFontPropsX)
 	memcpy(&ttOffsetTable, &lpMapAddress[index], sizeof(TT_OFFSET_TABLE));
 	index += sizeof(TT_OFFSET_TABLE);
 
-	USHORT uNumOfTables = SWAPWORD(ttOffsetTable.uNumOfTables);
-	USHORT uMajorVersion = SWAPWORD(ttOffsetTable.uMajorVersion);
-	USHORT uMinorVersion = SWAPWORD(ttOffsetTable.uMinorVersion);
-	ULONG uTag = SWAPLONG(ttOffsetTable.uTag);
+	ttOffsetTable.uNumOfTables = SWAPWORD(ttOffsetTable.uNumOfTables);
+	ttOffsetTable.uMajorVersion = SWAPWORD(ttOffsetTable.uMajorVersion);
+	ttOffsetTable.uMinorVersion = SWAPWORD(ttOffsetTable.uMinorVersion);
 
 	//check is this is a true type font and the version is 1.0
-    // or is CFF OpenType font
-	if ( ( uMajorVersion != 1 || uMinorVersion != 0 ) && uTag != 'OTTO' )
-    {
-	    ::UnmapViewOfFile(lpMapAddress);
-	    ::CloseHandle(hMappedFile);
-	    ::CloseHandle(hFile);
+	if (ttOffsetTable.uMajorVersion != 1 || ttOffsetTable.uMinorVersion != 0)
 		return bRetVal;
-    }
 
 	TT_TABLE_DIRECTORY tblDir;
 	memset(&tblDir, 0, sizeof(TT_TABLE_DIRECTORY));
@@ -203,7 +179,7 @@ BOOL GetFontProperties(LPCTSTR lpszFilePath, FONT_PROPERTIES * lpFontPropsX)
 	char szTemp[4096];
 	memset(szTemp, 0, sizeof(szTemp));
 
-	for (int i = 0; i< uNumOfTables; i++)
+	for (int i = 0; i< ttOffsetTable.uNumOfTables; i++)
 	{
 		//f.Read(&tblDir, sizeof(TT_TABLE_DIRECTORY));
 		memcpy(&tblDir, &lpMapAddress[index], sizeof(TT_TABLE_DIRECTORY));
@@ -251,7 +227,7 @@ BOOL GetFontProperties(LPCTSTR lpszFilePath, FONT_PROPERTIES * lpFontPropsX)
 			ttRecord.uStringLength = SWAPWORD(ttRecord.uStringLength);
 			ttRecord.uStringOffset = SWAPWORD(ttRecord.uStringOffset);
 
-			if (ttRecord.uNameID == 1 || ttRecord.uNameID == 0 || ttRecord.uNameID == 4 || ttRecord.uNameID == 7)
+			if (ttRecord.uNameID == 1 || ttRecord.uNameID == 0 || ttRecord.uNameID == 7)
 			{
 				int nPos = index; //f.GetPosition();
 
@@ -262,44 +238,35 @@ BOOL GetFontProperties(LPCTSTR lpszFilePath, FONT_PROPERTIES * lpFontPropsX)
 				memcpy(szTemp, &lpMapAddress[index], ttRecord.uStringLength);
 				index += ttRecord.uStringLength;
 
-                // Sometimes neeeds a unitext to sortofansitext hack
-                std::string strTemp = szTemp;
-                if ( strTemp.length () == 0 && ttRecord.uStringLength > 2 )
-                {
-                    std::wstring strTempE = (const wchar_t*)(szTemp+1);
-                    strTemp = UTF16ToMbUTF8 ( strTempE );
-                }
-                const char* szTempAnsi = strTemp.c_str ();
-
-				if (szTempAnsi[0] != 0)
+				if (szTemp[0] != 0)
 				{
-					//_ASSERTE(strlen(szTempAnsi) < sizeof(lpFontProps->csName));
+					_ASSERTE(strlen(szTemp) < sizeof(lpFontProps->csName));
 
 					switch (ttRecord.uNameID)
 					{
 						case 0:
 							if (lpFontProps->csCopyright[0] == 0)
-								STRNCPY(lpFontProps->csCopyright, szTempAnsi,
-									sizeof(lpFontProps->csCopyright));
+								strncpy(lpFontProps->csCopyright, szTemp,
+									sizeof(lpFontProps->csCopyright)-1);
 							break;
 
 						case 1:
 							if (lpFontProps->csFamily[0] == 0)
-								STRNCPY(lpFontProps->csFamily, szTempAnsi,
-									sizeof(lpFontProps->csFamily));
+								strncpy(lpFontProps->csFamily, szTemp,
+									sizeof(lpFontProps->csFamily)-1);
 							bRetVal = TRUE;
 							break;
 
 						case 4:
 							if (lpFontProps->csName[0] == 0)
-								STRNCPY(lpFontProps->csName, szTempAnsi,
-									sizeof(lpFontProps->csName));
+								strncpy(lpFontProps->csName, szTemp,
+									sizeof(lpFontProps->csName)-1);
 							break;
 
 						case 7:
 							if (lpFontProps->csTrademark[0] == 0)
-								STRNCPY(lpFontProps->csTrademark, szTempAnsi,
-									sizeof(lpFontProps->csTrademark));
+								strncpy(lpFontProps->csTrademark, szTemp,
+									sizeof(lpFontProps->csTrademark)-1);
 							break;
 
 						default:
@@ -316,7 +283,7 @@ BOOL GetFontProperties(LPCTSTR lpszFilePath, FONT_PROPERTIES * lpFontPropsX)
 	::CloseHandle(hFile);
 
 	if (lpFontProps->csName[0] == 0)
-		STRNCPY(lpFontProps->csName, lpFontProps->csFamily, sizeof( lpFontProps->csName ));
+		strcpy(lpFontProps->csName, lpFontProps->csFamily);
 
 	memset(lpFontPropsX, 0, sizeof(FONT_PROPERTIES));
 
@@ -331,10 +298,10 @@ BOOL GetFontProperties(LPCTSTR lpszFilePath, FONT_PROPERTIES * lpFontPropsX)
 		sizeof(lpFontPropsX->csFamily)/sizeof(TCHAR)-1);
     */
 
-    STRNCPY(lpFontPropsX->csName, lpFontProps->csName, sizeof( lpFontPropsX->csName ));
-	STRNCPY(lpFontPropsX->csCopyright, lpFontProps->csCopyright, sizeof( lpFontPropsX->csCopyright ));
-	STRNCPY(lpFontPropsX->csTrademark, lpFontProps->csTrademark, sizeof( lpFontPropsX->csTrademark ));
-	STRNCPY(lpFontPropsX->csFamily, lpFontProps->csFamily, sizeof( lpFontPropsX->csFamily ));
+    strcpy(lpFontPropsX->csName, lpFontProps->csName);
+	strcpy(lpFontPropsX->csCopyright, lpFontProps->csCopyright);
+	strcpy(lpFontPropsX->csTrademark, lpFontProps->csTrademark);
+	strcpy(lpFontPropsX->csFamily, lpFontProps->csFamily);
 
 	return bRetVal;
 }

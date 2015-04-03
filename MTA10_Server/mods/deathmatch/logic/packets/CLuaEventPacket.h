@@ -21,22 +21,21 @@ class CLuaEventPacket : public CPacket
 {
 public:
                             CLuaEventPacket             ( void );
-                            CLuaEventPacket             ( const char* szName, ElementID ID, CLuaArguments* pArguments );
+                            CLuaEventPacket             ( const char* szName, ElementID ID, CLuaArguments& Arguments );
 
-    inline ePacketID                GetPacketID                 ( void ) const              { return PACKET_ID_LUA_EVENT; };
-    inline unsigned long            GetFlags                    ( void ) const              { return PACKET_HIGH_PRIORITY | PACKET_RELIABLE | PACKET_SEQUENCED; };
+    inline ePacketID        GetPacketID                 ( void ) const              { return PACKET_ID_LUA_EVENT; };
+    inline unsigned long    GetFlags                    ( void ) const              { return PACKET_RELIABLE | PACKET_SEQUENCED; };
 
     bool                    Read                        ( NetBitStreamInterface& BitStream );
     bool                    Write                       ( NetBitStreamInterface& BitStream ) const;
 
-    inline const char*      GetName                     ( void )                    { return m_strName; }
+    inline char*            GetName                     ( void )                    { return m_szName; }
     inline ElementID        GetElementID                ( void )                    { return m_ElementID; }
-    inline CLuaArguments*   GetArguments                ( void )                    { return m_pArguments; }
+    inline CLuaArguments&   GetArguments                ( void )                    { return m_Arguments; }
 private:
-    SString                 m_strName;
+    char                    m_szName [ MAX_EVENT_NAME_LENGTH ];
     ElementID               m_ElementID;
-    CLuaArguments           m_ArgumentsStore;
-    CLuaArguments*          m_pArguments;
+    CLuaArguments           m_Arguments;
 };
 
 #endif

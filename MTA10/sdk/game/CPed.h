@@ -27,7 +27,6 @@ class CTaskManager;
 // forward declaration, avoid compile error
 class CVehicle;
 class CObject;
-class CWeaponStat;
 
 enum ePedPieceTypes {
     PED_PIECE_UNKNOWN = 0,
@@ -98,7 +97,6 @@ enum eFightingStyle
 
 enum eMoveAnim
 {
-    MOVE_DEFAULT = 0,
     MOVE_PLAYER = 54,
     MOVE_PLAYER_F,
     MOVE_PLAYER_M,
@@ -139,23 +137,7 @@ enum eMoveAnim
     MOVE_SKATE,
 };
 
-inline bool IsValidMoveAnim( uint iMoveAnim )
-{
-    return ( iMoveAnim == MOVE_DEFAULT ) ||
-           ( iMoveAnim >= MOVE_PLAYER && iMoveAnim <= MOVE_JETPACK ) ||
-           ( iMoveAnim >= MOVE_MAN    && iMoveAnim <= MOVE_SKATE );
-}
-
 enum { PLAYER_PED, CIVILIAN_PED };
-
-namespace EPedWeaponAudioEvent
-{
-    enum EPedWeaponAudioEventType
-    {
-        FIRE = 0x91,
-    };
-}
-using EPedWeaponAudioEvent::EPedWeaponAudioEventType;
 
 class CPed : public virtual CPhysical
 {
@@ -172,16 +154,13 @@ public:
     virtual void            Respawn (CVector * position,bool bCameraCut)=0;
 
     virtual void            SetModelIndex       ( unsigned long ulModel ) = 0;
-    virtual void            RemoveGeometryRef   ( void ) = 0;
 
     virtual FLOAT           GetHealth ()=0;
     virtual void            SetHealth ( float fHealth )=0;
     virtual float           GetArmor () = 0;
     virtual void            SetArmor ( float fArmor ) = 0;
-    virtual float           GetOxygenLevel () = 0;
-    virtual void            SetOxygenLevel ( float fOxygen ) = 0;
     virtual bool            AddProjectile ( eWeaponType eWeapon, CVector vecOrigin, float fForce, CVector * target, CEntity * targetEntity )=0;
-    virtual CWeapon *       GiveWeapon ( eWeaponType weaponType, unsigned int uiAmmo, eWeaponSkill weaponSkill )=0;
+    virtual CWeapon *       GiveWeapon ( eWeaponType weaponType, unsigned int uiAmmo )=0;
     virtual CWeapon *       GetWeapon ( eWeaponSlot weaponSlot )=0;
     virtual CWeapon *       GetWeapon ( eWeaponType weaponType )=0;
     virtual void            ClearWeapons        ( void ) = 0;
@@ -215,7 +194,7 @@ public:
     virtual bool            IsWearingGoggles ( void )=0;
     virtual void            SetGogglesState ( bool bIsWearingThem )=0;
 
-    virtual void            SetClothesTextureAndModel ( const char* szModel, const char* szModelLocationName, int iTexture ) = 0;
+    virtual void            SetClothesTextureAndModel ( char * szModel, char * szModelLocationName, int iTexture ) = 0;
     virtual void            RebuildPlayer ( void ) = 0;
 
     virtual eFightingStyle  GetFightingStyle ( void ) = 0;
@@ -252,12 +231,6 @@ public:
     virtual void            GetVoice           ( const char** pszVoiceType, const char** pszVoice ) = 0;
     virtual void            SetVoice           ( short sVoiceType, short sVoiceID ) = 0;
     virtual void            SetVoice           ( const char* szVoiceType, const char* szVoice ) = 0;
-
-    virtual CWeaponStat*    GetCurrentWeaponStat    ( void ) = 0;
-    virtual float           GetCurrentWeaponRange   ( void ) = 0;
-    virtual void            AddWeaponAudioEvent     ( EPedWeaponAudioEventType audioEventType ) = 0;
-
-    virtual int             GetCustomMoveAnim       ( void ) = 0;
 };
 
 #endif

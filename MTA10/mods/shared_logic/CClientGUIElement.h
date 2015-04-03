@@ -49,7 +49,6 @@ class CClientGUIElement;
 
 class CClientGUIElement : public CClientEntity
 {
-    DECLARE_CLASS( CClientGUIElement, CClientEntity )
     friend class CClientGUIManager;
 
 public:
@@ -60,7 +59,7 @@ public:
 
     inline eClientEntityType    GetType                     ( void ) const                  { return CCLIENTGUI; };
     inline eCGUIType            GetCGUIType                 ( void ) const                  { return m_pCGUIElement->GetType (); };
-    inline const char*          GetCGUITypeName             ( void ) const                  { return m_strCGUITypeName; };
+    inline const char*          GetCGUITypeName             ( void ) const                  { return m_szCGUITypeName; };
 
     inline GUI_CALLBACK         GetCallback1                ( void )                        { return GUI_CALLBACK ( &CClientGUIElement::_CallbackEvent1, this ); };
     inline GUI_CALLBACK         GetCallback2                ( void )                        { return GUI_CALLBACK ( &CClientGUIElement::_CallbackEvent2, this ); };
@@ -76,23 +75,16 @@ public:
     // cgui element access
     inline CGUIElement*         GetCGUIElement              ( void )                        { return m_pCGUIElement; };
     inline void                 SetCGUIElement              ( CGUIElement *pCGUIElement )   { m_pCGUIElement = pCGUIElement; };
-
-    SString                     GetFont                     ( class CClientGuiFont** ppFontElement );
-    bool                        SetFont                     ( const SString& strFontName, CClientGuiFont* pFontElement );
-
-    virtual void                SetCallPropagationEnabled   ( bool bEnabled );
-
 private:
     bool                        _CallbackEvent1             ( CGUIElement *pCGUIElement );
     bool                        _CallbackEvent2             ( CGUIElement *pCGUIElement );
 
-    SString                     _strCallbackFunc1;
-    SString                     _strCallbackFunc2;
+    char                        _szCallbackFunc1[MAX_EVENT_NAME];
+    char                        _szCallbackFunc2[MAX_EVENT_NAME];
 
-    SString                     m_strCGUITypeName;
+    const char*                 m_szCGUITypeName;
     CClientGUIManager*          m_pGUIManager;
     CGUIElement*                m_pCGUIElement;
-    CClientGuiFont*             m_pFontElement;
     CLuaMain*                   m_pLuaMain;
 };
 

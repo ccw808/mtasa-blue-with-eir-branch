@@ -24,16 +24,12 @@
 class CPedModelInfoSA;
 class CPedModelInfoSAInterface;
 
-#define     RpGetFrame(__c)                 ((RwFrame*)(((RwObject *)(__c))->parent))
-
 #define     ARRAY_ModelLoaded               0x8E4CD0 // ##SA##
 
 #define     FUNC_CStreaming__HasModelLoaded 0x4044C0
 
 // CModelInfo/ARRAY_ModelInfo __thiscall to load/replace vehicle models
 #define     FUNC_LoadVehicleModel           0x4C95C0
-#define     FUNC_LoadWeaponModel            0x4C9910
-#define     FUNC_LoadPedModel               0x4C7340
 
 #define     DWORD_AtomicsReplacerModelID    0xB71840
 #define     FUNC_AtomicsReplacer            0x537150
@@ -44,7 +40,6 @@ class CPedModelInfoSAInterface;
 #define     FUNC_GetModelFlags              0x4044E0
 #define     FUNC_GetBoundingBox             0x4082F0
 
-#define     FUNC_RemoveRef                  0x4C4BB0
 #define     FUNC_IsBoatModel                0x4c5a70
 #define     FUNC_IsCarModel                 0x4c5aa0
 #define     FUNC_IsTrainModel               0x4c5ad0
@@ -65,7 +60,6 @@ class CPedModelInfoSAInterface;
 #define     FUNC_RequestVehicleUpgrade      0x408C70
 
 #define     FUNC_CVehicleModelInfo__GetNumRemaps        0x4C86B0
-#define     FUNC_CVehicleStructure_delete   0x4C9580
 
 #define     FUNC_SetColModel                0x4C4BC0
 #define     FUNC_AddPedModel                0x4c67a0
@@ -75,7 +69,6 @@ class CPedModelInfoSAInterface;
  */
 class CBaseModelInfo_SA_VTBL
 {
-public:
     DWORD           Destructor;
     DWORD           AsAtomicModelInfoPtr;           // (void)
     DWORD           AsDamageAtomicModelInfoPtr;     // (void)
@@ -157,14 +150,14 @@ public:
     unsigned char           dwUnknownFlag16: 1;
 
     // Flags used by CBaseModelInfo
-    unsigned char           bHasBeenPreRendered: 1;     // +18
-    unsigned char           bAlphaTransparency: 1;
+    unsigned char           bDoWeOwnTheColModel: 1;     // +18
+    unsigned char           bIsBackfaceCulled: 1;
     unsigned char           bIsLod: 1;
-    unsigned char           bDontWriteZBuffer: 1;
     unsigned char           bDontCastShadowsOn: 1;
+    unsigned char           bDontWriteZBuffer: 1;
     unsigned char           bDrawAdditive: 1;
     unsigned char           bDrawLast: 1;
-    unsigned char           bDoWeOwnTheColModel: 1;
+    unsigned char           bHasBeenPreRendered: 1;
 
     unsigned char           dwUnknownFlag25: 1;         // +19
     unsigned char           dwUnknownFlag26: 1;
@@ -215,7 +208,7 @@ public:
     // +82 = Vehicle freq (short)
     // +84 = Component rules mask (long)
     // +88 = Steer angle
-    // +92 = Pointer to some class containing back seat position @ +60 probably dummy storage.
+    // +92 = Pointer to some class containing back seat position @ +60
     // +180 = Vehicle upgrade position descriptors array (32 bytes each)
     // +720 = Number of possible colors
     // +726 = Word array as referenced in CVehicleModelInfo::GetVehicleUpgrade(int)
@@ -223,32 +216,10 @@ public:
     // +772 = Anim file index
 };
 
-
-class CVehicleModelInfoSAInterface : public CBaseModelInfoSAInterface
-{
-public:
-    uint32          pad1;               // +32
-    RpMaterial*     pPlateMaterial;     // +36
-    char            plateText[8];       // +40
-    char            pad[44];
-    class CVehicleStructure* pSomeInfo; // +92
-};
-
-enum eModelInfoType : unsigned char
-{
-    MODEL_INFO_TYPE_ATOMIC = 1,
-    MODEL_INFO_TYPE_TIME = 3,
-    MODEL_INFO_TYPE_WEAPON = 4,
-    MODEL_INFO_TYPE_CLUMP = 5,
-    MODEL_INFO_TYPE_VEHICLE = 6, 
-    MODEL_INFO_TYPE_PED = 7,
-    MODEL_INFO_TYPE_LOD_ATOMIC = 8,
-};
-
-
 /**
  * \todo Someone move GetLevelFromPosition out of here or delete it entirely please
  */
+
 
 class CModelInfoSA : public CModelInfo
 {
@@ -256,18 +227,11 @@ protected:
     CBaseModelInfoSAInterface *     m_pInterface;
     DWORD                           m_dwModelID;
     DWORD                           m_dwReferences;
-    DWORD                           m_dwPendingInterfaceRef;
     CColModel*                      m_pCustomColModel;
     CColModelSAInterface*           m_pOriginalColModelInterface;
     RpClump*                        m_pCustomClump;
-    static std::map < unsigned short, int > ms_RestreamTxdIDMap;
-    static std::map < DWORD, float > ms_ModelDefaultLodDistanceMap;
-    static std::map < DWORD, BYTE > ms_ModelDefaultAlphaTransparencyMap;
-    bool                            m_bAddedRefForCollision;
-    SVehicleSupportedUpgrades       m_ModelSupportedUpgrades;
-public:
-    static std::set < uint >        ms_ReplacedColModels;
 
+public:
                                     CModelInfoSA            ( void );
                                     CModelInfoSA            ( DWORD dwModelID );
 
@@ -275,10 +239,6 @@ public:
     CPedModelInfoSAInterface *      GetPedModelInfoInterface ( void )              { return reinterpret_cast < CPedModelInfoSAInterface * > ( GetInterface () ); }
 
     DWORD                           GetModel                ( void )               { return m_dwModelID; }
-    eModelInfoType                  GetModelType            ( void );
-    uint                            GetAnimFileIndex        ( void );
-
-    bool                            IsPlayerModel           ( void );
 
     BOOL                            IsBoat                  ( void );
     BOOL                            IsCar                   ( void );
@@ -296,11 +256,10 @@ public:
 
     char *                          GetNameIfVehicle        ( void );
 
-    VOID                            Request                 ( EModelRequestType requestType, const char* szTag );
+    VOID                            Request                 ( bool bAndLoad = false, bool bWaitForLoad = false, bool bHighPriority = false );
     VOID                            Remove                  ( void );
     BYTE                            GetLevelFromPosition    ( CVector * vecPosition );
     BOOL                            IsLoaded                ( void );
-    BOOL                            DoIsLoaded              ( void );
     BYTE                            GetFlags                ( void );
     CBoundingBox *                  GetBoundingBox          ( void );
     bool                            IsValid                 ( void );
@@ -309,27 +268,20 @@ public:
     void                            SetTextureDictionaryID  ( unsigned short usID );
     float                           GetLODDistance          ( void );
     void                            SetLODDistance          ( float fDistance );
-    static void                     StaticResetLodDistances ( void );
     void                            RestreamIPL             ( void );
-    static void                     StaticFlushPendingRestreamIPL ( void );
-    static void                     StaticSetHooks          ( void );
 
-    void                            SetAlphaTransparencyEnabled ( BOOL bEnabled );
-    bool                            IsAlphaTransparencyEnabled ();
-    void                            ResetAlphaTransparency  ( void );
-    static void                     StaticResetAlphaTransparencies ( void );
-
-    void                            ModelAddRef             ( EModelRequestType requestType, const char* szTag );
+    void                            AddRef                  ( bool bWaitForLoad, bool bHighPriority = false );
     int                             GetRefCount             ( void );
-    void                            RemoveRef               ( bool bRemoveExtraGTARef = false );
+    void                            RemoveRef               ( void );
 
     // CVehicleModelInfo specific
     short                           GetAvailableVehicleMod  ( unsigned short usSlot );
     bool                            IsUpgradeAvailable      ( eVehicleUpgradePosn posn );
     void                            SetCustomCarPlateText   ( const char * szText );
     unsigned int                    GetNumRemaps            ( void );
-    void*                           GetVehicleSuspensionData( void );
-    void*                           SetVehicleSuspensionData( void* pSuspensionLines );
+
+    // Upgrades only!
+    void                            RequestVehicleUpgrade   ( void );
 
     // ONLY use for peds
     void                            GetVoice                ( short* psVoiceType, short* psVoice );
@@ -348,16 +300,7 @@ public:
 
     inline RwObject*                GetRwObject             ( void ) { return m_pInterface ? m_pInterface->pRwObject : NULL; }
 
-    // CModelInfoSA methods
     void                            MakePedModel            ( char * szTexture );
-
-    SVehicleSupportedUpgrades       GetVehicleSupportedUpgrades ( void ) { return m_ModelSupportedUpgrades; }
-
-    void                            InitialiseSupportedUpgrades ( RpClump * pClump );
-    void                            ResetSupportedUpgrades      ( void );
-
-private:
-    void                            RwSetSupportedUpgrades      ( RwFrame * parent, DWORD dwModel );
 };
 
 #endif

@@ -15,12 +15,10 @@
 
 class CClientColRectangle : public CClientColShape
 {
-    DECLARE_CLASS( CClientColRectangle, CClientColShape )
 public:
-                            CClientColRectangle     ( CClientManager* pManager, ElementID ID, const CVector2D& vecPosition, const CVector2D& vecSize );
+                            CClientColRectangle     ( CClientManager* pManager, ElementID ID, const CVector& vecPosition, const CVector2D& vecSize );
 
     virtual CSphere         GetWorldBoundingSphere  ( void );
-    virtual void            DebugRender             ( const CVector& vecPosition, float fDrawRadius );
 
     eColShapeType           GetShapeType            ( void )            { return COLSHAPE_RECTANGLE; }
 

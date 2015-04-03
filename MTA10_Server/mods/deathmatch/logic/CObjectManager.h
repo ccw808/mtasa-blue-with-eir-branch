@@ -20,7 +20,6 @@
 using std::list;
 
 class CObject;
-typedef CFastList < CObject* >   CObjectListType;
 
 class CObjectManager
 {
@@ -29,15 +28,15 @@ public:
                                 CObjectManager                  ( void );
                                 ~CObjectManager                 ( void );
 
-    CObject*                    Create                          ( CElement* pParent, CXMLNode* pNode, bool bIsLowLod );
-    CObject*                    CreateFromXML                   ( CElement* pParent, CXMLNode& Node, CLuaMain* pLuaMain, CEvents* pEvents, bool bIsLowLod );
+    CObject*                    Create                          ( CElement* pParent, CXMLNode* pNode = NULL );
+    CObject*                    CreateFromXML                   ( CElement* pParent, CXMLNode& Node, CLuaMain* pLuaMain, CEvents* pEvents );
     void                        DeleteAll                       ( void );
 
     inline unsigned int         Count                           ( void )                            { return static_cast < unsigned int > ( m_List.size () ); };
     bool                        Exists                          ( CObject* pObject );
 
-    CObjectListType::const_iterator     IterBegin               ( void ) const                      { return m_List.begin (); };
-    CObjectListType::const_iterator     IterEnd                 ( void ) const                      { return m_List.end (); };
+    inline list < CObject* > ::const_iterator   IterBegin       ( void )                            { return m_List.begin (); };
+    inline list < CObject* > ::const_iterator   IterEnd         ( void )                            { return m_List.end (); };
 
     static bool                 IsValidModel                    ( unsigned long ulObjectModel );
     static bool                 IsBreakableModel                ( unsigned long ulObjectModel );
@@ -46,7 +45,9 @@ private:
     inline void                 AddToList                       ( CObject* pObject )                { m_List.push_back ( pObject ); };
     void                        RemoveFromList                  ( CObject* pObject );
 
-    CObjectListType             m_List;
+    bool                        m_bRemoveFromList;
+    list < CObject* >           m_List;
+    list < CObject* >           m_Attached;
 };
 
 #endif

@@ -41,11 +41,11 @@ using namespace Rsl::Net::IRC;
 /****
  **** COMMANDS
  ****/
-std::string mantis_cookie("");
+static std::string cookie("");
 
-bool MantisLogin(const IRCUser& source, const char* channel)
+static inline void MantisLogin(const IRCUser& source, const char* channel)
 {
-  if (mantis_cookie == "")
+  if (cookie == "")
   {
     debugentry("Initial login in mantis");
     MantisBot* bot = MantisBot::Instance();
@@ -55,9 +55,8 @@ bool MantisLogin(const IRCUser& source, const char* channel)
     IPV4Addr addr(config.data.mantis.address, config.data.mantis.service);
     IPV4Addr bindAddr("0.0.0.0", "0");
 
-    memset(password,0,sizeof(password));
     keysDecode(config.data.mantis.password, password);
-    snprintf(poststr, 1024, "username=%s&password=%s&perm_login=on", config.data.mantis.username, password);
+    snprintf(poststr, 1024, "username=%s&password=%s", config.data.mantis.username, password);
     memset(password, 0, sizeof(password));
 
     HTTPClient login(config.data.mantis.address, addr, bindAddr, config.data.mantis.ssl);
@@ -68,10 +67,9 @@ bool MantisLogin(const IRCUser& source, const char* channel)
 
     if (!login.Ok() || !login.GetStream().Ok())
     {
-      if ( channel )
-        bot->SendChannel(IRCText("%s: Error logging in mantis", source.GetName().c_str()), channel);
+      bot->SendChannel(IRCText("%s: Error logging in mantis", source.GetName().c_str()), channel);
       puts("Unable to connect to the login page!");
-      return false;
+      return;
     }
 
     const std::vector<HTTPHeader>& headers = login.GetResponseHeaders();
@@ -85,40 +83,36 @@ bool MantisLogin(const IRCUser& source, const char* channel)
         const char* p = strchr(header->value.c_str() + 21, ';');
         if (!p)
         {
-          if ( channel )
-            bot->SendChannel(IRCText("%s: Error parsing the login response", source.GetName().c_str()), channel);
+          bot->SendChannel(IRCText("%s: Error parsing the login response", source.GetName().c_str()), channel);
           puts("Unable to parse the login response");
-          return false;
+          return;
         }
-        mantis_cookie.append(header->value.c_str() + 21, p - header->value.c_str() - 21);
+        cookie.append(header->value.c_str() + 21, p - header->value.c_str() - 21);
         break;
       }
     }
 
-    if (mantis_cookie == "")
+    if (cookie == "")
     {
-      if ( channel )
-        bot->SendChannel(IRCText("%s: Error retreiving the login cookie in mantis", source.GetName().c_str()), channel);
+      bot->SendChannel(IRCText("%s: Error retreiving the login cookie in mantis", source.GetName().c_str()), channel);
       puts("Unable to retreive the login cookie");
-      return false;
+      return;
     }
 
     HTTPClient cookieTest(config.data.mantis.address, addr, bindAddr, config.data.mantis.ssl);
-    cookieTest.SendHeader("Cookie", std::string("MANTIS_STRING_COOKIE=") + mantis_cookie);
+    cookieTest.SendHeader("Cookie", std::string("MANTIS_STRING_COOKIE=") + cookie);
     cookieTest.Connect("/login_cookie_test.php", HTTP_METHOD_GET);
     cookieTest.Send();
 
     if (cookieTest.ResponseStatus() != 200 && cookieTest.ResponseStatus() != 302)
     {
-      if ( channel )
-        bot->SendChannel(IRCText("%s: Error verifying the mantis login cookie (%d - %s)",
-                                 source.GetName().c_str(), cookieTest.ResponseStatus(), cookieTest.StatusText()), channel);
-      mantis_cookie = "";
+      bot->SendChannel(IRCText("%s: Error verifying the mantis login cookie (%d - %s)",
+                               source.GetName().c_str(), cookieTest.ResponseStatus(), cookieTest.StatusText()), channel);
+      cookie = "";
       puts("Unable to verify the login cookie");
-      return false;
+      return;
     }
     debugok();
-    return true;
   }
 }
 
@@ -150,12 +144,19 @@ static void* issuecmdThread(void* data_)
   issuecmdData* data = (issuecmdData *)data_;
   const Config& config = bot->GetConfig();
 
+  if(data->number > 9000) {
+    bot->SendChannel(IRCText("%s: It's over 9000 %BD:%B", data->source.GetName().c_str()), data->dest.GetName().c_str());
+    delete data;
+    return 0;
+  }
+
+
   IPV4Addr addr(config.data.mantis.address, config.data.mantis.service);
   IPV4Addr bindAddr("0.0.0.0", "0");
 
   MantisLogin(data->source, data->dest.GetName().c_str());
 
-  if (mantis_cookie == "")
+  if (cookie == "")
   {
     delete data;
     return 0;
@@ -164,7 +165,7 @@ static void* issuecmdThread(void* data_)
   char path[1024];
   snprintf(path, sizeof(path), "/view.php?id=%d", data->number);
   HTTPClient client(config.data.mantis.address, addr, bindAddr, config.data.mantis.ssl);
-  client.SendHeader("Cookie", std::string("MANTIS_STRING_COOKIE=") + mantis_cookie);
+  client.SendHeader("Cookie", std::string("MANTIS_STRING_COOKIE=") + cookie);
   client.Connect(path, HTTP_METHOD_GET);
   client.Send();
 
@@ -181,13 +182,6 @@ static void* issuecmdThread(void* data_)
   int p;
   if (output.find("APPLICATION ERROR #1100") != -1 || output.find("Access Denied") != -1)
   {
-    if(data->number > 9000)
-    {
-      bot->SendChannel(IRCText("%s: It's over 9000 %BD:%B", data->source.GetName().c_str()), data->dest.GetName().c_str());
-      delete data;
-      return 0;
-    }
-
     bot->SendChannel(IRCText("%s: %C04Issue not found%C", data->source.GetName().c_str()), data->dest.GetName().c_str());
     delete data;
     return 0;

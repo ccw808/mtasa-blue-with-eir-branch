@@ -9,6 +9,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <assert.h>
 #include <pthread.h>
 
 #include <list>
@@ -19,34 +20,28 @@
 #include <ctime>
 #include <sstream>
 
-// Forward declarations
-class CAclRightName;
-struct SAclRequest;
+#include <google/dense_hash_map>
+#include <google/sparse_hash_map>
 
 // SDK includes
 #include "MTAPlatform.h"
-#define SHARED_UTIL_WITH_FAST_HASH_MAP
-#include "SharedUtil.h"
-#include "gccHashSupport.h"
 #include <xml/CXML.h>
 #include <xml/CXMLNode.h>
 #include <xml/CXMLFile.h>
 #include <xml/CXMLAttributes.h>
 #include <xml/CXMLAttribute.h>
 #include "CVector.h"
-#include "CVector4D.h"
 #include "CSphere.h"
 #include "CBox.h"
 #include "CMatrix.h"
 #include "CQuat.h"
-#include "net/Packets.h"
-#include "Enums.h"
+#include "SharedUtil.h"
 #include <bochs_internal/crc32.h>
+#include "CMD5Hasher.h"
 #include "CChecksum.h"
-#include "CIdArray.h"
-#include "pcrecpp.h"
 
 // Packet includes
+#include "net/Packets.h"
 #include "packets/CCameraSyncPacket.h"
 #include "packets/CChatEchoPacket.h"
 #include "packets/CCommandPacket.h"
@@ -82,7 +77,6 @@ struct SAclRequest;
 #include "packets/CPlayerJoinPacket.h"
 #include "packets/CPlayerListPacket.h"
 #include "packets/CPlayerPuresyncPacket.h"
-#include "packets/CPlayerNoSocketPacket.h"
 #include "packets/CPlayerQuitPacket.h"
 #include "packets/CPlayerSpawnPacket.h"
 #include "packets/CPlayerStatsPacket.h"
@@ -91,27 +85,22 @@ struct SAclRequest;
 #include "packets/CProjectileSyncPacket.h"
 #include "packets/CResourceStartPacket.h"
 #include "packets/CResourceStopPacket.h"
-#include "packets/CResourceClientScriptsPacket.h"
 #include "packets/CReturnSyncPacket.h"
 #include "packets/CServerTextItemPacket.h"
 #include "packets/CUpdateInfoPacket.h"
 #include "packets/CUnoccupiedVehicleStartSyncPacket.h"
 #include "packets/CUnoccupiedVehicleStopSyncPacket.h"
 #include "packets/CUnoccupiedVehicleSyncPacket.h"
-#include "packets/CUnoccupiedVehiclePushPacket.h"
 #include "packets/CVehicleDamageSyncPacket.h"
 #include "packets/CVehicleInOutPacket.h"
 #include "packets/CVehiclePuresyncPacket.h"
-#include "packets/CLightsyncPacket.h"
-#include "packets/CVehicleResyncPacket.h"
 #include "packets/CVehicleSpawnPacket.h"
 #include "packets/CVehicleTrailerPacket.h"
 #include "packets/CVoiceDataPacket.h"
-#include "packets/CVoiceEndPacket.h"
+#include "packets/PacketIODeclarators.h"
 
 // Lua function definition includes
 #include "luadefs/CLuaACLDefs.h"
-#include "luadefs/CLuaBitDefs.h"
 #include "luadefs/CLuaCameraDefs.h"
 #include "luadefs/CLuaDefs.h"
 #include "luadefs/CLuaElementDefs.h"
@@ -122,42 +111,24 @@ struct SAclRequest;
 #include "luadefs/CLuaResourceDefs.h"
 #include "luadefs/CLuaTextDefs.h"
 #include "luadefs/CLuaWorldDefs.h"
-#include "luadefs/CLuaVoiceDefs.h"
 #include "luadefs/CLuaXMLDefs.h"
-#include "luadefs/CLuaClassDefs.h"
-#include "luadefs/CLuaVector2Defs.h"
-#include "luadefs/CLuaVector3Defs.h"
-#include "luadefs/CLuaVector4Defs.h"
-#include "luadefs/CLuaMatrixDefs.h"
-#include "lua/oopdefs/CLuaOOPDefs.h"
 
 // Lua includes
 #include "lua/LuaCommon.h"
 #include "lua/CLuaMain.h"
-#include "CEasingCurve.h"
-#include "CBanManager.h"
-#include "lua/CLuaFunctionParseHelpers.h"
-#include "CScriptArgReader.h"
 #include "lua/CLuaManager.h"
 #include "lua/CLuaTimerManager.h"
 #include "lua/CLuaTimer.h"
-#include "lua/CLuaFunctionDefs.h"
+#include "lua/CLuaFunctionDefinitions.h"
 #include "lua/CLuaModuleManager.h"
 #include "lua/CLuaArgument.h"
 #include "lua/CLuaCFunctions.h"
 #include "lua/CLuaArguments.h"
-#include "lua/CLuaCallback.h"
-#include "lua/LuaUtils.h"
-
-// Sim includes
-#include "net/CSimControl.h"
 
 // Shared includes
+#include "CEasingCurve.h"
 #include "TInterpolation.h"
 #include "CPositionRotationAnimation.h"
-#include "CLatentTransferManager.h"
-#include "CDebugHookManager.h"
-#include "CLuaShared.h"
 
 // Logic includes
 #include "ASE.h"
@@ -168,13 +139,11 @@ struct SAclRequest;
 #include "CAccessControlListRight.h"
 #include "CAccount.h"
 #include "CAccountManager.h"
-#include "CAclRightName.h"
 #include "CBan.h"
-#include "CBandwidthSettings.h"
+#include "CBanManager.h"
 #include "CBlendedWeather.h"
 #include "CBlip.h"
 #include "CBlipManager.h"
-#include "CCameraSpatialDatabase.h"
 #include "CClient.h"
 #include "CClock.h"
 #include "CColCallback.h"
@@ -189,6 +158,7 @@ struct SAclRequest;
 #include "CCommandFile.h"
 #include "CCommandLineParser.h"
 #include "CCommon.h"
+#include "CConfig.h"
 #include "CConnectHistory.h"
 #include "CConsole.h"
 #include "CConsoleClient.h"
@@ -200,16 +170,14 @@ struct SAclRequest;
 #include "CElementDeleter.h"
 #include "CElementGroup.h"
 #include "CElementIDs.h"
-#include "CElementRefManager.h"
 #include "CEvents.h"
 #include "CGame.h"
 #include "CGroups.h"
 #include "CHTTPD.h"
-#include "CHandlingEntry.h"
+#include "CHandling.h"
 #include "CHandlingManager.h"
 #include "CKeyBinds.h"
 #include "CLanBroadcast.h"
-#include "CLightsyncManager.h"
 #include "CLogger.h"
 #include "CMainConfig.h"
 #include "CMapEvent.h"
@@ -225,7 +193,6 @@ struct SAclRequest;
 #include "CPed.h"
 #include "CPedManager.h"
 #include "CPedSync.h"
-#include "CPerfStatManager.h"
 #include "CPerPlayerEntity.h"
 #include "CPickup.h"
 #include "CPickupManager.h"
@@ -249,6 +216,7 @@ struct SAclRequest;
 #include "CResourceClientFileItem.h"
 #include "CResourceClientScriptItem.h"
 #include "CResourceConfigItem.h"
+#include "CResourceDownloader.h"
 #include "CResourceFile.h"
 #include "CResourceHTMLItem.h"
 #include "CResourceManager.h"
@@ -256,13 +224,13 @@ struct SAclRequest;
 #include "CResourceScriptItem.h"
 #include "CScriptDebugging.h"
 #include "CScriptFile.h"
+#include "CSerialManager.h"
 #include "CSettings.h"
 #include "CSpatialDatabase.h"
 #include "CTeam.h"
 #include "CTeamManager.h"
 #include "CTextDisplay.h"
 #include "CTextItem.h"
-#include "CTickRateSettings.h"
 #include "CUnoccupiedVehicleSync.h"
 #include "CVehicle.h"
 #include "CVehicleColorManager.h"
@@ -278,17 +246,25 @@ struct SAclRequest;
 #include "CZoneNames.h"
 #include "TaskNames.h"
 #include "Utils.h"
-#include "logic/CWeaponStat.h"
-#include "logic/CCustomWeapon.h"
-#include "logic/CCustomWeaponManager.h"
-#include "logic/CWeaponStatManager.h"
-#include "logic/CBuildingRemoval.h"
-#include "logic/CBuildingRemovalManager.h"
 
 #include "CStaticFunctionDefinitions.h"
 
+// Shared includes
+#include "CEasingCurve.h"
+#include "CPositionRotationAnimation.h"
+
 // Utility includes
-#include "utils/CZipMaker.h"
+#include "utils/CHTTPClient.h"
+#include "utils/CHTTPRequest.h"
+#include "utils/CHTTPResponse.h"
+#include "utils/CTCP.h"
+#include "utils/CTCPClientSocket.h"
+#include "utils/CTCPClientSocketImpl.h"
+#include "utils/CTCPImpl.h"
+#include "utils/CTCPServerSocket.h"
+#include "utils/CTCPServerSocketImpl.h"
+#include "utils/CTCPSocket.h"
+#include "utils/CTCPSocketImpl.h"
 #include <base64.h>
 
 // Module includes

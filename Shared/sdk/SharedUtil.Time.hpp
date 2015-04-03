@@ -10,22 +10,12 @@
 *
 *****************************************************************************/
 
+#undef GetTickCount
+
 #ifndef WIN32
+    unsigned long GetTickCount ( void );
     #include "sys/time.h"
 #endif
-
-static CCriticalSection ms_criticalSection;
-static long long ms_llTickCountAdd = 0;
-unsigned long GetTickCountInternal ( void );
-
-// Debugging
-void SharedUtil::AddTickCount( long long llTickCountAdd )
-{
-    ms_criticalSection.Lock ();
-    ms_llTickCountAdd = llTickCountAdd;
-    ms_criticalSection.Unlock ();
-}
-
 
 //
 // Retrieves the number of milliseconds that have elapsed since the function was first called (plus a little bit to make it look good).
@@ -34,7 +24,9 @@ void SharedUtil::AddTickCount( long long llTickCountAdd )
 //
 uint SharedUtil::GetTickCount32 ( void )
 {
-    return (uint)GetTickCount64_();
+    static const uint ulInitial = GetTickCount () - ( GetTickCount () % 300000 + 200000 );
+    uint ulNow = GetTickCount ();
+    return ulNow - ulInitial;
 }
 
 
@@ -47,32 +39,24 @@ uint SharedUtil::GetTickCount32 ( void )
 //
 long long SharedUtil::GetTickCount64_ ( void )
 {
-    ms_criticalSection.Lock ();
+    static CCriticalSection criticalSection;
+    criticalSection.Lock ();
 
-    static long long llCurrent = ( GetTickCountInternal () % 300000 + 200000 );
-    static uint uiWas      = GetTickCountInternal();
-    uint        uiNow      = GetTickCountInternal();
-    uint        uiDelta    = uiNow - uiWas;
-    uiWas = uiNow;
+    static long          lHightPart = 0;
+    static unsigned long ulWas      = GetTickCount32 ();
+    unsigned long        ulNow      = GetTickCount32 ();
+    unsigned long        ulDelta    = ulNow - ulWas;
 
-    // Ensure delta is not negative
-    if ( uiDelta > 0x80000000 )
-        uiDelta = 0;
+    // Detect wrap around
+    if( ulDelta > 0x80000000 )
+        lHightPart++;
 
-    // Or greater than 600 seconds
-    if ( uiDelta > 600 * 1000 )
-        uiDelta = 600 * 1000;
+    ulWas = ulNow;
 
-    // Add delta to accumulator
-    llCurrent += uiDelta;
+    long long Result = ( ( ( ( long long ) lHightPart ) << 32 ) | ( ( long long ) ulNow ) );
 
-    // Add debug value
-    llCurrent += ms_llTickCountAdd;
-    ms_llTickCountAdd = 0;
-
-    long long llResult = llCurrent;
-    ms_criticalSection.Unlock ();
-    return llResult;
+    criticalSection.Unlock ();
+    return Result;
 }
 
 
@@ -134,112 +118,6 @@ SString SharedUtil::GetLocalTimeString ( bool bDate, bool bMilliseconds )
 }
 
 
-//
-// Transfer a value from one thread to another without locks
-//
-template < class T, int BUFFER_SIZE = 4 >
-class CThreadResultValue
-{
-public:
-    CThreadResultValue ( void ) : m_ucLastWrittenIndex ( 0 ) {}
-
-    void Initialize ( const T& initialValue )
-    {
-        m_ucLastWrittenIndex = 0;
-        for ( uint i = 0 ; i < BUFFER_SIZE ; i++ )
-        {
-            m_OutputBuffersA[ i ] = initialValue;
-            m_OutputBuffersB[ i ] = initialValue;
-        }
-    }
-
-    void SetValue ( const T& value )
-    {
-        if ( value != m_OutputBuffersA[m_ucLastWrittenIndex] )
-        {
-            uchar ucIndex = m_ucLastWrittenIndex;
-            ucIndex = ( ucIndex + 1 ) % BUFFER_SIZE;
-            m_OutputBuffersA[ ucIndex ] = value;
-            m_OutputBuffersB[ ucIndex ] = value;
-            m_ucLastWrittenIndex = ucIndex;
-        }
-    }
-
-    T GetValue ( void )
-    {
-        while ( true )
-        {
-            uchar ucIndex = m_ucLastWrittenIndex;
-            T resultA = m_OutputBuffersA[ ucIndex ];
-            T resultB = m_OutputBuffersB[ ucIndex ];
-            if ( resultA == resultB )
-                return resultA;
-        }
-    }
-
-protected:
-    volatile uchar   m_ucLastWrittenIndex;
-    volatile T       m_OutputBuffersA[ BUFFER_SIZE ];
-    volatile T       m_OutputBuffersB[ BUFFER_SIZE ];
-};
-
-
-namespace SharedUtil
-{
-    //
-    // ModuleTickCount is a per-module cached tickcount value
-    //
-    class CPerModuleTickCount
-    {
-    public:
-        CPerModuleTickCount ( void )
-        {
-    #ifdef _DEBUG
-            m_TimeSinceUpdated.SetMaxIncrement ( 500 );
-    #endif
-            m_ResultValue.Initialize ( GetTickCount64_ () );
-        }
-
-        long long Get ( void )
-        {
-    #ifdef _DEBUG
-            if ( m_TimeSinceUpdated.Get () > 10000 )
-            {
-                m_TimeSinceUpdated.Reset ();
-                OutputDebugLine ( "WARNING: UpdateModuleTickCount64 might not be called for the current module" );
-            }
-    #endif
-            return m_ResultValue.GetValue ();
-        }
-
-        void Update ( void )
-        {
-    #ifdef _DEBUG
-            m_TimeSinceUpdated.Reset ();
-    #endif
-            m_ResultValue.SetValue ( GetTickCount64_ () );
-        }
-    
-    protected:
-        CThreadResultValue < long long > m_ResultValue;
-    #ifdef _DEBUG
-        CElapsedTime    m_TimeSinceUpdated;
-    #endif
-    };
-
-    CPerModuleTickCount ms_PerModuleTickCount;
-}
-
-long long SharedUtil::GetModuleTickCount64 ( void )
-{
-    return ms_PerModuleTickCount.Get ();
-}
-
-void SharedUtil::UpdateModuleTickCount64 ( void )
-{
-    return ms_PerModuleTickCount.Update ();
-}
-
 
 //
 // Cross-platform GetTickCount() implementations
@@ -252,7 +130,7 @@ void SharedUtil::UpdateModuleTickCount64 ( void )
 
 // Apple / Darwin platforms with Mach monotonic clock support
 #include <mach/mach_time.h>
-unsigned long GetTickCountInternal ( void )
+unsigned long GetTickCount ( void )
 {
     mach_timebase_info_data_t info;
 
@@ -270,7 +148,7 @@ unsigned long GetTickCountInternal ( void )
 #elif !defined(WIN32)
 
 // BSD / Linux platforms with POSIX monotonic clock support
-unsigned long GetTickCountInternal ( void )
+unsigned long GetTickCount ( void )
 {
     #if !defined(CLOCK_MONOTONIC)
     #error "This platform does not have monotonic clock support."
@@ -304,68 +182,5 @@ unsigned long GetTickCountInternal ( void )
     long long llMilliseconds = ( ( long long ) now.tv_sec ) * 1000 + now.tv_usec / 1000;
     return llMilliseconds;
 }
-
-#else
-
-// Win32 platforms
-#include <Mmsystem.h>
-#pragma comment(lib, "Winmm.lib")
-unsigned long GetTickCountInternal ( void )
-{
-    // Uses timeGetTime() as Win32 GetTickCount() has a resolution of 16ms.
-    //   (timeGetTime() has a resolution is 1ms assuming timeBeginPeriod(1) has been called at startup).
-    return timeGetTime ();
-}
-
 #endif
 
-
-// Get time in microseconds
-#ifdef WIN32
-// Due to issues with QueryPerformanceCounter, this function should only be used for profiling
-TIMEUS SharedUtil::GetTimeUs()
-{
-    static bool bInitialized = false;
-    static LARGE_INTEGER lFreq, lStart;
-    static LARGE_INTEGER lDivisor;
-    if ( !bInitialized )
-    {
-        bInitialized = true;
-        QueryPerformanceFrequency(&lFreq);
-        QueryPerformanceCounter(&lStart);
-        lDivisor.QuadPart = lFreq.QuadPart / 1000000;
-    }
-
-    LARGE_INTEGER lEnd;
-    QueryPerformanceCounter(&lEnd);
-    LONGLONG llDuration = ( lEnd.QuadPart - lStart.QuadPart ) * 1000000LL / lFreq.QuadPart;
-    return llDuration & 0xffffffff;
-}
-#else
-#include <sys/time.h>                // for gettimeofday()
-using namespace std;
-typedef long long LONGLONG;
-
-TIMEUS SharedUtil::GetTimeUs()
-{
-    static bool bInitialized = false;
-    static timeval t1;
-    if ( !bInitialized )
-    {
-        bInitialized = true;
-        // start timer
-        gettimeofday(&t1, NULL);
-    }
-
-    // stop timer
-    timeval t2;
-    gettimeofday(&t2, NULL);
-
-    // compute elapsed time in us
-    LONGLONG llDuration;
-    llDuration = (t2.tv_sec - t1.tv_sec) * 1000000LL;    // sec to us
-    llDuration += (t2.tv_usec - t1.tv_usec);             // us to us
-
-    return llDuration & 0xffffffff;
-}
-#endif

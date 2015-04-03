@@ -15,7 +15,8 @@
 
 CPlayerChangeNickPacket::CPlayerChangeNickPacket ( const char* szNewNick )
 {
-    m_strNewNick.AssignLeft ( szNewNick, MAX_NICK_LENGTH );
+    m_szNewNick [MAX_NICK_LENGTH] = 0;
+    strncpy ( m_szNewNick, szNewNick, MAX_NICK_LENGTH );
 }
 
 
@@ -25,10 +26,10 @@ bool CPlayerChangeNickPacket::Write ( NetBitStreamInterface& BitStream ) const
     {
         // Write the source player id
         ElementID ID = m_pSourceElement->GetID ();
-        BitStream.Write ( ID );
+        BitStream.WriteCompressed ( ID );
 
         // Write the nick
-        BitStream.WriteStringCharacters ( m_strNewNick, m_strNewNick.length () );
+        BitStream.Write ( const_cast < char* > ( m_szNewNick ), strlen ( m_szNewNick ) );
         return true;
     }
     

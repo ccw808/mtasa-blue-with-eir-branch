@@ -30,54 +30,45 @@ int CLuaFunctionDefs::GUIGetInputEnabled ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetInputEnabled ( lua_State* luaVM )
 {
-//  bool guiSetInputEnabled ( bool enabled )
-    bool enabled;
+    bool bRet = false;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadBool ( enabled );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TBOOLEAN ) ) 
     {
-        CStaticFunctionDefinitions::GUISetInputMode ( enabled ? INPUTMODE_NO_BINDS : INPUTMODE_ALLOW_BINDS );
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        bRet = CStaticFunctionDefinitions::GUISetInputMode ( lua_toboolean ( luaVM, 1 ) ? "no_binds" : "allow_binds" ); 
+    }  
 
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, bRet );
     return 1;
 }
-
 
 int CLuaFunctionDefs::GUISetInputMode ( lua_State* luaVM )
 {
-//  bool guiSetInputMode ( string mode )
-    eInputMode mode;
+    bool bRet = false;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadEnumString ( mode );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TSTRING ) ) 
     {
-        CStaticFunctionDefinitions::GUISetInputMode ( mode );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        bRet = CStaticFunctionDefinitions::GUISetInputMode ( lua_tostring ( luaVM, 1 ) );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, bRet );
     return 1;
 }
-
 
 int CLuaFunctionDefs::GUIGetInputMode ( lua_State* luaVM )
 {
-    eInputMode mode = CStaticFunctionDefinitions::GUIGetInputMode ();
-    lua_pushstring ( luaVM, EnumToString ( mode ) );
-    return 1;
+    std::string strMode;
+    if ( CStaticFunctionDefinitions::GUIGetInputMode ( strMode ) )
+    {
+        lua_pushstring ( luaVM, strMode.c_str() );
+        return 1;
+    }
+    else
+    {
+        lua_pushboolean ( luaVM, false );
+        return 1;
+    }
 }
+
 
 
 int CLuaFunctionDefs::GUIIsChatBoxInputActive ( lua_State* luaVM )
@@ -129,30 +120,31 @@ int CLuaFunctionDefs::GUIIsTransferBoxActive ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateWindow ( lua_State* luaVM )
 {
-//  element guiCreateWindow ( float x, float y, float width, float height, string titleBarText, bool relative )
-    float x; float y; float width; float height; SString titleBarText; bool relative;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( titleBarText );
-    argStream.ReadBool ( relative );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateWindow ( *pLuaMain, x, y, width, height, titleBarText, relative );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            const char *szCaption = lua_tostring ( luaVM, 5 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateWindow (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                szCaption,
+                lua_toboolean ( luaVM, 6 ) ? true : false
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -162,31 +154,33 @@ int CLuaFunctionDefs::GUICreateWindow ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateLabel ( lua_State* luaVM )
 {
-//  element guiCreateLabel ( float x, float y, float width, float height, string text, bool relative, [element parent = nil] )
-    float x; float y; float width; float height; SString text; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( text );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateLabel ( *pLuaMain, x, y, width, height, text, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            const char *szCaption = lua_tostring ( luaVM, 5 );
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 7 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateLabel (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                szCaption,
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -196,38 +190,39 @@ int CLuaFunctionDefs::GUICreateLabel ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateStaticImage ( lua_State* luaVM )
 {
-//  element guiCreateStaticImage ( float x, float y, float width, float height, string path, bool relative, [element parent = nil] )
-    float x; float y; float width; float height; SString path; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( path );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
         {
+            SString strFile = lua_tostring ( luaVM, 5 );
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 7 );
+
             CResource* pResource = pLuaMain->GetResource();
             SString strPath;
-            if ( CResourceManager::ParseResourcePathInput( path, pResource, strPath ) )
+            if ( CResourceManager::ParseResourcePathInput( strFile, pResource, strPath ) )
             {
-                CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateStaticImage ( *pLuaMain, x, y, width, height, strPath, relative, parent );
-                lua_pushelement ( luaVM, pGUIElement );
-                return 1;
+                CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateStaticImage (
+                    *pLuaMain,
+                    static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                    static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                    static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                    static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                    strPath,
+                    lua_toboolean ( luaVM, 6 ) ? true : false,
+                    pParent
+                    );
+
+                // Only proceed if we have a valid element (since GUICreateStaticImage can return a NULL pointer)
+                if ( pGUIElement ) {
+                    lua_pushelement ( luaVM, pGUIElement );
+                    return 1;
+                }
             }
-            else
-                argStream.SetCustomError( strPath, "Bad file path" );
         }
     }
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -237,31 +232,34 @@ int CLuaFunctionDefs::GUICreateStaticImage ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateButton ( lua_State* luaVM )
 {
-//  element guiCreateButton ( float x, float y, float width, float height, string text, bool relative, [ element parent = nil ] )
-    float x; float y; float width; float height; SString text; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( text );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) ) // ACHTUNG: EVENTS!
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateButton ( *pLuaMain, x, y, width, height, text, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            const char *szCaption = lua_tostring ( luaVM, 5 );
+            //const char *szOnClick = lua_istype ( luaVM, 8, LUA_TSTRING ) ? lua_tostring ( luaVM, 8 ) : NULL;
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 7 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateButton (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                szCaption,
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -271,30 +269,31 @@ int CLuaFunctionDefs::GUICreateButton ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateProgressBar ( lua_State* luaVM )
 {
-//  element guiCreateProgressBar ( float x, float y, float width, float height, bool relative, [element parent = nil] )
-    float x; float y; float width; float height; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateProgressBar ( *pLuaMain, x, y, width, height, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 6 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateProgressBar (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                lua_toboolean ( luaVM, 5 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -304,32 +303,35 @@ int CLuaFunctionDefs::GUICreateProgressBar ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateCheckBox ( lua_State* luaVM )
 {
-//  element guiCreateCheckBox ( float x, float y, float width, float height, string text, bool selected, bool relative, [element parent = nil] )
-    float x; float y; float width; float height; SString text; bool selected; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( text );
-    argStream.ReadBool ( selected );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) && 
+            lua_istype ( luaVM, 7, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateCheckBox ( *pLuaMain, x, y, width, height, text, selected, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            const char *szCaption = lua_tostring ( luaVM, 5 );
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 8 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateCheckBox (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                szCaption,
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                lua_toboolean ( luaVM, 7 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -339,31 +341,33 @@ int CLuaFunctionDefs::GUICreateCheckBox ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateRadioButton ( lua_State* luaVM )
 {
-//  element guiCreateRadioButton ( float x, float y, float width, float height, string text, bool relative, [element parent = nil] )
-    float x; float y; float width; float height; SString text; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( text );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateRadioButton ( *pLuaMain, x, y, width, height, text, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            const char *szCaption = lua_tostring ( luaVM, 5 );
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 7 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateRadioButton (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                szCaption,
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -373,31 +377,33 @@ int CLuaFunctionDefs::GUICreateRadioButton ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateEdit ( lua_State* luaVM )
 {
-//  gui-edit guiCreateEdit ( float x, float y, float width, float height, string text, bool relative, [element parent = nil] )
-    float x; float y; float width; float height; SString text; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( text );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateEdit ( *pLuaMain, x, y, width, height, text, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            const char *szCaption = lua_tostring ( luaVM, 5 );
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 7 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateEdit (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                szCaption,
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -407,31 +413,33 @@ int CLuaFunctionDefs::GUICreateEdit ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateMemo ( lua_State* luaVM )
 {
-//  gui-memo guiCreateMemo ( float x, float y, float width, float height, string text, bool relative, [element parent = nil] )
-    float x; float y; float width; float height; SString text; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( text );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateMemo ( *pLuaMain, x, y, width, height, text, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            const char *szCaption = lua_tostring ( luaVM, 5 );
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 7 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateMemo (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                szCaption,
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -441,30 +449,31 @@ int CLuaFunctionDefs::GUICreateMemo ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateGridList ( lua_State* luaVM )
 {
-//  element guiCreateGridList ( float x, float y, float width, float height, bool relative, [ element parent = nil ] )
-    float x; float y; float width; float height; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateGridList ( *pLuaMain, x, y, width, height, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 6 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateGridList (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                lua_toboolean ( luaVM, 5 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -474,30 +483,31 @@ int CLuaFunctionDefs::GUICreateGridList ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateScrollPane ( lua_State* luaVM )
 {
-//  element guiCreateScrollPane( float x, float y, float width, float height, bool relative, [gui-element parent = nil])
-    float x; float y; float width; float height; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateScrollPane ( *pLuaMain, x, y, width, height, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 6 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateScrollPane (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                lua_toboolean ( luaVM, 5 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -507,31 +517,32 @@ int CLuaFunctionDefs::GUICreateScrollPane ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateScrollBar ( lua_State* luaVM )
 {
-//  gui-scrollbar guiCreateScrollBar ( float x, float y, float width, float height, bool horizontal, bool relative, [gui-element parent = nil])
-    float x; float y; float width; float height; bool horizontal; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadBool ( horizontal );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TBOOLEAN ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateScrollBar ( *pLuaMain, x, y, width, height, horizontal, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 7 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateScrollBar (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                lua_toboolean ( luaVM, 5 ) ? true : false,
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -541,30 +552,31 @@ int CLuaFunctionDefs::GUICreateScrollBar ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateTabPanel ( lua_State* luaVM )
 {
-//  element guiCreateTabPanel ( float x, float y, float width, float height, bool relative, [element parent = nil ] )
-    float x; float y; float width; float height; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateTabPanel ( *pLuaMain, x, y, width, height, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 6 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateTabPanel (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                lua_toboolean ( luaVM, 5 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -574,90 +586,62 @@ int CLuaFunctionDefs::GUICreateTabPanel ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIStaticImageLoadImage ( lua_State* luaVM )
 {
-//  bool guiStaticImageLoadImage ( element theElement, string filename )
-    CClientGUIElement* theElement; SString filename;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( theElement );
-    argStream.ReadString ( filename );
-
-    if ( !argStream.HasErrors () )
+    bool bRet = false;
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+            lua_istype ( luaVM, 2, LUA_TSTRING ) )
         {
             CResource* pResource =  pLuaMain->GetResource();
+
+            // sanitize the input
+            SString strFile = lua_tostring ( luaVM, 2 );
             SString strPath;
-            if ( CResourceManager::ParseResourcePathInput( filename, pResource, strPath ) )
+            if ( CResourceManager::ParseResourcePathInput( strFile, pResource, strPath ) )
             {
-                if ( CStaticFunctionDefinitions::GUIStaticImageLoadImage ( *theElement, strPath ) )
+                // and attempt to load the image
+                CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+                if ( pEntity )
                 {
-                    lua_pushboolean ( luaVM, true );
-                    return 1;
+                    bRet = CStaticFunctionDefinitions::GUIStaticImageLoadImage ( *pEntity, strPath );
                 }
                 else
-                    argStream.SetCustomError( strPath, "Error loading image" );
+                    m_pScriptDebugging->LogBadPointer ( luaVM, "guiStaticImageLoadImage", "gui-element", 1 );
             }
-            else
-                argStream.SetCustomError( strPath, "Bad file path" );
         }
     }
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::GUIStaticImageGetNativeSize ( lua_State* luaVM )
-{
-//  bool guiStaticImageGetNativeSize ( element theElement, string filename )
-    CClientGUIElement* theElement;
-    CVector2D vecSize;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( theElement );
-
-    if ( !argStream.HasErrors () )
-         if ( CStaticFunctionDefinitions::GUIStaticImageGetNativeSize ( *theElement, vecSize ) )
-        {
-            lua_pushnumber ( luaVM, vecSize.fX );
-            lua_pushnumber ( luaVM, vecSize.fY );
-            return 2;
-        }
-
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, bRet );
     return 1;
 }
 
 
 int CLuaFunctionDefs::GUICreateTab ( lua_State* luaVM )
 {
-//  element guiCreateTab ( string text, element parent )
-    SString text; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( text );
-    argStream.ReadUserData ( parent );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TSTRING ) &&
+            lua_istype ( luaVM, 2, LUA_TLIGHTUSERDATA ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateTab ( *pLuaMain, text, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 2 );
+
+            const char *szCaption = lua_tostring ( luaVM, 1 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateTab (
+                *pLuaMain,
+                szCaption,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -667,20 +651,26 @@ int CLuaFunctionDefs::GUICreateTab ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGetSelectedTab ( lua_State* luaVM )
 {
-//  element guiGetSelectedTab ( element tabPanel )
-    CClientGUIElement* tabPanel;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUITabPanel > ( tabPanel );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        CClientGUIElement* pTab = CStaticFunctionDefinitions::GUIGetSelectedTab ( *tabPanel );
-        lua_pushelement ( luaVM, pTab );
-        return 1;
+        CClientEntity* pPanel = lua_toelement ( luaVM, 1 );
+        if ( pPanel )
+        {
+            CClientGUIElement* pTab = NULL;
+            if ( pTab = CStaticFunctionDefinitions::GUIGetSelectedTab ( *pPanel ) )
+            {
+                lua_pushelement ( luaVM, pTab );
+                return 1;
+            }
+            else
+            {
+                lua_pushnil ( luaVM );
+                return 1;
+            }
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetSelectedTab", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -689,23 +679,27 @@ int CLuaFunctionDefs::GUIGetSelectedTab ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetSelectedTab ( lua_State* luaVM )
 {
-//  bool guiSetSelectedTab ( element tabPanel, element theTab )
-    CClientGUIElement* tabPanel; CClientGUIElement* theTab;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUITabPanel > ( tabPanel );
-    argStream.ReadUserData < CGUITab > ( theTab );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TLIGHTUSERDATA ) )
     {
-        if ( CStaticFunctionDefinitions::GUISetSelectedTab ( *tabPanel, *theTab ) )
+        CClientEntity* pPanel = lua_toelement ( luaVM, 1 );
+        CClientEntity* pTab = lua_toelement ( luaVM, 2 );
+        if ( pPanel )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( pTab )
+            {
+                if ( CStaticFunctionDefinitions::GUISetSelectedTab ( *pPanel, *pTab ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetSelectedTab", "gui-element", 2 );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetSelectedTab", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -715,27 +709,34 @@ int CLuaFunctionDefs::GUISetSelectedTab ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIDeleteTab ( lua_State* luaVM )
 {
-//  bool guiDeleteTab ( element tabToDelete, element tabPanel )
-    CClientGUIElement* tabToDelete; CClientGUIElement* tabPanel;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUITab > ( tabToDelete );
-    argStream.ReadUserData < CGUITabPanel > ( tabPanel );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+            lua_istype ( luaVM, 2, LUA_TLIGHTUSERDATA ) )
         {
-            if ( CStaticFunctionDefinitions::GUIDeleteTab ( *pLuaMain, tabToDelete, tabPanel ) )
+            CClientGUIElement* pTab = lua_toguielement ( luaVM, 1 );
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 2 );
+            if ( pTab && IS_CGUIELEMENT_TAB ( pTab ) )
             {
-                lua_pushboolean ( luaVM, true );
-                return 1;
+                if ( pParent && IS_CGUIELEMENT_TABPANEL ( pParent ) )
+                {
+                    CStaticFunctionDefinitions::GUIDeleteTab (
+                        *pLuaMain,
+                        pTab,
+                        pParent
+                        );
+
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+                else
+                    m_pScriptDebugging->LogBadPointer ( luaVM, "guiDeleteTab", "gui-element", 2 );
             }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "guiDeleteTab", "gui-element", 1 );
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -745,21 +746,21 @@ int CLuaFunctionDefs::GUIDeleteTab ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetText ( lua_State* luaVM )
 {
-//  bool guiSetText ( element guiElement, string text )
-    CClientGUIElement* guiElement; SString text;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadString ( text );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        ( lua_istype ( luaVM, 2, LUA_TSTRING ) || lua_istype ( luaVM, 2, LUA_TNUMBER ) ) )
     {
-        CStaticFunctionDefinitions::GUISetText ( *guiElement, text );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        const char *szText = lua_tostring ( luaVM, 2 );
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUISetText ( *pEntity, szText );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetText", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -769,47 +770,48 @@ int CLuaFunctionDefs::GUISetText ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetFont ( lua_State* luaVM )
 {
-//  bool guiSetFont ( element guiElement, mixed font )
-    CClientGUIElement* guiElement; SString strFontName; CClientGuiFont* pGuiFontElement;
+    bool bResult = false;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    MixedReadGuiFontString ( argStream, strFontName, "default-normal", pGuiFontElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) )
     {
-        if ( guiElement->SetFont ( strFontName, pGuiFontElement ) )
+        SString strFont = lua_tostring ( luaVM, 2 );
+        // If our font is a filepath, it's a custom font
+        CResource* pResource =  m_pLuaManager->GetVirtualMachine(luaVM)->GetResource();
+        std::string strPath, strMetaPath;
+        if ( CResourceManager::ParseResourcePathInput( strFont, pResource, strPath, strMetaPath ) && FileExists (strPath) )
+            strFont = SString("%s/%s", pResource->GetName(), strMetaPath.c_str());
+
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            bResult = CStaticFunctionDefinitions::GUISetFont ( *pEntity, strFont );
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetFont", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, bResult );
     return 1;
 }
 
 int CLuaFunctionDefs::GUIBringToFront ( lua_State* luaVM )
 {
-//  bool guiBringToFront ( element guiElement )
-    CClientGUIElement* guiElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        if ( CStaticFunctionDefinitions::GUIBringToFront ( *guiElement ) )
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::GUIBringToFront ( *pEntity ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiBringToFront", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -819,20 +821,19 @@ int CLuaFunctionDefs::GUIBringToFront ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIMoveToBack ( lua_State* luaVM )
 {
-//  bool guiMoveToBack( element guiElement )
-    CClientGUIElement* guiElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        CStaticFunctionDefinitions::GUIMoveToBack ( *guiElement );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIMoveToBack ( *pEntity );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiMoveToBack", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -842,21 +843,20 @@ int CLuaFunctionDefs::GUIMoveToBack ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIRadioButtonSetSelected ( lua_State* luaVM )
 {
-//  bool guiRadioButtonSetSelected ( element guiRadioButton, bool state )
-    CClientGUIElement* guiRadioButton; bool state;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIRadioButton > ( guiRadioButton );
-    argStream.ReadBool ( state );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIRadioButtonSetSelected ( *guiRadioButton, state );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIRadioButtonSetSelected ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiRadiaButtonSetSelected", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -866,90 +866,85 @@ int CLuaFunctionDefs::GUIRadioButtonSetSelected ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICheckBoxSetSelected ( lua_State* luaVM )
 {
-//  bool guiCheckBoxSetSelected ( element theCheckbox, bool state )
-    CClientGUIElement* theCheckbox; bool state;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUICheckBox > ( theCheckbox );
-    argStream.ReadBool ( state );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUICheckBoxSetSelected ( *theCheckbox, state );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUICheckBoxSetSelected ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiCheckBoxSetSelected", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
+
 int CLuaFunctionDefs::GUIRadioButtonGetSelected ( lua_State* luaVM )
 {
-//  bool guiRadioButtonGetSelected( element guiRadioButton )
-    CClientGUIElement* guiRadioButton;
+    bool bRet = false;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIRadioButton > ( guiRadioButton );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        bool bResult = static_cast < CGUIRadioButton* > ( guiRadioButton->GetCGUIElement () ) -> GetSelected ();
-        lua_pushboolean ( luaVM, bResult );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_RADIOBUTTON ( pGUIElement ) )
+        {
+            bRet = static_cast < CGUIRadioButton* > ( pGUIElement->GetCGUIElement () ) -> GetSelected ();
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiRadiaButtonGetSelected", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, bRet );
     return 1;
 }
 
 
 int CLuaFunctionDefs::GUICheckBoxGetSelected ( lua_State* luaVM )
 {
-//  bool guiCheckBoxGetSelected ( element theCheckbox )
-    CClientGUIElement* theCheckbox;
+    bool bRet = false;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUICheckBox > ( theCheckbox );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        bool bResult = static_cast < CGUICheckBox* > ( theCheckbox->GetCGUIElement () ) -> GetSelected ();
-        lua_pushboolean ( luaVM, bResult );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_CHECKBOX ( pGUIElement ) )
+        {
+            bRet = static_cast < CGUICheckBox* > ( pGUIElement->GetCGUIElement () ) -> GetSelected ();
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiCheckBoxGetSelected", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, bRet );
     return 1;
 }
 
 
 int CLuaFunctionDefs::GUIProgressBarSetProgress ( lua_State* luaVM )
 {
-//  bool guiProgressBarSetProgress ( progressBar theProgressbar, float progress )
-    CClientGUIElement* theProgressbar; float progress;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIProgressBar > ( theProgressbar );
-    argStream.ReadNumber ( progress );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIProgressBarSetProgress ( *theProgressbar, static_cast < int > ( progress ) );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIProgressBarSetProgress ( *pEntity, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiProgressBarSetProgress", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -959,21 +954,20 @@ int CLuaFunctionDefs::GUIProgressBarSetProgress ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIScrollBarSetScrollPosition ( lua_State* luaVM )
 {
-//  bool guiScrollBarSetScrollPosition ( gui-scrollBar theScrollBar, float amount )
-    CClientGUIElement* theScrollBar; float amount;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIScrollBar > ( theScrollBar );
-    argStream.ReadNumber ( amount );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIScrollBarSetScrollPosition ( *theScrollBar, static_cast < int > ( amount ) );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIScrollBarSetScrollPosition ( *pEntity, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiScrollBarSetScrollPosition", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -983,21 +977,20 @@ int CLuaFunctionDefs::GUIScrollBarSetScrollPosition ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIScrollPaneSetHorizontalScrollPosition ( lua_State* luaVM )
 {
-//  bool guiScrollPaneSetHorizontalScrollPosition ( gui-scrollPane theScrollPane, float amount )
-    CClientGUIElement* theScrollPane; float amount;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIScrollPane > ( theScrollPane );
-    argStream.ReadNumber ( amount );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIScrollPaneSetHorizontalScrollPosition ( *theScrollPane, amount );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIScrollPaneSetHorizontalScrollPosition ( *pEntity, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiScrollPaneSetHorizontalScrollPosition", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1007,21 +1000,20 @@ int CLuaFunctionDefs::GUIScrollPaneSetHorizontalScrollPosition ( lua_State* luaV
 
 int CLuaFunctionDefs::GUIScrollPaneSetVerticalScrollPosition ( lua_State* luaVM )
 {
-//  bool guiScrollPaneSetVerticalScrollPosition ( gui-scrollPane theScrollPane, float amount )
-    CClientGUIElement* theScrollPane; float amount;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIScrollPane > ( theScrollPane );
-    argStream.ReadNumber ( amount );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIScrollPaneSetVerticalScrollPosition ( *theScrollPane, amount );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIScrollPaneSetVerticalScrollPosition ( *pEntity, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiScrollPaneSetVerticalScrollPosition", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1031,20 +1023,18 @@ int CLuaFunctionDefs::GUIScrollPaneSetVerticalScrollPosition ( lua_State* luaVM 
 
 int CLuaFunctionDefs::GUIProgressBarGetProgress ( lua_State* luaVM )
 {
-//  float guiProgressBarGetProgress ( progressBar theProgressbar );
-    CClientGUIElement* theProgressbar;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIProgressBar > ( theProgressbar );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        int iProgress = ( int ) ( static_cast < CGUIProgressBar* > ( theProgressbar->GetCGUIElement () ) -> GetProgress () * 100.0f + 0.5f );
-        lua_pushnumber ( luaVM, iProgress );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_PROGRESSBAR ( pGUIElement ) )
+        {
+            int iProgress = ( int ) ( static_cast < CGUIProgressBar* > ( pGUIElement->GetCGUIElement () ) -> GetProgress () * 100.0f + 0.5f );
+            lua_pushnumber ( luaVM, iProgress );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiProgressBarGetProgress", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1054,20 +1044,18 @@ int CLuaFunctionDefs::GUIProgressBarGetProgress ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIScrollPaneGetHorizontalScrollPosition ( lua_State* luaVM )
 {
-//  float guiScrollPaneGetHorizontalScrollPosition ( gui-scrollPane theScrollPane  )
-    CClientGUIElement* theScrollPane;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIScrollPane > ( theScrollPane );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        float fPos = static_cast < CGUIScrollPane* > ( theScrollPane->GetCGUIElement () ) -> GetHorizontalScrollPosition () * 100.0f;
-        lua_pushnumber ( luaVM, fPos );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_SCROLLPANE ( pGUIElement ) )
+        {
+            float fPos = static_cast < CGUIScrollPane* > ( pGUIElement->GetCGUIElement () ) -> GetHorizontalScrollPosition () * 100.0f;
+            lua_pushnumber ( luaVM, fPos );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiScrollPaneGetHorizontalScrollPosition", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1077,20 +1065,18 @@ int CLuaFunctionDefs::GUIScrollPaneGetHorizontalScrollPosition ( lua_State* luaV
 
 int CLuaFunctionDefs::GUIScrollPaneGetVerticalScrollPosition ( lua_State* luaVM )
 {
-//  float guiScrollPaneGetVerticalScrollPosition ( gui-scrollPane theScrollPane  )
-    CClientGUIElement* theScrollPane;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIScrollPane > ( theScrollPane );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        float fPos = static_cast < CGUIScrollPane* > ( theScrollPane->GetCGUIElement () ) -> GetVerticalScrollPosition () * 100.0f;
-        lua_pushnumber ( luaVM, fPos );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_SCROLLPANE ( pGUIElement ) )
+        {
+            float fPos = static_cast < CGUIScrollPane* > ( pGUIElement->GetCGUIElement () ) -> GetVerticalScrollPosition () * 100.0f;
+            lua_pushnumber ( luaVM, fPos );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiScrollPaneGetVerticalScrollPosition", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1100,20 +1086,18 @@ int CLuaFunctionDefs::GUIScrollPaneGetVerticalScrollPosition ( lua_State* luaVM 
 
 int CLuaFunctionDefs::GUIScrollBarGetScrollPosition ( lua_State* luaVM )
 {
-//  float guiScrollBarGetScrollPosition ( gui-scrollBar theScrollBar )
-    CClientGUIElement* theScrollBar;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIScrollBar > ( theScrollBar );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        int iPos = ( int ) ( static_cast < CGUIScrollBar* > ( theScrollBar->GetCGUIElement () ) -> GetScrollPosition () * 100.0f );
-        lua_pushnumber ( luaVM, iPos );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_SCROLLBAR ( pGUIElement ) )
+        {
+            int iPos = ( int ) ( static_cast < CGUIScrollBar* > ( pGUIElement->GetCGUIElement () ) -> GetScrollPosition () * 100.0f );
+            lua_pushnumber ( luaVM, iPos );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiScrollBarGetScrollPosition", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1123,20 +1107,18 @@ int CLuaFunctionDefs::GUIScrollBarGetScrollPosition ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGetText ( lua_State* luaVM )
 {
-//  string guiGetText ( element guiElement )
-    CClientGUIElement* guiElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        SString strText = guiElement->GetCGUIElement ()->GetText ();
-        lua_pushstring ( luaVM, strText );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            std::string strText = pGUIElement->GetCGUIElement ()->GetText ();
+            lua_pushstring ( luaVM, strText.c_str () );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetText", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1146,26 +1128,22 @@ int CLuaFunctionDefs::GUIGetText ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGetFont ( lua_State* luaVM )
 {
-//  string,font guiGetFont ( element guiElement )
-    CClientGUIElement* guiElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        CClientGuiFont* pGuiFontElement;
-        SString strFontName = guiElement->GetFont ( &pGuiFontElement );
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            std::string strFont = pGUIElement->GetCGUIElement ()->GetFont ();
 
-        if ( strFontName != "" )
-            lua_pushstring ( luaVM, strFontName );
+            if ( strFont != "" )
+                lua_pushstring ( luaVM, strFont.c_str () );
+            else
+                lua_pushnil ( luaVM );
+            return 1;
+        }
         else
-            lua_pushnil ( luaVM );
-        lua_pushelement ( luaVM, pGuiFontElement );
-        return 2;
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetFont", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1175,24 +1153,22 @@ int CLuaFunctionDefs::GUIGetFont ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGetSize ( lua_State* luaVM )
 {
-//  float float guiGetSize ( element theElement, bool relative )
-    CClientGUIElement* theElement; bool relative;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( theElement );
-    argStream.ReadBool ( relative );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CVector2D Size;
-        theElement->GetCGUIElement ()->GetSize ( Size, relative );
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            CVector2D Size;
+            pGUIElement->GetCGUIElement ()->GetSize ( Size, ( lua_toboolean ( luaVM, 2 ) ) ? true:false );
 
-        lua_pushnumber ( luaVM, Size.fX );
-        lua_pushnumber ( luaVM, Size.fY );
-        return 2;
+            lua_pushnumber ( luaVM, Size.fX );
+            lua_pushnumber ( luaVM, Size.fY );
+            return 2;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetSize", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1212,24 +1188,22 @@ int CLuaFunctionDefs::GUIGetScreenSize ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGetPosition ( lua_State* luaVM )
 {
-//  float, float guiGetPosition ( element guiElement, bool relative )
-    CClientGUIElement* guiElement; bool relative;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadBool ( relative );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CVector2D Pos;
-        guiElement->GetCGUIElement ()->GetPosition ( Pos, relative );
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            CVector2D Pos;
+            pGUIElement->GetCGUIElement ()->GetPosition ( Pos, ( lua_toboolean ( luaVM, 2 ) ) ? true:false );
 
-        lua_pushnumber ( luaVM, Pos.fX );
-        lua_pushnumber ( luaVM, Pos.fY );
-        return 2;
+            lua_pushnumber ( luaVM, Pos.fX );
+            lua_pushnumber ( luaVM, Pos.fY );
+            return 2;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetPosition", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1239,21 +1213,31 @@ int CLuaFunctionDefs::GUIGetPosition ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetAlpha ( lua_State* luaVM )
 {
-//  bool guiSetAlpha ( element guielement, float alpha )
-    CClientGUIElement* guiElement; float alpha;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadNumber ( alpha );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUISetAlpha ( *guiElement, Clamp ( 0.0f, alpha, 1.0f ) );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            float fAlpha = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+
+            if ( fAlpha > 1.0f )
+            {
+                fAlpha = 1.0f;
+            }
+            else if ( fAlpha < 0.0f )
+            {
+                fAlpha = 0.0f;
+            }
+
+            CStaticFunctionDefinitions::GUISetAlpha ( *pEntity, fAlpha );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetAlpha", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1262,22 +1246,18 @@ int CLuaFunctionDefs::GUISetAlpha ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGetAlpha ( lua_State* luaVM )
 {
-//  int guiGetAlpha ( element guiElement [, bool effectiveAlpha = false] )
-    CClientGUIElement* guiElement; bool bEffectiveAlpha;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadBool ( bEffectiveAlpha, false );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        float fAlpha = !bEffectiveAlpha ? guiElement->GetCGUIElement ()->GetAlpha () : guiElement->GetCGUIElement ()->GetEffectiveAlpha ();
-        lua_pushnumber ( luaVM, fAlpha );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            float fAlpha = pGUIElement->GetCGUIElement ()->GetAlpha ();
+            lua_pushnumber ( luaVM, fAlpha );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetAlpha", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -1285,21 +1265,20 @@ int CLuaFunctionDefs::GUIGetAlpha ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetVisible ( lua_State* luaVM )
 {
-//  bool guiSetVisible ( element guiElement, bool state )
-    CClientGUIElement* guiElement; bool state;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadBool ( state );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && 
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUISetVisible ( *guiElement, state );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUISetVisible ( *pEntity, ( lua_toboolean ( luaVM, 2 ) ? true : false ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetVisible", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1308,21 +1287,20 @@ int CLuaFunctionDefs::GUISetVisible ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetEnabled ( lua_State* luaVM )
 {
-//  bool guiSetEnabled ( element guiElement, bool enabled )
-    CClientGUIElement* guiElement; bool enabled;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadBool ( enabled );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUISetEnabled ( *guiElement, enabled );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUISetEnabled ( *pEntity, ( lua_toboolean ( luaVM, 2 ) ? true : false ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetEnabled", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1331,22 +1309,21 @@ int CLuaFunctionDefs::GUISetEnabled ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetProperty ( lua_State* luaVM )
 {
-//  bool guiSetProperty ( element guiElement, string property, string value )
-    CClientGUIElement* guiElement; SString property; SString value;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadString ( property );
-    argStream.ReadString ( value );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) &&
+        lua_istype ( luaVM, 3, LUA_TSTRING ) )
     {
-        CStaticFunctionDefinitions::GUISetProperty ( *guiElement, property, value );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUISetProperty ( *pEntity, lua_tostring ( luaVM, 2 ), lua_tostring ( luaVM, 3 ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetProperty", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1355,66 +1332,59 @@ int CLuaFunctionDefs::GUISetProperty ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGetVisible ( lua_State* luaVM )
 {
-//  bool guiGetVisible ( element guiElement )
-    CClientGUIElement* guiElement;
+    bool bRet = false;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        bool bResult = guiElement->GetCGUIElement ()->IsVisible ();
-        lua_pushboolean ( luaVM, bResult );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            bRet = pGUIElement->GetCGUIElement ()->IsVisible ();
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetVisible", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, bRet );
     return 1;
 }
 
 
 int CLuaFunctionDefs::GUIGetEnabled ( lua_State* luaVM )
 {
-//  bool guiGetEnabled ( element guiElement )
-    CClientGUIElement* guiElement;
+    bool bRet = false;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        bool bResult = guiElement->GetCGUIElement ()->IsEnabled ();
-        lua_pushboolean ( luaVM, bResult );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            bRet = pGUIElement->GetCGUIElement ()-> IsEnabled ();
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetEnabled", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, bRet );
     return 1;
 }
 
 
 int CLuaFunctionDefs::GUIGetProperty ( lua_State* luaVM )
 {
-//  string guiGetProperty ( element guiElement, string property )
-    CClientGUIElement* guiElement; SString property;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadString ( property );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) )
     {
-        SString strValue = guiElement->GetCGUIElement ()->GetProperty ( property );
-        lua_pushstring ( luaVM, strValue );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            std::string strValue = pGUIElement->GetCGUIElement ()->GetProperty ( lua_tostring ( luaVM, 2 ) );
 
+            lua_pushstring ( luaVM, strValue.c_str () );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetProperty", "gui-element", 1 );
+    }
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -1422,37 +1392,34 @@ int CLuaFunctionDefs::GUIGetProperty ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGetProperties ( lua_State* luaVM )
 {
-//  table guiGetProperties ( element guiElement )
-    CClientGUIElement* guiElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        // Create a new table
-        lua_newtable ( luaVM );
-
-        // Add all our properties to the table on top of the given lua main's stack
-        unsigned int uiIndex = 0;
-        CGUIPropertyIter iter = guiElement->GetCGUIElement ()->GetPropertiesBegin ();
-        CGUIPropertyIter iterEnd = guiElement->GetCGUIElement ()->GetPropertiesEnd ();
-        for ( ; iter != iterEnd; iter++ )
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
         {
-            const char * szKey = (*iter)->strKey;
-            const char * szValue = (*iter)->strValue;
+            // Create a new table
+            lua_newtable ( luaVM );
 
-            // Add it to the table
-            lua_pushstring ( luaVM, szKey );
-            lua_pushstring ( luaVM, szValue );
-            lua_settable ( luaVM, -3 );
+            // Add all our properties to the table on top of the given lua main's stack
+            unsigned int uiIndex = 0;
+            CGUIPropertyIter iter = pGUIElement->GetCGUIElement ()->GetPropertiesBegin ();
+            CGUIPropertyIter iterEnd = pGUIElement->GetCGUIElement ()->GetPropertiesEnd ();
+            for ( ; iter != iterEnd; iter++ )
+            {
+                char * szKey = (*iter)->szKey;
+                char * szValue = (*iter)->szValue;
+
+                // Add it to the table
+                lua_pushstring ( luaVM, szKey );
+                lua_pushstring ( luaVM, szValue );
+                lua_settable ( luaVM, -3 );
+            }
+
+            return 1;
         }
-
-        return 1;
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGetProperties", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -1460,23 +1427,25 @@ int CLuaFunctionDefs::GUIGetProperties ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetSize ( lua_State* luaVM )
 {
-//  bool guiSetSize ( element guiElement, float width, float height, bool relative )
-    CClientGUIElement* guiElement; float width; float height; bool relative;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadBool ( relative );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+        lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUISetSize ( *guiElement, CVector2D ( width, height ), relative );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUISetSize (
+                *pEntity, 
+                CVector2D ( static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ) ),
+                lua_toboolean ( luaVM, 4 ) ? true : false
+                );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetSize", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1486,23 +1455,25 @@ int CLuaFunctionDefs::GUISetSize ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUISetPosition ( lua_State* luaVM )
 {
-//  bool guiSetPosition ( element guiElement, float x, float y, bool relative )
-    CClientGUIElement* guiElement; float x; float y; bool relative;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( guiElement );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadBool ( relative );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+        lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUISetPosition ( *guiElement, CVector2D ( x, y ), relative );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUISetPosition (
+                *pEntity, 
+                CVector2D ( static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ) ),
+                lua_toboolean ( luaVM, 4 ) ? true : false
+                );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiSetPosition", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1512,21 +1483,19 @@ int CLuaFunctionDefs::GUISetPosition ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListSetSortingEnabled ( lua_State* luaVM )
 {
-//  bool guiGridListSetSortingEnabled ( element guiGridlist, bool enabled )
-    CClientGUIElement* guiGridlist; bool enabled;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadBool ( enabled );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIGridListSetSortingEnabled ( *guiGridlist, enabled );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIGridListSetSortingEnabled ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListSetSortingEnabled", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1536,22 +1505,19 @@ int CLuaFunctionDefs::GUIGridListSetSortingEnabled ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListAddColumn ( lua_State* luaVM )
 {
-//  int guiGridListAddColumn ( element gridList, string title, float width )
-    CClientGUIElement* guiGridlist; SString title; float width;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadString ( title );
-    argStream.ReadNumber ( width );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) &&
+        lua_istype ( luaVM, 3, LUA_TNUMBER ) )
     {
-        uint id = CStaticFunctionDefinitions::GUIGridListAddColumn ( *guiGridlist, title, width );
-        lua_pushnumber ( luaVM, id );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            lua_pushnumber ( luaVM, CStaticFunctionDefinitions::GUIGridListAddColumn ( *pGUIElement, lua_tostring ( luaVM, 2 ), static_cast < float > ( lua_tonumber ( luaVM, 3 ) ) ) );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListAddColumn", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1561,131 +1527,44 @@ int CLuaFunctionDefs::GUIGridListAddColumn ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListRemoveColumn ( lua_State* luaVM )
 {
-//  bool guiGridListRemoveColumn ( element guiGridlist, int columnIndex )
-    CClientGUIElement* guiGridlist; int columnIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( columnIndex );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIGridListRemoveColumn ( *guiGridlist, columnIndex );
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIGridListSetColumnWidth ( lua_State* luaVM )
-{
-//  bool guiGridListSetColumnWidth ( element gridList, int columnIndex, number width, bool relative )
-    CClientGUIElement* guiGridlist; int columnIndex; float width; bool relative;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( columnIndex );
-    argStream.ReadNumber ( width );
-    argStream.ReadBool ( relative );
-
-    if ( !argStream.HasErrors () )
-    {
-        CStaticFunctionDefinitions::GUIGridListSetColumnWidth ( *guiGridlist, columnIndex, width, relative );
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIGridListGetColumnWidth ( lua_State* luaVM )
-{
-//  float guiGridListGetColumnWidth ( element gridList, int columnIndex, bool relative )
-    CClientGUIElement* pGridList; int columnIndex; bool relative;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( pGridList );
-    argStream.ReadNumber ( columnIndex );
-    argStream.ReadBool ( relative );
-
-    if ( !argStream.HasErrors () )
-    {
-        float width;
-        if ( static_cast <CGUIGridList*> ( pGridList->GetCGUIElement () )->GetColumnWidth ( columnIndex, width, relative ) )
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
         {
-            lua_pushnumber ( luaVM, width );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+            CStaticFunctionDefinitions::GUIGridListRemoveColumn ( *pGUIElement, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
 
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIGridListSetColumnTitle ( lua_State* luaVM )
-{
-//  bool guiGridListSetColumnTitle ( element guiGridlist, int columnIndex, string title )
-    CClientGUIElement* guiGridlist; int iColumnIndex; SString sTitle;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( iColumnIndex );
-    argStream.ReadString ( sTitle );
-       
-    if ( !argStream.HasErrors () )
-    {
-        int iColumnCount = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) ->GetColumnCount ();
-        if ( iColumnIndex > 0 && iColumnCount >= iColumnIndex )
-        {
-            CStaticFunctionDefinitions::GUIGridListSetColumnTitle ( *guiGridlist, iColumnIndex, sTitle );
             lua_pushboolean ( luaVM, true );
             return 1;
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListRemoveColumn", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
-
-int CLuaFunctionDefs::GUIGridListGetColumnTitle ( lua_State* luaVM )
+int CLuaFunctionDefs::GUIGridListSetColumnWidth ( lua_State* luaVM )
 {
-//  string guiGridListGetColumnTitle ( element guiGridlist, int columnIndex )
-    CClientGUIElement* guiGridlist; int iColumnIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( iColumnIndex );
-       
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+        lua_istype ( luaVM, 3, LUA_TNUMBER ) &&
+        lua_istype ( luaVM, 4, LUA_TBOOLEAN ) )
     {
-        int iColumnCount = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) ->GetColumnCount ();
-        if ( iColumnIndex > 0 && iColumnCount >= iColumnIndex )
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
         {
-            const char* szTitle = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) ->GetColumnTitle ( iColumnIndex );
-            lua_pushstring ( luaVM, szTitle );
+            CStaticFunctionDefinitions::GUIGridListSetColumnWidth ( *pGUIElement, (static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) ) -1, static_cast < float > ( lua_tonumber ( luaVM, 3 ) ), lua_toboolean ( luaVM, 4 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
             return 1;
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListRemoveColumn", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1695,24 +1574,23 @@ int CLuaFunctionDefs::GUIGridListGetColumnTitle ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListAddRow ( lua_State* luaVM )
 {
-//  int guiGridListAddRow ( element gridList )
-    CClientGUIElement* guiGridlist;
+    int iRet;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        int iRet = CStaticFunctionDefinitions::GUIGridListAddRow ( *guiGridlist, true );
-        if ( iRet >= 0 )
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
         {
-            m_pGUIManager->QueueGridListUpdate ( guiGridlist );
-            lua_pushnumber ( luaVM, iRet );
-            return 1;
+            iRet = CStaticFunctionDefinitions::GUIGridListAddRow ( *pGUIElement, true );
+            if ( iRet >= 0 ) {
+                m_pGUIManager->QueueGridListUpdate ( pGUIElement );
+                lua_pushnumber ( luaVM, iRet );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListAddRow", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1722,24 +1600,23 @@ int CLuaFunctionDefs::GUIGridListAddRow ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListInsertRowAfter ( lua_State* luaVM )
 {
-//  int guiGridListInsertRowAfter ( element gridList, int rowIndex )
-    CClientGUIElement* guiGridlist; int rowIndex;
+    int iRet;
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        int iRet = CStaticFunctionDefinitions::GUIGridListInsertRowAfter ( *guiGridlist, rowIndex );
-        if ( iRet >= 0 ) 
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
         {
-            lua_pushnumber ( luaVM, iRet );
-            return 1;
+            iRet = CStaticFunctionDefinitions::GUIGridListInsertRowAfter ( *pGUIElement, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
+            if ( iRet >= 0 ) {
+                lua_pushnumber ( luaVM, iRet );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListInsertRowAfter", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1749,21 +1626,20 @@ int CLuaFunctionDefs::GUIGridListInsertRowAfter ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListAutoSizeColumn ( lua_State* luaVM )
 {
-//  bool guiGridListAutoSizeColumn ( element gridList, int columnIndex )
-    CClientGUIElement* guiGridlist; int columnIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( columnIndex );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIGridListAutoSizeColumn ( *guiGridlist, columnIndex );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            CStaticFunctionDefinitions::GUIGridListAutoSizeColumn ( *pGUIElement, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListAutoSizeColumn", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1773,20 +1649,19 @@ int CLuaFunctionDefs::GUIGridListAutoSizeColumn ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListClear ( lua_State* luaVM )
 {
-//  bool guiGridListClear ( element gridList )
-    CClientGUIElement* guiGridlist;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        CStaticFunctionDefinitions::GUIGridListClear ( *guiGridlist );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIGridListClear ( *pEntity );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListClear", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1796,21 +1671,20 @@ int CLuaFunctionDefs::GUIGridListClear ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListSetSelectionMode ( lua_State* luaVM )
 {
-//  bool guiGridListSetSelectionMode ( guiElement gridlist, int mode )
-    CClientGUIElement* guiGridlist; int mode;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( mode );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIGridListSetSelectionMode ( *guiGridlist, mode );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIGridListSetSelectionMode ( *pEntity, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListSetSelectionMode", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1820,22 +1694,24 @@ int CLuaFunctionDefs::GUIGridListSetSelectionMode ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListGetSelectedItem ( lua_State* luaVM )
 {
-//  int, int guiGridListGetSelectedItem ( element gridList )
-    CClientGUIElement* guiGridlist;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        int iRow = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetSelectedItemRow ();
-        int iColumn = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetSelectedItemColumn ();
-        lua_pushnumber ( luaVM, iRow );
-        lua_pushnumber ( luaVM, iColumn + 1 );  // columns start at 1
-        return 2;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            int iRow = static_cast < CGUIGridList* > ( pGUIElement->GetCGUIElement () ) -> GetSelectedItemRow ();
+            int iColumn = static_cast < CGUIGridList* > ( pGUIElement->GetCGUIElement () ) -> GetSelectedItemColumn ();
+
+            // columns need to start at 1
+            iColumn++;
+
+            lua_pushnumber ( luaVM, iRow );
+            lua_pushnumber ( luaVM, iColumn );
+            return 2;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListGetSelectedItem", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1845,45 +1721,43 @@ int CLuaFunctionDefs::GUIGridListGetSelectedItem ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListGetSelectedItems ( lua_State* luaVM )
 {
-//  table guiGridListGetSelectedItems ( element gridList )
-    CClientGUIElement* guiGridlist;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        CGUIGridList* pList = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () );
-        CGUIListItem* pItem = NULL;
-
-        lua_newtable ( luaVM );
-
-        for ( int i = 1; i <= pList->GetSelectedCount(); i++ )
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
         {
-            pItem = pList->GetNextSelectedItem ( pItem );
-            if ( !pItem ) break;
+            CGUIGridList* pList = static_cast < CGUIGridList* > ( pGUIElement->GetCGUIElement () );
+            CGUIListItem* pItem = NULL;
 
-            lua_pushnumber ( luaVM, i );
             lua_newtable ( luaVM );
 
-            // column
-            lua_pushstring ( luaVM, "column" );
-            lua_pushnumber ( luaVM, pList->GetItemColumnIndex ( pItem ) );
-            lua_settable ( luaVM, -3 );
+            for ( int i = 1; i <= pList->GetSelectedCount(); i++ )
+            {
+                pItem = pList->GetNextSelectedItem ( pItem );
+                if ( !pItem ) break;
 
-            // row
-            lua_pushstring ( luaVM, "row" );
-            lua_pushnumber ( luaVM, pList->GetItemRowIndex ( pItem ) );
-            lua_settable ( luaVM, -3 );
+                lua_pushnumber ( luaVM, i );
+                lua_newtable ( luaVM );
 
-            // push to main table
-            lua_settable ( luaVM, -3 );
+                // column
+                lua_pushstring ( luaVM, "column" );
+                lua_pushnumber ( luaVM, pList->GetItemColumnIndex ( pItem ) );
+                lua_settable ( luaVM, -3 );
+
+                // row
+                lua_pushstring ( luaVM, "row" );
+                lua_pushnumber ( luaVM, pList->GetItemRowIndex ( pItem ) );
+                lua_settable ( luaVM, -3 );
+
+                // push to main table
+                lua_settable ( luaVM, -3 );
+            }
+
+            return 1;
         }
-
-        return 1;
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListGetSelectedItems", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1893,20 +1767,19 @@ int CLuaFunctionDefs::GUIGridListGetSelectedItems ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListGetSelectedCount ( lua_State* luaVM )
 {
-//  int guiGridListGetSelectedCount ( element gridList )
-    CClientGUIElement* guiGridlist;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        int iCount = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetSelectedCount ();
-        lua_pushnumber ( luaVM, iCount );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            int iCount = static_cast < CGUIGridList* > ( pGUIElement->GetCGUIElement () ) -> GetSelectedCount ();
+
+            lua_pushnumber ( luaVM, iCount );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListGetSelectedCount", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1915,23 +1788,21 @@ int CLuaFunctionDefs::GUIGridListGetSelectedCount ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListSetSelectedItem ( lua_State* luaVM )
 {
-//  bool guiGridListSetSelectedItem ( element gridList, int rowIndex, int columnIndex )
-    CClientGUIElement* guiGridlist; int rowIndex; int columnIndex; bool bReset;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-    argStream.ReadNumber ( columnIndex );
-    argStream.ReadBool ( bReset, true );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+        lua_istype ( luaVM, 3, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIGridListSetSelectedItem ( *guiGridlist, rowIndex, columnIndex, bReset );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            CStaticFunctionDefinitions::GUIGridListSetSelectedItem ( *pGUIElement, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ), static_cast < int > ( lua_tonumber ( luaVM, 3 ) ), true );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListSetSelectedItem", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1941,21 +1812,20 @@ int CLuaFunctionDefs::GUIGridListSetSelectedItem ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListRemoveRow ( lua_State* luaVM )
 {
-//  bool guiGridListRemoveRow ( element gridList, int rowIndex )
-    CClientGUIElement* guiGridlist; int rowIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIGridListRemoveRow ( *guiGridlist, rowIndex );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            CStaticFunctionDefinitions::GUIGridListRemoveRow ( *pGUIElement, static_cast < int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListRemoveRow", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1965,22 +1835,25 @@ int CLuaFunctionDefs::GUIGridListRemoveRow ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListGetItemText ( lua_State* luaVM )
 {
-//  string guiGridListGetItemText ( element gridList, int rowIndex, int columnIndex )
-    CClientGUIElement* guiGridlist; int rowIndex; int columnIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-    argStream.ReadNumber ( columnIndex );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+         lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+         lua_istype ( luaVM, 3, LUA_TNUMBER ) )
     {
-        const char* szText = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetItemText ( rowIndex, columnIndex );
-        lua_pushstring ( luaVM, szText );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            const char* szText = static_cast < CGUIGridList* > ( pGUIElement->GetCGUIElement () ) -> GetItemText ( static_cast < int > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < int > ( lua_tonumber ( luaVM, 3 ) ) );
+            if ( szText )
+                lua_pushstring ( luaVM, szText );
+            else
+                lua_pushnil ( luaVM );
+
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListGetItemText", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -1990,26 +1863,29 @@ int CLuaFunctionDefs::GUIGridListGetItemText ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListGetItemData ( lua_State* luaVM )
 {
-//  string guiGridListGetItemData ( element gridList, int rowIndex, int columnIndex )
-    CClientGUIElement* guiGridlist; int rowIndex; int columnIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-    argStream.ReadNumber ( columnIndex );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+         lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+         lua_istype ( luaVM, 3, LUA_TNUMBER ) )
     {
-        void* pData = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetItemData ( rowIndex, columnIndex );
-        CLuaArgument* pVariable = reinterpret_cast < CLuaArgument* > ( pData );
-        if ( pVariable )
-            pVariable->Push(luaVM);
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            CLuaArgument* pVariable = reinterpret_cast < CLuaArgument* > (
+                static_cast < CGUIGridList* > ( pGUIElement->GetCGUIElement () ) -> GetItemData (
+                    static_cast < int > ( lua_tonumber ( luaVM, 2 ) ), 
+                    static_cast < int > ( lua_tonumber ( luaVM, 3 ) )
+                )
+            );
+            if ( pVariable )
+                pVariable->Push(luaVM);
+            else
+                lua_pushnil ( luaVM );
+
+            return 1;
+        }
         else
-            lua_pushnil ( luaVM );
-        return 1;
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListGetItemData", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2019,73 +1895,24 @@ int CLuaFunctionDefs::GUIGridListGetItemData ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListGetItemColor ( lua_State* luaVM )
 {
-//  int int int int guiGridListGetItemColor ( element gridList, int rowIndex, int columnIndex )
-    CClientGUIElement* guiGridlist; int rowIndex; int columnIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-    argStream.ReadNumber ( columnIndex );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_isuserdata ( luaVM, 1 ) && lua_isnumber ( luaVM, 2 ) && lua_isnumber ( luaVM, 3 ) )
     {
-        unsigned char ucRed = 255, ucGreen = 255, ucBlue = 255, ucAlpha = 255;
-        if ( static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetItemColor ( rowIndex, columnIndex, ucRed, ucGreen, ucBlue, ucAlpha ) )
+        CClientGUIElement* pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
         {
-            lua_pushnumber ( luaVM, ucRed );
-            lua_pushnumber ( luaVM, ucGreen );
-            lua_pushnumber ( luaVM, ucBlue );
-            lua_pushnumber ( luaVM, ucAlpha );
-            return 4;
+            unsigned char ucRed = 255, ucGreen = 255, ucBlue = 255, ucAlpha = 255;
+            if ( reinterpret_cast < const char* > ( static_cast < CGUIGridList* > ( pGUIElement->GetCGUIElement () ) -> GetItemColor ( lua_tointeger ( luaVM, 2 ), lua_tointeger ( luaVM, 3 ), ucRed, ucGreen, ucBlue, ucAlpha ) ) )
+            {
+                lua_pushnumber ( luaVM, ucRed );
+                lua_pushnumber ( luaVM, ucGreen );
+                lua_pushnumber ( luaVM, ucBlue );
+                lua_pushnumber ( luaVM, ucAlpha );
+                return 4;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListGetItemColor", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-
-int CLuaFunctionDefs::GUIGridListGetHorizontalScrollPosition ( lua_State *luaVM )
-{
-//  float guiGridListGetHorizontalScrollPosition ( element guiGridlist )
-    CClientGUIElement* guiGridlist;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
-    {
-        float fPosition = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetHorizontalScrollPosition () * 100.0f;
-        lua_pushnumber ( luaVM, fPosition );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIGridListGetVerticalScrollPosition ( lua_State *luaVM )
-{
-//  float guiGridListGetVerticalScrollPosition ( element guiGridlist )
-    CClientGUIElement* guiGridlist;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
-    {
-        float fPosition = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetVerticalScrollPosition () * 100.0f;
-        lua_pushnumber ( luaVM, fPosition );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -2094,26 +1921,32 @@ int CLuaFunctionDefs::GUIGridListGetVerticalScrollPosition ( lua_State *luaVM )
 
 int CLuaFunctionDefs::GUIGridListSetItemText ( lua_State* luaVM )
 {
-//  bool guiGridListSetItemText ( element gridList, int rowIndex, int columnIndex, string text, bool section, bool number )
-    CClientGUIElement* guiGridlist; int rowIndex; int columnIndex; SString text; bool section; bool number;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-    argStream.ReadNumber ( columnIndex );
-    argStream.ReadString ( text );
-    argStream.ReadBool ( section );
-    argStream.ReadBool ( number );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+         lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+         lua_istype ( luaVM, 3, LUA_TNUMBER ) &&
+         lua_istype ( luaVM, 4, LUA_TSTRING ) &&
+         lua_istype ( luaVM, 5, LUA_TBOOLEAN ) &&
+         lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIGridListSetItemText ( *guiGridlist, rowIndex, columnIndex, text, section, number, true );
-        m_pGUIManager->QueueGridListUpdate ( guiGridlist );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            CStaticFunctionDefinitions::GUIGridListSetItemText (
+                *pGUIElement,
+                static_cast < int > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < int > ( lua_tonumber ( luaVM, 3 ) ),
+                lua_tostring ( luaVM, 4 ),
+                lua_toboolean ( luaVM, 5 ) ? true : false,
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                true
+            );
+            m_pGUIManager->QueueGridListUpdate ( pGUIElement );
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListSetItemText", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2123,24 +1956,28 @@ int CLuaFunctionDefs::GUIGridListSetItemText ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListSetItemData ( lua_State* luaVM )
 {
-//  bool guiGridListSetItemData ( element gridList, int rowIndex, int columnIndex, string data )
-    CClientGUIElement* guiGridlist; int rowIndex; int columnIndex; CLuaArgument data;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-    argStream.ReadNumber ( columnIndex );
-    argStream.ReadLuaArgument ( data );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+         lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+         lua_istype ( luaVM, 3, LUA_TNUMBER ) )
     {
-        CLuaArgument* pData = new CLuaArgument ( data );
-        CStaticFunctionDefinitions::GUIGridListSetItemData ( *guiGridlist, rowIndex, columnIndex, pData );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            CLuaArgument* Variable = new CLuaArgument();
+            Variable->Read ( luaVM, 4 );
+            CStaticFunctionDefinitions::GUIGridListSetItemData (
+                *pGUIElement,
+                static_cast < int > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < int > ( lua_tonumber ( luaVM, 3 ) ),
+                Variable
+            );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListSetItemData", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2150,27 +1987,25 @@ int CLuaFunctionDefs::GUIGridListSetItemData ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListSetItemColor ( lua_State* luaVM )
 {
-//  bool guiGridListSetItemColor ( element gridList, int rowIndex, int columnIndex, int red, int green, int blue[, int alpha = 255 ] )
-    CClientGUIElement* guiGridlist; int rowIndex; int columnIndex; int red; int green; int blue; int alpha;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( rowIndex );
-    argStream.ReadNumber ( columnIndex );
-    argStream.ReadNumber ( red );
-    argStream.ReadNumber ( green );
-    argStream.ReadNumber ( blue );
-    argStream.ReadNumber ( alpha, 255 );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_isuserdata ( luaVM, 1 ) && lua_isnumber ( luaVM, 2 ) && lua_isnumber ( luaVM, 3 ) && lua_isnumber ( luaVM, 4 ) && lua_isnumber ( luaVM, 5 ) && lua_isnumber ( luaVM, 6 ) )
     {
-        CStaticFunctionDefinitions::GUIGridListSetItemColor( *guiGridlist, rowIndex, columnIndex, red, green, blue, alpha );
-        m_pGUIManager->QueueGridListUpdate ( guiGridlist );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientGUIElement* pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement )
+        {
+            int iAlpha = 255;
+            if ( lua_isnumber ( luaVM, 7 ) )
+            {
+                iAlpha = lua_tointeger ( luaVM, 7 );
+            }
+            CStaticFunctionDefinitions::GUIGridListSetItemColor( *pGUIElement, lua_tointeger ( luaVM, 2 ), lua_tointeger ( luaVM, 3 ), lua_tointeger ( luaVM, 4 ), lua_tointeger ( luaVM, 5 ), lua_tointeger ( luaVM, 6 ), iAlpha );
+
+            m_pGUIManager->QueueGridListUpdate ( pGUIElement );
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListSetItemColor", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -2179,22 +2014,19 @@ int CLuaFunctionDefs::GUIGridListSetItemColor ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListSetScrollBars ( lua_State* luaVM )
 {
-//  bool guiGridListSetScrollBars ( element guiGridlist, bool horizontalBar, bool verticalBar )
-    CClientGUIElement* guiGridlist; bool horizontalBar; bool verticalBar;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadBool ( horizontalBar );
-    argStream.ReadBool ( verticalBar );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) && lua_istype ( luaVM, 3, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIGridListSetScrollBars ( *guiGridlist, horizontalBar, verticalBar );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIGridListSetScrollBars ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false, lua_toboolean ( luaVM, 3 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListSetScrollBars", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2202,70 +2034,21 @@ int CLuaFunctionDefs::GUIGridListSetScrollBars ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::GUIGridListSetHorizontalScrollPosition ( lua_State *luaVM )
-{
-//  bool guiGridListSetHorizontalScrollPosition ( element guiGridlist, float fPosition )
-    CClientGUIElement* guiGridlist; float fPosition;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( fPosition );
-
-    if ( !argStream.HasErrors () )
-    {
-        CStaticFunctionDefinitions::GUIGridListSetHorizontalScrollPosition ( *guiGridlist, fPosition );
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIGridListSetVerticalScrollPosition ( lua_State *luaVM )
-{
-//  bool guiGridListSetVerticalScrollPosition ( element guiGridlist, float fPosition )
-    CClientGUIElement* guiGridlist; float fPosition;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-    argStream.ReadNumber ( fPosition );
-
-    if ( !argStream.HasErrors () )
-    {
-        CStaticFunctionDefinitions::GUIGridListSetVerticalScrollPosition ( *guiGridlist, fPosition );
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
 int CLuaFunctionDefs::GUIScrollPaneSetScrollBars ( lua_State* luaVM )
 {
-//  bool guiScrollPaneSetScrollBars ( element scrollPane, bool horizontal, bool vertical )
-    CClientGUIElement* scrollPane; bool horizontalBar; bool verticalBar;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIScrollPane > ( scrollPane );
-    argStream.ReadBool ( horizontalBar );
-    argStream.ReadBool ( verticalBar );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) && lua_istype ( luaVM, 3, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIScrollPaneSetScrollBars ( *scrollPane, horizontalBar, verticalBar );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIScrollPaneSetScrollBars ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false, lua_toboolean ( luaVM, 3 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiScrollPaneSetScrollBars", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2275,43 +2058,18 @@ int CLuaFunctionDefs::GUIScrollPaneSetScrollBars ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIGridListGetRowCount ( lua_State* luaVM )
 {
-//  int guiGridListGetRowCount ( element theList )
-    CClientGUIElement* guiGridlist;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
-    {
-        int iRowCount = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetRowCount ();
-        lua_pushnumber ( luaVM, iRowCount );
-        return 1;
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
+    {       
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_GRIDLIST ( pGUIElement ) )
+        {
+            int iRowCount = static_cast < CGUIGridList* > ( pGUIElement->GetCGUIElement () ) -> GetRowCount ();
+            lua_pushnumber ( luaVM, iRowCount );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiGridListGetRowCount", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIGridListGetColumnCount ( lua_State* luaVM )
-{
-//  int guiGridListGetColumnCount ( element gridList )
-    CClientGUIElement* guiGridlist;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIGridList > ( guiGridlist );
-
-    if ( !argStream.HasErrors () )
-    {
-        int iColumnCount = static_cast < CGUIGridList* > ( guiGridlist->GetCGUIElement () ) -> GetColumnCount ();
-        lua_pushnumber ( luaVM, iColumnCount );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2321,21 +2079,19 @@ int CLuaFunctionDefs::GUIGridListGetColumnCount ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIEditSetReadOnly ( lua_State* luaVM )
 {
-//  bool guiEditSetReadOnly ( element editField, bool status )
-    CClientGUIElement* editField; bool status;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIEdit > ( editField );
-    argStream.ReadBool ( status );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIEditSetReadOnly ( *editField, status );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIEditSetReadOnly ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiEditSetReadOnly", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2345,21 +2101,19 @@ int CLuaFunctionDefs::GUIEditSetReadOnly ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIMemoSetReadOnly ( lua_State* luaVM )
 {
-//  bool guiMemoSetReadOnly ( gui-memo theMemo, bool status )
-    CClientGUIElement* theMemo; bool status;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIMemo > ( theMemo );
-    argStream.ReadBool ( status );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIMemoSetReadOnly ( *theMemo, status );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIMemoSetReadOnly ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiMemoSetReadOnly", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2369,21 +2123,19 @@ int CLuaFunctionDefs::GUIMemoSetReadOnly ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIEditSetMasked ( lua_State* luaVM )
 {
-//  bool guiEditSetMasked ( element theElement, bool status )
-    CClientGUIElement* theElement; bool status;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIEdit > ( theElement );
-    argStream.ReadBool ( status );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIEditSetMasked ( *theElement, status );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIEditSetMasked ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiEditSetMasked", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2393,21 +2145,19 @@ int CLuaFunctionDefs::GUIEditSetMasked ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIEditSetMaxLength ( lua_State* luaVM )
 {
-//  bool guiEditSetMaxLength ( element theElement, int length )
-    CClientGUIElement* theElement; int length;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIEdit > ( theElement );
-    argStream.ReadNumber ( length );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIEditSetMaxLength ( *theElement, length );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIEditSetMaxLength ( *pEntity, static_cast < unsigned int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiEditSetMaxLength", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2415,23 +2165,21 @@ int CLuaFunctionDefs::GUIEditSetMaxLength ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::GUIEditSetCaretIndex ( lua_State* luaVM )
+int CLuaFunctionDefs::GUIEditSetCaratIndex ( lua_State* luaVM )
 {
-//  bool guiEditSetCaretIndex ( element theElement, int index )
-    CClientGUIElement* theElement; int index;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIEdit > ( theElement );
-    argStream.ReadNumber ( index );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUIEditSetCaretIndex ( *theElement, index );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity  = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIEditSetCaratIndex ( *pEntity, static_cast < unsigned int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiEditSetCaratIndex", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2439,67 +2187,21 @@ int CLuaFunctionDefs::GUIEditSetCaretIndex ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::GUIEditGetCaretIndex ( lua_State* luaVM )
+int CLuaFunctionDefs::GUIMemoSetCaratIndex ( lua_State* luaVM )
 {
-//  int guiEditGetCaretIndex ( element theElement )
-    CClientGUIElement* theElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIEdit > ( theElement );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        lua_pushnumber ( luaVM, static_cast < CGUIEdit* > ( theElement->GetCGUIElement () ) -> GetCaretIndex () );
-        return 1;
+        CClientEntity* pEntity  = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIMemoSetCaratIndex ( *pEntity, static_cast < unsigned int > ( lua_tonumber ( luaVM, 2 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiMemoSetCaratIndex", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIMemoSetCaretIndex ( lua_State* luaVM )
-{
-//  bool guiMemoSetCaretIndex ( gui-memo theMemo, int index )
-    CClientGUIElement* theMemo; int index;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIMemo > ( theMemo );
-    argStream.ReadNumber ( index );
-
-    if ( !argStream.HasErrors () )
-    {
-        CStaticFunctionDefinitions::GUIMemoSetCaretIndex ( *theMemo, index );
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUIMemoGetCaretIndex ( lua_State* luaVM )
-{
-//  bool guiMemoGetCaretIndex ( gui-memo theMemo )
-    CClientGUIElement* theMemo;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIMemo > ( theMemo );
-
-    if ( !argStream.HasErrors () )
-    {
-        lua_pushnumber ( luaVM, static_cast < CGUIMemo* > ( theMemo->GetCGUIElement () ) -> GetCaretIndex () );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2509,21 +2211,19 @@ int CLuaFunctionDefs::GUIMemoGetCaretIndex ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIWindowSetMovable ( lua_State* luaVM )
 {
-//  bool guiWindowSetMovable ( element theElement, bool status )
-    CClientGUIElement* theElement; bool status;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIWindow > ( theElement );
-    argStream.ReadBool ( status );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIWindowSetMovable ( *theElement, status );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIWindowSetMovable ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiWindowSetMovable", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2533,21 +2233,63 @@ int CLuaFunctionDefs::GUIWindowSetMovable ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIWindowSetSizable ( lua_State* luaVM )
 {
-//  bool guiWindowSetSizable ( element theElement, bool status )
-    CClientGUIElement* theElement; bool status;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIWindow > ( theElement );
-    argStream.ReadBool ( status );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
-        CStaticFunctionDefinitions::GUIWindowSetSizable ( *theElement, status );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIWindowSetSizable ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiWindowSetSizable", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+
+    // error: bad arguments
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+
+int CLuaFunctionDefs::GUIWindowSetCloseButtonEnabled ( lua_State* luaVM )
+{
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
+    {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIWindowSetCloseButtonEnabled ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiWindowSetCloseButtonEnabled", "gui-element", 1 );
+    }
+
+    // error: bad arguments
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+
+int CLuaFunctionDefs::GUIWindowSetTitleBarEnabled ( lua_State* luaVM )
+{
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
+    {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUIWindowSetTitleBarEnabled ( *pEntity, lua_toboolean ( luaVM, 2 ) ? true : false );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiWindowSetTitleBarEnabled", "gui-element", 1 );
+    }
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2557,20 +2299,18 @@ int CLuaFunctionDefs::GUIWindowSetSizable ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUILabelGetTextExtent ( lua_State* luaVM )
 {
-//  float guiLabelGetTextExtent ( element theLabel )
-    CClientGUIElement* theLabel;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUILabel > ( theLabel );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        float fExtent = static_cast < CGUILabel* > ( theLabel->GetCGUIElement () ) -> GetTextExtent ();
-        lua_pushnumber ( luaVM, fExtent );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_LABEL ( pGUIElement ) )
+        {
+            float fExtent = static_cast < CGUILabel* > ( pGUIElement->GetCGUIElement () ) -> GetTextExtent ();
+            lua_pushnumber ( luaVM, fExtent );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiLabelGetTextExtent", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2580,20 +2320,18 @@ int CLuaFunctionDefs::GUILabelGetTextExtent ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUILabelGetFontHeight ( lua_State* luaVM )
 {
-//  float guiLabelGetFontHeight ( element theLabel )
-    CClientGUIElement* theLabel;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUILabel > ( theLabel );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        float fHeight = static_cast < CGUILabel* > ( theLabel->GetCGUIElement () ) -> GetFontHeight ();
-        lua_pushnumber ( luaVM, fHeight );
-        return 1;
+        CClientGUIElement *pGUIElement = lua_toguielement ( luaVM, 1 );
+        if ( pGUIElement && IS_CGUIELEMENT_LABEL ( pGUIElement ) )
+        {
+            float fHeight = static_cast < CGUILabel* > ( pGUIElement->GetCGUIElement () ) -> GetFontHeight ();
+            lua_pushnumber ( luaVM, fHeight );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiLabelGetFontHeight", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2603,49 +2341,23 @@ int CLuaFunctionDefs::GUILabelGetFontHeight ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUILabelSetColor ( lua_State* luaVM )
 {
-//  bool guiLabelSetColor ( element theElement, int red, int green, int blue )
-    CClientGUIElement* theElement; int red; int green; int blue;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUILabel > ( theElement );
-    argStream.ReadNumber ( red );
-    argStream.ReadNumber ( green );
-    argStream.ReadNumber ( blue );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+        lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) )
     {
-        CStaticFunctionDefinitions::GUILabelSetColor ( *theElement, red, green, blue );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUILabelSetColor (  *pEntity,
+                static_cast < int > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < int > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < int > ( lua_tonumber ( luaVM, 4 ) ) );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiLabelSetColor", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUILabelGetColor ( lua_State* luaVM )
-{
-//  int r, int g, int b guiLabelGetColor ( element theElement )
-    CClientGUIElement* theElement;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUILabel > ( theElement );
-
-    if ( !argStream.HasErrors () )
-    {
-        unsigned char ucRed = 255, ucGreen = 255, ucBlue = 255;
-        static_cast < CGUILabel* > ( theElement->GetCGUIElement () ) ->GetTextColor ( ucRed, ucGreen, ucBlue );
-        lua_pushnumber ( luaVM, ucRed );
-        lua_pushnumber ( luaVM, ucGreen );
-        lua_pushnumber ( luaVM, ucBlue );
-        return 3;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2655,21 +2367,47 @@ int CLuaFunctionDefs::GUILabelGetColor ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUILabelSetVerticalAlign ( lua_State* luaVM )
 {
-//  bool guiLabelSetVerticalAlign ( element theLabel, string align )
-    CClientGUIElement* theLabel; CGUIVerticalAlign align;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUILabel > ( theLabel );
-    argStream.ReadEnumString ( align );
-
-    if ( !argStream.HasErrors () )
+    // Verify the argument types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) )
     {
-        CStaticFunctionDefinitions::GUILabelSetVerticalAlign ( *theLabel, align );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        // Grab the align string
+        const char* szAlign = lua_tostring ( luaVM, 2 );
+
+        // Compare it with the possible modes and set the mode
+        CGUIVerticalAlign Align = CGUI_ALIGN_TOP;
+        if ( stricmp ( szAlign, "top" ) == 0 )
+        {
+            Align = CGUI_ALIGN_TOP;
+        }
+        else if ( stricmp ( szAlign, "center" ) == 0 )
+        {
+            Align = CGUI_ALIGN_VERTICALCENTER;
+        }
+        else if ( stricmp ( szAlign, "bottom" ) == 0 )
+        {
+            Align = CGUI_ALIGN_BOTTOM;
+        }
+        else
+        {
+            // Bad align string
+            CLogger::ErrorPrintf ( "%s", "No such align for guiLabelSetVerticalAlign" );
+            lua_pushboolean ( luaVM, false );
+            return 0;
+        }
+
+        // Grab and verify the GUI element
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            CStaticFunctionDefinitions::GUILabelSetVerticalAlign ( *pEntity, Align );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiLabelSetVerticalAlign", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2677,27 +2415,66 @@ int CLuaFunctionDefs::GUILabelSetVerticalAlign ( lua_State* luaVM )
 }
 
 
-
 int CLuaFunctionDefs::GUILabelSetHorizontalAlign ( lua_State* luaVM )
 {
-//  bool guiLabelSetHorizontalAlign ( element theLabel, string align, [ bool wordwrap = false ] )
-    CClientGUIElement* theLabel; CGUIHorizontalAlign align; bool wordwrap;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUILabel > ( theLabel );
-    argStream.ReadEnumString ( align );
-    argStream.ReadBool ( wordwrap, false );
-
-    if ( !argStream.HasErrors () )
+    // Verify argument types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) )
     {
-        if ( wordwrap )
-            align = (CGUIHorizontalAlign)(align + 4);
-        CStaticFunctionDefinitions::GUILabelSetHorizontalAlign ( *theLabel, align );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        // Grab optional wordwrap bool
+        bool bWordWrap = false;
+        if ( lua_istype ( luaVM, 3, LUA_TBOOLEAN ) )
+        {
+            bWordWrap = lua_toboolean ( luaVM, 3 ) ? true:false;
+        }
+
+        // Grab the align string
+        const char* szAlign = lua_tostring ( luaVM, 2 );
+
+        // Compare it with the possible modes and set the mode
+        CGUIHorizontalAlign Align = CGUI_ALIGN_LEFT;
+        if ( stricmp ( szAlign, "left" ) == 0 )
+        {
+            if ( bWordWrap )
+                Align = CGUI_ALIGN_LEFT_WORDWRAP;
+            else
+                Align = CGUI_ALIGN_LEFT;
+        }
+        else if ( stricmp ( szAlign, "center" ) == 0 )
+        {
+            if ( bWordWrap )
+                Align = CGUI_ALIGN_HORIZONTALCENTER_WORDWRAP;
+            else
+                Align = CGUI_ALIGN_HORIZONTALCENTER;
+        }
+        else if ( stricmp ( szAlign, "right" ) == 0 )
+        {
+            if ( bWordWrap )
+                Align = CGUI_ALIGN_RIGHT_WORDWRAP;
+            else
+                Align = CGUI_ALIGN_RIGHT;
+        }
+        else
+        {
+            // Bad align string
+            CLogger::ErrorPrintf ( "%s", "No such align for guiLabelSetHorizontalAlign" );
+            lua_pushboolean ( luaVM, false );
+            return 0;
+        }
+
+        // Grab thhe GUI element
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        if ( pEntity )
+        {
+            // Set the horizontal align
+            CStaticFunctionDefinitions::GUILabelSetHorizontalAlign ( *pEntity, Align );
+
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiLabelSetHorizontalAlign", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2860,19 +2637,19 @@ int CLuaFunctionDefs::GUIGetChatboxLayout ( lua_State* luaVM )
         lua_settable( luaVM, -3 );
         lua_setfield ( luaVM, -2, "chat_input_text_color" );
     }
+    int iX, iY;
     pCVars->Get("chat_scale", strCVar);
     if ( !strCVar.empty() )
     {
-        float fX, fY;
         ss.clear();
         ss.str ( strCVar );
-        ss >> fX >> fY;
+        ss >> iX >> iY;
         lua_newtable ( luaVM );
         lua_pushnumber ( luaVM, 1 );
-        lua_pushnumber ( luaVM, fX );
+        lua_pushnumber ( luaVM, iX );
         lua_settable( luaVM, -3 );
         lua_pushnumber ( luaVM, 2 );
-        lua_pushnumber ( luaVM, fY );
+        lua_pushnumber ( luaVM, iY );
         lua_settable( luaVM, -3 );
         lua_setfield ( luaVM, -2, "chat_scale" );
     }
@@ -2881,30 +2658,32 @@ int CLuaFunctionDefs::GUIGetChatboxLayout ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUICreateComboBox ( lua_State* luaVM )
 {
-//  element guiCreateComboBox ( float x, float y, float width, float height, string caption, bool relative, [ element parent = nil ] )
-    float x; float y; float width; float height; SString caption; bool relative; CClientGUIElement* parent;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( x );
-    argStream.ReadNumber ( y );
-    argStream.ReadNumber ( width );
-    argStream.ReadNumber ( height );
-    argStream.ReadString ( caption );
-    argStream.ReadBool ( relative );
-    argStream.ReadUserData ( parent, NULL );
-
-    if ( !argStream.HasErrors () )
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+    if ( pLuaMain )
     {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( pLuaMain )
+        if ( lua_istype ( luaVM, 1, LUA_TNUMBER ) && lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 3, LUA_TNUMBER ) && lua_istype ( luaVM, 4, LUA_TNUMBER ) &&
+            lua_istype ( luaVM, 5, LUA_TSTRING ) && lua_istype ( luaVM, 6, LUA_TBOOLEAN ) )
         {
-            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateComboBox ( *pLuaMain, x, y, width, height, caption, relative, parent );
-            lua_pushelement ( luaVM, pGUIElement );
-            return 1;
+            CClientGUIElement* pParent = lua_toguielement ( luaVM, 7 );
+
+            CClientGUIElement* pGUIElement = CStaticFunctionDefinitions::GUICreateComboBox (
+                *pLuaMain,
+                static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 3 ) ),
+                static_cast < float > ( lua_tonumber ( luaVM, 4 ) ),
+                lua_tostring ( luaVM, 5 ),
+                lua_toboolean ( luaVM, 6 ) ? true : false,
+                pParent
+                );
+
+            if ( pGUIElement ) {
+                lua_pushelement ( luaVM, pGUIElement );
+                return 1;
+            }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2913,21 +2692,24 @@ int CLuaFunctionDefs::GUICreateComboBox ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIComboBoxAddItem ( lua_State* luaVM )
 {
-    // int guiComboBoxAddItem( element comboBox, string value )
-    CClientGUIElement* comboBox; SString value;
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIComboBox > ( comboBox );
-    argStream.ReadString ( value );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TSTRING )
+        )
     {
-        int newId = CStaticFunctionDefinitions::GUIComboBoxAddItem ( *comboBox, value );
-        lua_pushnumber( luaVM, newId );
-        return 1;
+        CClientGUIElement* pEntity = lua_toguielement ( luaVM, 1 );
+        if ( pEntity && IS_CGUIELEMENT_COMBOBOX ( pEntity ) )
+        {
+            int newId = CStaticFunctionDefinitions::GUIComboBoxAddItem (
+                *pEntity,
+                lua_tostring ( luaVM, 2 )
+                );
+            lua_pushnumber( luaVM, newId );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiComboBoxAddItem", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2936,21 +2718,24 @@ int CLuaFunctionDefs::GUIComboBoxAddItem ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIComboBoxRemoveItem ( lua_State* luaVM )
 {
-//  bool guiComboBoxRemoveItem( element comboBox, int itemId )
-    CClientGUIElement* comboBox; int itemId;
+    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
 
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIComboBox > ( comboBox );
-    argStream.ReadNumber ( itemId );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && lua_istype ( luaVM, 2, LUA_TNUMBER )
+        )
     {
-        bool ret = CStaticFunctionDefinitions::GUIComboBoxRemoveItem ( *comboBox, itemId );
-        lua_pushboolean( luaVM, ret );
-        return 1;
+        CClientGUIElement* pEntity = lua_toguielement ( luaVM, 1 );
+        if ( pEntity && IS_CGUIELEMENT_COMBOBOX ( pEntity ) )
+        {
+            bool ret = CStaticFunctionDefinitions::GUIComboBoxRemoveItem (
+                *pEntity,
+                static_cast < int > ( lua_tonumber ( luaVM, 2 ) )
+                );
+            lua_pushboolean( luaVM, ret );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiComboBoxRemoveItem", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // error: bad arguments
     lua_pushboolean ( luaVM, false );
@@ -2959,157 +2744,104 @@ int CLuaFunctionDefs::GUIComboBoxRemoveItem ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GUIComboBoxClear ( lua_State* luaVM )
 {
-//  bool guiComboBoxClear ( element comboBox )
-    CClientGUIElement* comboBox;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIComboBox > ( comboBox );
-
-    if ( !argStream.HasErrors () )
+    bool returnVal = false;
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        bool ret = CStaticFunctionDefinitions::GUIComboBoxClear ( *comboBox );
-        lua_pushboolean( luaVM, ret );
-        return 1;
+        CClientGUIElement* pEntity = lua_toguielement ( luaVM, 1 );
+        if ( pEntity && IS_CGUIELEMENT_COMBOBOX ( pEntity ) )
+        {
+            returnVal = CStaticFunctionDefinitions::GUIComboBoxClear (
+                *pEntity
+                );
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "guiComboBoxClear", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
+    lua_pushboolean ( luaVM, returnVal );
     return 1;
 }
 
 int CLuaFunctionDefs::GUIComboBoxGetSelected ( lua_State* luaVM )
 {
-//  int guiComboBoxGetSelected ( element comboBox )
-    CClientGUIElement* comboBox;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIComboBox > ( comboBox );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
-        int selected = CStaticFunctionDefinitions::GUIComboBoxGetSelected( *comboBox );
-        lua_pushnumber ( luaVM, selected );
-        return 1;
+        CClientGUIElement* pEntity = lua_toguielement ( luaVM, 1 );
+        if ( pEntity && IS_CGUIELEMENT_COMBOBOX ( pEntity ) )
+        {
+            int selected = CStaticFunctionDefinitions::GUIComboBoxGetSelected( *pEntity );
+            lua_pushnumber ( luaVM, selected );
+            return 1;
+        }
+        else m_pScriptDebugging->LogBadPointer ( luaVM, "guiComboBoxGetSelected", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
     lua_pushnil ( luaVM );
     return 1;
 }
 
 int CLuaFunctionDefs::GUIComboBoxSetSelected ( lua_State* luaVM )
 {
-//  bool guiComboBoxSetSelected ( element comboBox, int itemIndex )
-    CClientGUIElement* comboBox; int itemIndex;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIComboBox > ( comboBox );
-    argStream.ReadNumber ( itemIndex );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+         lua_istype ( luaVM, 2, LUA_TNUMBER )
+        )
     {
-        bool ret = CStaticFunctionDefinitions::GUIComboBoxSetSelected( *comboBox, itemIndex );
-        lua_pushboolean ( luaVM, ret );
-        return 1;
+        CClientGUIElement* pEntity = lua_toguielement ( luaVM, 1 );
+        if ( pEntity && IS_CGUIELEMENT_COMBOBOX ( pEntity ) )
+        {
+            bool ret = CStaticFunctionDefinitions::GUIComboBoxSetSelected( 
+                *pEntity,
+                static_cast < int > ( lua_tonumber ( luaVM, 2 ) )
+                );
+            lua_pushboolean ( luaVM, ret );
+            return 1;
+        }
+        else m_pScriptDebugging->LogBadPointer ( luaVM, "guiComboBoxSetSelected", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
 int CLuaFunctionDefs::GUIComboBoxGetItemText ( lua_State* luaVM )
 {
-//  string guiComboBoxGetItemText ( element comboBox, int itemId )
-    CClientGUIElement* comboBox; int itemId;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIComboBox > ( comboBox );
-    argStream.ReadNumber ( itemId );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+         lua_istype ( luaVM, 2, LUA_TNUMBER )
+        )
     {
-        SString ret = CStaticFunctionDefinitions::GUIComboBoxGetItemText( *comboBox, itemId );
-        lua_pushstring ( luaVM, ret );
-        return 1;
+        CClientGUIElement* pEntity = lua_toguielement ( luaVM, 1 );
+        if ( pEntity && IS_CGUIELEMENT_COMBOBOX ( pEntity ) )
+        {
+            std::string ret = CStaticFunctionDefinitions::GUIComboBoxGetItemText( 
+                *pEntity,
+                static_cast < int > ( lua_tonumber ( luaVM, 2 ) )
+                );
+            lua_pushstring ( luaVM, ret.c_str( ) );
+            return 1;
+        }
+        else m_pScriptDebugging->LogBadPointer ( luaVM, "guiComboBoxGetItemText", "gui-element", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
 int CLuaFunctionDefs::GUIComboBoxSetItemText ( lua_State* luaVM )
 {
-//  bool guiComboBoxSetItemText ( element comboBox, int itemId, string text )
-    CClientGUIElement* comboBox; int itemId; SString text;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData < CGUIComboBox > ( comboBox );
-    argStream.ReadNumber ( itemId );
-    argStream.ReadString ( text );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+         lua_istype ( luaVM, 2, LUA_TNUMBER ) &&
+         lua_istype ( luaVM, 3, LUA_TSTRING )
+        )
     {
-        bool ret = CStaticFunctionDefinitions::GUIComboBoxSetItemText( *comboBox, itemId, text );
-        lua_pushboolean ( luaVM, ret );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GUICreateFont ( lua_State* luaVM )
-{
-//  element guiCreateFont( string filepath [, int size=9 ] )
-    SString strFilePath; int iSize;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strFilePath );
-    argStream.ReadNumber ( iSize, 9 );
-
-    if ( !argStream.HasErrors () )
-    {
-        CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( pLuaMain )
+        CClientGUIElement* pEntity = lua_toguielement ( luaVM, 1 );
+        if ( pEntity && IS_CGUIELEMENT_COMBOBOX ( pEntity ) )
         {
-            CResource* pParentResource = pLuaMain->GetResource ();
-            CResource* pFileResource = pParentResource;
-            SString strPath, strMetaPath;
-            if ( CResourceManager::ParseResourcePathInput( strFilePath, pFileResource, strPath, strMetaPath ) )
-            {
-                if ( FileExists ( strPath ) )
-                {
-                    SString strUniqueName = SString ( "%s*%s*%s", pParentResource->GetName (), pFileResource->GetName (), strMetaPath.c_str () ).Replace ( "\\", "/" );
-                    CClientGuiFont* pGuiFont = g_pClientGame->GetManager ()->GetRenderElementManager ()->CreateGuiFont ( strPath, strUniqueName, iSize );
-                    if ( pGuiFont )
-                    {
-                        // Make it a child of the resource's file root ** CHECK  Should parent be pFileResource, and element added to pParentResource's ElementGroup? **
-                        pGuiFont->SetParent ( pParentResource->GetResourceDynamicEntity () );
-                        lua_pushelement ( luaVM, pGuiFont );
-                        return 1;
-                    }
-                    argStream.SetCustomError( strFilePath, "Error creating font" );
-                }
-                else
-                    argStream.SetCustomError( strFilePath, "File not found" );
-            }
-            else
-                argStream.SetCustomError( strFilePath, "Bad file path" );
+            bool ret = CStaticFunctionDefinitions::GUIComboBoxSetItemText( 
+                *pEntity,
+                static_cast < int > ( lua_tonumber ( luaVM, 2 ) ),
+                lua_tostring ( luaVM, 3 )
+                );
+            lua_pushboolean ( luaVM, ret );
+            return 1;
         }
+        else m_pScriptDebugging->LogBadPointer ( luaVM, "guiComboBoxSetItemText", "gui-element", 1 );
     }
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // error: bad arguments
     lua_pushboolean ( luaVM, false );
     return 1;
 }

@@ -15,7 +15,6 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-extern bool g_bVehiclePointerInvalid;
 
 CPoolsSA::CPoolsSA()
 {
@@ -24,11 +23,18 @@ CPoolsSA::CPoolsSA()
     m_bGetVehicleEnabled = true;
     m_ulBuildingCount= 0;
 
-    MemSetFast (&Buildings,0,sizeof(CBuilding *) * MAX_BUILDINGS);
+    MemSet (&Buildings,0,sizeof(CBuilding *) * MAX_BUILDINGS);
 
     EntryInfoNodePool = new CEntryInfoNodePoolSA();
     PointerNodeDoubleLinkPool = new CPointerNodeDoubleLinkPoolSA();
     PointerNodeSingleLinkPool = new CPointerNodeSingleLinkPoolSA();
+
+    m_vehiclePool.map.set_deleted_key ( (CVehicleSAInterface *)0x9001 );
+    m_objectPool.map.set_deleted_key ( (CObjectSAInterface *)0x9001 );
+    m_pedPool.map.set_deleted_key ( (CPedSAInterface *)0x9001 );
+    m_vehiclePool.map.set_empty_key ( (CVehicleSAInterface *)NULL );
+    m_objectPool.map.set_empty_key ( (CObjectSAInterface *)NULL );
+    m_pedPool.map.set_empty_key ( (CPedSAInterface *)NULL );
 }
 
 CPoolsSA::~CPoolsSA ( void )
@@ -98,14 +104,14 @@ inline bool CPoolsSA::AddVehicleToPool ( CVehicleSA* pVehicle )
     return true;
 }
 
-CVehicle* CPoolsSA::AddVehicle ( eVehicleTypes eVehicleType, unsigned char ucVariation, unsigned char ucVariation2 )
+CVehicle* CPoolsSA::AddVehicle ( eVehicleTypes eVehicleType )
 {
     DEBUG_TRACE("CVehicle* CPoolsSA::AddVehicle ( eVehicleTypes eVehicleType )");
     CVehicleSA* pVehicle = NULL;
 
     if ( m_vehiclePool.ulCount < MAX_VEHICLES )
     {
-        pVehicle = new CVehicleSA ( eVehicleType, ucVariation, ucVariation2 );
+        pVehicle = new CVehicleSA ( eVehicleType );
         if ( ! AddVehicleToPool ( pVehicle ) )
         {
             delete pVehicle;
@@ -219,13 +225,15 @@ CVehicle* CPoolsSA::GetVehicle ( DWORD* pGameInterface )
 
     if ( m_bGetVehicleEnabled )
     {
+        // We don't need to look for the map here, since we
+        // include a pointer to the game_sa instance of the
+        // vehicle in the GTA interface.
         CVehicleSAInterface* pInterface = reinterpret_cast < CVehicleSAInterface* > ( pGameInterface );
 
-        if ( !g_bVehiclePointerInvalid )
+        if ( pInterface )
+        {
             return pInterface->m_pVehicle;
-        vehiclePool_t::mapType::iterator iter = m_vehiclePool.map.find ( pInterface );
-        if ( iter != m_vehiclePool.map.end () )
-            return (*iter).second;
+        }
     }
 
     return NULL;
@@ -295,12 +303,7 @@ CVehicle* CPoolsSA::GetVehicleFromRef ( DWORD dwGameRef )
     {
         // We have a special slot in vehicles GTA interface pointing to
         // our game_sa instance for it.
-        if ( !g_bVehiclePointerInvalid )
-            return pInterface->m_pVehicle;
-
-        vehiclePool_t::mapType::iterator iter = m_vehiclePool.map.find ( pInterface );
-        if ( iter != m_vehiclePool.map.end () )
-            return (*iter).second;
+        return pInterface->m_pVehicle;
     }
 
     return NULL;
@@ -358,7 +361,7 @@ inline bool CPoolsSA::AddObjectToPool ( CObjectSA* pObject )
     return true;
 }
 
-CObject* CPoolsSA::AddObject ( DWORD dwModelID, bool bLowLod, bool bBreakingDisabled )
+CObject* CPoolsSA::AddObject ( DWORD dwModelID )
 {
     DEBUG_TRACE("CObject * CPoolsSA::AddObject ( DWORD dwModelID )");
 
@@ -366,24 +369,45 @@ CObject* CPoolsSA::AddObject ( DWORD dwModelID, bool bLowLod, bool bBreakingDisa
 
     if ( m_objectPool.ulCount < MAX_OBJECTS )
     {
-        pObject = new CObjectSA ( dwModelID, bBreakingDisabled );
+        pObject = new CObjectSA ( dwModelID );
 
-        if ( AddObjectToPool ( pObject ) )
-        {
-            if ( bLowLod )
-            {
-                pObject->m_pInterface->bUsesCollision = 0;
-                pObject->m_pInterface->bDontCastShadowsOn = 1; 
-                // Set super hacky flag to indicate this is a special low lod object
-                pObject->m_pInterface->SetIsLowLodEntity ();
-            }
-            else
-                pObject->m_pInterface->SetIsHighLodEntity ();       
-        }
-        else
+        if ( ! AddObjectToPool ( pObject ) )
         {
             delete pObject;
             pObject = NULL;
+        }
+    }
+
+    return pObject;
+}
+
+CObject* CPoolsSA::AddObject ( DWORD* pGameInterface )
+{
+    DEBUG_TRACE("CObject* CPoolsSA::AddObject ( DWORD* pGameInterface )");
+
+    CObjectSA* pObject = NULL;
+
+    if ( m_objectPool.ulCount < MAX_OBJECTS )
+    {
+        CObjectSAInterface* pInterface = reinterpret_cast < CObjectSAInterface* > ( pGameInterface );
+        if ( pInterface )
+        {
+            // Make sure that it's not already in the objects pool
+            objectPool_t::mapType::iterator iter = m_objectPool.map.find ( pInterface );
+            if ( iter != m_objectPool.map.end () )
+            {
+                pObject = (*iter).second;
+            }
+            else
+            {
+                // Create it
+                pObject = new CObjectSA ( pInterface );
+                if ( ! AddObjectToPool ( pObject ) )
+                {
+                    delete pObject;
+                    pObject = NULL;
+                }
+            }
         }
     }
 
@@ -395,7 +419,7 @@ void CPoolsSA::RemoveObject ( unsigned long ulID, bool )
     DEBUG_TRACE("void CPoolsSA::RemoveObject ( unsigned long ulID, bool )");
 
     static bool bIsDeletingObjectAlready = false; // to prevent delete being called twice
-    if ( !bIsDeletingObjectAlready && ulID != INVALID_POOL_ARRAY_ID ) 
+    if ( !bIsDeletingObjectAlready ) 
     {
         bIsDeletingObjectAlready = true;
 
@@ -922,26 +946,26 @@ CBuilding * CPoolsSA::AddBuilding ( DWORD dwModelID )
 }
 
 
-CVehicle* CPoolsSA::AddTrain ( CVector * vecPosition, DWORD dwModels[], int iSize, bool bDirection, uchar ucTrackId )
+CVehicle* CPoolsSA::AddTrain ( CVector * vecPosition, DWORD dwModels[], int iSize, bool bDirection )
 {
     DEBUG_TRACE("CVehicle* CPoolsSA::AddTrain ( CVector * vecPosition, DWORD dwModels[], int iSize, bool bDirection )");
 
     // clean the existing array
-    MemSetFast ( (void *)VAR_TrainModelArray, 0, 32 * sizeof(DWORD) );
+    MemSet ( (void *)VAR_TrainModelArray, 0, 32 * sizeof(DWORD) );
 
     // now load the models we're going to use and add them to the array
     for ( int i = 0; i < iSize; i++ )
     {
         if ( dwModels[i] == 449 || dwModels[i] == 537 || 
             dwModels[i] == 538 || dwModels[i] == 569 || 
-            dwModels[i] == 590 || dwModels[i] == 570 )
+            dwModels[i] == 590 )
         {
-            MemPutFast < DWORD > ( VAR_TrainModelArray + i * 4, dwModels[i] );
+            MemPut < DWORD > ( VAR_TrainModelArray + i * 4, dwModels[i] );  //             *(DWORD *)(VAR_TrainModelArray + i * 4) = dwModels[i];
         }
     }
 
-    CVehicleSAInterface* pTrainBeginning = NULL;
-    CVehicleSAInterface* pTrainEnd = NULL;
+    CVehicleSAInterface * trainBegining;
+    CVehicleSAInterface * trainEnd;
 
     float fX = vecPosition->fX;
     float fY = vecPosition->fY;
@@ -950,20 +974,15 @@ CVehicle* CPoolsSA::AddTrain ( CVector * vecPosition, DWORD dwModels[], int iSiz
     // Disable GetVehicle because CreateMissionTrain calls it before our CVehicleSA instance is inited
     m_bGetVehicleEnabled = false;
 
-    // Find closest track node
-    float fRailDistance;
-    int iNodeId = pGame->GetWorld ()->FindClosestRailTrackNode ( *vecPosition, ucTrackId, fRailDistance );
-    int iDesiredTrackId = ucTrackId;
-
     DWORD dwFunc = FUNC_CTrain_CreateMissionTrain;
     _asm
     {
         push    0 // place as close to point as possible (rather than at node)? (maybe) (actually seems to have an effect on the speed, so changed from 1 to 0)
-        push    iDesiredTrackId // track ID
-        push    iNodeId // node to start at (-1 for closest node)
-        lea     ecx, pTrainEnd
+        push    0 // start finding closest from here 
+        push    -1 // node to start at (-1 for closest node)
+        lea     ecx, trainEnd
         push    ecx // end of train
-        lea     ecx, pTrainBeginning 
+        lea     ecx, trainBegining 
         push    ecx // begining of train
         push    0 // train type (always use 0 as thats where we're writing to)
         push    bDirection // direction 
@@ -978,14 +997,14 @@ CVehicle* CPoolsSA::AddTrain ( CVector * vecPosition, DWORD dwModels[], int iSiz
     m_bGetVehicleEnabled = true;
 
     CVehicleSA * trainHead = NULL;
-    if ( pTrainBeginning )
+    if ( trainBegining )
     {
         DWORD vehicleIndex = 0;
 
         if ( m_vehiclePool.ulCount < MAX_VEHICLES )
         {
-            trainHead = new CVehicleSA ( pTrainBeginning );
-            if ( !AddVehicleToPool ( trainHead ) )
+            trainHead = new CVehicleSA ( trainBegining );
+            if ( ! AddVehicleToPool ( trainHead ) )
             {
                 delete trainHead;
                 trainHead = NULL;
@@ -1020,8 +1039,7 @@ CVehicle* CPoolsSA::AddTrain ( CVector * vecPosition, DWORD dwModels[], int iSiz
 
     // Stops the train from moving at ludacrist speeds right after creation
     // due to some glitch in the node finding in CreateMissionTrain
-    CVector vec(0, 0, 0);
-    trainHead->SetMoveSpeed ( &vec );
+    trainHead->SetMoveSpeed ( &CVector ( 0, 0, 0 ) );
 
     return trainHead;
 }
@@ -1039,12 +1057,11 @@ void CPoolsSA::DumpPoolsStatus ()
     int poolSizes[] = {13000,140,350,2500,110,10150,500,200,16,140,64,500,64,32,64,3200,70000};
     int iPosition = 0;
     char percent = '%';
-    iPosition += snprintf ( szOutput, 1024, "-----------------\n" );
-    int iAmount = Min < int > ( MAX_POOLS, Min( NUMELMS( poolNames ), NUMELMS( poolSizes ) ) );
-    for ( int i = 0; i < iAmount; i++ )
+    iPosition += _snprintf ( szOutput, 1024, "-----------------\n" );
+    for ( int i = 0; i < MAX_POOLS; i++ )
     {
         int usedSpaces = GetNumberOfUsedSpaces ( (ePools)i );
-        iPosition += snprintf ( szOutput + iPosition, 1024 - iPosition, "%s: %d (%d) (%.2f%c)\n", poolNames[i], usedSpaces, poolSizes[i], ((float)usedSpaces / (float)poolSizes[i] * 100), percent  );
+        iPosition += _snprintf ( szOutput + iPosition, 1024 - iPosition, "%s: %d (%d) (%.2f%c)\n", poolNames[i], usedSpaces, poolSizes[i], ((float)usedSpaces / (float)poolSizes[i] * 100), percent  );
     }
     #ifdef MTA_DEBUG
     OutputDebugString ( szOutput );
@@ -1061,9 +1078,9 @@ int CPoolsSA::GetPoolDefaultCapacity ( ePools pool )
         case OBJECT_POOL:               return 350;          // Modded to 700   @ CGameSA.cpp
         case DUMMY_POOL:                return 2500;
         case VEHICLE_POOL:              return 110;
-        case COL_MODEL_POOL:            return 10150;        // Modded to 12000  @ CGameSA.cpp
+        case COL_MODEL_POOL:            return 10150;
         case TASK_POOL:                 return 500;          // Modded to 5000   @ CGameSA.cpp
-        case EVENT_POOL:                return 200;          // Modded to 5000   @ CGameSA.cpp
+        case EVENT_POOL:                return 200;          // Modded to 9001   @ CMultiplayerSA.cpp
         case TASK_ALLOCATOR_POOL:       return 16;
         case PED_INTELLIGENCE_POOL:     return 140;
         case PED_ATTRACTOR_POOL:        return 64;
@@ -1071,11 +1088,8 @@ int CPoolsSA::GetPoolDefaultCapacity ( ePools pool )
         case NODE_ROUTE_POOL:           return 64;
         case PATROL_ROUTE_POOL:         return 32;
         case POINT_ROUTE_POOL:          return 64;
-        case POINTER_DOUBLE_LINK_POOL:  return 3200;         // Modded to 8000   @ CMultiplayerSA.cpp
+        case POINTER_DOUBLE_LINK_POOL:  return 3200;         // Modded to 4000   @ CMultiplayerSA.cpp
         case POINTER_SINGLE_LINK_POOL:  return 70000;
-        case ENV_MAP_MATERIAL_POOL:     return 4096;         // Modded to 16000   @ CGameSA.cpp
-        case ENV_MAP_ATOMIC_POOL:       return 1024;         // Modded to 8000    @ CGameSA.cpp
-        case SPEC_MAP_MATERIAL_POOL:    return 4096;         // Modded to 16000   @ CGameSA.cpp
     }
     return 0;
 }
@@ -1104,9 +1118,6 @@ int CPoolsSA::GetPoolCapacity ( ePools pool )
         case POINT_ROUTE_POOL:          cPtr = 0x5511AF; break;
         case POINTER_DOUBLE_LINK_POOL:  iPtr = 0x550F82; break;
         case POINTER_SINGLE_LINK_POOL:  iPtr = 0x550F46; break;
-        case ENV_MAP_MATERIAL_POOL:     iPtr = 0x5DA08E; break;
-        case ENV_MAP_ATOMIC_POOL:       iPtr = 0x5DA0CA; break;
-        case SPEC_MAP_MATERIAL_POOL:    iPtr = 0x5DA106; break;
     }
     if ( iPtr )
         return *(int*)iPtr;
@@ -1142,15 +1153,12 @@ void CPoolsSA::SetPoolCapacity ( ePools pool, int iValue )
         case POINT_ROUTE_POOL:          cPtr = 0x5511AF; break;     // 0 - 127
         case POINTER_DOUBLE_LINK_POOL:  iPtr = 0x550F82; break;
         case POINTER_SINGLE_LINK_POOL:  iPtr = 0x550F46; break;
-        case ENV_MAP_MATERIAL_POOL:     iPtr = 0x5DA08E; break;
-        case ENV_MAP_ATOMIC_POOL:       iPtr = 0x5DA0CA; break;
-        case SPEC_MAP_MATERIAL_POOL:    iPtr = 0x5DA106; break;
     }
     if ( iPtr )
-        MemPut < int > ( iPtr, iValue );
+        MemPut < int > ( iPtr, iValue );  //         *(int*)iPtr = iValue;
 
     if ( cPtr )
-        MemPut < char > ( cPtr, iValue );
+        MemPut < char > ( cPtr, iValue );  //         *(char*)cPtr = iValue;
 }
 
 

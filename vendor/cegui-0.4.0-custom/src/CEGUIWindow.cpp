@@ -898,14 +898,9 @@ void Window::setClippedByParent(bool setting)
 *************************************************************************/
 void Window::setText(const String& text)
 {
-    if ( text == d_text_raw )
+    if ( text == d_text )
         return;
-    d_text_raw = text;
-    d_text = d_text_raw.bidify ();
-
-    if ( getFont () )
-        const_cast < Font* > ( getFont () )->insertStringForGlyphs ( d_text ); // Refresh our glyph set if there are new characters
-
+	d_text = text;
     WindowEventArgs args(this);
 	onTextChanged(args);
 }
@@ -989,9 +984,6 @@ void Window::setAreaRect(const Rect& area)
 *************************************************************************/
 void Window::setFont(const Font* font)
 {
-    if ( !d_font && font && !d_text.empty() )
-        const_cast < Font* > ( font )->insertStringForGlyphs ( d_text ); // Refresh our glyph set if there are new characters
-
 	d_font = font;
     WindowEventArgs args(this);
 	onFontChanged(args);
@@ -1252,16 +1244,8 @@ void Window::releaseInput(void)
 		d_captureWindow = NULL;
 	}
 
-    try
-    {
-        WindowEventArgs args(this);
-	    onCaptureLost(args);
-    }
-    catch (UnknownObjectException)
-    {
-        // Guess fix for scrollbar throwing UnknownObjectException("WindowManager::getWindow ...") inside FalagardScrollbar::getValueFromThumb()
-        // (When called from Window::destroy())
-    }
+    WindowEventArgs args(this);
+	onCaptureLost(args);
 }
 
 
@@ -1855,8 +1839,7 @@ float Window::windowToScreenY(const UDim& y) const
 *************************************************************************/
 Vector2 Window::windowToScreen(const UVector2& vec) const
 {
-    Vector2 base(0, 0);
-    base = d_parent ? d_parent->windowToScreen(base) + getAbsolutePosition() : getAbsolutePosition();
+    Vector2 base = d_parent ? d_parent->windowToScreen(base) + getAbsolutePosition() : getAbsolutePosition();
 
     switch(d_horzAlign)
     {
@@ -1890,8 +1873,7 @@ Vector2 Window::windowToScreen(const UVector2& vec) const
 *************************************************************************/
 Rect Window::windowToScreen(const URect& rect) const
 {
-    Vector2 base(0, 0);
-    base = d_parent ? d_parent->windowToScreen(base) + getAbsolutePosition() : getAbsolutePosition();
+    Vector2 base = d_parent ? d_parent->windowToScreen(base) + getAbsolutePosition() : getAbsolutePosition();
 
     switch(d_horzAlign)
     {

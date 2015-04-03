@@ -39,8 +39,13 @@ CResourceConfigItem::~CResourceConfigItem ( void )
 bool CResourceConfigItem::Start ( void )
 {
     // Does the file even exist?
-    if ( FileExists( GetName() ) )
+    WIN32_FIND_DATA fdInfo;
+    HANDLE hFind = FindFirstFile( m_szName, &fdInfo );
+    if ( INVALID_HANDLE_VALUE != hFind )
     {
+        // Close the find
+        FindClose ( hFind );
+
         // Already created?
         if ( m_pXMLFile )
         {
@@ -48,18 +53,14 @@ bool CResourceConfigItem::Start ( void )
         }
 
         // Create the XML
-        m_pXMLFile = g_pCore->GetXML ()->CreateXML ( GetName (), true );
+        m_pXMLFile = g_pCore->GetXML ()->CreateXML ( GetName () );
         if ( m_pXMLFile )
         {
             // Parse the XML
-            std::vector < char > fileContents;
-            if ( m_pXMLFile->Parse ( &fileContents ) )
+            if ( m_pXMLFile->Parse () )
             {
-                if ( CChecksum::GenerateChecksumFromBuffer( &fileContents.at ( 0 ), fileContents.size() ) == GetServerChecksum() )
-                {
-                    m_pXMLRootNode = m_pXMLFile->GetRootNode ();
-                    return true;
-                }
+                m_pXMLRootNode = m_pXMLFile->GetRootNode ();
+                return true;
             }
             else
             {

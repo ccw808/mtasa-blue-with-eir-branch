@@ -17,23 +17,23 @@
 
 extern CGame * g_pGame;
 
-CObject::CObject ( CElement* pParent, CXMLNode* pNode, CObjectManager* pObjectManager, bool bIsLowLod ) : CElement ( pParent, pNode )
-    , m_bIsLowLod ( bIsLowLod )
-    , m_pLowLodObject ( NULL )
+CObject::CObject ( CElement* pParent, CXMLNode* pNode, CObjectManager* pObjectManager ) : CElement ( pParent, pNode )
 {
     // Init
     m_iType = CElement::OBJECT;
     SetTypeName ( "object" );
+    m_szName [0] = 0;
+    m_szName [MAX_ELEMENT_NAME_LENGTH] = 0;
 
     m_pObjectManager = pObjectManager;
     m_usModel = 0xFFFF;
     m_pMoveAnimation = NULL;
     m_ucAlpha = 255;
-    m_vecScale  = CVector ( 1.0f, 1.0f, 1.0f );
+    m_fScale  = 1;
     m_fHealth = 1000.0f;
+    m_bBreakable = true;
     m_bSyncable = true;
     m_pSyncer = NULL;
-    m_bIsStatic = false;
 
     m_bCollisionsEnabled = true;
 
@@ -43,10 +43,11 @@ CObject::CObject ( CElement* pParent, CXMLNode* pNode, CObjectManager* pObjectMa
 
 
 CObject::CObject ( const CObject& Copy ) : CElement ( Copy.m_pParent, Copy.m_pXMLNode )
-    , m_bIsLowLod ( Copy.m_bIsLowLod )
-    , m_pLowLodObject ( Copy.m_pLowLodObject )
 {
     // Init
+    m_szName [0] = 0;
+    m_szName [MAX_ELEMENT_NAME_LENGTH] = 0;
+
     m_pObjectManager = Copy.m_pObjectManager;
     m_usModel = Copy.m_usModel;
     m_vecPosition = Copy.m_vecPosition;
@@ -86,11 +87,7 @@ void CObject::Unlink ( void )
 {
     // Remove us from the manager's list
     m_pObjectManager->RemoveFromList ( this );
-
-    // Remove LowLod refs in others
-    SetLowLodObject ( NULL );
-    while ( !m_HighLodObjectList.empty () )
-        m_HighLodObjectList[0]->SetLowLodObject ( NULL );
+    m_pObjectManager->m_Attached.remove ( this );
 }
 
 
@@ -155,13 +152,8 @@ bool CObject::ReadSpecialData ( void )
     if ( !GetCustomDataBool ( "doublesided", m_bDoubleSided, true ) )
         m_bDoubleSided = false;
 
-    if ( !GetCustomDataFloat ( "scale", m_vecScale.fX, true ) )
-        m_vecScale.fX = 1.0f;
-    m_vecScale.fY = m_vecScale.fX;
-    m_vecScale.fZ = m_vecScale.fX;
-    GetCustomDataFloat ( "scaleX", m_vecScale.fX, true );
-    GetCustomDataFloat ( "scaleY", m_vecScale.fY, true );
-    GetCustomDataFloat ( "scaleZ", m_vecScale.fZ, true );
+    if ( !GetCustomDataFloat ( "scale", m_fScale, true ) )
+        m_fScale = 1;
 
     if ( !GetCustomDataBool ( "collisions", m_bCollisionsEnabled, true ) )
         m_bCollisionsEnabled = true;
@@ -175,40 +167,6 @@ bool CObject::ReadSpecialData ( void )
 
     // Success
     return true;
-}
-
-
-void CObject::GetMatrix( CMatrix& matrix )
-{
-    matrix.vPos = GetPosition();
-    CVector vecRotation;
-    GetRotation( vecRotation );
-
-    // Do extra calculation to change rotation order if it will make a difference
-    if ( vecRotation.fX != 0 && vecRotation.fY != 0 )
-    {
-        CElement* pAttachedToBase = this;
-        while( pAttachedToBase->GetAttachedToElement() )
-            pAttachedToBase = pAttachedToBase->GetAttachedToElement();
-
-        // Only change rotation order if base is an object
-        if ( pAttachedToBase->GetType() == CElement::OBJECT )
-        {
-            ConvertRadiansToDegreesNoWrap( vecRotation );
-            vecRotation = ConvertEulerRotationOrder( vecRotation, EULER_ZXY, EULER_ZYX );
-            ConvertDegreesToRadiansNoWrap( vecRotation );
-        }
-    }
-    matrix.SetRotation( vecRotation );
-}
-
-
-void CObject::SetMatrix( const CMatrix& matrix )
-{
-    // Set position and rotation from matrix
-    SetPosition( matrix.vPos );
-    CVector vecRotation = matrix.GetRotation();
-    SetRotation( vecRotation );
 }
 
 
@@ -250,6 +208,7 @@ void CObject::SetPosition ( const CVector& vecPosition )
     if ( m_vecPosition != vecPosition )
     {
         // Update our vectors
+        m_vecLastPosition = m_vecPosition;
         m_vecPosition = vecPosition;
         UpdateSpatialData ();
     }
@@ -365,8 +324,24 @@ void CObject::StopMoving ( void )
      {
          return NULL;
      }
-}
+ }
 
+void CObject::AttachTo ( CElement * pElement )
+{
+    CElement * pPreviousAttachedToElement = m_pAttachedTo;
+    CElement::AttachTo ( pElement );
+
+    if ( !pPreviousAttachedToElement && m_pAttachedTo )
+    {
+        // Add us to our managers attached list
+        m_pObjectManager->m_Attached.push_back ( this );
+    }
+    else if ( pPreviousAttachedToElement && !m_pAttachedTo )
+    {
+        // Remove us from our managers attached list
+        m_pObjectManager->m_Attached.remove ( this );
+    }
+}
 
 void CObject::SetSyncer ( CPlayer* pPlayer )
 {
@@ -391,56 +366,4 @@ void CObject::SetSyncer ( CPlayer* pPlayer )
         // Set it
         m_pSyncer = pPlayer;
     }
-}
-
-
-bool CObject::IsLowLod ( void )
-{
-    return m_bIsLowLod;
-}
-
-
-bool CObject::SetLowLodObject ( CObject* pNewLowLodObject )
-{
-    // This object has to be high lod
-    if ( m_bIsLowLod )
-        return false;
-
-    // Set or clear?
-    if ( !pNewLowLodObject )
-    {
-        // Check if already clear
-        if ( !m_pLowLodObject )
-            return false;
-
-        // Verify link
-        assert ( ListContains ( m_pLowLodObject->m_HighLodObjectList, this ) );
-
-        // Clear there and here
-        ListRemove ( m_pLowLodObject->m_HighLodObjectList, this );
-        m_pLowLodObject = NULL;
-        return true;
-    }
-    else
-    {
-        // new object has to be low lod
-        if ( !pNewLowLodObject->m_bIsLowLod )
-            return false;
-
-        // Remove any previous link
-        SetLowLodObject ( NULL );
-
-        // Make new link
-        m_pLowLodObject = pNewLowLodObject;
-        pNewLowLodObject->m_HighLodObjectList.push_back ( this );
-        return true;
-    }
-}
-
-
-CObject* CObject::GetLowLodObject ( void )
-{
-    if ( m_bIsLowLod )
-        return NULL;
-    return m_pLowLodObject;
 }

@@ -38,14 +38,14 @@ bool CPlayerListPacket::Write ( NetBitStreamInterface& BitStream ) const
     CPlayer* pPlayer = NULL;
     // Put each player in our list into the packet
     list < CPlayer* > ::const_iterator iter = m_List.begin ();
-    for ( ; iter != m_List.end (); ++iter )
+    for ( ; iter != m_List.end (); iter++ )
     {
         // Grab the real pointer
         pPlayer = *iter;
 
         // Write the player ID
         ElementID PlayerID = pPlayer->GetID ();
-        BitStream.Write ( PlayerID );
+        BitStream.WriteCompressed ( PlayerID );
 
         // Time sync context
         BitStream.Write ( pPlayer->GetSyncTimeContext () );
@@ -61,16 +61,7 @@ bool CPlayerListPacket::Write ( NetBitStreamInterface& BitStream ) const
         else
         {
             BitStream.Write ( ucNickLength );
-            BitStream.Write ( szNickPointer, ucNickLength );
-        }
-
-        // Version info
-        if ( BitStream.Version () >= 0x34 )
-        {
-            BitStream.Write ( pPlayer->GetBitStreamVersion () );
-            SString strBuild = pPlayer->GetPlayerVersion ().SubStr ( 8 );
-            uint uiBuildNumber = atoi ( strBuild );
-            BitStream.Write ( uiBuildNumber );
+            BitStream.Write ( const_cast < char* > ( szNickPointer ), ucNickLength );
         }
 
         // Flags
@@ -104,19 +95,7 @@ bool CPlayerListPacket::Write ( NetBitStreamInterface& BitStream ) const
             BitStream.Write ( ucG );
             BitStream.Write ( ucB );
         }
-
-        // Move anim
-        if ( BitStream.Version() > 0x4B )
-        {
-            uchar ucMoveAnim = pPlayer->GetMoveAnim();
-            BitStream.Write ( ucMoveAnim );
-        }
-
-        // **************************************************************************************************************
-        // Note: The code below skips various attributes if the player is not spawned.
-        // This means joining clients will not receive the current value of these attributes, which could lead to desync.
-        // **************************************************************************************************************
-
+        
         // Write spawn info if he's spawned
         if ( bIsSpawned )
         {
@@ -128,7 +107,7 @@ bool CPlayerListPacket::Write ( NetBitStreamInterface& BitStream ) const
             if ( pTeam )
             {
                 BitStream.WriteBit ( true );
-                BitStream.Write ( pTeam->GetID () );
+                BitStream.WriteCompressed ( pTeam->GetID () );
             }
             else
                 BitStream.WriteBit ( false );
@@ -139,7 +118,7 @@ bool CPlayerListPacket::Write ( NetBitStreamInterface& BitStream ) const
                 CVehicle* pVehicle = pPlayer->GetOccupiedVehicle ();
 
                 // Vehicle ID and seat
-                BitStream.Write ( pVehicle->GetID () );
+                BitStream.WriteCompressed ( pVehicle->GetID () );
 
                 SOccupiedSeatSync seat;
                 seat.data.ucSeat = pPlayer->GetOccupiedVehicleSeat ();

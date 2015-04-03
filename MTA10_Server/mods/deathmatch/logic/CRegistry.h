@@ -11,7 +11,7 @@
 *
 *****************************************************************************/
 
-typedef CAutoRefedPointer < struct CRegistryResultData > CRegistryResult;
+struct CRegistryResult;
 
 #ifndef __CREGISTRY_H
 #define __CREGISTRY_H
@@ -21,7 +21,7 @@ typedef CAutoRefedPointer < struct CRegistryResultData > CRegistryResult;
 #include <list>
 #include <vector>
 #include <string>
-#include "../../../vendor/sqlite/sqlite3.h"
+#include <sqlite3.h>
 
 class CRegistry
 {
@@ -30,9 +30,7 @@ class CRegistry
                                 ~CRegistry              ( void );
 public:
 
-    void                        SuspendBatching         ( uint uiTicks );
     void                        Load                    ( const std::string& strFileName );
-    bool                        IntegrityCheck          ( void );
 
     void                        CreateTable             ( const std::string& strTable, const std::string& strDefinition, bool bSilent = false );
     void                        DropTable               ( const std::string& strTable );
@@ -46,12 +44,10 @@ public:
     bool                        Query                   ( const char* szQuery, ... );
     bool                        Query                   ( CRegistryResult* pResult, const char* szQuery, ... );
 
-    const SString&              GetLastError            ( void ) { return m_strLastErrorMessage; }
+    const std::string&          GetLastError            ( void ) { return m_strLastError; }
 
 protected:
-    bool                        SetLastErrorMessage     ( const std::string& strLastErrorMessage, const std::string& strQuery );
-    bool                        Exec                    ( const std::string& strQuery );
-    bool                        ExecInternal            ( const char* szQuery  );
+
     bool                        Query                   ( CRegistryResult* pResult, const char* szQuery, va_list vl );
     bool                        QueryInternal           ( const char* szQuery, CRegistryResult* pResult );
     void                        BeginAutomaticTransaction ( void );
@@ -60,13 +56,11 @@ protected:
     sqlite3                     *m_db;
     bool                        m_bOpened;
     bool                        m_bInAutomaticTransaction;
-    long long                   m_llSuspendBatchingEndTime;
-    SString                     m_strLastErrorMessage;
-    SString                     m_strLastErrorQuery;
-    SString                     m_strFileName;
 
 private:
     bool                        Query                   ( const char* szQuery, CRegistryResult* pResult );  // Not defined to catch incorrect usage
+    std::string                 m_strLastError;
+
 };
 
 struct CRegistryResultCell
@@ -96,55 +90,25 @@ struct CRegistryResultCell
                                         delete [] pVal;
                                 }
 
-                                CRegistryResultCell& operator = ( const CRegistryResultCell& cell )
-                                {
-                                    if ( pVal )
-                                        delete [] pVal;
-
-                                    nType = cell.nType;
-                                    nLength = cell.nLength;
-                                    nVal = cell.nVal;
-                                    fVal = cell.fVal;
-                                    pVal = NULL;
-                                    if ( (nType == SQLITE_BLOB || nType == SQLITE_TEXT) && cell.pVal && nLength > 0 )
-                                    {
-                                        pVal = new unsigned char [ nLength ];
-                                        memcpy ( pVal, cell.pVal, nLength );
-                                    }
-                                    return *this;
-                                }
-
     int                         nType;      // Type identifier, SQLITE_*
     int                         nLength;    // Length in bytes if nType == SQLITE_BLOB or SQLITE_TEXT
                                             //    (includes zero terminator if TEXT)
-    long long int               nVal;
+    int                         nVal;
     float                       fVal;
     unsigned char*              pVal;
 };
 
-typedef std::vector < CRegistryResultCell > CRegistryResultRow;
-typedef std::list < CRegistryResultRow >::const_iterator CRegistryResultIterator;
-
-struct CRegistryResultData
+struct CRegistryResult
 {
-                                             CRegistryResultData ( void )
+                                             CRegistryResult ( void )
                                              {
                                                 nRows = 0;
                                                 nColumns = 0;
                                              }
-    std::vector < SString >                  ColNames;
-    std::list < CRegistryResultRow >         Data;
+    vector < string >                        ColNames;
+    vector < vector<CRegistryResultCell> >   Data;
     int                                      nRows;
     int                                      nColumns;
-
-    CRegistryResultIterator begin( void ) const
-    {
-        return Data.begin();
-    }
-    CRegistryResultIterator end( void ) const
-    {
-        return Data.end();
-    }
 };
 
 #endif

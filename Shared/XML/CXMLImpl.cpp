@@ -31,9 +31,9 @@ CXMLImpl::~CXMLImpl ( void )
 }
 
 
-CXMLFile* CXMLImpl::CreateXML ( const char* szFilename, bool bUseIDs )
+CXMLFile* CXMLImpl::CreateXML ( const char* szFilename )
 {
-    CXMLFile* xmlFile = new CXMLFileImpl ( szFilename, bUseIDs );
+    CXMLFile* xmlFile = new CXMLFileImpl ( szFilename );
     if ( xmlFile->IsValid( ) )
         return xmlFile;
     else

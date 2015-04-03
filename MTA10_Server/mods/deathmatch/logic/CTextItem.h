@@ -56,9 +56,8 @@ public:
     inline void             SetPriority             ( eTextPriority Priority )          { m_Priority = Priority; };
     inline eTextPriority    GetPriority             ( void )                            { return m_Priority; };
 
-    inline unsigned long    GetUniqueID             ( void )                            { return m_ulUniqueId; };
+    inline unsigned long    GetID                   ( void )                            { return m_ulUniqueId; };
     inline bool             IsBeingDeleted          ( void )                            { return m_bDeletable; };
-    uint                    GetScriptID             ( void ) const                      { return m_uiScriptID; }
 
 private:
     SString                     m_strText;
@@ -70,7 +69,6 @@ private:
     unsigned long               m_ulUniqueId;
     eTextPriority               m_Priority;
     bool                        m_bDeletable;
-    uint                        m_uiScriptID;
 
     std::list <CTextDisplay *>  m_Observers;
     int                         m_iUsageCount;  // the number of CLIENTS that can see this. 
@@ -78,7 +76,7 @@ private:
                                                 // all clients have been informed
 
     void                    AddObserver             ( CTextDisplay* pObserver );
-    inline void             RemoveObserver          ( CTextDisplay* pObserver )   { m_Observers.remove ( pObserver ); };
+    inline void             RemoveObserver          ( CTextDisplay* pObserver )   { if ( !m_Observers.empty() ) m_Observers.remove ( pObserver ); };
     void                    NotifyObservers         ( void );
 
 };

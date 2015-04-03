@@ -35,9 +35,6 @@
 #define VAR_VehicleNamePtr          0xA0FC98
 #define VAR_ZoneNamePtr             0x97537C
 
-#define VAR_AspectRatioMult         0x859524
-#define VAR_CameraCrosshairScale    0x866C74
-
 #define FUNC_DrawAmmo               0x5893B0
 #define FUNC_DrawWeaponIcon         0x58D7D0
 #define FUNC_PrintHealthForPlayer   0x589270
@@ -48,51 +45,37 @@
 #define FUNC_DrawHelpText           0x58B6E0
 #define FUNC_DrawAreaName           0x58AA50
 #define FUNC_DrawRadar              0x58A330
-#define FUNC_DrawRadarPlanB         0x58A335
 #define FUNC_DrawRadioName          0x4E9E50
 #define FUNC_DrawWantedLevel        0x58D9A0
-#define FUNC_DrawCrosshair          0x58E020
 
 #define CODE_ShowMoney              0x58F47D
-
-struct SHudComponent
-{
-    bool bIsPartOfAll;
-    eHudComponent type;
-    bool bSaveOriginalBytes;
-    DWORD uiDataAddr;
-    DWORD uiDataSize;
-    DWORD origData;
-    DWORD disabledData;
-};
-
 
 class CHudSA : public CHud
 {
 public:
-                        CHudSA ( void );
     VOID                SetHelpMessage( char * szMessage );
     VOID                SetBigMessage( char * szBigMessage );
     VOID                SetVehicleName( char * szName );
     VOID                SetZoneName( char * szName );
     VOID                Disable ( bool bDisabled );
-    bool                IsDisabled ( void );
     VOID                DrawBarChart ( float fX, float fY, DWORD dwWidth, DWORD dwHeight, float fPercentage, DWORD dwForeColor, DWORD dwBorderColor );
     bool                CalcScreenCoors ( CVector * vecPosition1, CVector * vecPosition2, float * fX, float * fY, bool bSetting1, bool bSetting2 );
     void                Draw2DPolygon ( float fX1, float fY1, float fX2, float fY2, float fX3, float fY3, float fX4, float fY4, DWORD dwColor );
-    void                SetComponentVisible ( eHudComponent component, bool bVisible );
-    bool                IsComponentVisible ( eHudComponent component );
-    void                AdjustComponents ( float fAspectRatio );
-    void                ResetComponentAdjustment ( void );
-
-protected:
-    void                InitComponentList ( void );
-
-    std::map < eHudComponent, SHudComponent >   m_HudComponentMap;
-
-    float*              m_pfAspectRatioMultiplicator;
-    float*              m_pfCameraCrosshairScale;
-    float               m_fSniperCrosshairScale;
+    void                DisableAmmo ( bool bDisabled );
+    void                DisableWeaponIcon ( bool bDisabled );
+    void                DisableHealth ( bool bDisabled );
+    void                DisableBreath ( bool bDisabled );
+    void                DisableArmour ( bool bDisabled );
+    void                DisableVitalStats ( bool bDisabled );
+    void                DisableMoney ( bool bDisabled );
+    void                DisableVehicleName ( bool bDisabled );
+    void                DisableHelpText ( bool bDisabled );
+    void                DisableAreaName ( bool bDisabled );
+    void                DisableRadar ( bool bDisabled );
+    void                DisableClock ( bool bDisabled );
+    void                DisableRadioName ( bool bDisabled );
+    void                DisableWantedLevel ( bool bDisabled );
+    void                DisableAll ( bool bDisabled );
 };
 
 #endif

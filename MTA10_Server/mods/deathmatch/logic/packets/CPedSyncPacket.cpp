@@ -15,7 +15,7 @@
 CPedSyncPacket::~CPedSyncPacket ( void )
 {
     vector < SyncData* > ::const_iterator iter = m_Syncs.begin ();
-    for ( ; iter != m_Syncs.end (); ++iter )
+    for ( ; iter != m_Syncs.end (); iter++ )
     {
         delete *iter;
     }
@@ -81,20 +81,6 @@ bool CPedSyncPacket::Read ( NetBitStreamInterface& BitStream )
                 return false;
         }
 
-        // On Fire
-        if ( ucFlags & 0x20 && BitStream.Version() >= 0x04E )
-        {
-            if ( !BitStream.ReadBit ( pData->bOnFire ) )
-                return false;
-        }
-
-        // In Water
-        if ( ucFlags & 0x40 && BitStream.Version() >= 0x55 )
-        {
-            if ( !BitStream.ReadBit( pData->bIsInWater ) )
-                return false;
-        }
-
         // Add it to our list. We no longer check if it's valid here
         // because CPedSync does and it won't write bad ID's
         // back to clients.
@@ -110,7 +96,7 @@ bool CPedSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
     // While we're not out of syncs to write
     bool bSent = false;
     vector < SyncData* > ::const_iterator iter = m_Syncs.begin ();
-    for ( ; iter != m_Syncs.end (); ++iter )
+    for ( ; iter != m_Syncs.end (); iter++ )
     {
         // If we're not supposed to ignore the packet
         SyncData* pData = *iter;
@@ -145,11 +131,9 @@ bool CPedSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
                 BitStream.Write ( pData->vecVelocity.fZ );
             }
 
-            // Health, armour, on fire and is in water
+            // Health and armour
             if ( pData->ucFlags & 0x08 ) BitStream.Write ( pData->fHealth );
             if ( pData->ucFlags & 0x10 ) BitStream.Write ( pData->fArmor );
-            if ( pData->ucFlags & 0x20 && BitStream.Version() >= 0x04E ) BitStream.WriteBit ( pData->bOnFire );
-            if ( pData->ucFlags & 0x40 && BitStream.Version() >= 0x55 ) BitStream.Write( pData->bIsInWater );
 
             // We've sent atleast one sync
             bSent = true;

@@ -51,7 +51,7 @@ private:
 
     CWaterManager*              m_pWaterManager;
 
-    SFixedArray < CVector, 4 >  m_Vertices;
+    CVector                     m_Vertices [ 4 ];
     EWaterType                  m_WaterType;
 };
 

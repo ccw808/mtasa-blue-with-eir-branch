@@ -173,7 +173,7 @@ void CFoo::Test ( const char* szString )
         {
             CClientVehicle* pVehicle = *pVehicleManager->IterBegin ();
 
-            float fdelta = (float)atof ( szString + 7 );
+            float fdelta = atof ( szString + 7 );
 
             CVector vecT;
             pVehicle->GetPosition ( vecT );
@@ -196,7 +196,7 @@ void CFoo::Test ( const char* szString )
 
             CVector vecT;
             pVehicle->GetRotationDegrees ( vecT );
-            vecT.fZ = (float)atof ( szString + 7 );
+            vecT.fZ = atof ( szString + 7 );
             pVehicle->SetTargetRotation ( vecT, TICK_RATE );
 
             g_pCore->ChatPrintf ( "Done %f", false, atof ( szString + 7 ) );
@@ -240,7 +240,7 @@ void CFoo::Test ( const char* szString )
         CClientVehicle* pVehicle = pLocal->GetOccupiedVehicle ();
         if ( pVehicle )
         {
-            pVehicle->GetGameVehicle ()->SetMass ( (float)atof ( szString + 8 ) );
+            pVehicle->GetGameVehicle ()->SetMass ( atof ( szString + 8 ) );
             g_pCore->ChatPrintf ( "Set mass to %f", false, pVehicle->GetGameVehicle ()->GetMass () );
         }
     }
@@ -326,7 +326,7 @@ void CFoo::Test ( const char* szString )
 
                 fprintf ( poo, "Transmission.uiHandlingFlags = 0x%X\n", pHandling->Transmission.uiHandlingFlags );
 
-                fprintf ( poo, "Transmission.fEngineAcceleration = %f\n", pHandling->Transmission.fEngineAcceleration );
+                fprintf ( poo, "Transmission.fEngineAccelleration = %f\n", pHandling->Transmission.fEngineAccelleration );
                 fprintf ( poo, "Transmission.fEngineInertia = %f\n", pHandling->Transmission.fEngineInertia );
                 fprintf ( poo, "Transmission.fMaxVelocity = %f\n", pHandling->Transmission.fMaxVelocity );
 
@@ -334,7 +334,7 @@ void CFoo::Test ( const char* szString )
                 fprintf ( poo, "Transmission.fUnknown2 [1] = %f\n", pHandling->Transmission.fUnknown2 [1]  );
                 fprintf ( poo, "Transmission.fUnknown2 [2] = %f\n", pHandling->Transmission.fUnknown2 [2]  );
 
-                fprintf ( poo, "fBrakeDeceleration = %f\n", pHandling->fBrakeDeceleration );
+                fprintf ( poo, "fBrakeDecelleration = %f\n", pHandling->fBrakeDecelleration );
                 fprintf ( poo, "fBrakeBias = %f\n", pHandling->fBrakeBias );
                 fprintf ( poo, "bABS = %u\n", pHandling->bABS );
 
@@ -348,7 +348,7 @@ void CFoo::Test ( const char* szString )
                 fprintf ( poo, "fSuspensionUpperLimit = %f\n", pHandling->fSuspensionUpperLimit );
                 fprintf ( poo, "fSuspensionLowerLimit = %f\n", pHandling->fSuspensionLowerLimit );
                 fprintf ( poo, "fSuspensionFrontRearBias = %f\n", pHandling->fSuspensionFrontRearBias );
-                fprintf ( poo, "fSuspensionAntiDiveMultiplier = %f\n", pHandling->fSuspensionAntiDiveMultiplier );
+                fprintf ( poo, "fSuspensionAntidiveMultiplier = %f\n", pHandling->fSuspensionAntidiveMultiplier );
 
                 fprintf ( poo, "fCollisionDamageMultiplier = %f\n", pHandling->fCollisionDamageMultiplier );
 
@@ -400,7 +400,7 @@ void CFoo::Test ( const char* szString )
 
             CVector vecT;
             pVehicle->GetPosition ( vecT );
-            vecT.fZ = (float)atof ( szString + 7 );
+            vecT.fZ = atof ( szString + 7 );
             pVehicle->SetPosition ( vecT );
 
             g_pCore->ChatPrintf ( "Done", false );
@@ -474,9 +474,9 @@ void CFoo::Test ( const char* szString )
 
         for ( int a = 0; a < 13; a++ )
         {
-            g_pGame->GetModelInfo ( i )->ModelAddRef ( BLOCKING, "CFoo::Test" );
+            g_pGame->GetModelInfo ( i )->AddRef ( true );
 
-            CVehicle* pVehicle = g_pGame->GetPools ()->AddVehicle ( (eVehicleTypes)i, 5, 5 );
+            CVehicle* pVehicle = g_pGame->GetPools ()->AddVehicle ( (eVehicleTypes)i );
             DWORD* dw2 = (DWORD*)(((DWORD)pVehicle->GetVehicleInterface ()) + 0xE1 * 4 );
             DWORD dw = *dw2;
             dw = dw + 4;
@@ -506,7 +506,7 @@ void CFoo::Test ( const char* szString )
         for ( ; i < 139; i++ )
         {
             fprintf ( pFile, "==%s [%s] (%i)==\n", pGroups [i].szGroupName, pGroups [i].szSomething, i );
-            uint i2 = 0;
+            int i2 = 0;
             for ( ; i2 < pGroups [i].ulAnimCount; i2++ )
             {
                 const char* szAnimName = pGroups [i].pAnimNames [i2];

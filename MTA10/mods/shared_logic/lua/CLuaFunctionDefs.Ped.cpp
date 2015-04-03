@@ -18,19 +18,13 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#define MIN_CLIENT_REQ_REMOVEPEDFROMVEHICLE_CLIENTSIDE  "1.3.0-9.04482"
-#define MIN_CLIENT_REQ_WARPPEDINTOVEHICLE_CLIENTSIDE    "1.3.0-9.04482"
-#define MIN_CLIENT_REQ_WEAPON_PROPERTY_FLAG             "1.3.5-9.06139"
 
 int CLuaFunctionDefs::GetPedVoice ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Right type?
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             if ( !pPed->IsSpeechEnabled () )
@@ -52,10 +46,10 @@ int CLuaFunctionDefs::GetPedVoice ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedVoice", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedVoice" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -64,26 +58,18 @@ int CLuaFunctionDefs::GetPedVoice ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedVoice ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    SString strVoiceType = "", strVoiceBank = "";
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadString ( strVoiceType );
-    argStream.ReadString ( strVoiceBank, "" );
-
-    if ( !argStream.HasErrors ( ) )
+    // Right type?
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) && 
+        lua_istype ( luaVM, 2, LUA_TSTRING ) )
     {
-        const char* szVoiceType = strVoiceType.c_str ( );
-        const char* szVoiceBank = strVoiceBank == "" ? NULL : strVoiceBank.c_str ( );
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
+        const char* szVoiceType = lua_tostring ( luaVM, 2 );
+        const char* szVoiceBank = NULL;
+        if ( lua_istype ( luaVM, 3, LUA_TSTRING ) ) szVoiceBank = lua_tostring ( luaVM, 3 );        
 
         if ( pPed && szVoiceType )
         {
-            if ( !stricmp ( szVoiceType, "PED_TYPE_DISABLED" ) )
-            {
-                pPed->SetSpeechEnabled ( false );
-            }
-
+            if ( !stricmp ( szVoiceType, "PED_TYPE_DISABLED" ) ) pPed->SetSpeechEnabled ( false );
             else if ( szVoiceBank )
             {
                 pPed->SetSpeechEnabled ( true );
@@ -93,9 +79,16 @@ int CLuaFunctionDefs::SetPedVoice ( lua_State* luaVM )
             lua_pushboolean ( luaVM, true );
             return 1;
         }
+        else if ( !pPed )
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedVoice", "ped", 1 );
+        else if ( !szVoiceType )
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedVoice", "voicetype", 1 );
+        else if ( !szVoiceBank )
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedVoice", "voicebank", 1 );
+
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedVoice" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -105,17 +98,18 @@ int CLuaFunctionDefs::SetPedVoice ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedWeapon ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    unsigned char ucSlot = 0xFF;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadNumber ( ucSlot, 0xFF );
-
-    if ( !argStream.HasErrors ( ) )
+    // Right type?
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
+            // Grab the slot if specified
+            unsigned char ucSlot = 0xFF;
+            if ( lua_istype ( luaVM, 2, LUA_TNUMBER ) || lua_istype ( luaVM, 2, LUA_TSTRING ) )
+                ucSlot = ( unsigned char ) lua_tonumber ( luaVM, 2 );
+
             if ( ucSlot == 0xFF )
                 ucSlot = pPed->GetCurrentWeaponSlot ();
 
@@ -128,10 +122,10 @@ int CLuaFunctionDefs::GetPedWeapon ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedWeapon", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedWeapon" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -141,13 +135,11 @@ int CLuaFunctionDefs::GetPedWeapon ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedWeaponSlot ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Right type?
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab his current slot
@@ -156,10 +148,10 @@ int CLuaFunctionDefs::GetPedWeaponSlot ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedWeaponSlot", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedWeaponSlot" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -169,20 +161,22 @@ int CLuaFunctionDefs::GetPedWeaponSlot ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedAmmoInClip ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    unsigned char ucSlot = 0xFF;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadNumber ( ucSlot, 0xFF );
-
-    if ( !argStream.HasErrors ( ) )
+    // Right types?
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped and the slot provided
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
+
         // Got a ped
         if ( pPed )
         {
             // Got a second argument too (slot)?
-            ucSlot = ucSlot == 0xFF ? pPed->GetCurrentWeaponSlot ( ) : ucSlot;
+            unsigned char ucSlot = pPed->GetCurrentWeaponSlot ();
+            int iArgument2 = lua_type ( luaVM, 2 );
+            if ( iArgument2 == LUA_TSTRING || iArgument2 == LUA_TNUMBER )
+            {
+                ucSlot = static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) );
+            }
 
             CWeapon* pWeapon = pPed->GetWeapon ( (eWeaponSlot) ucSlot );
             if ( pWeapon )
@@ -193,10 +187,10 @@ int CLuaFunctionDefs::GetPedAmmoInClip ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedAmmoInClip", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedAmmoInClip" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -206,50 +200,37 @@ int CLuaFunctionDefs::GetPedAmmoInClip ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedTotalAmmo ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    unsigned char ucSlot = 0xFF;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadNumber ( ucSlot, 0xFF );
-
-    if ( !argStream.HasErrors ( ) )
+    // Right types?
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped and the slot
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
+
         // Got the ped?
         if ( pPed )
         {
-            // Got a second argument too (slot)?
-            ucSlot = ucSlot == 0xFF ? pPed->GetCurrentWeaponSlot ( ) : ucSlot;
+            // Got a slot argument too?
+            unsigned char ucSlot = pPed->GetCurrentWeaponSlot ();
+            int iArgument2 = lua_type ( luaVM, 2 );
+            if ( iArgument2 == LUA_TSTRING || iArgument2 == LUA_TNUMBER )
+            {
+                ucSlot = static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) );
+            }
 
             // Grab the ammo and return
             CWeapon* pWeapon = pPed->GetWeapon ( (eWeaponSlot) ucSlot );
             if ( pWeapon )
             {
-                // Keep server and client synced
-                unsigned short usAmmo = 1;
-                if ( CWeaponNames::DoesSlotHaveAmmo ( ucSlot ) )
-                    usAmmo = static_cast < unsigned short > ( pWeapon->GetAmmoTotal () );
-                
-                lua_pushnumber ( luaVM, usAmmo );
-                return 1;
-            }
-            else if ( pPed->m_usWeaponAmmo [ ucSlot ] )
-            {
-                // The ped musn't be streamed in, so we can get the stored value instead
-                ushort usAmmo = 1;
-                
-                if ( CWeaponNames::DoesSlotHaveAmmo ( ucSlot ) )
-                    usAmmo = pPed->m_usWeaponAmmo [ ucSlot ];
-                
+                unsigned short usAmmo = static_cast < unsigned short > ( pWeapon->GetAmmoTotal () );
                 lua_pushnumber ( luaVM, usAmmo );
                 return 1;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedTotalAmmo", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedTotalAmmo" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -259,13 +240,9 @@ int CLuaFunctionDefs::GetPedTotalAmmo ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedWeaponMuzzlePosition ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA )
     {
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             CVector vecMuzzlePos;
@@ -278,10 +255,10 @@ int CLuaFunctionDefs::GetPedWeaponMuzzlePosition ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedWeaponMuzzlePosition", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedWeaponMuzzlePosition" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -290,28 +267,24 @@ int CLuaFunctionDefs::GetPedWeaponMuzzlePosition ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedOccupiedVehicle ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Correct type?
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab his occupied vehicle
             CClientVehicle* pVehicle = pPed->GetOccupiedVehicle ();
             if ( pVehicle )
-            {
+            {                
                 lua_pushelement ( luaVM, pVehicle );
                 return 1;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedOccupiedVehicle", "ped", 1 );
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -321,44 +294,49 @@ int CLuaFunctionDefs::GetPedOccupiedVehicle ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedTask ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    SString strPriority = "";
-    unsigned int uiTaskType = 0;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadString ( strPriority );
-    argStream.ReadNumber ( uiTaskType );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check types
+    int iArgument3 = lua_type ( luaVM, 3 );
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) &&
+        ( iArgument3 == LUA_TSTRING || iArgument3 == LUA_TNUMBER ) )
     {
+        // Grab the ped, the priority and the task type
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
+        const char* szPriority = lua_tostring ( luaVM, 2 );
+        unsigned int uiTaskType = static_cast < unsigned int > ( lua_tonumber ( luaVM, 3 ) );
+        int iIndex = 0;
+
+        // Grab the index if provided
+        int iArgument4 = lua_type ( luaVM, 4 );
+        if ( iArgument4 == LUA_TSTRING || iArgument4 == LUA_TNUMBER )
+            iIndex = static_cast < int > ( lua_tonumber ( luaVM, 4 ) );
+
         // Valid ped?
         if ( pPed )
         {
             // Any priority specified?
-            if ( strPriority != "" )
+            if ( szPriority && szPriority [ 0 ] )
             {
                 // Primary or secondary task grabbed?
                 bool bPrimary = false;
-                if ( ( bPrimary = !stricmp ( strPriority.c_str ( ), "primary" ) ) ||
-                    ( !stricmp ( strPriority.c_str ( ), "secondary" ) ) )
+                if ( ( bPrimary = !stricmp ( szPriority, "primary" ) ) ||
+                    ( !stricmp ( szPriority, "secondary" ) ) )
                 {
-                    // Grab the taskname list and return it
-                    std::vector < SString > taskHierarchy;
-                    if ( CStaticFunctionDefinitions::GetPedTask ( *pPed, bPrimary, uiTaskType, taskHierarchy ) )
+                    // Grab the taskname and return it
+                    char* szTaskName = CStaticFunctionDefinitions::GetPedTask ( *pPed, bPrimary, uiTaskType, iIndex );
+                    if ( szTaskName )
                     {
-                        for ( uint i = 0 ; i < taskHierarchy.size () ; i++ )
-                            lua_pushstring ( luaVM, taskHierarchy[i] );
-                        return taskHierarchy.size ();
+                        lua_pushstring ( luaVM, szTaskName );
+                        return 1;
                     }
                 }
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedTask", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedTask" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -368,17 +346,15 @@ int CLuaFunctionDefs::GetPedTask ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedSimplestTask ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab his simplest task and return it
-            const char* szTaskName = CStaticFunctionDefinitions::GetPedSimplestTask ( *pPed );
+            char* szTaskName = CStaticFunctionDefinitions::GetPedSimplestTask ( *pPed );
             if ( szTaskName )
             {
                 lua_pushstring ( luaVM, szTaskName );
@@ -386,10 +362,10 @@ int CLuaFunctionDefs::GetPedSimplestTask ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedSimplestTask", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedSimplestTask" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -399,31 +375,30 @@ int CLuaFunctionDefs::GetPedSimplestTask ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedDoingTask ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    SString strTaskName = "";
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadString ( strTaskName );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TSTRING ) )
     {
+        // Grab the ped and the task name to check
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
+        const char* szTaskName = lua_tostring ( luaVM, 2 );
+
         // Check ped
         if ( pPed )
         {
             // Check whether he's doing that task or not
             bool bIsDoingTask;
-            if ( CStaticFunctionDefinitions::IsPedDoingTask ( *pPed, strTaskName.c_str ( ), bIsDoingTask ) )
+            if ( CStaticFunctionDefinitions::IsPedDoingTask ( *pPed, szTaskName, bIsDoingTask ) )
             {
                 lua_pushboolean ( luaVM, bIsDoingTask );
                 return 1;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedDoingTask", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedDoingTask" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -433,13 +408,11 @@ int CLuaFunctionDefs::IsPedDoingTask ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedTarget ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab his target element
@@ -451,10 +424,10 @@ int CLuaFunctionDefs::GetPedTarget ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedTarget", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedTarget" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -464,13 +437,11 @@ int CLuaFunctionDefs::GetPedTarget ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedTargetStart ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab his start aim position and return it
@@ -483,10 +454,10 @@ int CLuaFunctionDefs::GetPedTargetStart ( lua_State* luaVM )
             return 3;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedTargetStart", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedTargetStart" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -496,13 +467,11 @@ int CLuaFunctionDefs::GetPedTargetStart ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedTargetEnd ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab the ped end target position and return it
@@ -515,10 +484,10 @@ int CLuaFunctionDefs::GetPedTargetEnd ( lua_State* luaVM )
             return 3;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedTargetEnd", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedTargetEnd" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -528,22 +497,20 @@ int CLuaFunctionDefs::GetPedTargetEnd ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedTargetRange ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // TODO: getPedTargetRange
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedTargetRange", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedTargetRange" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -553,13 +520,11 @@ int CLuaFunctionDefs::GetPedTargetRange ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedTargetCollision ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab his target collision and return it
@@ -573,10 +538,10 @@ int CLuaFunctionDefs::GetPedTargetCollision ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedTargetCollision", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedTargetCollision" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -586,13 +551,11 @@ int CLuaFunctionDefs::GetPedTargetCollision ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedArmor ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab the armor and return it
@@ -601,10 +564,10 @@ int CLuaFunctionDefs::GetPedArmor ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedArmor", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedArmor" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -614,15 +577,16 @@ int CLuaFunctionDefs::GetPedArmor ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedStat ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    unsigned short usStat = 0;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadNumber ( usStat );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check the types
+    int iArgument1 = lua_type ( luaVM, 1 );
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( ( iArgument1 == LUA_TLIGHTUSERDATA ) &&
+        ( iArgument2 == LUA_TSTRING || iArgument2 == LUA_TNUMBER ) )
     {
+        // Grab the ped and the stat argument
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
+        unsigned short usStat = static_cast < unsigned short > ( lua_tonumber ( luaVM, 2 ) );
+
         // Valid ped?
         if ( pPed )
         {
@@ -635,10 +599,10 @@ int CLuaFunctionDefs::GetPedStat ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedStat", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedStat" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -648,13 +612,11 @@ int CLuaFunctionDefs::GetPedStat ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedChoking ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped and verify him
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Return whether he's choking or not
@@ -662,10 +624,10 @@ int CLuaFunctionDefs::IsPedChoking ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedChoking", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedChoking" );
 
     // Failed
     lua_pushnil ( luaVM );
@@ -675,13 +637,11 @@ int CLuaFunctionDefs::IsPedChoking ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedDucked ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Grab his ducked state
@@ -690,10 +650,10 @@ int CLuaFunctionDefs::IsPedDucked ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedDucked", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedDucked" );
 
     // Failed
     lua_pushnil ( luaVM );
@@ -703,13 +663,11 @@ int CLuaFunctionDefs::IsPedDucked ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedInVehicle ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Find out whether he's in a vehicle or not
@@ -722,10 +680,10 @@ int CLuaFunctionDefs::IsPedInVehicle ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedInVehicle", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedInVehicle" );
 
     // Failed
     lua_pushnil ( luaVM );
@@ -735,13 +693,11 @@ int CLuaFunctionDefs::IsPedInVehicle ( lua_State* luaVM )
 
 int CLuaFunctionDefs::DoesPedHaveJetPack ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Find out whether he has a jetpack or not and return it
@@ -750,10 +706,10 @@ int CLuaFunctionDefs::DoesPedHaveJetPack ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "doesPedHaveJetPack", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "doesPedHaveJetPack" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -763,13 +719,11 @@ int CLuaFunctionDefs::DoesPedHaveJetPack ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedOnGround ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the ped
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             // Find out whether he's on the ground or not and return it
@@ -778,10 +732,10 @@ int CLuaFunctionDefs::IsPedOnGround ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedOnGround", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedOnGround" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -791,13 +745,10 @@ int CLuaFunctionDefs::IsPedOnGround ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedContactElement ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( ( iArgument1 == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             CClientEntity* pEntity = pPed->GetContactEntity ();
@@ -808,10 +759,10 @@ int CLuaFunctionDefs::GetPedContactElement ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedContactElement", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedContactElement" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -820,13 +771,10 @@ int CLuaFunctionDefs::GetPedContactElement ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedRotation ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( ( iArgument1 == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             float fRotation = ConvertRadiansToDegrees ( pPed->GetCurrentRotation () );
@@ -834,10 +782,10 @@ int CLuaFunctionDefs::GetPedRotation ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedRotation", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedRotation" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -846,13 +794,10 @@ int CLuaFunctionDefs::GetPedRotation ( lua_State* luaVM )
 
 int CLuaFunctionDefs::CanPedBeKnockedOffBike ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( ( iArgument1 == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             bool bCanBeKnockedOffBike = pPed->GetCanBeKnockedOffBike ();
@@ -860,10 +805,10 @@ int CLuaFunctionDefs::CanPedBeKnockedOffBike ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "canPedBeKnockedOffBike", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "canPedBeKnockedOffBike" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -872,17 +817,14 @@ int CLuaFunctionDefs::CanPedBeKnockedOffBike ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedBonePosition ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    unsigned char ucBone = 0;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadNumber ( ucBone );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA &&
+        ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
+        CClientPed* pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
+            unsigned char ucBone = static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) );
             if ( ucBone <= BONE_RIGHTFOOT )
             {
                 eBone bone = ( eBone ) ucBone;
@@ -897,10 +839,10 @@ int CLuaFunctionDefs::GetPedBonePosition ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedBonePosition", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedBonePosition" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -909,16 +851,15 @@ int CLuaFunctionDefs::GetPedBonePosition ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedWeaponSlot ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pElement = NULL;
-    int iSlot = 0;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadNumber ( iSlot );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check type
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        // Valid entity?
+        // Grab the arguments
+        CClientEntity* pElement = lua_toelement ( luaVM, 1 );
+        int iSlot = static_cast < int > ( lua_tonumber ( luaVM, 2 ) );
+
+        // Valid ped?
         if ( pElement )
         {
             // Valid slot?
@@ -933,10 +874,10 @@ int CLuaFunctionDefs::SetPedWeaponSlot ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedWeaponSlot", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedWeaponSlot" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -944,66 +885,29 @@ int CLuaFunctionDefs::SetPedWeaponSlot ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::GivePedWeapon ( lua_State* luaVM )
-{
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    uchar ucWeaponType = 0;
-    ushort usAmmo = 0;
-    bool bSetAsCurrent = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( ucWeaponType );
-    argStream.ReadNumber ( usAmmo, 30 );
-    argStream.ReadBool ( bSetAsCurrent, false );
-
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( pEntity )
-        {
-            if ( CStaticFunctionDefinitions::GivePedWeapon ( *pEntity, ucWeaponType, usAmmo, bSetAsCurrent ) )
-            {
-                lua_pushboolean ( luaVM, true );
-                return 1;
-            }
-        }
-        else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
 int CLuaFunctionDefs::GetPedClothes ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    unsigned char ucType = 0;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadNumber ( ucType );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
+        unsigned char ucType = static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) );
         if ( pPed )
         {
-            SString strTexture, strModel;
-            if ( CStaticFunctionDefinitions::GetPedClothes ( *pPed, ucType, strTexture, strModel ) )
+            char szTexture [ 128 ], szModel [ 128 ];
+            if ( CStaticFunctionDefinitions::GetPedClothes ( *pPed, ucType, szTexture, szModel ) )
             {
-                lua_pushstring ( luaVM, strTexture );
-                lua_pushstring ( luaVM, strModel );
+                lua_pushstring ( luaVM, szTexture );
+                lua_pushstring ( luaVM, szModel );
                 return 2;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "player", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedClothes", "player", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedClothes" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1012,73 +916,36 @@ int CLuaFunctionDefs::GetPedClothes ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedControlState ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    SString strControl = "";
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadString ( strControl );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TSTRING ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
+        const char * szControl = lua_tostring ( luaVM, 2 );
         if ( pPed )
         {
             bool bState;
-            if ( CStaticFunctionDefinitions::GetPedControlState ( *pPed, strControl, bState ) )
+            if ( CStaticFunctionDefinitions::GetPedControlState ( *pPed, szControl, bState ) )
             {
                 lua_pushboolean ( luaVM, bState );
                 return 1;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedControlState", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedControlState" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
-int CLuaFunctionDefs::GetPedAnalogControlState ( lua_State* luaVM )
-{
-    SString strControlState = "";
-    float fState = 0.0f;
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadString ( strControlState );
-    
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( pPed )
-        {
-            float fState;
-            if ( CStaticFunctionDefinitions::GetPedAnalogControlState ( *pPed, strControlState, fState ) )
-            {
-                lua_pushnumber ( luaVM, fState );
-                return 1;
-            }
-        }
-        else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
 
 int CLuaFunctionDefs::IsPedDoingGangDriveby ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             bool bDoingGangDriveby;
@@ -1089,70 +956,36 @@ int CLuaFunctionDefs::IsPedDoingGangDriveby ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedDoingGangDriveby", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedDoingGangDriveby" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
-
-int CLuaFunctionDefs::SetPedAnalogControlState ( lua_State* luaVM )
-{
-    SString strControlState = "";
-    float fState = 0.0f;
-    CClientEntity* pEntity = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadString ( strControlState );
-    argStream.ReadNumber ( fState );
-    
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( pEntity )
-        {
-            if ( CStaticFunctionDefinitions::SetPedAnalogControlState ( *pEntity, strControlState, fState ) )
-            {
-                lua_pushboolean ( luaVM, true );
-                return 1;
-            }
-        }
-        else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
 
 int CLuaFunctionDefs::GetPedAnimation ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
-            SString strBlockName, strAnimName;
-            if ( CStaticFunctionDefinitions::GetPedAnimation ( *pPed, strBlockName, strAnimName ) )
+            char szBlockName [ 128 ], szAnimName [ 128 ];
+            if ( CStaticFunctionDefinitions::GetPedAnimation ( *pPed, szBlockName, szAnimName, 128 ))
             {
-                lua_pushstring ( luaVM, strBlockName );
-                lua_pushstring ( luaVM, strAnimName );
+                lua_pushstring ( luaVM, szBlockName );
+                lua_pushstring ( luaVM, szAnimName );
                 return 2;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedAnimation", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedAnimation" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1160,13 +993,9 @@ int CLuaFunctionDefs::GetPedAnimation ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedMoveState ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             std::string strMoveState;
@@ -1177,10 +1006,10 @@ int CLuaFunctionDefs::GetPedMoveState ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "GetPedMoveState", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "GetPedMoveState" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1188,13 +1017,9 @@ int CLuaFunctionDefs::GetPedMoveState ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedMoveAnim ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             unsigned int iMoveAnim;
@@ -1205,10 +1030,10 @@ int CLuaFunctionDefs::GetPedMoveAnim ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedWalkingStyle", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedWalkingStyle" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1217,13 +1042,9 @@ int CLuaFunctionDefs::GetPedMoveAnim ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedHeadless ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             bool bHeadless;
@@ -1234,10 +1055,10 @@ int CLuaFunctionDefs::IsPedHeadless ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedHeadless", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedHeadless" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1246,13 +1067,9 @@ int CLuaFunctionDefs::IsPedHeadless ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedFrozen ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             bool bFrozen;
@@ -1263,10 +1080,10 @@ int CLuaFunctionDefs::IsPedFrozen ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedFrozen", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedFrozen" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1275,13 +1092,9 @@ int CLuaFunctionDefs::IsPedFrozen ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedFootBloodEnabled ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             bool bHasFootBlood = false;
@@ -1292,10 +1105,10 @@ int CLuaFunctionDefs::IsPedFootBloodEnabled ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedFootBloodEnabled", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedFootBloodEnabled" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1304,13 +1117,9 @@ int CLuaFunctionDefs::IsPedFootBloodEnabled ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetPedCameraRotation ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             float fRotation = 0.0f;
@@ -1321,10 +1130,10 @@ int CLuaFunctionDefs::GetPedCameraRotation ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "getPedCameraRotation", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "getPedCameraRotation" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1333,13 +1142,9 @@ int CLuaFunctionDefs::GetPedCameraRotation ( lua_State* luaVM )
 
 int CLuaFunctionDefs::IsPedOnFire ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientPed * pPed = lua_toped ( luaVM, 1 );
         if ( pPed )
         {
             bool bOnFire;
@@ -1350,10 +1155,10 @@ int CLuaFunctionDefs::IsPedOnFire ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "isPedOnFire", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "isPedOnFire" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1361,15 +1166,11 @@ int CLuaFunctionDefs::IsPedOnFire ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedOnFire ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    bool bOnFire = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bOnFire );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        bool bOnFire = ( ( lua_toboolean ( luaVM, 2 ) ) ? true:false );
+
         if ( pEntity )
         {
             if ( CStaticFunctionDefinitions::SetPedOnFire ( *pEntity, bOnFire ) )
@@ -1379,161 +1180,41 @@ int CLuaFunctionDefs::SetPedOnFire ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedOnFire", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedOnFire" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
-
-
-int CLuaFunctionDefs::WarpPedIntoVehicle ( lua_State* luaVM )
-{
-//  warpPedIntoVehicle ( element ped, element vehicle, int seat )
-    CClientPed* pPed; CClientVehicle* pVehicle; uint uiSeat;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-    argStream.ReadUserData ( pVehicle );
-    argStream.ReadNumber ( uiSeat, 0 );
-
-    MinClientReqCheck ( argStream, MIN_CLIENT_REQ_REMOVEPEDFROMVEHICLE_CLIENTSIDE, "function is being called client side" );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( !pPed->IsLocalEntity () || !pVehicle->IsLocalEntity () )
-            argStream.SetCustomError ( "This client side function will only work with client created peds and vehicles" );
-    }
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::WarpPedIntoVehicle ( pPed, pVehicle, uiSeat ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::RemovePedFromVehicle ( lua_State* luaVM )
-{
-//  removePedFromVehicle ( element ped )
-    CClientPed* pPed;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    MinClientReqCheck ( argStream, MIN_CLIENT_REQ_WARPPEDINTOVEHICLE_CLIENTSIDE, "function is being called client side" );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( !pPed->IsLocalEntity ()  )
-            argStream.SetCustomError ( "This client side function will only work with client created peds" );
-    }
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::RemovePedFromVehicle ( pPed ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::GetPedOxygenLevel ( lua_State* luaVM )
-{
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( pPed )
-        {
-            float fOxygen;
-            if ( CStaticFunctionDefinitions::GetPedOxygenLevel ( *pPed, fOxygen ) )
-            {
-                lua_pushnumber ( luaVM, fOxygen );
-                return 1;
-            }
-        }
-        else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::IsPedDead ( lua_State* luaVM )
-{
-//  bool isPedDead ( ped thePed )
-    CClientPed* pPed;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pPed );
-
-    if ( !argStream.HasErrors () )
-    {
-        // Grab his dead state and return it
-        bool bDead = pPed->IsDead () || pPed->IsDying ();
-        lua_pushboolean ( luaVM, bDead );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // Failed
-    lua_pushnil ( luaVM );
-    return 1;
-}
-
 
 int CLuaFunctionDefs::AddPedClothes ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    SString strTexture = "", strModel = "";
-    unsigned char ucType = 0;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadString ( strTexture );
-    argStream.ReadString ( strModel );
-    argStream.ReadNumber ( ucType );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument4 = lua_type ( luaVM, 4 );
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TSTRING ) &&
+        ( lua_type ( luaVM, 3 ) == LUA_TSTRING ) &&
+        ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        const char* szTexture = lua_tostring ( luaVM, 2 );
+        const char* szModel = lua_tostring ( luaVM, 3 );
+        unsigned char ucType = static_cast < unsigned char > ( lua_tonumber ( luaVM, 4 ) );
+
         if ( pEntity )
         {
-            if ( CStaticFunctionDefinitions::AddPedClothes ( *pEntity, strTexture, strModel, ucType ) )
+            if ( CStaticFunctionDefinitions::AddPedClothes ( *pEntity, const_cast < char* > ( szTexture ), const_cast < char* > ( szModel ), ucType ) )
             {
                 lua_pushboolean ( luaVM, true );
                 return 1;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "addPedClothes", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "addPedClothes" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1542,15 +1223,13 @@ int CLuaFunctionDefs::AddPedClothes ( lua_State* luaVM )
 
 int CLuaFunctionDefs::RemovePedClothes ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    unsigned char ucType = 0;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( ucType );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        unsigned char ucType = static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) );
+
         if ( pEntity )
         {
             if ( CStaticFunctionDefinitions::RemovePedClothes ( *pEntity, ucType ) )
@@ -1560,10 +1239,10 @@ int CLuaFunctionDefs::RemovePedClothes ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "removePedClothes", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "removePedClothes" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1572,30 +1251,26 @@ int CLuaFunctionDefs::RemovePedClothes ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedControlState ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    SString strControl = "";
-    bool bState = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadString ( strControl );
-    argStream.ReadBool ( bState );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TSTRING ) &&
+        ( lua_type ( luaVM, 3 ) == LUA_TBOOLEAN ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        const char * szControl = lua_tostring ( luaVM, 2 );
+        bool bState = ( lua_toboolean ( luaVM, 3 ) ) ? true:false;
         if ( pEntity )
         {
-            if ( CStaticFunctionDefinitions::SetPedControlState ( *pEntity, strControl, bState ) )
+            if ( CStaticFunctionDefinitions::SetPedControlState ( *pEntity, szControl, bState ) )
             {
                 lua_pushboolean ( luaVM, true );
                 return 1;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedControlState", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedControlState" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1604,15 +1279,11 @@ int CLuaFunctionDefs::SetPedControlState ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedDoingGangDriveby ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    bool bDoingGangDriveby = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bDoingGangDriveby );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TBOOLEAN ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        bool bDoingGangDriveby = ( lua_toboolean ( luaVM, 2 ) ) ? true:false;
         if ( pEntity )
         {
             if ( CStaticFunctionDefinitions::SetPedDoingGangDriveby ( *pEntity, bDoingGangDriveby ) )
@@ -1622,10 +1293,10 @@ int CLuaFunctionDefs::SetPedDoingGangDriveby ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedDoingGangDriveby", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedDoingGangDriveby" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1634,28 +1305,38 @@ int CLuaFunctionDefs::SetPedDoingGangDriveby ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedLookAt ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    CVector vecPosition;
-    int iTime = 3000;
-    int iBlend = 1000;
-    CClientEntity * pTarget = NULL;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadVector3D ( vecPosition );
-    argStream.ReadNumber ( iTime, 3000 );
-    if ( argStream.NextIsUserData ( ) )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    int iArgument3 = lua_type ( luaVM, 3 );
+    int iArgument4 = lua_type ( luaVM, 4 );
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) &&
+        ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+        ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) )
     {
-        argStream.ReadUserData ( pTarget );
-    }
-    else
-    {
-        argStream.ReadNumber ( iBlend, 1000 );
-        argStream.ReadUserData ( pTarget, NULL );
-    }
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        CVector vecPosition;
+        vecPosition.fX = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+        vecPosition.fY = static_cast < float > ( lua_tonumber ( luaVM, 3 ) );
+        vecPosition.fZ = static_cast < float > ( lua_tonumber ( luaVM, 4 ) );
+        int iTime = 3000;
+        int iBlend = 1000;
+        CClientEntity * pTarget = NULL;
 
-    if ( !argStream.HasErrors ( ) )
-    {
+        int iArgument5 = lua_type ( luaVM, 5 );
+        int iArgument6 = lua_type ( luaVM, 6 );
+        if ( iArgument5 == LUA_TNUMBER || iArgument5 == LUA_TSTRING )
+        {
+            iTime = static_cast < int > ( lua_tonumber ( luaVM, 5 ) );
+            if ( lua_type ( luaVM, 6 ) == LUA_TLIGHTUSERDATA )
+                pTarget = lua_toelement ( luaVM, 6 );
+            else if ( iArgument6 == LUA_TNUMBER || iArgument6 == LUA_TSTRING )
+            {
+                iBlend = static_cast < int > ( lua_tonumber ( luaVM, 6 ) );
+                if ( lua_type ( luaVM, 7 ) == LUA_TLIGHTUSERDATA )
+                    pTarget = lua_toelement ( luaVM, 7 );
+            }
+        }
+
         if ( pEntity )
         {
             if ( CStaticFunctionDefinitions::SetPedLookAt ( *pEntity, vecPosition, iTime, iBlend, pTarget ) )
@@ -1665,10 +1346,10 @@ int CLuaFunctionDefs::SetPedLookAt ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedLookAt", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedLookAt" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1677,15 +1358,11 @@ int CLuaFunctionDefs::SetPedLookAt ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedHeadless ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    bool bHeadless = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bHeadless );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TBOOLEAN ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        bool bHeadless = ( lua_toboolean ( luaVM, 2 ) ) ? true:false;
         if ( pEntity )
         {
             if ( CStaticFunctionDefinitions::SetPedHeadless ( *pEntity, bHeadless ) )
@@ -1695,10 +1372,10 @@ int CLuaFunctionDefs::SetPedHeadless ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedHeadless", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedHeadless" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1707,15 +1384,11 @@ int CLuaFunctionDefs::SetPedHeadless ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedFrozen ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    bool bFrozen = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bFrozen );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TBOOLEAN ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        bool bFrozen = ( lua_toboolean ( luaVM, 2 ) ) ? true:false;
         if ( pEntity )
         {
             if ( CStaticFunctionDefinitions::SetPedFrozen ( *pEntity, bFrozen ) )
@@ -1725,10 +1398,10 @@ int CLuaFunctionDefs::SetPedFrozen ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedFrozen", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedFrozen" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1737,17 +1410,13 @@ int CLuaFunctionDefs::SetPedFrozen ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedFootBloodEnabled ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    bool bHasFootBlood = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bHasFootBlood );
-
-    if ( !argStream.HasErrors ( ) )
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+         ( lua_type ( luaVM, 2 ) == LUA_TBOOLEAN ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
         if ( pEntity )
         {
+            bool bHasFootBlood = lua_toboolean ( luaVM, 2 ) ? true : false;
             if ( CStaticFunctionDefinitions::SetPedFootBloodEnabled ( *pEntity, bHasFootBlood ) )
             {
                 lua_pushboolean ( luaVM, true );
@@ -1755,10 +1424,10 @@ int CLuaFunctionDefs::SetPedFootBloodEnabled ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedFootBloodEnabled", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedFootBloodEnabled" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1767,23 +1436,25 @@ int CLuaFunctionDefs::SetPedFootBloodEnabled ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedCameraRotation ( lua_State* luaVM )
 {
-//  bool setPedCameraRotation ( ped thePed, float cameraRotation )
-    CClientEntity* pEntity; float fRotation;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( fRotation );
-
-    if ( !argStream.HasErrors () )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
-        if ( CStaticFunctionDefinitions::SetPedCameraRotation ( *pEntity, fRotation ) )
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        float fRotation = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::SetPedCameraRotation ( *pEntity, fRotation ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedCameraRotation", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedCameraRotation" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1792,17 +1463,23 @@ int CLuaFunctionDefs::SetPedCameraRotation ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedAimTarget ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    CVector vecTarget;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadVector3D ( vecTarget );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument2 = lua_type ( luaVM, 2 );
+    int iArgument3 = lua_type ( luaVM, 3 );
+    int iArgument4 = lua_type ( luaVM, 4 );
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) &&
+        ( iArgument3 == LUA_TNUMBER || iArgument3 == LUA_TSTRING ) &&
+        ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING ) )
     {
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+
         if ( pEntity )
         {
+            CVector vecTarget;
+            vecTarget.fX = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+            vecTarget.fY = static_cast < float > ( lua_tonumber ( luaVM, 3 ) );
+            vecTarget.fZ = static_cast < float > ( lua_tonumber ( luaVM, 4 ) );
+
             if ( CStaticFunctionDefinitions::SetPedAimTarget ( *pEntity, vecTarget ) )
             {
                 lua_pushboolean ( luaVM, true );
@@ -1810,10 +1487,10 @@ int CLuaFunctionDefs::SetPedAimTarget ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedAimTarget", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedAimTarget" );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1822,24 +1499,29 @@ int CLuaFunctionDefs::SetPedAimTarget ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedRotation ( lua_State* luaVM )
 {
-//  setPedRotation ( element ped, float rotation [, bool fixPedRotation = false ] )
-    CClientEntity* pEntity; float fRotation; bool bNewWay;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( fRotation );
-    argStream.ReadBool ( bNewWay, false );
-
-    if ( !argStream.HasErrors () )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TNUMBER ) )
     {
-        if ( CStaticFunctionDefinitions::SetPedRotation ( *pEntity, fRotation, bNewWay ) )
+        // Grab the entity
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        float fRotation = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+
+        // Valid element?
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            // Set the new rotation
+            if ( CStaticFunctionDefinitions::SetPedRotation ( *pEntity, fRotation ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedRotation", "ped", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedRotation" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -1849,15 +1531,14 @@ int CLuaFunctionDefs::SetPedRotation ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedCanBeKnockedOffBike ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    bool bCanBeKnockedOffBike = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bCanBeKnockedOffBike );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) &&
+        lua_istype ( luaVM, 2, LUA_TBOOLEAN ) )
     {
+        // Grab the entity
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
+        bool bCanBeKnockedOffBike = ( lua_toboolean ( luaVM, 2 ) ) ? true:false;
+
         // Valid element?
         if ( pEntity )
         {
@@ -1869,10 +1550,10 @@ int CLuaFunctionDefs::SetPedCanBeKnockedOffBike ( lua_State* luaVM )
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedCanBeKnockedOffBike", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedCanBeKnockedOffBike" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -1882,74 +1563,45 @@ int CLuaFunctionDefs::SetPedCanBeKnockedOffBike ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedAnimation ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    bool bDummy;
-    SString strBlockName = "";
-    SString strAnimName = "";
-    int iTime = -1;
-    bool bLoop = true;
-    bool bUpdatePosition = true;
-    bool bInterruptable = true;
-    bool bFreezeLastFrame = true;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    if ( argStream.NextIsBool() )
-        argStream.ReadBool ( bDummy );      // Wiki used setPedAnimation(source,false) as an example
-    else
-    if ( argStream.NextIsNil() )
-        argStream.m_iIndex++;               // Wiki docs said blockName could be nil
-    else
-        argStream.ReadString ( strBlockName, "" );
-    argStream.ReadString ( strAnimName, "" );
-    argStream.ReadNumber ( iTime, -1 );
-    argStream.ReadBool ( bLoop, true );
-    argStream.ReadBool ( bUpdatePosition, true );
-    argStream.ReadBool ( bInterruptable, true );
-    argStream.ReadBool ( bFreezeLastFrame, true );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check types
+    if ( lua_istype ( luaVM, 1, LUA_TLIGHTUSERDATA ) )
     {
+        // Grab the element
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
         if ( pEntity )
         {
-            if ( CStaticFunctionDefinitions::SetPedAnimation ( *pEntity, strBlockName == "" ? NULL : strBlockName.c_str(), strAnimName == "" ? NULL : strAnimName.c_str(), iTime, bLoop, bUpdatePosition, bInterruptable, bFreezeLastFrame ) )
+            const char * szBlockName = NULL;
+            const char * szAnimName = NULL;
+            int iTime = -1;
+            bool bLoop = true;
+            bool bUpdatePosition = true;
+            bool bInterruptable = true;
+            bool bFreezeLastFrame = true;
+            if ( lua_type ( luaVM, 2 ) == LUA_TSTRING ) szBlockName = lua_tostring ( luaVM, 2 );
+            if ( lua_type ( luaVM, 3 ) == LUA_TSTRING ) szAnimName = lua_tostring ( luaVM, 3 );
+            int iArgument4 = lua_type ( luaVM, 4 );
+            if ( iArgument4 == LUA_TNUMBER || iArgument4 == LUA_TSTRING )
+                iTime = static_cast < int > ( lua_tonumber ( luaVM, 4 ) );
+            if ( lua_type ( luaVM, 5 ) == LUA_TBOOLEAN )
+                bLoop = ( lua_toboolean ( luaVM, 5 ) ) ? true:false;
+            if ( lua_type ( luaVM, 6 ) == LUA_TBOOLEAN )
+                bUpdatePosition = ( lua_toboolean ( luaVM, 6 ) ) ? true:false;
+            if ( lua_type ( luaVM, 7 ) == LUA_TBOOLEAN )
+                bInterruptable = ( lua_toboolean ( luaVM, 7 ) ) ? true:false;
+            if ( lua_type ( luaVM, 8 ) == LUA_TBOOLEAN )
+                bFreezeLastFrame = ( lua_toboolean ( luaVM, 8 ) ) ? true:false;
+
+            if ( CStaticFunctionDefinitions::SetPedAnimation ( *pEntity, szBlockName, szAnimName, iTime, bLoop, bUpdatePosition, bInterruptable, bFreezeLastFrame ) )
             {
                 lua_pushboolean ( luaVM, true );
                 return 1;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedAnimation", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    // Failed
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::SetPedAnimationProgress( lua_State* luaVM )
-{
-//  bool setPedAnimationProgress ( ped thePed, string animName, float progress )
-    CClientEntity* pEntity; SString strAnimName; float fProgress;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadString ( strAnimName, "" );
-    argStream.ReadNumber ( fProgress, 0.0f );
-
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( CStaticFunctionDefinitions::SetPedAnimationProgress ( *pEntity, strAnimName, fProgress ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedAnimation" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -1959,28 +1611,27 @@ int CLuaFunctionDefs::SetPedAnimationProgress( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedMoveAnim ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    unsigned int uiMoveAnim = 0;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( uiMoveAnim );
-
-    if ( !argStream.HasErrors ( ) )
+    // Check types
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TLIGHTUSERDATA ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TNUMBER ) )
     {
+        // Grab the element
+        CClientEntity* pEntity = lua_toelement ( luaVM, 1 );
         if ( pEntity )
         {
-            if ( CStaticFunctionDefinitions::SetPedMoveAnim ( *pEntity, uiMoveAnim ) )
+            unsigned int iMoveAnim = static_cast < unsigned int > ( lua_tonumber ( luaVM, 2 ) );
+
+            if ( CStaticFunctionDefinitions::SetPedMoveAnim ( *pEntity, iMoveAnim ) )
             {
                 lua_pushboolean ( luaVM, true );
                 return 1;
             }
         }
         else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
+            m_pScriptDebugging->LogBadPointer ( luaVM, "setPedWalkingStyle", "element", 1 );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM, "setPedWalkingStyle" );
 
     // Failed
     lua_pushboolean ( luaVM, false );
@@ -1988,50 +1639,27 @@ int CLuaFunctionDefs::SetPedMoveAnim ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::SetPedOxygenLevel ( lua_State* luaVM )
-{
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    float fOxygen = 0.0f;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( fOxygen );
-
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( pEntity )
-        {
-            if ( CStaticFunctionDefinitions::SetPedOxygenLevel ( *pEntity, fOxygen ) )
-            {
-                lua_pushboolean ( luaVM, true );
-                return 1;
-            }
-        }
-        else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
 int CLuaFunctionDefs::CreatePed ( lua_State* luaVM )
 {
-    // Verify the argument
-    CClientPed* pPed = NULL;
-    unsigned long ulModel = 0;
-    CVector vecPosition;
-    float fRotation = 0.0f;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( ulModel );
-    argStream.ReadVector3D ( vecPosition );
-    argStream.ReadNumber ( fRotation, 0.0f );
-
-    if ( !argStream.HasErrors ( ) )
+    // Valid types?
+    if ( ( lua_type ( luaVM, 1 ) == LUA_TNUMBER || lua_type ( luaVM, 1 ) == LUA_TSTRING ) &&
+        ( lua_type ( luaVM, 2 ) == LUA_TNUMBER || lua_type ( luaVM, 2 ) == LUA_TSTRING ) &&
+        ( lua_type ( luaVM, 3 ) == LUA_TNUMBER || lua_type ( luaVM, 3 ) == LUA_TSTRING ) &&
+        ( lua_type ( luaVM, 4 ) == LUA_TNUMBER || lua_type ( luaVM, 4 ) == LUA_TSTRING ) )
     {
+        // Grab arguments
+        CVector vecPosition;
+        unsigned long ulModel = static_cast < unsigned long > ( lua_tonumber ( luaVM, 1 ) );
+        vecPosition.fX = static_cast < float > ( lua_tonumber ( luaVM, 2 ) );
+        vecPosition.fY = static_cast < float > ( lua_tonumber ( luaVM, 3 ) );
+        vecPosition.fZ = static_cast < float > ( lua_tonumber ( luaVM, 4 ) );
+
+        float fRotation = 0.0f;
+        if ( lua_type ( luaVM, 5 ) == LUA_TNUMBER || lua_type ( luaVM, 5 ) == LUA_TSTRING )
+        {
+            fRotation = static_cast < float > ( lua_tonumber ( luaVM, 5 ) );
+        }
+
         CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
         if ( pLuaMain )
         {
@@ -2049,312 +1677,6 @@ int CLuaFunctionDefs::CreatePed ( lua_State* luaVM )
             }
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    // Failed
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::DetonateSatchels ( lua_State* luaVM )
-{
-    if ( CStaticFunctionDefinitions::DetonateSatchels() )
-    {
-        lua_pushboolean( luaVM, true );
-        return 1;
-    }
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::GetWeaponProperty ( lua_State* luaVM )
-{
-    eWeaponSkill eWepSkill = eWeaponSkill::WEAPONSKILL_STD;
-    eWeaponType eWep = eWeaponType::WEAPONTYPE_UNARMED;
-    eWeaponProperty eProp = eWeaponProperty::WEAPON_INVALID_PROPERTY;
-    CClientWeapon * pWeapon;
-    CScriptArgReader argStream ( luaVM );
-
-    if ( argStream.NextIsUserData () )
-    {
-        argStream.ReadUserData ( pWeapon );
-        argStream.ReadEnumString ( eProp );
-
-        if ( !argStream.HasErrors () )
-        {
-            if ( eProp == WEAPON_DAMAGE )
-            {
-                short sData = 0;
-                if ( CStaticFunctionDefinitions::GetWeaponProperty ( pWeapon, eProp, sData ) )
-                {
-                    lua_pushnumber ( luaVM, sData );
-                    return 1;
-                }
-            }
-            else
-            if ( eProp == WEAPON_FIRE_ROTATION )
-            {
-                CVector vecWeaponInfo;
-                if ( CStaticFunctionDefinitions::GetWeaponProperty ( pWeapon, eProp, vecWeaponInfo ) )
-                {
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fX );
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fY );
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fZ );
-                    return 1;
-                }
-            }
-            else
-            {
-                float fData = 0;
-                if ( CStaticFunctionDefinitions::GetWeaponProperty ( pWeapon, eProp, fData ) )
-                {
-                    lua_pushnumber ( luaVM, fData );
-                    return 1;
-                }
-            }
-        }
-        else
-            m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-        lua_pushboolean ( luaVM, false );
-        return 1;
-    }
-
-    argStream.ReadEnumStringOrNumber ( eWep );
-    argStream.ReadEnumStringOrNumber ( eWepSkill );
-    argStream.ReadEnumString ( eProp );
-    if ( !argStream.HasErrors () )
-    {
-        switch ( eProp )
-        {
-            case WEAPON_WEAPON_RANGE:
-            case WEAPON_TARGET_RANGE:
-            case WEAPON_ACCURACY:
-            case WEAPON_FIRING_SPEED:
-            case WEAPON_LIFE_SPAN:
-            case WEAPON_SPREAD:
-            case WEAPON_MOVE_SPEED:
-            // Get only
-            case WEAPON_REQ_SKILL_LEVEL:
-            case WEAPON_ANIM_LOOP_START:
-            case WEAPON_ANIM_LOOP_STOP:
-            case WEAPON_ANIM_LOOP_RELEASE_BULLET_TIME:
-            case WEAPON_ANIM2_LOOP_START:
-            case WEAPON_ANIM2_LOOP_STOP:
-            case WEAPON_ANIM2_LOOP_RELEASE_BULLET_TIME:
-            case WEAPON_ANIM_BREAKOUT_TIME:
-            case WEAPON_RADIUS:
-            {
-                float fWeaponInfo = 0.0f;
-
-                if ( CStaticFunctionDefinitions::GetWeaponProperty ( eProp, eWep, eWepSkill, fWeaponInfo ) )
-                {
-                    lua_pushnumber ( luaVM, fWeaponInfo );
-                    return 1;
-                }
-                break;
-            }
-            case WEAPON_DAMAGE:
-            case WEAPON_MAX_CLIP_AMMO:
-            case WEAPON_FLAGS:
-            case WEAPON_ANIM_GROUP:
-            case WEAPON_FIRETYPE:
-            case WEAPON_MODEL:
-            case WEAPON_MODEL2:
-            case WEAPON_SLOT:
-            case WEAPON_AIM_OFFSET:
-            case WEAPON_SKILL_LEVEL:
-            case WEAPON_DEFAULT_COMBO:
-            case WEAPON_COMBOS_AVAILABLE:
-            {
-                int sWeaponInfo = 0;
-
-                if ( CStaticFunctionDefinitions::GetWeaponProperty ( eProp, eWep, eWepSkill, sWeaponInfo ) )
-                {
-                    lua_pushinteger ( luaVM, sWeaponInfo );
-                    return 1;
-                }
-                break;
-            }
-            case WEAPON_FIRE_OFFSET:
-            {
-                CVector vecWeaponInfo;
-
-                if ( CStaticFunctionDefinitions::GetWeaponProperty ( eProp, eWep, eWepSkill, vecWeaponInfo ) )
-                {
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fX );
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fY );
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fZ );
-                    return 3;
-                }
-                break;
-            }
-            case WEAPON_FLAG_AIM_NO_AUTO:
-            case WEAPON_FLAG_AIM_ARM:
-            case WEAPON_FLAG_AIM_1ST_PERSON:
-            case WEAPON_FLAG_AIM_FREE:
-            case WEAPON_FLAG_MOVE_AND_AIM:
-            case WEAPON_FLAG_MOVE_AND_SHOOT:
-            case WEAPON_FLAG_TYPE_THROW:
-            case WEAPON_FLAG_TYPE_HEAVY:
-            case WEAPON_FLAG_TYPE_CONSTANT:
-            case WEAPON_FLAG_TYPE_DUAL:
-            case WEAPON_FLAG_ANIM_RELOAD:
-            case WEAPON_FLAG_ANIM_CROUCH:
-            case WEAPON_FLAG_ANIM_RELOAD_LOOP:
-            case WEAPON_FLAG_ANIM_RELOAD_LONG:
-            case WEAPON_FLAG_SHOT_SLOWS:
-            case WEAPON_FLAG_SHOT_RAND_SPEED:
-            case WEAPON_FLAG_SHOT_ANIM_ABRUPT:
-            case WEAPON_FLAG_SHOT_EXPANDS:
-            {
-                MinClientReqCheck ( argStream, MIN_CLIENT_REQ_WEAPON_PROPERTY_FLAG, "flag name is being used" );
-                if ( !argStream.HasErrors () )
-                {
-                    bool bEnable;
-                    if ( CStaticFunctionDefinitions::GetWeaponPropertyFlag ( eProp, eWep, eWepSkill, bEnable ) )
-                    {
-                        lua_pushboolean ( luaVM, bEnable );
-                        return 1;
-                    }
-                }
-                break;
-            }
-            default:
-            {
-                argStream.SetCustomError( "unsupported weapon property at argument 3" );
-                break;
-            }
-        }
-    }
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-
-    // Failed
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::GetOriginalWeaponProperty ( lua_State* luaVM )
-{
-    eWeaponSkill eWepSkill = eWeaponSkill::WEAPONSKILL_STD;
-    eWeaponType eWep = eWeaponType::WEAPONTYPE_UNARMED;
-    eWeaponProperty eProp = eWeaponProperty::WEAPON_INVALID_PROPERTY;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadEnumStringOrNumber ( eWep );
-    argStream.ReadEnumStringOrNumber ( eWepSkill );
-    argStream.ReadEnumString ( eProp );
-    if ( !argStream.HasErrors () )
-    {
-        switch ( eProp )
-        {
-        case WEAPON_WEAPON_RANGE:
-        case WEAPON_TARGET_RANGE:
-        case WEAPON_ACCURACY:
-        case WEAPON_FIRING_SPEED:
-        case WEAPON_LIFE_SPAN:
-        case WEAPON_SPREAD:
-        case WEAPON_MOVE_SPEED:
-            // Get only
-        case WEAPON_REQ_SKILL_LEVEL:
-        case WEAPON_ANIM_LOOP_START:
-        case WEAPON_ANIM_LOOP_STOP:
-        case WEAPON_ANIM_LOOP_RELEASE_BULLET_TIME:
-        case WEAPON_ANIM2_LOOP_START:
-        case WEAPON_ANIM2_LOOP_STOP:
-        case WEAPON_ANIM2_LOOP_RELEASE_BULLET_TIME:
-        case WEAPON_ANIM_BREAKOUT_TIME:
-        case WEAPON_RADIUS:
-            {
-                float fWeaponInfo = 0.0f;
-
-                if ( CStaticFunctionDefinitions::GetOriginalWeaponProperty ( eProp, eWep, eWepSkill, fWeaponInfo ) )
-                {
-                    lua_pushnumber ( luaVM, fWeaponInfo );
-                    return 1;
-                }
-                break;
-            }
-        case WEAPON_DAMAGE:
-        case WEAPON_MAX_CLIP_AMMO:
-        case WEAPON_FLAGS:
-        case WEAPON_ANIM_GROUP:
-        case WEAPON_FIRETYPE:
-        case WEAPON_MODEL:
-        case WEAPON_MODEL2:
-        case WEAPON_SLOT:
-        case WEAPON_AIM_OFFSET:
-        case WEAPON_SKILL_LEVEL:
-        case WEAPON_DEFAULT_COMBO:
-        case WEAPON_COMBOS_AVAILABLE:
-            {
-                int sWeaponInfo = 0;
-
-                if ( CStaticFunctionDefinitions::GetOriginalWeaponProperty ( eProp, eWep, eWepSkill, sWeaponInfo ) )
-                {
-                    lua_pushinteger ( luaVM, sWeaponInfo );
-                    return 1;
-                }
-                break;
-            }
-        case WEAPON_FIRE_OFFSET:
-            {
-                CVector vecWeaponInfo;
-
-                if ( CStaticFunctionDefinitions::GetOriginalWeaponProperty ( eProp, eWep, eWepSkill, vecWeaponInfo ) )
-                {
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fX );
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fY );
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fZ );
-                    return 3;
-                }
-                break;
-            }
-        case WEAPON_FLAG_AIM_NO_AUTO:
-        case WEAPON_FLAG_AIM_ARM:
-        case WEAPON_FLAG_AIM_1ST_PERSON:
-        case WEAPON_FLAG_AIM_FREE:
-        case WEAPON_FLAG_MOVE_AND_AIM:
-        case WEAPON_FLAG_MOVE_AND_SHOOT:
-        case WEAPON_FLAG_TYPE_THROW:
-        case WEAPON_FLAG_TYPE_HEAVY:
-        case WEAPON_FLAG_TYPE_CONSTANT:
-        case WEAPON_FLAG_TYPE_DUAL:
-        case WEAPON_FLAG_ANIM_RELOAD:
-        case WEAPON_FLAG_ANIM_CROUCH:
-        case WEAPON_FLAG_ANIM_RELOAD_LOOP:
-        case WEAPON_FLAG_ANIM_RELOAD_LONG:
-        case WEAPON_FLAG_SHOT_SLOWS:
-        case WEAPON_FLAG_SHOT_RAND_SPEED:
-        case WEAPON_FLAG_SHOT_ANIM_ABRUPT:
-        case WEAPON_FLAG_SHOT_EXPANDS:
-            {
-                MinClientReqCheck ( argStream, MIN_CLIENT_REQ_WEAPON_PROPERTY_FLAG, "flag name is being used" );
-                if ( !argStream.HasErrors () )
-                {
-                    bool bEnable;
-                    if ( CStaticFunctionDefinitions::GetOriginalWeaponPropertyFlag ( eProp, eWep, eWepSkill, bEnable ) )
-                    {
-                        lua_pushboolean ( luaVM, bEnable );
-                        return 1;
-                    }
-                }
-                break;
-            }
-        default:
-            {
-                argStream.SetCustomError( "unsupported weapon property at argument 3" );
-                break;
-            }
-        }
-    }
-    if ( argStream.HasErrors () )
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
 
     // Failed
     lua_pushboolean ( luaVM, false );

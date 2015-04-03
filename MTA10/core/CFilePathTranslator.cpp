@@ -80,7 +80,19 @@ void CFilePathTranslator::GetCurrentWorkingDirectory ( string & WorkingDirectory
 
 void CFilePathTranslator::GetGTARootDirectory ( string & ModuleRootDirOut )
 {
-    ModuleRootDirOut = GetLaunchPath();
+    HMODULE     hMainModule;
+    char        szCurrentDir [ 512 ];
+
+    // First, we get the handle to the root module (exe)
+    hMainModule = GetModuleHandle ( NULL );
+
+    // Next, we get the full path of the module.
+    GetModuleFileName ( hMainModule, szCurrentDir, sizeof ( szCurrentDir ) );
+    
+    // Strip the module name out of the path.
+    PathRemoveFileSpec ( szCurrentDir );
+
+    ModuleRootDirOut = szCurrentDir;
 }
 
 

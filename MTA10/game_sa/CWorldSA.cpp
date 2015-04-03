@@ -15,14 +15,8 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-CWorldSA::CWorldSA ( )
-{
-    m_pBuildingRemovals = new std::multimap< unsigned short, SBuildingRemoval* >;
-    m_pDataBuildings = new std::multimap < unsigned short, sDataBuildingRemovalItem* >;
-    m_pBinaryBuildings = new std::multimap < unsigned short, sBuildingRemovalItem* >;
-}
 
-void CWorldSA::Add ( CEntity * pEntity, eDebugCaller CallerId )
+void CWorldSA::Add ( CEntity * pEntity )
 {
     DEBUG_TRACE("VOID CWorldSA::Add ( CEntity * pEntity )");
 
@@ -30,12 +24,6 @@ void CWorldSA::Add ( CEntity * pEntity, eDebugCaller CallerId )
 
     if ( pEntitySA )
     {
-        CEntitySAInterface * pInterface = pEntitySA->GetInterface();
-        if ( (DWORD)pInterface->vtbl == VTBL_CPlaceable )
-        {
-            SString strMessage ( "Caller: %i ", CallerId );
-            LogEvent ( 506, "CWorld::Add ( CEntity * ) Crash", "", strMessage );
-        }
         DWORD dwEntity = (DWORD) pEntitySA->GetInterface();
         DWORD dwFunction = FUNC_Add;
         _asm
@@ -48,15 +36,10 @@ void CWorldSA::Add ( CEntity * pEntity, eDebugCaller CallerId )
 }
 
 
-void CWorldSA::Add ( CEntitySAInterface * entityInterface, eDebugCaller CallerId )
+void CWorldSA::Add ( CEntitySAInterface * entityInterface )
 {
     DEBUG_TRACE("VOID CWorldSA::Add ( CEntitySAInterface * entityInterface )");
     DWORD dwFunction = FUNC_Add;
-    if ( (DWORD)entityInterface->vtbl == VTBL_CPlaceable )
-    {
-        SString strMessage ( "Caller: %i ", CallerId );
-        LogEvent ( 506, "CWorld::Add ( CEntitySAInterface * ) Crash", "", strMessage );
-    }
     _asm
     {
         push    entityInterface
@@ -65,7 +48,7 @@ void CWorldSA::Add ( CEntitySAInterface * entityInterface, eDebugCaller CallerId
     }
 }
 
-void CWorldSA::Remove ( CEntity * pEntity, eDebugCaller CallerId )
+void CWorldSA::Remove ( CEntity * pEntity )
 {
     DEBUG_TRACE("VOID CWorldSA::Remove ( CEntity * entity )");
 
@@ -73,13 +56,7 @@ void CWorldSA::Remove ( CEntity * pEntity, eDebugCaller CallerId )
 
     if ( pEntitySA )
     {
-        CEntitySAInterface * pInterface = pEntitySA->GetInterface();
-        if ( (DWORD)pInterface->vtbl == VTBL_CPlaceable )
-        {
-            SString strMessage ( "Caller: %i ", CallerId );
-            LogEvent ( 507, "CWorld::Remove ( CEntity * ) Crash", "", strMessage );
-        }
-        DWORD dwEntity = (DWORD)pInterface;
+        DWORD dwEntity = (DWORD)pEntitySA->GetInterface();
         DWORD dwFunction = FUNC_Remove;
         _asm
         {
@@ -90,14 +67,9 @@ void CWorldSA::Remove ( CEntity * pEntity, eDebugCaller CallerId )
     }
 }
 
-void CWorldSA::Remove ( CEntitySAInterface * entityInterface, eDebugCaller CallerId )
+void CWorldSA::Remove ( CEntitySAInterface * entityInterface )
 {
     DEBUG_TRACE("VOID CWorldSA::Remove ( CEntitySAInterface * entityInterface )");
-    if ( (DWORD)entityInterface->vtbl == VTBL_CPlaceable )
-    {
-        SString strMessage ( "Caller: %i ", CallerId );
-        LogEvent ( 507, "CWorld::Remove ( CEntitySAInterface * ) Crash", "", strMessage );
-    }
     DWORD dwFunction = FUNC_Remove;
     _asm
     {
@@ -153,36 +125,12 @@ bool CWorldSA::TestLineSphere(CVector * vecStart, CVector * vecEnd, CVector * ve
     }
 }
 
-
-void ConvertMatrixToEulerAngles ( const CMatrix_Padded& matrixPadded, float& fX, float& fY, float& fZ )
-{
-    // Convert the given matrix to a padded matrix
-    //CMatrix_Padded matrixPadded ( Matrix );
-
-    // Grab its pointer and call gta's func
-    const CMatrix_Padded* pMatrixPadded = &matrixPadded;
-    DWORD dwFunc = FUNC_CMatrix__ConvertToEulerAngles;
-
-    float* pfX = &fX;
-    float* pfY = &fY;
-    float* pfZ = &fZ;
-    int iUnknown = 21;
-    _asm
-    {
-        push    iUnknown
-            push    pfZ
-            push    pfY
-            push    pfX
-            mov     ecx, pMatrixPadded
-            call    dwFunc
-    }
-}
-
-
 bool CWorldSA::ProcessLineOfSight(const CVector * vecStart, const CVector * vecEnd, CColPoint ** colCollision, 
-                                  CEntity ** CollisionEntity,
-                                  const SLineOfSightFlags flags,
-                                  SLineOfSightBuildingResult* pBuildingResult )
+                                  CEntity ** CollisionEntity, bool bCheckBuildings, 
+                                  bool bCheckVehicles, bool bCheckPeds, 
+                                  bool bCheckObjects, bool bCheckDummies , 
+                                  bool bSeeThroughStuff, bool bIgnoreSomeObjectsForCamera, 
+                                  bool bShootThroughStuff )
 {
     DEBUG_TRACE("VOID CWorldSA::ProcessLineOfSight(CVector * vecStart, CVector * vecEnd, CColPoint * colCollision, CEntity * CollisionEntity)");
     DWORD dwPadding[100]; // stops the function missbehaving and overwriting the return address
@@ -199,18 +147,17 @@ bool CWorldSA::ProcessLineOfSight(const CVector * vecStart, const CVector * vecE
     // bool bCheckBuildings = true,                 bool bCheckVehicles = true,     bool bCheckPeds = true, 
     // bool bCheckObjects = true,                   bool bCheckDummies = true,      bool bSeeThroughStuff = false, 
     // bool bIgnoreSomeObjectsForCamera = false,    bool bShootThroughStuff = false
-    MemPutFast < BYTE > ( VAR_CWorld_bIncludeCarTires, flags.bCheckCarTires );
 
     _asm
     {
-        push    flags.bShootThroughStuff
-        push    flags.bIgnoreSomeObjectsForCamera
-        push    flags.bSeeThroughStuff
-        push    flags.bCheckDummies
-        push    flags.bCheckObjects
-        push    flags.bCheckPeds
-        push    flags.bCheckVehicles
-        push    flags.bCheckBuildings
+        push    bShootThroughStuff
+        push    bIgnoreSomeObjectsForCamera
+        push    bSeeThroughStuff
+        push    bCheckDummies
+        push    bCheckObjects
+        push    bCheckPeds
+        push    bCheckVehicles
+        push    bCheckBuildings
         lea     eax, targetEntity
         push    eax
         push    pColPointSAInterface    
@@ -220,47 +167,6 @@ bool CWorldSA::ProcessLineOfSight(const CVector * vecStart, const CVector * vecE
         mov     bReturn, al
         add     esp, 0x30
     }
-
-    MemPutFast < BYTE > ( VAR_CWorld_bIncludeCarTires, 0 );
-
-    // Building info needed?
-    if ( pBuildingResult )
-    {
-        CPoolsSA * pPools = ((CPoolsSA *)pGame->GetPools());
-        if ( pPools )
-        {
-            if ( targetEntity && targetEntity->nType == ENTITY_TYPE_BUILDING )
-            {
-                pBuildingResult->bValid = true;
-                pBuildingResult->usModelID = targetEntity->m_nModelIndex;
-                if ( targetEntity->m_pLod )
-                    pBuildingResult->usLODModelID = targetEntity->m_pLod->m_nModelIndex;
-                else
-                    pBuildingResult->usLODModelID = 0;
-
-                pBuildingResult->pInterface = targetEntity;
-                pBuildingResult->vecPosition = targetEntity->Placeable.m_transform.m_translate;
-                if ( targetEntity->Placeable.matrix )
-                {
-                    CVector& vecRotation = pBuildingResult->vecRotation;
-                    ConvertMatrixToEulerAngles ( *targetEntity->Placeable.matrix, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
-                    vecRotation = -vecRotation;
-                }
-            }
-            if ( targetEntity && targetEntity->nType == ENTITY_TYPE_OBJECT )
-            {
-                pBuildingResult->bValid = true;
-                pBuildingResult->usModelID = targetEntity->m_nModelIndex;
-                if ( targetEntity->m_pLod )
-                    pBuildingResult->usLODModelID = targetEntity->m_pLod->m_nModelIndex;
-                else
-                    pBuildingResult->usLODModelID = 0;
-
-                pBuildingResult->pInterface = targetEntity;
-            }
-        }
-    }
-
 
     if ( CollisionEntity )
     {
@@ -317,9 +223,9 @@ void CWorldSA::IgnoreEntity(CEntity * pEntity)
     CEntitySA* pEntitySA = dynamic_cast < CEntitySA* > ( pEntity );
 
     if ( pEntitySA )
-        MemPutFast < DWORD > ( VAR_IgnoredEntity, (DWORD) pEntitySA->GetInterface () );
+        MemPut < DWORD > ( VAR_IgnoredEntity, (DWORD) pEntitySA->GetInterface () );  //         *(DWORD *)VAR_IgnoredEntity = (DWORD) pEntitySA->GetInterface ();
     else
-        MemPutFast < DWORD > ( VAR_IgnoredEntity, 0 );
+        MemPut < DWORD > ( VAR_IgnoredEntity, 0 );  //         *(DWORD *)VAR_IgnoredEntity = 0;
 }
 
 // technically this is in CTheZones
@@ -412,8 +318,9 @@ void CWorldSA::LoadMapAroundPoint(CVector * vecPosition, FLOAT fRadius)
 
 }
 
-
-bool CWorldSA::IsLineOfSightClear ( const CVector * vecStart, const CVector * vecEnd, const SLineOfSightFlags flags )
+bool CWorldSA::IsLineOfSightClear ( CVector * vecStart, CVector * vecEnd, bool bCheckBuildings,
+                                   bool bCheckVehicles, bool bCheckPeds, bool bCheckObjects,
+                                   bool bCheckDummies, bool bSeeThroughStuff, bool bIgnoreSomeObjectsForCamera )
 {
     DWORD dwFunc = FUNC_IsLineOfSightClear;
     bool bReturn = false;
@@ -423,13 +330,13 @@ bool CWorldSA::IsLineOfSightClear ( const CVector * vecStart, const CVector * ve
 
     _asm
     {
-        push    flags.bIgnoreSomeObjectsForCamera
-        push    flags.bSeeThroughStuff
-        push    flags.bCheckDummies
-        push    flags.bCheckObjects
-        push    flags.bCheckPeds
-        push    flags.bCheckVehicles
-        push    flags.bCheckBuildings
+        push    bIgnoreSomeObjectsForCamera
+        push    bSeeThroughStuff
+        push    bCheckDummies
+        push    bCheckObjects
+        push    bCheckPeds
+        push    bCheckVehicles
+        push    bCheckBuildings
         push    vecEnd
         push    vecStart    
         call    dwFunc
@@ -461,7 +368,7 @@ DWORD CWorldSA::GetCurrentArea ( void )
 
 void CWorldSA::SetCurrentArea ( DWORD dwArea )
 {
-    MemPutFast < DWORD > ( VAR_currArea, dwArea );
+    MemPut < DWORD > ( VAR_currArea, dwArea );  //     *(DWORD *)VAR_currArea = dwArea;
 
     DWORD dwFunc = FUNC_RemoveBuildingsNotInArea;
     _asm
@@ -474,7 +381,7 @@ void CWorldSA::SetCurrentArea ( DWORD dwArea )
 
 void CWorldSA::SetJetpackMaxHeight ( float fHeight )
 {
-    MemPut < float > ( VAR_fJetpackMaxHeight, fHeight );
+    MemPut < float > ( VAR_fJetpackMaxHeight, fHeight );  //     *(float *)(VAR_fJetpackMaxHeight) = fHeight;
 }
 
 float CWorldSA::GetJetpackMaxHeight ( void )
@@ -482,815 +389,170 @@ float CWorldSA::GetJetpackMaxHeight ( void )
     return *(float *)(VAR_fJetpackMaxHeight);
 }
 
-void CWorldSA::SetAircraftMaxHeight ( float fHeight )
+void CWorldSA::SetWindVelocity ( float fX, float fY, float fZ )
 {
-    g_pCore->GetMultiplayer ( )->SetAircraftMaxHeight ( fHeight );
+    //Disable
+    MemPut < WORD > ( ADDR_WindSpeedSetX, 0xD8DD );  //     *(WORD *)(ADDR_WindSpeedSetX) = 0xD8DD;
+    MemPut < DWORD > ( ADDR_WindSpeedSetX + 2, 0x90909090 );  //     *(DWORD *)(ADDR_WindSpeedSetX + 2) = 0x90909090;
+    MemPut < WORD > ( ADDR_WindSpeedSetY, 0xD8DD );  //     *(WORD *)(ADDR_WindSpeedSetY) = 0xD8DD;
+    MemPut < DWORD > ( ADDR_WindSpeedSetY + 2, 0x90909090 );  //     *(DWORD *)(ADDR_WindSpeedSetY + 2) = 0x90909090;
+    MemPut < WORD > ( ADDR_WindSpeedSetZ, 0xD8DD );  //     *(WORD *)(ADDR_WindSpeedSetZ) = 0xD8DD;
+    MemPut < DWORD > ( ADDR_WindSpeedSetZ + 2, 0x90909090 );  //     *(DWORD *)(ADDR_WindSpeedSetZ + 2) = 0x90909090;
+
+    MemPut < WORD > ( ADDR_WindSpeedSetX2, 0xD8DD );  //     *(WORD *)(ADDR_WindSpeedSetX2) = 0xD8DD;
+    MemPut < DWORD > ( ADDR_WindSpeedSetX2 + 2, 0x90909090 );  //     *(DWORD *)(ADDR_WindSpeedSetX2 + 2) = 0x90909090;
+    MemPut < WORD > ( ADDR_WindSpeedSetY2, 0xD8DD );  //     *(WORD *)(ADDR_WindSpeedSetY2) = 0xD8DD;
+    MemPut < DWORD > ( ADDR_WindSpeedSetY2 + 2, 0x90909090 );  //     *(DWORD *)(ADDR_WindSpeedSetY2 + 2) = 0x90909090;
+    MemPut < WORD > ( ADDR_WindSpeedSetZ2, 0xD8DD );  //     *(WORD *)(ADDR_WindSpeedSetZ2) = 0xD8DD;
+    MemPut < DWORD > ( ADDR_WindSpeedSetZ2 + 2, 0x90909090 );  //     *(DWORD *)(ADDR_WindSpeedSetZ2 + 2) = 0x90909090;
+
+    //Set
+    MemPut < float > ( VAR_fWindSpeedX, fX );  //     *(float *)(VAR_fWindSpeedX) = fX;
+    MemPut < float > ( VAR_fWindSpeedY, fY );  //     *(float *)(VAR_fWindSpeedY) = fY;
+    MemPut < float > ( VAR_fWindSpeedZ, fZ );  //     *(float *)(VAR_fWindSpeedZ) = fZ;
 }
 
-float CWorldSA::GetAircraftMaxHeight ( void )
+void CWorldSA::GetWindVelocity ( float& fX, float& fY, float& fZ )
 {
-    return g_pCore->GetMultiplayer ( )->GetAircraftMaxHeight ( );
+    fX = *(float *)(VAR_fWindSpeedX);
+    fY = *(float *)(VAR_fWindSpeedY);
+    fZ = *(float *)(VAR_fWindSpeedZ);
 }
 
-void CWorldSA::SetAircraftMaxVelocity ( float fVelocity )
+void CWorldSA::RestoreWindVelocity ( void )
 {
-    g_pCore->GetMultiplayer ( )->SetAircraftMaxVelocity ( fVelocity );
+    MemPut < WORD > ( ADDR_WindSpeedSetX, 0x1DD9 );  //     *(WORD *)(ADDR_WindSpeedSetX) = 0x1DD9;
+    MemPut < DWORD > ( ADDR_WindSpeedSetX + 2, 0x00C813E0 );  //     *(DWORD *)(ADDR_WindSpeedSetX + 2) = 0x00C813E0;
+    MemPut < WORD > ( ADDR_WindSpeedSetY, 0x1DD9 );  //     *(WORD *)(ADDR_WindSpeedSetY) = 0x1DD9;
+    MemPut < DWORD > ( ADDR_WindSpeedSetY + 2, 0x00C813E4 );  //     *(DWORD *)(ADDR_WindSpeedSetY + 2) = 0x00C813E4;
+    MemPut < WORD > ( ADDR_WindSpeedSetZ, 0x1DD9 );  //     *(WORD *)(ADDR_WindSpeedSetZ) = 0x1DD9;
+    MemPut < DWORD > ( ADDR_WindSpeedSetZ + 2, 0x00C813E8 );  //     *(DWORD *)(ADDR_WindSpeedSetZ + 2) = 0x00C813E8;
+
+    MemPut < WORD > ( ADDR_WindSpeedSetX2, 0x15D9 );  //     *(WORD *)(ADDR_WindSpeedSetX2) = 0x15D9;
+    MemPut < DWORD > ( ADDR_WindSpeedSetX2 + 2, 0x00C813E0 );  //     *(DWORD *)(ADDR_WindSpeedSetX2 + 2) = 0x00C813E0;
+    MemPut < WORD > ( ADDR_WindSpeedSetY2, 0x1DD9 );  //     *(WORD *)(ADDR_WindSpeedSetY2) = 0x1DD9;
+    MemPut < DWORD > ( ADDR_WindSpeedSetY2 + 2, 0x00C813E4 );  //     *(DWORD *)(ADDR_WindSpeedSetY2 + 2) = 0x00C813E4;
+    MemPut < WORD > ( ADDR_WindSpeedSetZ2, 0x1DD9 );  //     *(WORD *)(ADDR_WindSpeedSetZ2) = 0x1DD9;
+    MemPut < DWORD > ( ADDR_WindSpeedSetZ2 + 2, 0x00C813E8 );  //     *(DWORD *)(ADDR_WindSpeedSetZ2 + 2) = 0x00C813E8;
 }
 
-float CWorldSA::GetAircraftMaxVelocity ( void )
+float CWorldSA::GetFarClipDistance ( )
 {
-    return g_pCore->GetMultiplayer ( )->GetAircraftMaxVelocity ( );
+    return *(float *)(VAR_fFarClipDistance);
 }
 
-void CWorldSA::SetOcclusionsEnabled ( bool bEnabled )
+void CWorldSA::SetFarClipDistance ( float fDistance )
 {
-    if ( !bEnabled )
-    {
-        MemPut < BYTE > ( FUNC_COcclusion_ProcessBeforeRendering, 0xC3 );   // retn
-        MemPutFast < int > ( VAR_COcclusion_NumActiveOccluders, 0 );
-        MemCpy ( (void*)CALL_CCullZones_FindTunnelAttributesForCoors, "\xB8\x80\x28\x00\x00", 5 );  // mov eax, 0x2880
-    }
-    else
-    {
-        MemPut < BYTE > ( FUNC_COcclusion_ProcessBeforeRendering, 0x51 );   // Standard value
-        MemCpy ( (void*)CALL_CCullZones_FindTunnelAttributesForCoors, "\xE8\xDE\x82\x1D\x00", 5 );   // call 0x72D9F0
-    }
+    MemPut < BYTE > ( 0x55FCC8, 0xDD );  //     *(BYTE *)0x55FCC8 = 0xDD;
+    MemPut < BYTE > ( 0x55FCC9, 0xD8 );  //     *(BYTE *)0x55FCC9 = 0xD8;
+    MemPut < BYTE > ( 0x55FCCA, 0x90 );  //     *(BYTE *)0x55FCCA = 0x90;
+
+    MemPut < BYTE > ( 0x5613A3, 0xDD );  //     *(BYTE *)0x5613A3 = 0xDD;
+    MemPut < BYTE > ( 0x5613A4, 0xD8 );  //     *(BYTE *)0x5613A4 = 0xD8;
+    MemPut < BYTE > ( 0x5613A5, 0x90 );  //     *(BYTE *)0x5613A5 = 0x90;
+
+    MemPut < BYTE > ( 0x560A23, 0xDD );  //     *(BYTE *)0x560A23 = 0xDD;
+    MemPut < BYTE > ( 0x560A24, 0xD8 );  //     *(BYTE *)0x560A24 = 0xD8;
+    MemPut < BYTE > ( 0x560A25, 0x90 );  //     *(BYTE *)0x560A25 = 0x90;
+
+    MemPut < float > ( VAR_fFarClipDistance, fDistance );  //     *(float *)(VAR_fFarClipDistance) = fDistance;
 }
 
-bool CWorldSA::GetOcclusionsEnabled ( void )
+void CWorldSA::RestoreFarClipDistance ( )
 {
-    if ( *(BYTE*)FUNC_COcclusion_ProcessBeforeRendering == 0x51 )           // Is standard value ?
-        return true;
-    return false;
+    BYTE originalFstp[3] = {0xD9, 0x5E, 0x50};
+
+    MemCpy ( (LPVOID)0x55FCC8, &originalFstp, 3 );
+    MemCpy ( (LPVOID)0x5613A3, &originalFstp, 3 );
+    MemCpy ( (LPVOID)0x560A23, &originalFstp, 3 );
 }
 
-void CWorldSA::FindWorldPositionForRailTrackPosition ( float fRailTrackPosition, int iTrackId, CVector* pOutVecPosition )
+float CWorldSA::GetFogDistance ( )
 {
-    DWORD dwFunc = FUNC_CWorld_FindPositionForTrackPosition; // __cdecl
-    
-    _asm
-    {
-        push pOutVecPosition
-        push iTrackId
-        push fRailTrackPosition
-        call dwFunc
-        add  esp, 3*4
-    }
+    return *(float *)(VAR_fFogDistance);
 }
 
-int CWorldSA::FindClosestRailTrackNode ( const CVector& vecPosition, uchar& ucOutTrackId, float& fOutRailDistance )
+void CWorldSA::SetFogDistance ( float fDistance )
 {
-    // Original function @ 0x6F7550
-    int iNodeId = -1;
-    float fMinDistance = 99999.898f;
-    int* aNumTrackNodes = (int*)ARRAY_NumRailTrackNodes;
-    SRailNodeSA** aTrackNodes = (SRailNodeSA**)ARRAY_RailTrackNodePointers;
-    uchar ucDesiredTrackId = ucOutTrackId;
+    MemPut < BYTE > ( 0x55FCDB, 0xDD );  //     *(BYTE *)0x55FCDB = 0xDD;
+    MemPut < BYTE > ( 0x55FCDC, 0xD8 );  //     *(BYTE *)0x55FCDC = 0xD8;
+    MemPut < BYTE > ( 0x55FCDD, 0x90 );  //     *(BYTE *)0x55FCDD = 0x90;
 
-    for ( uchar ucTrackId = 0; ucTrackId < NUM_RAILTRACKS; ++ucTrackId )
-    {
-        if ( ( ucDesiredTrackId == 0xFF || ucTrackId == ucDesiredTrackId ) && aNumTrackNodes[ucTrackId] > 0 )
-        {
-            for ( int i = 0; i < aNumTrackNodes[ucTrackId]; ++i )
-            {
-                SRailNodeSA& railNode = aTrackNodes[ucTrackId][i];
-
-                float fDistance = sqrt ( pow(vecPosition.fZ - railNode.sZ * 0.125f, 2) + pow(vecPosition.fY - railNode.sY * 0.125f, 2) + pow(vecPosition.fX - railNode.sX * 0.125f, 2) );
-                if ( fDistance < fMinDistance )
-                {
-                    fMinDistance = fDistance;
-                    iNodeId = i;
-                    ucOutTrackId = ucTrackId;
-                }
-            }
-        }
-    }
-
-    // Read rail distance
-    fOutRailDistance = aTrackNodes[ucOutTrackId][iNodeId].sRailDistance * 3.33333334f;
-    
-    return iNodeId;
-    
-    /*DWORD dwFunc = FUNC_GetTrainNodeNearPoint; // __cdecl
-    int iNodeId;
-    *pOutTrackId = 0;
-    float fX = vecPosition.fX;
-    float fY = vecPosition.fY;
-    float fZ = vecPosition.fZ;
-
-    _asm
-    {
-        push pOutTrackId
-        push fZ
-        push fY
-        push fZ
-        call dwFunc
-        mov iNodeId, eax
-        add esp, 4*4
-    }
-    
-    return iNodeId;*/
+    MemPut < float > ( VAR_fFogDistance, fDistance );  //     *(float *)(VAR_fFogDistance) = fDistance;
 }
 
-void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, float fX, float fY, float fZ, char cInterior, uint* pOutAmount )
-{    
-    // New building Removal
-    SBuildingRemoval* pRemoval = new SBuildingRemoval();
-    pRemoval->m_usModel = usModelToRemove;
-    pRemoval->m_vecPos.fX = fX;
-    pRemoval->m_vecPos.fY = fY;
-    pRemoval->m_vecPos.fZ = fZ;
-    pRemoval->m_fRadius = fRange;
-    pRemoval->m_cInterior = cInterior;
-    // Push it to the back of the removal list
-    m_pBuildingRemovals->insert ( std::pair<unsigned short, SBuildingRemoval*> ( usModelToRemove, pRemoval ) );
-
-    bool bFound = false;
-    uint uiAmount = 0;
-    // Init loop variables
-    std::pair < std::multimap < unsigned short, sDataBuildingRemovalItem*>::iterator, std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator> iterators = m_pDataBuildings->equal_range ( usModelToRemove );
-    std::multimap < unsigned short, sDataBuildingRemovalItem* > ::const_iterator iter = iterators.first;
-    for ( ; iter != iterators.second; ++iter )
-    {
-        sDataBuildingRemovalItem * pFind = (*iter).second;
-        if ( pFind )
-        {
-            // if the count is <= 0 and the interface is valid check the distance in case we found a removal (count is used to store if we have already removed this once)
-            if ( pFind->m_iCount <= 0 && pFind->m_pInterface )
-            {
-                // Grab distances across each axis
-                float fDistanceX = fX - pFind->m_pInterface->Placeable.m_transform.m_translate.fX;
-                float fDistanceY = fY - pFind->m_pInterface->Placeable.m_transform.m_translate.fY;
-                float fDistanceZ = fZ - pFind->m_pInterface->Placeable.m_transform.m_translate.fZ;
-
-                if ( pFind->m_pInterface->Placeable.matrix != NULL )
-                {
-                    fDistanceX = fX - pFind->m_pInterface->Placeable.matrix->vPos.fX;
-                    fDistanceY = fY - pFind->m_pInterface->Placeable.matrix->vPos.fY;
-                    fDistanceZ = fZ - pFind->m_pInterface->Placeable.matrix->vPos.fZ;
-                }
-
-                // Square root 'em
-                float fDistance = sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY + fDistanceZ * fDistanceZ );
-
-                // Is it in range
-                if ( fDistance <= fRange && ( pFind->m_pInterface->m_areaCode == cInterior || cInterior == -1 ) )
-                {
-                    CEntitySAInterface * pInterface = pFind->m_pInterface;
-                    //while ( pInterface && pInterface != NULL )
-                    // if the interface is valid
-                    if ( pInterface && pInterface != NULL )
-                    {
-                        // if the building type is dummy or building and it's not already being removed
-                        if ( ( pInterface->nType == ENTITY_TYPE_BUILDING || pInterface->nType == ENTITY_TYPE_DUMMY || pInterface->nType == ENTITY_TYPE_OBJECT ) && pInterface->bRemoveFromWorld != 1 )
-                        {
-                            if ( (DWORD)(pInterface->vtbl) != VTBL_CPlaceable )
-                            {
-                                // Add the Data Building to the list
-                                pRemoval->AddDataBuilding ( pInterface );
-                                // Remove the model from the world
-                                Remove ( pInterface, BuildingRemoval2 );
-                                m_pRemovedEntities[(DWORD)pInterface] = true;
-                                bFound = true;
-
-                            }
-                        }
-                        // Get next LOD ( LOD's can have LOD's so we keep checking pInterface )
-                        //pInterface = pInterface->m_pLod;
-                    }
-                    // Set the count.
-                    pFind->m_iCount = 1;
-                }
-            }
-        }
-    }
-    
-    std::pair < std::multimap < unsigned short, sBuildingRemovalItem*>::iterator, std::multimap < unsigned short, sBuildingRemovalItem* >::iterator> iteratorsBinary = m_pBinaryBuildings->equal_range ( usModelToRemove );
-    std::multimap < unsigned short, sBuildingRemovalItem* > ::const_iterator iterBinary = iteratorsBinary.first;
-    for ( ; iterBinary != iteratorsBinary.second; ++iterBinary )
-    {
-        sBuildingRemovalItem * pFindBinary = (*iterBinary).second;
-        if ( pFindBinary )
-        {
-            // if the count is <= 0 and the interface is valid check the distance in case we found a removal (count is used to store if we have already removed this once)
-            if ( pFindBinary->m_iCount <= 0 && pFindBinary->m_pInterface )
-            {
-                // Grab distances across each axis
-                float fDistanceX = fX - pFindBinary->m_pInterface->Placeable.m_transform.m_translate.fX;
-                float fDistanceY = fY - pFindBinary->m_pInterface->Placeable.m_transform.m_translate.fY;
-                float fDistanceZ = fZ - pFindBinary->m_pInterface->Placeable.m_transform.m_translate.fZ;
-
-                if ( pFindBinary->m_pInterface->Placeable.matrix != NULL )
-                {
-                    fDistanceX = fX - pFindBinary->m_pInterface->Placeable.matrix->vPos.fX;
-                    fDistanceY = fY - pFindBinary->m_pInterface->Placeable.matrix->vPos.fY;
-                    fDistanceZ = fZ - pFindBinary->m_pInterface->Placeable.matrix->vPos.fZ;
-                }
-
-                // Square root 'em
-                float fDistance = sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY + fDistanceZ * fDistanceZ );
-
-                // Is it in range
-                if ( fDistance <= fRange && ( pFindBinary->m_pInterface->m_areaCode == cInterior || cInterior == -1 ) )
-                {
-                    CEntitySAInterface * pInterface = pFindBinary->m_pInterface;
-                    //while ( pInterface && pInterface != NULL )
-                    // if the interface is valid
-                    if ( pInterface && pInterface != NULL )
-                    {
-                        // if the building type is dummy or building and it's not already being removed
-                        if ( ( pInterface->nType == ENTITY_TYPE_BUILDING || pInterface->nType == ENTITY_TYPE_DUMMY || pInterface->nType == ENTITY_TYPE_OBJECT ) && pInterface->bRemoveFromWorld != 1 )
-                        {
-                            if ( (DWORD)(pInterface->vtbl) != VTBL_CPlaceable )
-                            {
-                                // Add the Data Building to the list
-                                pRemoval->AddBinaryBuilding ( pInterface );
-                                // Remove the model from the world
-                                Remove ( pInterface, BuildingRemoval2 );
-                                m_pRemovedEntities[(DWORD)pInterface] = true;
-                                bFound = true;
-                                ++uiAmount;
-                            }
-                        }
-                        // Get next LOD ( LOD's can have LOD's so we keep checking pInterface )
-                        //pInterface = pInterface->m_pLod;
-                    }
-                    // Set the count.
-                    pFindBinary->m_iCount = 1;
-                }
-            }
-        }
-    }
-    if ( bFound )
-        pGame->GetModelInfo ( usModelToRemove )->RestreamIPL ();
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
-}
-
-bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, float fX, float fY, float fZ, char cInterior, uint* pOutAmount  )
-{        
-    bool bSuccess = false;
-    uint uiAmount = 0;
-
-    // Init some variables
-    std::pair < std::multimap < unsigned short, SBuildingRemoval* >::iterator, std::multimap < unsigned short, SBuildingRemoval* >::iterator> iterators = m_pBuildingRemovals->equal_range ( usModelToRestore );
-    std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = iterators.first;
-    // Loop through the buildings list
-    for ( ; iter != iterators.second;  )
-    {
-        SBuildingRemoval * pFind = (*iter).second;
-        // if pFind is valid and the model is the same
-        if ( pFind )
-        {
-            // Grab distances across each axis
-            float fDistanceX = fX - pFind->m_vecPos.fX;
-            float fDistanceY = fY - pFind->m_vecPos.fY;
-            float fDistanceZ = fZ - pFind->m_vecPos.fZ;
-
-            // Square root 'em
-            float fDistance = sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY + fDistanceZ * fDistanceZ );
-            if ( fDistance <= pFind->m_fRadius && ( cInterior == -1 || pFind->m_cInterior == cInterior ) )
-            {
-                // Init some variables
-                CEntitySAInterface * pEntity = NULL;
-                std::list < CEntitySAInterface* > ::const_iterator entityIter = pFind->m_pBinaryRemoveList->begin ( );
-                if ( pFind->m_pBinaryRemoveList->empty ( ) == false ) 
-                {
-                    // Loop through the Binary object list
-                    for ( ; entityIter != pFind->m_pBinaryRemoveList->end (); )
-                    {
-                        // Grab the pEntity
-                        pEntity = (*entityIter);
-                        // if it's valid re-add it to the world.
-                        if ( pEntity != NULL )
-                        {
-                            // Remove it from the binary list
-                            pFind->m_pBinaryRemoveList->erase ( entityIter++ );
-                            // if the building type is dummy or building and it's not already being removed
-                            if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
-                            {
-                                // Don't call this on entities being removed.
-                                if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
-                                {
-                                    Add ( pEntity, Building_Restore );
-                                    m_pRemovedEntities[(DWORD)pEntity] = false;
-                                    // If the building isn't streamed in, we won't find the building in the list (because the hook wasn't called) -> removeWorldModel doesn't work next time
-                                    AddBinaryBuilding ( pEntity );
-                                    ++uiAmount;
-                                }
-                            }
-                        }
-                        else
-                            ++entityIter;
-                    }
-                }
-                // Start the iterator with the data remove list first item
-                entityIter = pFind->m_pDataRemoveList->begin ( );
-                if ( pFind->m_pDataRemoveList->empty ( ) == false )
-                {
-                    // Loop through the Data list
-                    for ( ; entityIter != pFind->m_pDataRemoveList->end (); )
-                    {
-                        // Grab the pEntity
-                        pEntity = (*entityIter);
-                        // if it's valid re-add it to the world.
-                        if ( pEntity != NULL )
-                        {
-                            pFind->m_pDataRemoveList->erase ( entityIter++ );
-                            // if the building type is dummy or building and it's not already being removed
-                            if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
-                            {
-                                if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
-                                {
-                                    Add ( pEntity, Building_Restore2 );
-                                    m_pRemovedEntities[(DWORD)pEntity] = false;
-                                }
-                            }
-                        }
-                        else
-                        {
-                            ++entityIter;
-                        }
-                    }
-                }
-                // Remove the building from the list
-                m_pBuildingRemovals->erase ( iter++ );
-                delete pFind;
-                // Success! don't return incase there are any others to delete
-                bSuccess = true;
-            }
-            else
-                iter++;
-        }
-        else
-            iter++;
-    }
-    std::pair < std::multimap < unsigned short, sDataBuildingRemovalItem*>::iterator, std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator> dataBuildingIterators = m_pDataBuildings->equal_range ( usModelToRestore );
-    std::multimap < unsigned short, sDataBuildingRemovalItem* > ::const_iterator iterator = dataBuildingIterators.first;
-    for ( ; iterator != dataBuildingIterators.second; ++iterator )
-    {
-        sDataBuildingRemovalItem * pFound = (*iterator).second;
-        if ( pFound )
-        {
-            // Grab distances across each axis
-            float fDistanceX = fX - pFound->m_pInterface->Placeable.m_transform.m_translate.fX;
-            float fDistanceY = fY - pFound->m_pInterface->Placeable.m_transform.m_translate.fY;
-            float fDistanceZ = fZ - pFound->m_pInterface->Placeable.m_transform.m_translate.fZ;
-
-            if ( pFound->m_pInterface->Placeable.matrix != NULL )
-            {
-                fDistanceX = fX - pFound->m_pInterface->Placeable.matrix->vPos.fX;
-                fDistanceY = fY - pFound->m_pInterface->Placeable.matrix->vPos.fY;
-                fDistanceZ = fZ - pFound->m_pInterface->Placeable.matrix->vPos.fZ;
-            }
-
-            // Square root 'em
-            float fDistance = sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY + fDistanceZ * fDistanceZ );
-            if ( fDistance <= fRange && ( cInterior == -1 || pFound->m_pInterface->m_areaCode == cInterior ) )
-            {
-                // Fix the removed count.
-                pFound->m_iCount--;
-                if ( pFound->m_iCount < 0 )
-                    pFound->m_iCount = 0;
-            }
-        }
-    }
-
-    std::pair < std::multimap < unsigned short, sBuildingRemovalItem*>::iterator, std::multimap < unsigned short, sBuildingRemovalItem* >::iterator> binaryBuildingIterators = m_pBinaryBuildings->equal_range ( usModelToRestore );
-    std::multimap < unsigned short, sBuildingRemovalItem* > ::const_iterator iteratorBinary = binaryBuildingIterators.first;
-    for ( ; iteratorBinary != binaryBuildingIterators.second; ++iteratorBinary )
-    {
-        sBuildingRemovalItem * pFoundBinary = (*iteratorBinary).second;
-        if ( pFoundBinary )
-        {
-            // Grab distances across each axis
-            float fDistanceX = fX - pFoundBinary->m_pInterface->Placeable.m_transform.m_translate.fX;
-            float fDistanceY = fY - pFoundBinary->m_pInterface->Placeable.m_transform.m_translate.fY;
-            float fDistanceZ = fZ - pFoundBinary->m_pInterface->Placeable.m_transform.m_translate.fZ;
-
-            if ( pFoundBinary->m_pInterface->Placeable.matrix != NULL )
-            {
-                fDistanceX = fX - pFoundBinary->m_pInterface->Placeable.matrix->vPos.fX;
-                fDistanceY = fY - pFoundBinary->m_pInterface->Placeable.matrix->vPos.fY;
-                fDistanceZ = fZ - pFoundBinary->m_pInterface->Placeable.matrix->vPos.fZ;
-            }
-
-            // Square root 'em
-            float fDistance = sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY + fDistanceZ * fDistanceZ );
-            if ( fDistance <= fRange && ( cInterior == -1 || pFoundBinary->m_pInterface->m_areaCode == cInterior ) )
-            {
-                // Fix the removed count.
-                pFoundBinary->m_iCount--;
-                if ( pFoundBinary->m_iCount < 0 )
-                    pFoundBinary->m_iCount = 0;
-            }
-        }
-    }
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
-
-    return bSuccess;
-}
-
-// Check Distance to see if the model being requested is in the radius
-bool CWorldSA::IsRemovedModelInRadius ( SIPLInst* pInst )
+void CWorldSA::RestoreFogDistance ( )
 {
-    // Init some variables
-    std::pair < std::multimap < unsigned short, SBuildingRemoval* >::iterator, std::multimap < unsigned short, SBuildingRemoval* >::iterator> iterators = m_pBuildingRemovals->equal_range ( pInst->m_nModelIndex );
-    std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = iterators.first;
-    // Loop through the buildings list
-    for ( ; iter != iterators.second; ++iter )
-    {
-        SBuildingRemoval * pFind = (*iter).second;
-        // if pFind is valid and the model is the same
-        if ( pFind )
-        {
-            // Grab the distance
-            float fDistanceX = pFind->m_vecPos.fX - pInst->m_pPosition.fX;
-            float fDistanceY = pFind->m_vecPos.fY - pInst->m_pPosition.fY;
-            float fDistanceZ = pFind->m_vecPos.fZ - pInst->m_pPosition.fZ;
+    BYTE originalFstp[3] = {0xD9, 0x5E, 0x54};
 
-            float fDistance = sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY + fDistanceZ * fDistanceZ );
-            // is it in the removal spheres radius if so return else keep looking
-            if ( fDistance <=  pFind->m_fRadius && ( pFind->m_cInterior == -1 || pFind->m_cInterior == pInst->m_nInterior ) )
-            {
-                return true;
-            }
-        }
-    }
-    return false;
+    MemCpy ( (LPVOID)0x55FCDB, &originalFstp, 3 );
 }
 
-// Check Distance to see if the model being requested is in the radius
-bool CWorldSA::IsObjectRemoved ( CEntitySAInterface* pInterface )
+void CWorldSA::GetSunColor ( unsigned char& ucCoreRed, unsigned char& ucCoreGreen, unsigned char& ucCoreBlue, unsigned char& ucCoronaRed, unsigned char& ucCoronaGreen, unsigned char& ucCoronaBlue)
 {
-    // Init some variables
-    std::pair < std::multimap < unsigned short, SBuildingRemoval* >::iterator, std::multimap < unsigned short, SBuildingRemoval* >::iterator> iterators = m_pBuildingRemovals->equal_range ( pInterface->m_nModelIndex );
-    std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = iterators.first;
-    // Loop through the buildings list
-    for ( ; iter != iterators.second; ++iter )
-    {
-        SBuildingRemoval * pFind = (*iter).second;
-        // if pFind is valid and the model is the same
-        if ( pFind )
-        {
-            // Are we using the interior param?? if so check for a match
-            if ( pFind->m_cInterior == -1 || pFind->m_cInterior == pInterface->m_areaCode )
-            {
-                // Grab the distance
-                float fDistanceX = pFind->m_vecPos.fX - pInterface->Placeable.m_transform.m_translate.fX;
-                float fDistanceY = pFind->m_vecPos.fY - pInterface->Placeable.m_transform.m_translate.fY;
-                float fDistanceZ = pFind->m_vecPos.fZ - pInterface->Placeable.m_transform.m_translate.fZ;
+    ucCoreRed   = *(BYTE *)(VAR_ucSunCoreR);
+    ucCoreGreen = *(BYTE *)(VAR_ucSunCoreG);
+    ucCoreBlue  = *(BYTE *)(VAR_ucSunCoreB);
 
-                if ( pInterface->Placeable.matrix != NULL )
-                {
-                    fDistanceX = pFind->m_vecPos.fX - pInterface->Placeable.matrix->vPos.fX;
-                    fDistanceY = pFind->m_vecPos.fY - pInterface->Placeable.matrix->vPos.fY;
-                    fDistanceZ = pFind->m_vecPos.fZ - pInterface->Placeable.matrix->vPos.fZ;
-                }
-
-                float fDistance = sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY + fDistanceZ * fDistanceZ );
-                // is it in the removal spheres radius if so return else keep looking
-                if ( fDistance <=  pFind->m_fRadius )
-                {
-                    return true;
-                }
-            }
-        }
-    }
-    return false;
+    ucCoronaRed   = *(BYTE *)(VAR_ucSunCoronaR);
+    ucCoronaGreen = *(BYTE *)(VAR_ucSunCoronaG);
+    ucCoronaBlue  = *(BYTE *)(VAR_ucSunCoronaB);
 }
 
-// Check if a given model is replaced
-bool CWorldSA::IsModelRemoved ( unsigned short usModelID )
+void CWorldSA::SetSunColor ( unsigned char ucCoreRed, unsigned char ucCoreGreen, unsigned char ucCoreBlue, unsigned char ucCoronaRed, unsigned char ucCoronaGreen, unsigned char ucCoronaBlue )
 {
-    return m_pBuildingRemovals->count ( usModelID ) > 0;
+    MemSet ( (LPVOID)0x55F9B2, 0x90, 4 );
+    MemSet ( (LPVOID)0x55F9DD, 0x90, 4 );
+    MemSet ( (LPVOID)0x55FA08, 0x90, 4 );
+    MemSet ( (LPVOID)0x55FA33, 0x90, 4 );
+    MemSet ( (LPVOID)0x55FA5E, 0x90, 4 );
+    MemSet ( (LPVOID)0x55FA8D, 0x90, 4 );
+
+    MemPut < BYTE > ( VAR_ucSunCoreR, ucCoreRed );  //     *(BYTE *)(VAR_ucSunCoreR) = ucCoreRed;
+    MemPut < BYTE > ( VAR_ucSunCoreG, ucCoreGreen );  //     *(BYTE *)(VAR_ucSunCoreG) = ucCoreGreen;
+    MemPut < BYTE > ( VAR_ucSunCoreB, ucCoreBlue );  //     *(BYTE *)(VAR_ucSunCoreB) = ucCoreBlue;
+
+    MemPut < BYTE > ( VAR_ucSunCoronaR, ucCoronaRed );  //     *(BYTE *)(VAR_ucSunCoronaR) = ucCoronaRed;
+    MemPut < BYTE > ( VAR_ucSunCoronaG, ucCoronaGreen );  //     *(BYTE *)(VAR_ucSunCoronaG) = ucCoronaGreen;
+    MemPut < BYTE > ( VAR_ucSunCoronaB, ucCoronaBlue );  //     *(BYTE *)(VAR_ucSunCoronaB) = ucCoronaBlue;
 }
 
-// Check if a given model is replaced
-bool CWorldSA::IsDataModelRemoved ( unsigned short usModelID )
+void CWorldSA::ResetSunColor ( )
 {
-    return m_pBuildingRemovals->count ( usModelID ) > 0;
+    BYTE originalMov[3] = {0x66, 0x89, 0x46};
+
+    MemCpy ( (LPVOID)0x55F9B2, &originalMov, 3 );
+    MemPut < BYTE > ( 0x55F9B5, 0x30 );  //     *(BYTE *)0x55F9B5 = 0x30;
+    MemCpy ( (LPVOID)0x55F9DD, &originalMov, 3 );
+    MemPut < BYTE > ( 0x55F9E0, 0x32 );  //     *(BYTE *)0x55F9E0 = 0x32;
+    MemCpy ( (LPVOID)0x55FA08, &originalMov, 3 );
+    MemPut < BYTE > ( 0x55FA0B, 0x34 );  //     *(BYTE *)0x55FA0B = 0x34;
+
+    MemCpy ( (LPVOID)0x55FA33, &originalMov, 3 );
+    MemPut < BYTE > ( 0x55FA36, 0x36 );  //     *(BYTE *)0x55FA36 = 0x36;
+    MemCpy ( (LPVOID)0x55FA5E, &originalMov, 3 );
+    MemPut < BYTE > ( 0x55FA61, 0x38 );  //     *(BYTE *)0x55FA61 = 0x38;
+    MemCpy ( (LPVOID)0x55FA8D, &originalMov, 3 );
+    MemPut < BYTE > ( 0x55FA90, 0x3A );  //     *(BYTE *)0x55FA90 = 0x3A;
 }
 
-// Check if a given model is replaced
-bool CWorldSA::IsEntityRemoved ( CEntitySAInterface * pInterface )
+float CWorldSA::GetSunSize ( )
 {
-    return m_pRemovedEntities.find ( (DWORD)pInterface ) != m_pRemovedEntities.end ( ) && m_pRemovedEntities[(DWORD)pInterface] == true;
+    return *(float *)(VAR_fSunSize) / 10;
 }
 
-// Resets deleted list
-void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
+void CWorldSA::SetSunSize ( float fSize )
 {
-    // Ensure no memory leaks by deleting items.
-    uint uiAmount = 0;
-    std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = m_pBuildingRemovals->begin ( );
+    MemPut < BYTE > ( 0x55FA9D, 0xDD );  //     *(BYTE *)0x55FA9D = 0xDD;
+    MemPut < BYTE > ( 0x55FA9E, 0xD8 );  //     *(BYTE *)0x55FA9E = 0xD8;
+    MemPut < BYTE > ( 0x55FA9F, 0x90 );  //     *(BYTE *)0x55FA9F = 0x90;
 
-    for ( ; iter != m_pBuildingRemovals->end ( ); )
-    {
-        SBuildingRemoval * pFind = (*iter).second;
-        if ( pFind )
-        {
-            // Init some variables
-            CEntitySAInterface * pEntity = NULL;
-            std::list < CEntitySAInterface* > ::const_iterator entityIter = pFind->m_pBinaryRemoveList->begin ( );
-            if ( pFind->m_pBinaryRemoveList->empty ( ) == false )
-            {
-                // Loop through the Binary remove list
-                for ( ; entityIter != pFind->m_pBinaryRemoveList->end (); ++entityIter )
-                {
-                    // Grab the pEntity
-                    pEntity = (*entityIter);
-                    // if it's valid re-add it to the world.
-                    if ( pEntity && pEntity != NULL )
-                    {
-                        // if the building type is dummy or building and it's not already being removed
-                        if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
-                        {
-                            // Don't call this on entities being removed.
-                            if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
-                            {
-                                Add ( pEntity, BuildingRemovalReset );
-                                m_pRemovedEntities[(DWORD)pEntity] = false;
-                                ++uiAmount;
-                            }
-                        }
-                    }
-                }
-            }
-            entityIter = pFind->m_pDataRemoveList->begin ( );
-            if ( pFind->m_pDataRemoveList->empty ( ) == false )
-            {
-                // Loop through the Data list
-                for ( ; entityIter != pFind->m_pDataRemoveList->end (); ++entityIter )
-                {
-                    // Grab the pEntity
-                    pEntity = (*entityIter);
-                    // if it's valid re-add it to the world.
-                    if ( pEntity && pEntity != NULL )
-                    {
-                        // if the building type is dummy or building and it's not already being removed
-                        if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
-                        {
-                            // Don't call this on entities being removed.
-                            if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
-                            {
-                                Add ( pEntity, BuildingRemovalReset2 );
-                                m_pRemovedEntities[(DWORD)pEntity] = false;
-                            }
-                        }
-                    }
-                }
-            }
-            m_pBuildingRemovals->erase ( iter++ );
-        }
-        else
-            iter++;
-    }
-    // Init some variables
-    std::multimap < unsigned short, sDataBuildingRemovalItem* > ::const_iterator iterator = m_pDataBuildings->begin ( );
-    // Loop through the data building list
-    for ( ; iterator != m_pDataBuildings->end ( ); ++iterator )
-    {
-        sDataBuildingRemovalItem * pFound = (*iterator).second;
-        if ( pFound )
-        {
-            // Set the count to 0 so we can remove it again
-            pFound->m_iCount = 0;
-        }
-    }
-    // Init some variables 
-    std::multimap < unsigned short, sBuildingRemovalItem* > ::const_iterator iteratorBinary = m_pBinaryBuildings->begin ( );
-    // Loop through the data building list
-    for ( ; iteratorBinary != m_pBinaryBuildings->end ( ); ++iteratorBinary )
-    {
-        sBuildingRemovalItem * pFoundBinary = (*iteratorBinary).second;
-        if ( pFoundBinary )
-        {
-            // Set the count to 0 so we can remove it again
-            pFoundBinary->m_iCount = 0;
-        }
-    }
-    // Delete old building lists
-    delete m_pBuildingRemovals;
-    // Create new
-    m_pBuildingRemovals = new std::multimap< unsigned short, SBuildingRemoval* >;
-    m_pRemovedEntities.clear ( );
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
+    MemPut < float > ( VAR_fSunSize, fSize * 10 );  //     *(float *)VAR_fSunSize = fSize * 10;
 }
 
-
-// Resets deleted list
-SBuildingRemoval* CWorldSA::GetBuildingRemoval ( CEntitySAInterface * pInterface )
+void CWorldSA::ResetSunSize ( )
 {
-    // Init some variables
-    std::pair < std::multimap < unsigned short, SBuildingRemoval* >::iterator, std::multimap < unsigned short, SBuildingRemoval* >::iterator> iterators = m_pBuildingRemovals->equal_range ( pInterface->m_nModelIndex );
-    std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = iterators.first;
-    // Loop through the buildings list
-    for ( ; iter != iterators.second; ++iter )
-    {
-        SBuildingRemoval * pFind = (*iter).second;
-        // if pFind is valid and the model is the same
-        if ( pFind )
-        {
-            // Grab the distance
-            float fDistanceX = pFind->m_vecPos.fX - pInterface->Placeable.m_transform.m_translate.fX;
-            float fDistanceY = pFind->m_vecPos.fY - pInterface->Placeable.m_transform.m_translate.fY;
-            float fDistanceZ = pFind->m_vecPos.fZ - pInterface->Placeable.m_transform.m_translate.fZ;
-
-            if ( pInterface->Placeable.matrix != NULL )
-            {
-                fDistanceX = pFind->m_vecPos.fX - pInterface->Placeable.matrix->vPos.fX;
-                fDistanceY = pFind->m_vecPos.fY - pInterface->Placeable.matrix->vPos.fY;
-                fDistanceZ = pFind->m_vecPos.fZ - pInterface->Placeable.matrix->vPos.fZ;
-            }
-
-            float fDistance = sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY + fDistanceZ * fDistanceZ );
-            // is it in the removal spheres radius if so return else keep looking
-            if ( fDistance <=  pFind->m_fRadius && ( pFind->m_cInterior == -1 || pFind->m_cInterior == pInterface->m_areaCode ) )
-            {
-                return pFind;
-            }
-        }
-    }
-    return NULL;
-}
-
-void CWorldSA::AddDataBuilding ( CEntitySAInterface * pInterface )
-{
-    if ( m_pAddedEntities.find ( (DWORD)pInterface ) == m_pAddedEntities.end ( ) || m_pAddedEntities[(DWORD)pInterface] == false )
-    {
-        // Create a new building removal
-        sDataBuildingRemovalItem * pBuildingRemoval = new sDataBuildingRemovalItem ( pInterface, true );
-        // Insert it with the model index so we can fast lookup
-        m_pDataBuildings->insert ( std::pair<unsigned short, sDataBuildingRemovalItem*> ( (unsigned short)pInterface->m_nModelIndex, pBuildingRemoval ) );
-        m_pAddedEntities[(DWORD)pInterface] = true;
-        m_pRemovedEntities[(DWORD)pInterface] = false;
-    }
-}
-
-void CWorldSA::AddBinaryBuilding ( CEntitySAInterface * pInterface )
-{
-    if ( m_pAddedEntities.find ( (DWORD)pInterface ) == m_pAddedEntities.end ( ) || m_pAddedEntities[(DWORD)pInterface] == false )
-    {
-        // Create a new building removal
-        sBuildingRemovalItem * pBuildingRemoval = new sBuildingRemovalItem ( pInterface, false );
-        // Insert it with the model index so we can fast lookup
-        m_pBinaryBuildings->insert ( std::pair<unsigned short, sBuildingRemovalItem*> ( (unsigned short)pInterface->m_nModelIndex, pBuildingRemoval ) );
-        m_pAddedEntities[(DWORD)pInterface] = true;
-        m_pRemovedEntities[(DWORD)pInterface] = false;
-    }
-}
-
-void CWorldSA::RemoveWorldBuildingFromLists ( CEntitySAInterface * pInterface )
-{
-    std::pair < std::multimap < unsigned short, SBuildingRemoval* >::iterator, std::multimap < unsigned short, SBuildingRemoval* >::iterator> iterators = m_pBuildingRemovals->equal_range ( pInterface->m_nModelIndex );
-    std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = iterators.first;
-
-    // Loop through the buildings list
-    for ( ; iter != iterators.second; ++iter )
-    {
-        SBuildingRemoval * pFind = (*iter).second;
-        // if pFind is valid and the model is the same
-        if ( pFind )
-        {
-            CEntitySAInterface * pEntity = NULL;
-            // if the binary remove list is empty don't continue
-            if ( pFind->m_pBinaryRemoveList->empty ( ) == false )
-            {
-                // grab the beginning
-                std::list < CEntitySAInterface* > ::const_iterator entityIter = pFind->m_pBinaryRemoveList->begin ( );
-                // Loop through the binary remove list
-                for ( ; entityIter != pFind->m_pBinaryRemoveList->end (); )
-                {
-                    pEntity = (*entityIter);
-                    // is the pointer the same as the one being deleted
-                    if ( (DWORD)pEntity == (DWORD)pInterface )
-                    {
-                        // remove it from the binary removed list for this removal
-                        pFind->m_pBinaryRemoveList->erase ( entityIter++ );
-                    }
-                    else
-                        entityIter++; 
-                }
-            }
-            if ( pFind->m_pDataRemoveList->empty ( ) == false )
-            {
-                std::list < CEntitySAInterface* > ::const_iterator entityIter = pFind->m_pDataRemoveList->begin ( );
-                // Loop through the Data list
-                for ( ; entityIter != pFind->m_pDataRemoveList->end (); )
-                {
-                    // Grab the pEntity
-                    pEntity = (*entityIter);
-                    // is the pointer the same as the one being deleted
-                    if ( (DWORD)pEntity == (DWORD)pInterface )
-                    {
-                        // remove it from the data removed list for this removal
-                        pFind->m_pDataRemoveList->erase ( entityIter++ );
-                    }
-                    else
-                        entityIter++;
-                }
-            }
-        }
-    }
-    {
-        // Init some variables
-        std::pair < std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator, std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator> dataIterators = m_pDataBuildings->equal_range ( pInterface->m_nModelIndex );
-        std::multimap < unsigned short, sDataBuildingRemovalItem* > ::const_iterator iterator = dataIterators.first;
-        for ( ; iterator != dataIterators.second; )
-        {
-            sDataBuildingRemovalItem * pFound = (*iterator).second;
-            if ( pFound )
-            {
-                // is the pointer the same as the one being deleted
-                if ( (DWORD)pFound->m_pInterface == (DWORD)pInterface )
-                {
-                    // remove it from the data buildings list so we don't try and remove or add it again.
-                    m_pDataBuildings->erase ( iterator++ );
-                }
-                else
-                    iterator++;
-            }
-            else
-                iterator++;
-        }
-    }
-    {
-        // Init some variables
-        std::pair < std::multimap < unsigned short, sBuildingRemovalItem* >::iterator, std::multimap < unsigned short, sBuildingRemovalItem* >::iterator> binaryIterators = m_pBinaryBuildings->equal_range ( pInterface->m_nModelIndex );
-        std::multimap < unsigned short, sBuildingRemovalItem* > ::const_iterator iteratorBinary = binaryIterators.first;
-        for ( ; iteratorBinary != binaryIterators.second; )
-        {
-            sBuildingRemovalItem * pFound = (*iteratorBinary).second;
-            if ( pFound )
-            {
-                // is the pointer the same as the one being deleted
-                if ( (DWORD)pFound->m_pInterface == (DWORD)pInterface )
-                {
-                    // remove it from the data buildings list so we don't try and remove or add it again.
-                    m_pBinaryBuildings->erase ( iteratorBinary++ );
-                }
-                else
-                    iteratorBinary++;
-            }
-            else
-                iteratorBinary++;
-        }
-    }
-    m_pRemovedEntities[(DWORD)pInterface] = false;
-    m_pAddedEntities[(DWORD)pInterface] = false;
-
-}
-
-bool CWorldSA::CalculateImpactPosition ( const CVector &vecInputStart, CVector &vecInputEnd )
-{
-    // get our position
-    CVector vecStart = vecInputStart;
-    // get our end position by projecting forward a few velocities more
-    CVector vecEnd = vecInputEnd;
-    // grab the difference between our reported and actual end position
-    CVector diff = vecEnd - vecStart;
-    // normalize our difference
-    diff.Normalize ( );
-    // project forward another unit
-    vecEnd = vecEnd + diff * 1;
-    // create a variable to store our collision data
-    CColPoint * pColPoint;
-    // create a variable to store our collision entity
-    CEntity * pCollisionEntity;
-
-    // flags
-    SLineOfSightFlags flags;
-    flags.bCheckCarTires = false;
-    flags.bIgnoreSomeObjectsForCamera = true;
-    flags.bCheckBuildings = true;
-    flags.bCheckPeds = true;
-    flags.bCheckObjects = true;
-    flags.bCheckDummies = true;
-
-    // Include dead peds
-    MemPutFast < DWORD > ( 0xB7CD71, 1 );
-
-    SLineOfSightBuildingResult result;
-    // process forward another 1 unit
-    if ( ProcessLineOfSight ( &vecStart, &vecEnd, &pColPoint, &pCollisionEntity, flags, &result ) )
-    {
-        // set our collision position
-        vecInputEnd = pColPoint->GetPosition ( );
-
-        // destroy our colshape
-        pColPoint->Destroy ( );
-
-        // reset include dead peds
-        MemPutFast < DWORD > ( 0xB7CD71, 0 );
-        return true;
-    }
-    // Include dead peds
-    MemPutFast < DWORD > ( 0xB7CD71, 0 );
-    return false;
+    MemPut < BYTE > ( 0x55FA9D, 0xD9 );  //     *(BYTE *)0x55FA9D = 0xD9;
+    MemPut < BYTE > ( 0x55FA9E, 0x5E );  //     *(BYTE *)0x55FA9E = 0x5E;
+    MemPut < BYTE > ( 0x55FA9F, 0x3C );  //     *(BYTE *)0x55FA9F = 0x3C;
 }

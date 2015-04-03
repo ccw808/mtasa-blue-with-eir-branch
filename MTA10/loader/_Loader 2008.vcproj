@@ -4,7 +4,6 @@
 	Version="9.00"
 	Name="Client - Loader"
 	ProjectGUID="{AF2AF376-1ACD-4F3B-B399-2A30D8BE950E}"
-	RootNamespace="Client - Loader"
 	TargetFrameworkVersion="131072"
 	>
 	<Platforms>
@@ -17,9 +16,9 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
-			ConfigurationType="2"
+			OutputDirectory=".\Debug"
+			IntermediateDirectory=".\Debug"
+			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="false"
@@ -49,15 +48,16 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../../Shared/sdk;../../vendor"
-				PreprocessorDefinitions="WIN32;_DEBUG;MTA_DEBUG;_CRT_SECURE_NO_WARNINGS"
+				AdditionalIncludeDirectories="../../Shared/sdk"
+				PreprocessorDefinitions="WIN32;_DEBUG;MTA_DEBUG;COMPILE_FOR_SA;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
-				RuntimeTypeInfo="false"
+				RuntimeLibrary="1"
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
-				PrecompiledHeaderFile="$(IntDir)\$(TargetName).pch"
+				AssemblerListingLocation=".\Debug/"
+				ObjectFile=".\Debug/"
+				ProgramDataBaseFileName=".\Debug/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -76,17 +76,15 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="shlwapi.lib psapi.lib UnRAR.lib Version.lib d3d9.lib"
-				OutputFile="C:/Program Files/MTA San Andreas 1.4/mta/loader_d.dll"
+				AdditionalDependencies="shlwapi.lib psapi.lib"
+				OutputFile="C:/Program Files/MTA San Andreas 1.1/Multi Theft Auto_d.exe"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;..\..\vendor\unrar\build\unrardll32\$(ConfigurationName)&quot;;../../vendor/detours/lib"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
+				ProgramDatabaseFile=".\Debug/Loader_d.pdb"
 				SubSystem="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -113,9 +111,9 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
-			ConfigurationType="2"
+			OutputDirectory=".\Release"
+			IntermediateDirectory=".\Release"
+			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="false"
@@ -150,14 +148,15 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="../../Shared/sdk;../../vendor"
-				PreprocessorDefinitions="WIN32;_CRT_SECURE_NO_WARNINGS"
+				AdditionalIncludeDirectories="../../Shared/sdk"
+				PreprocessorDefinitions="WIN32;MTA_RELEASE;COMPILE_FOR_SA;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
-				RuntimeLibrary="2"
-				RuntimeTypeInfo="false"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="StdInc.h"
-				PrecompiledHeaderFile="$(IntDir)\$(TargetName).pch"
+				RuntimeLibrary="0"
+				UsePrecompiledHeader="0"
+				PrecompiledHeaderFile=""
+				AssemblerListingLocation=".\Release/"
+				ObjectFile=".\Release/"
+				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -176,20 +175,20 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="shlwapi.lib psapi.lib UnRAR.lib Version.lib d3d9.lib"
-				OutputFile="c:\program files\MTA San Andreas 1.4\mta\loader.dll"
+				AdditionalDependencies="shlwapi.lib psapi.lib"
+				OutputFile="c:\program files\MTA San Andreas 1.1\Multi Theft Auto.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;..\..\vendor\unrar\build\unrardll32\$(ConfigurationName)&quot;;../../vendor/detours/lib"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				ProgramDatabaseFile="C:/Symbols/$(ConfigurationName)_$(SafeParentName).pdb"
+				GenerateMapFile="true"
+				MapFileName="C:/Symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -216,9 +215,9 @@
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\obj\x86\$(ConfigurationName)\$(SafeRootNamespace)"
-			ConfigurationType="2"
+			OutputDirectory="..\..\obj\client\loader"
+			IntermediateDirectory="..\..\obj\client\loader"
+			ConfigurationType="1"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
 			ATLMinimizesCRunTimeLibraryUsage="false"
@@ -253,14 +252,15 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="../../Shared/sdk;../../vendor"
-				PreprocessorDefinitions="WIN32;_CRT_SECURE_NO_WARNINGS"
+				AdditionalIncludeDirectories="../../Shared/sdk"
+				PreprocessorDefinitions="WIN32;MTA_RELEASE;COMPILE_FOR_SA;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
-				RuntimeLibrary="2"
-				RuntimeTypeInfo="false"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="StdInc.h"
-				PrecompiledHeaderFile="$(IntDir)\$(TargetName).pch"
+				RuntimeLibrary="0"
+				UsePrecompiledHeader="0"
+				PrecompiledHeaderFile=""
+				AssemblerListingLocation=""
+				ObjectFile="$(IntDir)/"
+				ProgramDataBaseFileName="$(IntDir)/vc70.pdb"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -279,20 +279,20 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="shlwapi.lib psapi.lib UnRAR.lib Version.lib d3d9.lib"
-				OutputFile="..\..\output\MTA San Andreas\mta\loader.dll"
+				AdditionalDependencies="shlwapi.lib psapi.lib"
+				OutputFile="..\..\output\MTA San Andreas\Multi Theft Auto.exe"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;..\..\vendor\unrar\build\unrardll32\$(ConfigurationName)&quot;;../../vendor/detours/lib"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				ProgramDatabaseFile="C:/Symbols/$(ConfigurationName)_$(SafeParentName).pdb"
+				GenerateMapFile="true"
+				MapFileName="C:/Symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -326,19 +326,7 @@
 			Filter="cpp;c;cxx;rc;def;r;odl;idl;hpj;bat"
 			>
 			<File
-				RelativePath=".\CExePatchedStatus.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CInstallManager.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\D3DStuff.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\Dialogs.cpp"
 				>
 			</File>
 			<File
@@ -350,30 +338,10 @@
 				>
 			</File>
 			<File
-				RelativePath=".\MainFunctions.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\StdInc.cpp"
 				>
 				<FileConfiguration
 					Name="Debug|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Release|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Nightly|Win32"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -391,10 +359,6 @@
 			Filter="h;hpp;hxx;hm;inl"
 			>
 			<File
-				RelativePath=".\CExePatchedStatus.h"
-				>
-			</File>
-			<File
 				RelativePath=".\CInstallManager.h"
 				>
 			</File>
@@ -403,23 +367,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\D3DStuff.h"
-				>
-			</File>
-			<File
-				RelativePath=".\Dialogs.h"
-				>
-			</File>
-			<File
 				RelativePath=".\Install.h"
 				>
 			</File>
 			<File
 				RelativePath=".\Main.h"
-				>
-			</File>
-			<File
-				RelativePath=".\MainFunctions.h"
 				>
 			</File>
 			<File
@@ -440,7 +392,19 @@
 			Filter="ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe"
 			>
 			<File
+				RelativePath=".\NEU\GDFImp.gdf.xml"
+				>
+			</File>
+			<File
+				RelativePath=".\GDFImp.rc"
+				>
+			</File>
+			<File
 				RelativePath="loader.rc"
+				>
+			</File>
+			<File
+				RelativePath=".\resource\mtaicon.ico"
 				>
 			</File>
 			<File

@@ -16,12 +16,10 @@
 
 class CClientColCircle : public CClientColShape
 {
-    DECLARE_CLASS( CClientColCircle, CClientColShape )
 public:
-                    CClientColCircle        ( CClientManager* pManager, ElementID ID, const CVector2D& vecPosition, float fRadius );
+                    CClientColCircle        ( CClientManager* pManager, ElementID ID, const CVector& vecPosition, float fRadius );
 
     virtual CSphere GetWorldBoundingSphere  ( void );
-    virtual void    DebugRender             ( const CVector& vecPosition, float fDrawRadius );
 
     eColShapeType   GetShapeType            ( void )            { return COLSHAPE_CIRCLE; }
 

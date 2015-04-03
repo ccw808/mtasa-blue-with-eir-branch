@@ -10,20 +10,7 @@
 *
 *****************************************************************************/
 
-/*
-    IMPORTANT (Windows only)
-
-    If this project changes, a new release build should be copied into
-    the launcher/output diectory.
-
-    The 'MTA Server.exe' in launcher/output will be used by the installer and updater.
-
-    (set flag.new_server_exe on the build server to generate a new 'MTA Server.exe')
-*/
-
-
 #include "CDynamicLibrary.h"
-#include "../../Shared/sdk/SharedUtil.Defines.h"
 #include <cstdio>
 #include <iostream>
 
@@ -32,25 +19,22 @@ using namespace std;
 #ifdef WIN32
     #include <windows.h>
     #include <direct.h>
-    #include "Shlwapi.h"
-    #pragma comment(lib, "Shlwapi.lib")
 #else
     #include <string.h>
     #include <alloca.h>
-    #include <unistd.h>
 #endif
 
 #ifdef WIN32
     #ifdef MTA_DEBUG
-        #define LIB_CORE SERVER_BIN_PATH "core_d.dll"
+        #define LIB_CORE "core_d.dll"
     #else
-        #define LIB_CORE SERVER_BIN_PATH "core.dll"
+        #define LIB_CORE "core.dll"
     #endif
 #else
     #ifdef MTA_DEBUG
-        #define LIB_CORE "./" SERVER_BIN_PATH "core_d.so"
+        #define LIB_CORE "./core_d.so"
     #else
-        #define LIB_CORE "./" SERVER_BIN_PATH "core.so"
+        #define LIB_CORE "./core.so"
     #endif
 #endif
 
@@ -73,29 +57,23 @@ int main ( int argc, char* argv [] )
         szLaunchFile = cpPos + 1;
     }
 
-    if ( argc > 1 )
+    if ( argc == 2 )
     {
-        if ( strcmp ( argv[1], "/?" ) == 0 || strcmp ( argv[1], "--help" ) == 0 || strcmp ( argv[1], "-h" ) == 0 )
+        if ( strcmp ( argv[1], "/?" ) == 0 || strcmp ( argv[1], "--help" ) == 0 )
         {
             printf ( "Usage: %s [OPTION]\n\n", szLaunchFile ? szLaunchFile : "mtaserver" );
-            printf ( "  -v                   Shows the program version\n" );
             printf ( "  -s                   Run server in silent mode\n" );
 #ifndef WIN32
             printf ( "  -d                   Run server daemonized\n" );
 #endif
             printf ( "  -t                   Run server with a simple console\n" );
             printf ( "  -f                   Run server with a standard console (Default)\n" );
-            printf ( "  -n                   Disable the usage of ncurses (For screenlog)\n" );
-#ifndef WIN32
-            printf ( "  -x                   Disable simplified crash reports (To allow core dumps)\n" );
-#endif
             printf ( "  -D [PATH]            Use as base directory\n" );
             printf ( "  --config [FILE]      Alternate mtaserver.conf file\n" );
             printf ( "  --ip [ADDR]          Set IP address\n" );
             printf ( "  --port [PORT]        Set port\n" );
             printf ( "  --httpport [PORT]    Set http port\n" );
             printf ( "  --maxplayers [max]   Set maxplayers\n" );
-            printf ( "  --novoice            Disable voice communication\n" );
             return 1;
         }
     }
@@ -103,16 +81,7 @@ int main ( int argc, char* argv [] )
     // If we are unable to access the core module, try changing to the directory of the launched file
     FILE* fh = fopen ( LIB_CORE, "r" );
     if ( !fh )
-    {
-        #ifdef WIN32
-            wchar_t szBuffer[64000];
-            GetModuleFileNameW( NULL, szBuffer, 64000 );
-            PathRemoveFileSpecW ( szBuffer );
-            SetCurrentDirectoryW( szBuffer );
-        #else
-            chdir ( szLaunchDirectory );
-        #endif
-    }
+        chdir ( szLaunchDirectory );
     else
         fclose ( fh );
 

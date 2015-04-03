@@ -14,23 +14,22 @@
 
 using namespace std;
 
-CStack <ElementID, MAX_SERVER_ELEMENTS - 2 > CElementIDs::m_UniqueIDs;
-SFixedArray < CElement*, MAX_SERVER_ELEMENTS > CElementIDs::m_Elements;
+CStack <ElementID, MAX_SERVER_ELEMENTS, INVALID_ELEMENT_ID > CElementIDs::m_UniqueIDs;
+CElement* CElementIDs::m_Elements [MAX_SERVER_ELEMENTS];
 
 void CElementIDs::Initialize ( void )
 {
-    memset ( &m_Elements[0], 0, sizeof ( m_Elements ) );
+    memset ( m_Elements, 0, sizeof ( m_Elements ) );
 }
 
 
 ElementID CElementIDs::PopUniqueID ( CElement* pElement )
 {
     // Grab the ID and check that we had more left
-    ElementID ID;
-    if ( m_UniqueIDs.Pop (ID) && ID != INVALID_ELEMENT_ID )
+    ElementID ID = m_UniqueIDs.Pop ();
+    if ( ID != INVALID_ELEMENT_ID )
     {
-        assert( ID < MAX_SERVER_ELEMENTS );
-        m_Elements [ID.Value()] = pElement;
+        m_Elements [ID] = pElement;
     }
 
     return ID;
@@ -40,10 +39,10 @@ ElementID CElementIDs::PopUniqueID ( CElement* pElement )
 void CElementIDs::PushUniqueID ( ElementID ID )
 {
     // Push the ID back and NULL the entity there
-    if ( ID != INVALID_ELEMENT_ID && ID < MAX_SERVER_ELEMENTS )
+    if ( ID != INVALID_ELEMENT_ID )
     {
         m_UniqueIDs.Push ( ID );
-        m_Elements [ID.Value()] = NULL;
+        m_Elements [ID] = NULL;
     }
 }
 
@@ -58,11 +57,7 @@ CElement* CElementIDs::GetElement ( ElementID ID )
 {
     // Return the element with the given ID
     if ( ID != INVALID_ELEMENT_ID && ID < MAX_SERVER_ELEMENTS )
-    {
-        CElement* pElement = m_Elements [ID.Value()];
-        if ( pElement && !pElement->IsBeingDeleted () )
-            return pElement;
-    }
+        return m_Elements [ID];
 
     return NULL;
 }

@@ -24,18 +24,19 @@
 #include "../game_sa/CPadSA.h"
 #include "../game_sa/common.h"
 
+void MemSet ( void* dwDest, int cValue, uint uiAmount );
+
 class CRemoteDataStorageSA : public CRemoteDataStorage
 {
 public:
     inline CRemoteDataStorageSA () 
     { 
-        memset ( &m_pad, 0, sizeof ( CPadSAInterface ) );
+        MemSet ( &m_pad, 0, sizeof ( CPadSAInterface ) );
         m_fCameraRotation = 0.0f;
-        memset ( &m_stats, 0, sizeof ( CStatsData ) );
+        MemSet ( &m_stats, 0, sizeof ( CStatsData ) );
         m_fGravity = 0.008f;
         m_bAkimboTargetUp = false;
         m_bProcessPlayerWeapon = false;
-        m_shotSyncData.m_bRemoteBulletSyncVectorsValid = false;
     }
 
     inline CControllerState *   CurrentControllerState () { return &m_pad.NewState; }

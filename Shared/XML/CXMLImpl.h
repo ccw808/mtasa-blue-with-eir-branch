@@ -21,7 +21,7 @@ public:
                         CXMLImpl            ( void );
                         ~CXMLImpl           ( void );
 
-    CXMLFile*           CreateXML           ( const char* szFilename, bool bUseIDs );
+    CXMLFile*           CreateXML           ( const char* szFilename );
     void                DeleteXML           ( CXMLFile* pFile );
 
     CXMLNode*           CreateDummyNode     ( void );

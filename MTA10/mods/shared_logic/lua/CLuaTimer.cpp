@@ -16,58 +16,32 @@
 
 CLuaTimer::CLuaTimer ( const CLuaFunctionRef& iLuaFunction, const CLuaArguments& Arguments )
 {
-    m_uiScriptID = CIdArray::PopUniqueId ( this, EIdClass::TIMER );
+    m_ulStartTime = 0;
+    m_ulDelay = 0;
     m_uiRepeats = 1;
+    m_bBeingDeleted = false;
     m_iLuaFunction = iLuaFunction;
-    m_Arguments = Arguments;
+    m_pArguments = new CLuaArguments ( Arguments );
 }
 
 
 CLuaTimer::~CLuaTimer ( void )
 {
-    RemoveScriptID ();
-}
-
-
-void CLuaTimer::RemoveScriptID ( void )
-{
-    if ( m_uiScriptID != INVALID_ARRAY_ID )
-    {
-        CIdArray::PushUniqueId ( this, EIdClass::TIMER, m_uiScriptID );
-        m_uiScriptID = INVALID_ARRAY_ID;
-    }
+    delete m_pArguments;
+    m_pArguments = NULL;
 }
 
 
 void CLuaTimer::ExecuteTimer ( CLuaMain* pLuaMain )
 {
-    if ( VERIFY_FUNCTION ( m_iLuaFunction ) )
-    {
-        lua_State* pState = pLuaMain->GetVM ();
-
-        LUA_CHECKSTACK ( pState, 1 );   // Ensure some room
-
-        // Store the current values of the globals
-        lua_getglobal ( pState, "sourceTimer" );
-        CLuaArgument OldSource ( pState, -1 );
-        lua_pop( pState, 1 );
-
-        // Set the "sourceTimer" global
-        lua_pushtimer ( pState, this );
-        lua_setglobal ( pState, "sourceTimer" );
-
-        m_Arguments.Call ( pLuaMain, m_iLuaFunction );
-
-        // Reset the globals on that VM
-        OldSource.Push ( pState );
-        lua_setglobal ( pState, "sourceTimer" );
-    }
+    if ( VERIFY_FUNCTION ( m_iLuaFunction ) && m_pArguments )
+        m_pArguments->Call ( pLuaMain, m_iLuaFunction );
 }
 
 
-CTickCount CLuaTimer::GetTimeLeft ( void )
+unsigned long CLuaTimer::GetTimeLeft ( void )
 {
-    CTickCount llCurrentTime = CTickCount::Now ();
-    CTickCount llTimeLeft = m_llStartTime + m_llDelay - llCurrentTime;
-    return llTimeLeft;
+    unsigned long ulCurrentTime = timeGetTime ();
+    unsigned long ulTimeLeft = m_ulStartTime + m_ulDelay - ulCurrentTime;
+    return ulTimeLeft;
 }

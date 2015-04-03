@@ -1,29 +1,5 @@
-#ifndef HEADER_CURL_CONFIG_OS400_H
-#define HEADER_CURL_CONFIG_OS400_H
-/***************************************************************************
- *                                  _   _ ____  _
- *  Project                     ___| | | |  _ \| |
- *                             / __| | | | |_) | |
- *                            | (__| |_| |  _ <| |___
- *                             \___|\___/|_| \_\_____|
- *
- * Copyright (C) 1998 - 2013, Daniel Stenberg, <daniel@haxx.se>, et al.
- *
- * This software is licensed as described in the file COPYING, which
- * you should have received as part of this distribution. The terms
- * are also available at http://curl.haxx.se/docs/copyright.html.
- *
- * You may opt to use, copy, modify, merge, publish, distribute and/or sell
- * copies of the Software, and permit persons to whom the Software is
- * furnished to do so, under the terms of the COPYING file.
- *
- * This software is distributed on an "AS IS" basis, WITHOUT WARRANTY OF ANY
- * KIND, either express or implied.
- *
- ***************************************************************************/
-
 /* ================================================================ */
-/*                Hand crafted config file for OS/400               */
+/*    lib/config-os400.h - Hand crafted config file for OS/400      */
 /* ================================================================ */
 
 #pragma enum(int)
@@ -48,18 +24,14 @@
 /* Define if you have the gethostbyaddr_r() function with 8 arguments */
 #undef HAVE_GETHOSTBYADDR_R_8
 
-/* OS400 supports a 3-argument ASCII version of gethostbyaddr_r(), but its
- *  prototype is incompatible with the "standard" one (1st argument is not
- *  const). However, getaddrinfo() is supported (ASCII version defined as
- *  a local wrapper in setup-os400.h) in a threadsafe way: we can then
- *  configure getaddrinfo() as such and get rid of gethostbyname_r() without
- *  loss of threadsafeness. */
-#undef HAVE_GETHOSTBYNAME_R
-#undef HAVE_GETHOSTBYNAME_R_3
+/* Define if you have the gethostbyname_r() function with 3 arguments */
+#define HAVE_GETHOSTBYNAME_R_3
+
+/* Define if you have the gethostbyname_r() function with 5 arguments */
 #undef HAVE_GETHOSTBYNAME_R_5
+
+/* Define if you have the gethostbyname_r() function with 6 arguments */
 #undef HAVE_GETHOSTBYNAME_R_6
-#define HAVE_GETADDRINFO
-#define HAVE_GETADDRINFO_THREADSAFE
 
 /* Define if you need the _REENTRANT define for some functions */
 #undef NEED_REENTRANT
@@ -76,11 +48,17 @@
 /* Define this to 'int' if ssize_t is not an available typedefed type */
 #undef ssize_t
 
+/* Type to use in place of socklen_t when system does not provide it. */
+#undef socklen_t
+
 /* Define this as a suitable file to read random data from */
 #undef RANDOM_FILE
 
 /* Define this to your Entropy Gathering Daemon socket pathname */
 #undef EGD_SOCKET
+
+/* Set to explicitly specify we don't want to use thread-safe functions */
+#undef DISABLED_THREADSAFE
 
 /* Define to 1 if you have the alarm function. */
 #define HAVE_ALARM 1
@@ -100,14 +78,15 @@
 /* Define if you have the <des.h> header file. */
 #undef HAVE_DES_H
 
-/* Define if you have the <errno.h> header file. */
-#define HAVE_ERRNO_H
-
 /* Define if you have the <err.h> header file. */
 #undef HAVE_ERR_H
 
 /* Define if you have the <fcntl.h> header file. */
 #define HAVE_FCNTL_H
+
+/* Define if getaddrinfo exists and works */
+/* OS400 has no ASCII version of this procedure: wrapped in setup-os400.h. */
+#define HAVE_GETADDRINFO
 
 /* Define if you have the `geteuid' function. */
 #define HAVE_GETEUID
@@ -117,6 +96,9 @@
 
 /* Define if you have the `gethostbyaddr_r' function. */
 #define HAVE_GETHOSTBYADDR_R
+
+/* Define if you have the `gethostbyname_r' function. */
+#define HAVE_GETHOSTBYNAME_R
 
 /* Define if you have the `gethostname' function. */
 #define HAVE_GETHOSTNAME
@@ -277,32 +259,29 @@
 /* Define if you have the <stdlib.h> header file. */
 #define HAVE_STDLIB_H
 
-
-/* The following define is needed on OS400 to enable strcmpi(), stricmp() and
-   strdup(). */
-#define __cplusplus__strings__
-
 /* Define if you have the `strcasecmp' function. */
 #undef HAVE_STRCASECMP
 
 /* Define if you have the `strcmpi' function. */
-#define HAVE_STRCMPI
-
-/* Define if you have the `stricmp' function. */
-#define HAVE_STRICMP
+#undef HAVE_STRCMPI
 
 /* Define if you have the `strdup' function. */
-#define HAVE_STRDUP
-
+#undef HAVE_STRDUP
 
 /* Define if you have the `strftime' function. */
 #define HAVE_STRFTIME
+
+/* Define if you have the `stricmp' function. */
+#undef HAVE_STRICMP
 
 /* Define if you have the <strings.h> header file. */
 #define HAVE_STRINGS_H
 
 /* Define if you have the <string.h> header file. */
 #define HAVE_STRING_H
+
+/* Define if you have the `strlcat' function. */
+#undef HAVE_STRLCAT
 
 /* Define if you have the `strlcpy' function. */
 #undef HAVE_STRLCPY
@@ -379,9 +358,6 @@
 /* Define as the return type of signal handlers (`int' or `void'). */
 #define RETSIGTYPE void
 
-/* The size of `int', as computed by sizeof. */
-#define SIZEOF_INT              4
-
 /* The size of a `long double', as computed by sizeof. */
 #define SIZEOF_LONG_DOUBLE      8
 
@@ -390,12 +366,6 @@
 
 /* The size of a `long long', as computed by sizeof. */
 #define SIZEOF_LONG_LONG        8
-
-/* The size of `short', as computed by sizeof. */
-#define SIZEOF_SHORT            2
-
-/* The size of `size_t', as computed by sizeof. */
-#define SIZEOF_SIZE_T           8
 
 /* Whether long long constants must be suffixed by LL. */
 
@@ -440,7 +410,10 @@
 /* To disable LDAP */
 #undef CURL_DISABLE_LDAP
 
-/* Definition to make a library symbol externally visible. */
+/* To avoid external use of library hidden symbols */
+#define CURL_HIDDEN_SYMBOLS
+
+/* External symbols need no special keyword. */
 #define CURL_EXTERN_SYMBOL
 
 /* Define if you have the ldap_url_parse procedure. */
@@ -531,9 +504,6 @@
 /* Define to use the QsoSSL package. */
 #define USE_QSOSSL
 
-/* Define to use the GSKit package. */
-#undef USE_GSKIT
-
 /* Use the system keyring as the default CA bundle. */
 #define CURL_CA_BUNDLE  "/QIBM/UserData/ICSS/Cert/Server/DEFAULT.KDB"
 
@@ -548,4 +518,3 @@
 #define qadrt_use_fread_inline         /* Generate fread() wrapper inline. */
 #define qadrt_use_fwrite_inline        /* Generate fwrite() wrapper inline. */
 
-#endif /* HEADER_CURL_CONFIG_OS400_H */

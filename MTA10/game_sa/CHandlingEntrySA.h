@@ -16,10 +16,6 @@
 
 #include <game/CHandlingEntry.h>
 #include "Common.h"
-#define FUNC_HandlingDataMgr_ConvertBikeDataToGameUnits 0x6F5290
-#define FUNC_HandlingDataMgr_ConvertDataToGameUnits 0x6F5080
-// http://www.gtamodding.com/index.php?title=Handling.cfg#GTA_San_Andreas
-// http://www.gtamodding.com/index.php?title=Memory_Addresses_%28SA%29#Handling
 
 class CTransmissionSAInterface
 {
@@ -33,7 +29,7 @@ public:
 
     unsigned int    uiHandlingFlags;                // +116
 
-    float           fEngineAcceleration;            // +120     (value in handling.cfg * 0x86A950)
+    float           fEngineAccelleration;           // +120     (value in handling.cfg * 0x86A950)
     float           fEngineInertia;                 // +124
     float           fMaxVelocity;                   // +128
 
@@ -58,10 +54,9 @@ struct tHandlingDataSA
     float           fTractionMultiplier;            // +40
 
     CTransmissionSAInterface Transmission;          // +44
-    float           fBrakeDeceleration;             // +148
+    float           fBrakeDecelleration;            // +148
     float           fBrakeBias;                     // +152
     bool            bABS;                           // +156
-    char            fUnknown[3];                    // +157
 
     float           fSteeringLock;                  // +160
     float           fTractionLoss;                  // +164
@@ -73,7 +68,7 @@ struct tHandlingDataSA
     float           fSuspensionUpperLimit;          // +184
     float           fSuspensionLowerLimit;          // +188
     float           fSuspensionFrontRearBias;       // +192
-    float           fSuspensionAntiDiveMultiplier;  // +196
+    float           fSuspensionAntidiveMultiplier;  // +196
 
     float           fCollisionDamageMultiplier;     // +200
 
@@ -85,6 +80,7 @@ struct tHandlingDataSA
     unsigned char   ucHeadLight     : 8;            // +220
     unsigned char   ucTailLight     : 8;            // +221
     unsigned char   ucAnimGroup     : 8;            // +222
+    unsigned char   ucUnused        : 8;            // +223
 };
 
 
@@ -94,13 +90,23 @@ public:
                     // Constructor for creatable dummy entries
                     CHandlingEntrySA                ( void );
 
+                    // Constructor for game linked entries
+                    CHandlingEntrySA                ( tHandlingDataSA* pDataSA, tHandlingDataSA* pOriginalUncalculatedData );
+
                     // Constructor for original entries
                     CHandlingEntrySA                ( tHandlingDataSA* pOriginal );
 
     virtual         ~CHandlingEntrySA               ( void );
 
+    bool            IsVehicleAdded                  ( CVehicle* pVeh );
+    // We add a vehicle to this entry
+    void            AddVehicle                      ( CVehicle* pVeh );
+
     // Use this to copy data from an another handling class to this
-    void            Assign                          ( const CHandlingEntry* pData );
+    void            ApplyHandlingData               ( CHandlingEntry* pData );
+
+    // Remove a vehicle from list
+    void            RemoveVehicle                   ( CVehicle* pVeh );
 
     // Get functions
     float           GetMass                         ( void ) const    { return m_Handling.fMass; };
@@ -115,11 +121,11 @@ public:
     eEngineType     GetCarEngineType                ( void ) const    { return static_cast < eEngineType > ( m_Handling.Transmission.ucEngineType ); };
     unsigned char   GetNumberOfGears                ( void ) const    { return m_Handling.Transmission.ucNumberOfGears; };
 
-    float           GetEngineAcceleration           ( void ) const    { return m_Handling.Transmission.fEngineAcceleration; };
+    float           GetEngineAccelleration          ( void ) const    { return m_Handling.Transmission.fEngineAccelleration; };
     float           GetEngineInertia                ( void ) const    { return m_Handling.Transmission.fEngineInertia; };
     float           GetMaxVelocity                  ( void ) const    { return m_Handling.Transmission.fMaxVelocity; };
 
-    float           GetBrakeDeceleration            ( void ) const    { return m_Handling.fBrakeDeceleration; };
+    float           GetBrakeDecelleration           ( void ) const    { return m_Handling.fBrakeDecelleration; };
     float           GetBrakeBias                    ( void ) const    { return m_Handling.fBrakeBias; };
     bool            GetABS                          ( void ) const    { return m_Handling.bABS; };
 
@@ -133,7 +139,7 @@ public:
     float           GetSuspensionUpperLimit         ( void ) const    { return m_Handling.fSuspensionUpperLimit; };
     float           GetSuspensionLowerLimit         ( void ) const    { return m_Handling.fSuspensionLowerLimit; };
     float           GetSuspensionFrontRearBias      ( void ) const    { return m_Handling.fSuspensionFrontRearBias; };
-    float           GetSuspensionAntiDiveMultiplier ( void ) const    { return m_Handling.fSuspensionAntiDiveMultiplier; };
+    float           GetSuspensionAntidiveMultiplier ( void ) const    { return m_Handling.fSuspensionAntidiveMultiplier; };
 
     float           GetCollisionDamageMultiplier    ( void ) const    { return m_Handling.fCollisionDamageMultiplier; };
 
@@ -146,8 +152,6 @@ public:
     eLightType      GetTailLight                    ( void ) const    { return static_cast < eLightType > ( m_Handling.ucTailLight ); };
     unsigned char   GetAnimGroup                    ( void ) const    { return m_Handling.ucAnimGroup; };
 
-    eVehicleTypes   GetModel                        ( void ) const    { return static_cast < eVehicleTypes > ( m_Handling.iVehicleID ); };
-    bool            HasSuspensionChanged            ( void ) const    { return true; };
 
     // Set functions
     void            SetMass                         ( float fMass )                 { m_Handling.fMass = fMass; };
@@ -162,11 +166,11 @@ public:
     void            SetCarEngineType                ( eEngineType Type )            { m_Handling.Transmission.ucEngineType = Type; };
     void            SetNumberOfGears                ( unsigned char ucNumber )      { m_Handling.Transmission.ucNumberOfGears = ucNumber; };
 
-    void            SetEngineAcceleration           ( float fAcceleration )         { m_Handling.Transmission.fEngineAcceleration = fAcceleration; };
+    void            SetEngineAccelleration          ( float fAccelleration )        { m_Handling.Transmission.fEngineAccelleration = fAccelleration; };
     void            SetEngineInertia                ( float fInertia )              { m_Handling.Transmission.fEngineInertia = fInertia; };
     void            SetMaxVelocity                  ( float fVelocity )             { m_Handling.Transmission.fMaxVelocity = fVelocity; };
     
-    void            SetBrakeDeceleration            ( float fDeceleration )         { m_Handling.fBrakeDeceleration = fDeceleration; };
+    void            SetBrakeDecelleration           ( float fDecelleration )        { m_Handling.fBrakeDecelleration = fDecelleration; };
     void            SetBrakeBias                    ( float fBias )                 { m_Handling.fBrakeBias = fBias; };
     void            SetABS                          ( bool bABS )                   { m_Handling.bABS = bABS; };
 
@@ -174,13 +178,13 @@ public:
     void            SetTractionLoss                 ( float fTractionLoss )         { m_Handling.fTractionLoss = fTractionLoss; };
     void            SetTractionBias                 ( float fTractionBias )         { m_Handling.fTractionBias = fTractionBias; };
 
-    void            SetSuspensionForceLevel         ( float fForce );
-    void            SetSuspensionDamping            ( float fDamping );
-    void            SetSuspensionHighSpeedDamping   ( float fDamping );
-    void            SetSuspensionUpperLimit         ( float fUpperLimit );
-    void            SetSuspensionLowerLimit         ( float fLowerLimit );
-    void            SetSuspensionFrontRearBias      ( float fBias );
-    void            SetSuspensionAntiDiveMultiplier ( float fAntidive );
+    void            SetSuspensionForceLevel         ( float fForce )                { m_Handling.fSuspensionForceLevel = fForce; };
+    void            SetSuspensionDamping            ( float fDamping )              { m_Handling.fSuspensionDamping = fDamping; };
+    void            SetSuspensionHighSpeedDamping   ( float fDamping )              { m_Handling.fSuspensionHighSpdDamping = fDamping; };
+    void            SetSuspensionUpperLimit         ( float fUpperLimit )           { m_Handling.fSuspensionUpperLimit = fUpperLimit; };
+    void            SetSuspensionLowerLimit         ( float fLowerLimit )           { m_Handling.fSuspensionLowerLimit = fLowerLimit; };
+    void            SetSuspensionFrontRearBias      ( float fBias )                 { m_Handling.fSuspensionFrontRearBias = fBias; };
+    void            SetSuspensionAntidiveMultiplier ( float fAntidive )             { m_Handling.fSuspensionAntidiveMultiplier = fAntidive; };
 
     void            SetCollisionDamageMultiplier    ( float fMultiplier )           { m_Handling.fCollisionDamageMultiplier = fMultiplier; };
 
@@ -193,11 +197,11 @@ public:
     void            SetTailLight                    ( eLightType Style )            { m_Handling.ucTailLight = Style; };
     void            SetAnimGroup                    ( unsigned char ucGroup )       { m_Handling.ucAnimGroup = ucGroup; };
 
-    void            Recalculate                     ( unsigned short usModel );
+    void            Recalculate                     ( void );
+
+    void            Restore                         ( void );
 
     tHandlingDataSA*    GetInterface                ( void )                        { return m_pHandlingSA; };
-
-    void            SetSuspensionChanged            ( bool bChanged )               { m_bChanged = bChanged; };
 
 private:
     tHandlingDataSA*        m_pHandlingSA;
@@ -206,30 +210,7 @@ private:
     tHandlingDataSA         m_Handling;
 
     tHandlingDataSA*        m_pOriginalData;
-    bool                    m_bChanged;
-};
-
-// sizeof(tFlyingHandlingDataSA) == 0x58
-struct tFlyingHandlingDataSA
-{
-    int         iVehicleID;
-    float       fThrust;
-    float       fThrustFallOff;
-    float       fYaw;
-    float       fStab;
-    float       fSideSlip;
-    float       fRoll;
-    float       fRollStab;
-    float       fPitch;
-    float       fPitchStab;
-    float       fFormLift;
-    float       fAttackLift;
-    float       GearUpR;
-    float       GearDownL;
-    float       WindMult;
-    float       MoveResistance;
-    CVector     TurnResistance;
-    CVector     SpeedResistance;
+    std::list < CVehicleSA* > m_VehicleList;    // Single vehicles to apply data to
 };
 
 #endif

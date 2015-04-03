@@ -16,7 +16,7 @@
 extern CCore* g_pCore;
 extern CChat* g_pChat;
 
-CDebugView::CDebugView ( CGUI * pManager, const CVector2D & vecPosition ) : CChat ()
+CDebugView::CDebugView ( CGUI * pManager, CVector2D & vecPosition ) : CChat ()
 {
     CChat * pChat = g_pChat;
     g_pChat = this;
@@ -25,7 +25,8 @@ CDebugView::CDebugView ( CGUI * pManager, const CVector2D & vecPosition ) : CCha
 
     CVector2D vecResolution = m_pManager->GetResolution ();
     m_vecScale = CVector2D ( vecResolution.fX / 800.0f, vecResolution.fY / 600.0f );
-    m_vecBackgroundPosition = vecPosition * vecResolution;
+    vecPosition = vecPosition * vecResolution;
+    m_vecBackgroundPosition = vecPosition;
 
     m_bUseCEGUI = false;
     m_ulChatLineLife = 0;
@@ -43,18 +44,13 @@ CDebugView::CDebugView ( CGUI * pManager, const CVector2D & vecPosition ) : CCha
     m_fSmoothScrollResetTime = 0;
     m_fSmoothRepeatTimer = 0;
     m_pFont = m_pManager->GetBoldFont ();
-    m_pDXFont = NULL;
-    SetDxFont( g_pCore->GetGraphics ()->GetFont () );
+    m_pDXFont = g_pCore->GetGraphics ()->GetFont ();
     m_fNativeWidth = DEBUGVIEW_WIDTH;
-    m_fRcpUsingDxFontScale = 1;
     m_bCanChangeWidth = false;
     m_iScrollingBack = 0;
     m_fCssStyleOverrideAlpha = 0.0f;
     m_fBackgroundAlpha = 0.0f;
     m_fInputBackgroundAlpha = 0.f;
-    m_pCacheTexture = NULL;
-    m_iCacheTextureRevision = 0;
-    m_iReportCount = 0;
     m_Color = CColor ( 0, 0, 0, 100 );
     m_TextColor = DEBUGVIEW_TEXT_COLOR;
     unsigned long ulBackgroundColor = COLOR_ARGB ( m_Color.A, m_Color.R, m_Color.G, m_Color.B );
@@ -79,7 +75,7 @@ CDebugView::CDebugView ( CGUI * pManager, const CVector2D & vecPosition ) : CCha
 }
 
 
-void CDebugView::Draw ( bool bUseCacheTexture )
+void CDebugView::Draw ( void )
 {
     // Are we visible?
     if ( !m_bVisible )
@@ -96,15 +92,29 @@ void CDebugView::Draw ( bool bUseCacheTexture )
     m_vecBackgroundPosition = vecPosition * vecResolution - CVector2D ( 0, height );
     m_pBackground->SetPosition ( m_vecBackgroundPosition );
 
-    CChat::Draw ( bUseCacheTexture );
+    CChat::Draw ();
     g_pChat = pChat;
 }
 
 
-void CDebugView::Output ( const char* szText, bool bColorCoded )
+void CDebugView::Output ( char* szText, bool bColorCoded )
 {
     CChat * pChat = g_pChat;
     g_pChat = this;
     CChat::Output ( szText, bColorCoded );
+    g_pChat = pChat;
+}
+
+void CDebugView::Outputf ( bool bColorCoded, char* szText, ... )
+{
+    char szBuffer [ 1024 ];
+    va_list ap;
+    va_start ( ap, szText );
+    _VSNPRINTF ( szBuffer, 1024, szText, ap );
+    va_end ( ap );
+
+    CChat * pChat = g_pChat;
+    g_pChat = this;
+    CChat::Output ( szBuffer, bColorCoded );
     g_pChat = pChat;
 }

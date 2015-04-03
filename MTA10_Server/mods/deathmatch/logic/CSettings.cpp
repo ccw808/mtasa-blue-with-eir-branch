@@ -41,8 +41,7 @@ CSettings::CSettings ( CResourceManager* pResourceManager )
         // Create a new root node
         m_pNodeGlobalSettings = m_pFile->CreateRootNode ( ROOTNODE_SETTINGS );
 
-        if ( !m_pFile->Write () )
-            CLogger::ErrorPrintf ( "Error saving '%s'\n", FILENAME_SETTINGS );
+        m_pFile->Write ();
     }
 }
 
@@ -118,7 +117,7 @@ CXMLNode* CSettings::Get ( CXMLNode *pSource, CXMLNode *pStorage, const char *sz
             if ( strContent.empty () ) continue;
 
             // Parse the settings name and store the resource name in szResource
-            if ( !GetResourceName ( strContent.c_str (), szResource, MAX_RESOURCE_LENGTH - 1 ) ) {
+            if ( !GetResourceName ( const_cast < const char* > ( strContent.c_str () ), szResource, MAX_RESOURCE_LENGTH - 1 ) ) {
                 // If there was no resource name, copy the owner's name
                 strncpy ( szResource, szSourceResource, MAX_RESOURCE_LENGTH - 1 );
             } else {
@@ -136,8 +135,8 @@ CXMLNode* CSettings::Get ( CXMLNode *pSource, CXMLNode *pStorage, const char *sz
             if ( bDeleteNode ) {
                 // If we're walking through all resources (no resource nor setting name was specified) - ...
                 // Or if we're walking through a specific resource - ...
-                if ( ( uiResourceNameLength == 0 && ( stricmp ( szResource, szLocalResource ) == 0 || eAccess != CSettings::Private ) )
-                    || ( uiResourceNameLength > 0 && ( ( stricmp ( szResource, szQueryResource ) == 0 && ( eAccess != CSettings::Private || stricmp ( szResource, szLocalResource ) == 0 ) )
+                if ( ( uiResourceNameLength == 0 && ( strcmpi ( szResource, szLocalResource ) == 0 || eAccess != CSettings::Private ) )
+                    || ( uiResourceNameLength > 0 && ( ( strcmpi ( szResource, szQueryResource ) == 0 && ( eAccess != CSettings::Private || strcmpi ( szResource, szLocalResource ) == 0 ) )
                     ) ) ) {
                     if ( pMultiresultParentNode == NULL ) {
                         // Create a new temporary node (in which we can put all nodes we have access to), and add it as temporary subnode of pSource
@@ -149,9 +148,9 @@ CXMLNode* CSettings::Get ( CXMLNode *pSource, CXMLNode *pStorage, const char *sz
                     eStatus = Found;
                     CreateSetting ( pMultiresultParentNode, strContent.c_str (), pValue->GetValue ().c_str () );
                 }
-            } else if ( stricmp ( szName, szQueryName ) == 0 &&
-                        stricmp ( szResource, szQueryResource ) == 0 ) {            // If the query name/resource and found node name/resource combinations are equal
-                eStatus = (stricmp ( szResource, szLocalResource ) == 0 || eAccess != CSettings::Private) ? Found : NoAccess;
+            } else if ( strcmpi ( szName, szQueryName ) == 0 &&
+                        strcmpi ( szResource, szQueryResource ) == 0 ) {            // If the query name/resource and found node name/resource combinations are equal
+                eStatus = (strcmpi ( szResource, szLocalResource ) == 0 || eAccess != CSettings::Private) ? Found : NoAccess;
                 return pNode;
             }
         }
@@ -293,14 +292,14 @@ bool CSettings::Set ( const char *szLocalResource, const char *szSetting, const 
             if ( !HasResourceName ( szSetting ) ) {
                 // If we have a prefix, move it from szSetting and put it at the beginning
                 if ( bPrefix )
-                    snprintf ( szBuffer, MAX_SETTINGS_LENGTH - 1, "%c%s.%s", szSetting[0], szLocalResource, szSetting + 1 );
+                    _snprintf ( szBuffer, MAX_SETTINGS_LENGTH - 1, "%c%s.%s", szSetting[0], szLocalResource, szSetting + 1 );
                 else
-                    snprintf ( szBuffer, MAX_SETTINGS_LENGTH - 1, "%s.%s", szLocalResource, szSetting );
+                    _snprintf ( szBuffer, MAX_SETTINGS_LENGTH - 1, "%s.%s", szLocalResource, szSetting );
 
             } else {
                 // If we have a prefix, move it from szSetting and put it at the beginning
                 if ( bPrefix )
-                    snprintf ( szBuffer, MAX_SETTINGS_LENGTH - 1, "%c%s", szSetting[0], szSetting + 1 );
+                    _snprintf ( szBuffer, MAX_SETTINGS_LENGTH - 1, "%c%s", szSetting[0], szSetting + 1 );
                 else
                     strncpy ( szBuffer, szSetting, MAX_SETTINGS_LENGTH - 1 );
             }
@@ -314,7 +313,7 @@ bool CSettings::Set ( const char *szLocalResource, const char *szSetting, const 
                 // Abort if this value isnt public (but protected or private), and if the local resource
                 // (doing the query) doesn't equal the setting's resource name
                 if ( GetAccessType ( pAttributes->Find ( "name" )->GetValue()[0] ) != CSettings::Public &&
-                     stricmp ( pResource->GetName ().c_str (), szLocalResource ) != 0 )
+                     strcmpi ( pResource->GetName ().c_str (), szLocalResource ) != 0 )
                     return false;
 
                 // Get the node's current value
@@ -342,9 +341,8 @@ bool CSettings::Set ( const char *szLocalResource, const char *szSetting, const 
             g_pGame->GetMapManager ()->GetRootElement ()->CallEvent ( "onSettingChange", Arguments );
 
             // Save the XML file
-            if ( m_pFile->Write () )
-                return true;
-            CLogger::ErrorPrintf ( "Error saving '%s'\n", FILENAME_SETTINGS );
+            m_pFile->Write ();
+            return true;
         }
     }
 
@@ -405,7 +403,13 @@ inline bool CSettings::HasResourceName ( const char *szSetting ) {
 // Parses the name and returns the actual name of the variable
 inline const char* CSettings::GetName ( const char *szSetting, unsigned int uiResourceLength ) {
     // Only calculate the resource length if it's not already specified
-    if ( HasPrefix ( szSetting[0] ) ) szSetting++;
+    if ( uiResourceLength < 0 ) {
+        char szBuffer[MAX_RESOURCE_LENGTH] = {0};
+        uiResourceLength = ( GetResourceName ( szSetting, szBuffer, MAX_RESOURCE_LENGTH - 1 ) != NULL ) ? 0 : strlen ( szBuffer ) + 1;
+    } else {
+        // Make sure the prefix is stripped off
+        if ( HasPrefix ( szSetting[0] ) ) szSetting++;
+    }
 
     // Since we know the resource length, we just return the pointer to whereever the resource part ends (and the name begins)
     const char * szName = ( szSetting + uiResourceLength );

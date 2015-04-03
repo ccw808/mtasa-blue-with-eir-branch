@@ -14,7 +14,6 @@
 
 CProjectileSyncPacket::CProjectileSyncPacket ( void )
 {
-    m_usModel = 0;
 }
 
 
@@ -25,7 +24,7 @@ bool CProjectileSyncPacket::Read ( NetBitStreamInterface& BitStream )
         return false;
 
     m_OriginID = INVALID_ELEMENT_ID;
-    if ( bHasOrigin && !BitStream.Read ( m_OriginID ) )
+    if ( bHasOrigin && !BitStream.ReadCompressed ( m_OriginID ) )
         return false;
 
     SPositionSync origin ( false );
@@ -37,12 +36,6 @@ bool CProjectileSyncPacket::Read ( NetBitStreamInterface& BitStream )
     if ( !BitStream.Read ( &weaponType ) )
         return false;
     m_ucWeaponType = weaponType.data.ucWeaponType;
-
-    if ( BitStream.Version () >= 0x4F )
-    {
-        if ( !BitStream.Read ( m_usModel ) )
-            return false;
-    }
 
     switch ( m_ucWeaponType )
     {
@@ -71,7 +64,7 @@ bool CProjectileSyncPacket::Read ( NetBitStreamInterface& BitStream )
                 return false;
 
             m_TargetID = INVALID_ELEMENT_ID;
-            if ( bHasTarget && !BitStream.Read ( m_TargetID ) )
+            if ( bHasTarget && !BitStream.ReadCompressed ( m_TargetID ) )
                 return false;
 
             SVelocitySync velocity;
@@ -103,7 +96,7 @@ bool CProjectileSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
     if ( m_pSourceElement )
     {
         BitStream.WriteBit ( true );
-        BitStream.Write ( m_pSourceElement->GetID () );
+        BitStream.WriteCompressed ( m_pSourceElement->GetID () );
 
         unsigned short usLatency = static_cast < CPlayer * > ( m_pSourceElement )->GetPing ();
         BitStream.WriteCompressed ( usLatency );
@@ -115,7 +108,7 @@ bool CProjectileSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
     if ( m_OriginID != INVALID_ELEMENT_ID )
     {
         BitStream.WriteBit ( true );
-        BitStream.Write ( m_OriginID );
+        BitStream.WriteCompressed ( m_OriginID );
     }
     else
         BitStream.WriteBit ( false );
@@ -127,11 +120,6 @@ bool CProjectileSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
     SWeaponTypeSync weaponType;
     weaponType.data.ucWeaponType = m_ucWeaponType;
     BitStream.Write ( &weaponType );
-
-    if ( BitStream.Version () >= 0x4F )
-    {
-        BitStream.Write ( m_usModel );
-    }
 
     switch ( m_ucWeaponType )
     {
@@ -156,7 +144,7 @@ bool CProjectileSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
             if ( m_TargetID != INVALID_ELEMENT_ID )
             {
                 BitStream.WriteBit ( true );
-                BitStream.Write ( m_TargetID );
+                BitStream.WriteCompressed ( m_TargetID );
             }
             else
                 BitStream.WriteBit ( false );

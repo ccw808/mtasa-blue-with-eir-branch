@@ -22,20 +22,20 @@ class CObjectSyncPacket : public CPacket
 public:
     struct SyncData
     {
+        bool                    bSend;
         ElementID               ID;
+        unsigned char           ucSyncTimeContext;
+        unsigned char           ucFlags;
         CVector                 vecPosition;
         CVector                 vecRotation;
         float                   fHealth;
-        unsigned char           ucSyncTimeContext;
-        unsigned char           ucFlags;
-        bool                    bSend;
     };
 
 public:
                             ~CObjectSyncPacket                      ( void );
             
-    inline ePacketID                GetPacketID                     ( void ) const                  { return PACKET_ID_OBJECT_SYNC; };
-    inline unsigned long            GetFlags                        ( void ) const                  { return PACKET_MEDIUM_PRIORITY | PACKET_SEQUENCED; };
+    inline ePacketID        GetPacketID                             ( void ) const                  { return PACKET_ID_OBJECT_SYNC; };
+    inline unsigned long    GetFlags                                ( void ) const                  { return PACKET_LOW_PRIORITY | PACKET_SEQUENCED; };
 
     bool                    Read                                    ( NetBitStreamInterface& BitStream );
     bool                    Write                                   ( NetBitStreamInterface& BitStream ) const;

@@ -5,7 +5,6 @@
 *  FILE:        mods/deathmatch/logic/luadefs/CLuaHandlingDefs.h
 *  PURPOSE:     Lua vehicle handling definitions class
 *  DEVELOPERS:  Christian Myhre Lundheim <>
-*               Florian Busse <flobu@gmx.net>
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *
@@ -21,16 +20,6 @@ class CLuaHandlingDefs: public CLuaDefs
 public:
     static void     LoadFunctions                           ( void );
 
-    // Set
-    static int      SetVehicleHandling                      ( lua_State* luaVM );
-    static int      SetModelHandling                        ( lua_State* luaVM );
-
-    // Get
-    static int      GetVehicleHandling                      ( lua_State* luaVM );
-    static int      GetModelHandling                        ( lua_State* luaVM );
-    static int      GetOriginalHandling                     ( lua_State* luaVM );
-
-/*
     // Create/action
     static int      createHandling                          ( lua_State* luaVM );
     static int      addDefaultHandling                      ( lua_State* luaVM );
@@ -48,11 +37,11 @@ public:
     static int      handlingGetEngineType                   ( lua_State* luaVM );
     static int      handlingGetNumberOfGears                ( lua_State* luaVM );
 
-    static int      handlingGetEngineAcceleration          ( lua_State* luaVM );
+    static int      handlingGetEngineAccelleration          ( lua_State* luaVM );
     static int      handlingGetEngineInertia                ( lua_State* luaVM );
     static int      handlingGetMaxVelocity                  ( lua_State* luaVM );
 
-    static int      handlingGetBrakeDeceleration           ( lua_State* luaVM );
+    static int      handlingGetBrakeDecelleration           ( lua_State* luaVM );
     static int      handlingGetBrakeBias                    ( lua_State* luaVM );
     static int      handlingGetABS                          ( lua_State* luaVM );
 
@@ -66,7 +55,7 @@ public:
     static int      handlingGetSuspensionUpperLimit         ( lua_State* luaVM );
     static int      handlingGetSuspensionLowerLimit         ( lua_State* luaVM );
     static int      handlingGetSuspensionFrontRearBias      ( lua_State* luaVM );
-    static int      handlingGetSuspensionAntiDiveMultiplier ( lua_State* luaVM );
+    static int      handlingGetSuspensionAntidiveMultiplier ( lua_State* luaVM );
 
     static int      handlingGetCollisionDamageMultiplier    ( lua_State* luaVM );
 
@@ -91,11 +80,11 @@ public:
     static int      handlingSetEngineType                   ( lua_State* luaVM );
     static int      handlingSetNumberOfGears                ( lua_State* luaVM );
 
-    static int      handlingSetEngineAcceleration          ( lua_State* luaVM );
+    static int      handlingSetEngineAccelleration          ( lua_State* luaVM );
     static int      handlingSetEngineInertia                ( lua_State* luaVM );
     static int      handlingSetMaxVelocity                  ( lua_State* luaVM );
 
-    static int      handlingSetBrakeDeceleration           ( lua_State* luaVM );
+    static int      handlingSetBrakeDecelleration           ( lua_State* luaVM );
     static int      handlingSetBrakeBias                    ( lua_State* luaVM );
     static int      handlingSetABS                          ( lua_State* luaVM );
 
@@ -109,7 +98,7 @@ public:
     static int      handlingSetSuspensionUpperLimit         ( lua_State* luaVM );
     static int      handlingSetSuspensionLowerLimit         ( lua_State* luaVM );
     static int      handlingSetSuspensionFrontRearBias      ( lua_State* luaVM );
-    static int      handlingSetSuspensionAntiDiveMultiplier ( lua_State* luaVM );
+    static int      handlingSetSuspensionAntidiveMultiplier ( lua_State* luaVM );
 
     static int      handlingSetCollisionDamageMultiplier    ( lua_State* luaVM );
 
@@ -119,7 +108,7 @@ public:
 
     static int      handlingSetHeadLightType                ( lua_State* luaVM );
     static int      handlingSetTailLightType                ( lua_State* luaVM );
-    static int      handlingSetAnimGroup                    ( lua_State* luaVM );*/
+    static int      handlingSetAnimGroup                    ( lua_State* luaVM );
 };
 
 #endif

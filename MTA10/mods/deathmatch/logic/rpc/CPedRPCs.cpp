@@ -33,7 +33,6 @@ void CPedRPCs::LoadFunctions ( void )
     AddHandler ( REMOVE_PED_FROM_VEHICLE, RemovePedFromVehicle, "RemovePedFromVehicle" );
     AddHandler ( SET_PED_DOING_GANG_DRIVEBY, SetPedDoingGangDriveby, "SetPedDoingGangDriveby" );
     AddHandler ( SET_PED_ANIMATION, SetPedAnimation, "SetPedAnimation" );
-    AddHandler ( SET_PED_ANIMATION_PROGRESS, SetPedAnimationProgress, "SetPedAnimationProgress" );
     AddHandler ( SET_PED_ON_FIRE, SetPedOnFire, "SetPedOnFire" );
     AddHandler ( SET_PED_HEADLESS, SetPedHeadless, "SetPedHeadless" );
     AddHandler ( SET_PED_FROZEN, SetPedFrozen, "SetPedFrozen" );
@@ -54,10 +53,7 @@ void CPedRPCs::SetPedArmor ( CClientEntity* pSource, NetBitStreamInterface& bitS
         if ( pPed )
         {
             pPed->SetSyncTimeContext ( ucTimeContext );
-            if ( pPed->IsArmorLocked() )
-                pPed->LockArmor ( fArmor );
-            else
-                pPed->SetArmor ( fArmor );
+            pPed->SetArmor ( fArmor );
         }
     }
 }
@@ -70,18 +66,10 @@ void CPedRPCs::SetPedRotation ( CClientEntity* pSource, NetBitStreamInterface& b
     if ( bitStream.Read ( &rotation ) &&
          bitStream.Read ( ucTimeContext ) )
     {
-        uchar ucNewWay = 0;
-        if ( bitStream.GetNumberOfBytesUsed () > 0 )
-            bitStream.Read ( ucNewWay );
-
         CClientPed* pPed = m_pPedManager->Get ( pSource->GetID (), true );
         if ( pPed )
         {
-            if ( ucNewWay == 1 )
-                pPed->SetCurrentRotationNew ( rotation.data.fRotation );
-            else
-                pPed->SetCurrentRotation ( rotation.data.fRotation );
-
+            pPed->SetCurrentRotation ( rotation.data.fRotation );
             if ( !IS_PLAYER ( pPed ) )
                 pPed->SetCameraRotation ( rotation.data.fRotation );
             pPed->SetSyncTimeContext ( ucTimeContext );
@@ -201,7 +189,7 @@ void CPedRPCs::WarpPedIntoVehicle ( CClientEntity* pSource, NetBitStreamInterfac
     ElementID VehicleID;
     unsigned char ucSeat;
     unsigned char ucTimeContext;
-    if ( bitStream.Read ( VehicleID ) &&
+    if ( bitStream.ReadCompressed ( VehicleID ) &&
          bitStream.Read ( ucSeat ) &&
          bitStream.Read ( ucTimeContext ) )
     {
@@ -215,7 +203,36 @@ void CPedRPCs::WarpPedIntoVehicle ( CClientEntity* pSource, NetBitStreamInterfac
             CClientVehicle* pVehicle = m_pVehicleManager->Get ( VehicleID );
             if ( pVehicle )
             {
-                CStaticFunctionDefinitions::WarpPedIntoVehicle ( pPed, pVehicle, ucSeat );
+                if ( pPed->IsLocalPlayer () )
+                {
+                    // Reset the vehicle in/out checks
+                    m_pClientGame->ResetVehicleInOut ();
+
+                    /*
+                    // Make sure it can be damaged again (doesn't get changed back when we force the player in)
+                    pVehicle->SetCanBeDamaged ( true );
+                    pVehicle->SetTyresCanBurst ( true );
+                    */
+                }
+
+                // Warp the player into the vehicle
+                pPed->WarpIntoVehicle ( pVehicle, ucSeat );
+                pPed->SetVehicleInOutState ( VEHICLE_INOUT_NONE );
+
+                pVehicle->CalcAndUpdateCanBeDamagedFlag ();
+                pVehicle->CalcAndUpdateTyresCanBurstFlag ();
+
+                // Call the onClientPlayerEnterVehicle event
+                CLuaArguments Arguments;
+                Arguments.PushElement ( pVehicle );        // vehicle
+                Arguments.PushNumber ( ucSeat );            // seat
+                pPed->CallEvent ( "onClientPlayerVehicleEnter", Arguments, true );
+
+                // Call the onClientVehicleEnter event
+                CLuaArguments Arguments2;
+                Arguments2.PushElement ( pPed );        // player
+                Arguments2.PushNumber ( ucSeat );           // seat
+                pVehicle->CallEvent ( "onClientVehicleEnter", Arguments2, true );
             }
         }
     }
@@ -232,8 +249,38 @@ void CPedRPCs::RemovePedFromVehicle ( CClientEntity* pSource, NetBitStreamInterf
         CClientPed * pPed = m_pPedManager->Get ( pSource->GetID (), true );
         if ( pPed )
         {
-            if ( CStaticFunctionDefinitions::RemovePedFromVehicle ( pPed ) )
+            // Get the ped / player's occupied vehicle data before pulling it out
+            CClientVehicle* pVehicle = pPed->GetOccupiedVehicle();
+
+            // Make sure the vehicle exists (otherwise warping into specific vehicles will crash)
+            if ( pVehicle )
+            {
+                unsigned int uiSeat = pPed->GetOccupiedVehicleSeat();
+
                 pPed->SetSyncTimeContext ( ucTimeContext );
+
+                // Remove the player from his vehicle
+                pPed->RemoveFromVehicle ();
+                pPed->SetVehicleInOutState ( VEHICLE_INOUT_NONE );
+                if ( pPed->m_bIsLocalPlayer )
+                {
+                    // Reset expectation of vehicle enter completion, in case we were removed while entering
+                    g_pClientGame->ResetVehicleInOut ();
+                }
+
+                // Call onClientPlayerVehicleExit
+                CLuaArguments Arguments;
+                Arguments.PushElement ( pVehicle ); // vehicle
+                Arguments.PushNumber ( uiSeat );    // seat
+                Arguments.PushBoolean ( false );    // jacker
+                pPed->CallEvent ( "onClientPlayerVehicleExit", Arguments, true );
+
+                // Call onClientVehicleExit
+                CLuaArguments Arguments2;
+                Arguments2.PushElement ( pPed );   // player
+                Arguments2.PushNumber ( uiSeat );  // seat
+                pVehicle->CallEvent ( "onClientVehicleExit", Arguments2, true );
+            }
         }
     }
 }
@@ -292,42 +339,6 @@ void CPedRPCs::SetPedAnimation ( CClientEntity* pSource, NetBitStreamInterface& 
                         if ( pBlock )
                         {
                             pPed->RunNamedAnimation ( pBlock, szAnimName, iTime, bLoop, bUpdatePosition, bInterruptable, bFreezeLastFrame );
-                        }
-                    }
-                }
-            }
-            else
-            {
-                pPed->KillAnimation ();
-            }
-        }
-    }
-}
-
-void CPedRPCs::SetPedAnimationProgress ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
-{
-    // Read out the player and vehicle id
-    char szAnimName [ 64 ];
-    unsigned char ucAnimSize;
-    float fProgress;
-
-    if ( bitStream.Read ( ucAnimSize ) )
-    {
-        // Grab the ped
-        CClientPed * pPed = m_pPedManager->Get ( pSource->GetID (), true );
-        if ( pPed )
-        {
-            if ( ucAnimSize > 0 )
-            {
-                if ( bitStream.Read ( szAnimName, ucAnimSize ) )
-                {
-                    szAnimName [ ucAnimSize ] = 0;
-                    if ( bitStream.Read ( fProgress ) )
-                    {
-                        CAnimBlendAssociation* pA = g_pGame->GetAnimManager ()->RpAnimBlendClumpGetAssociation ( pPed->GetClump (), szAnimName );
-                        if ( pA )
-                        {
-                            pA->SetCurrentProgress ( fProgress );
                         }
                     }
                 }

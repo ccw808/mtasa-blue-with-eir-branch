@@ -13,9 +13,11 @@
 
 #include "StdInc.h"
 
-CTeam::CTeam ( CTeamManager* pTeamManager, CElement* pParent, CXMLNode* pNode, const char* szName, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue ): CElement ( pParent, pNode )
+CTeam::CTeam ( CTeamManager* pTeamManager, CElement* pParent, CXMLNode* pNode, char* szName, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue ): CElement ( pParent, pNode )
 {
     m_pTeamManager = pTeamManager;
+
+    m_szTeamName = NULL;
 
     m_iType = CElement::TEAM;
     SetTypeName ( "team" );
@@ -32,6 +34,7 @@ CTeam::~CTeam ( void )
 {
     RemoveAllPlayers ();
     Unlink ();
+    delete [] m_szTeamName;
 }
 
 
@@ -95,12 +98,16 @@ bool CTeam::ReadSpecialData ( void )
 }
 
 
-void CTeam::SetTeamName ( const char* szName )
+void CTeam::SetTeamName ( char* szName )
 {
+    delete [] m_szTeamName;
+    m_szTeamName = NULL;
+
     if ( szName )
-        m_strTeamName.AssignLeft( szName, MAX_TEAM_NAME_LENGTH );
-    else
-        m_strTeamName = "";
+    {
+        m_szTeamName = new char [ strlen ( szName ) + 1 ];
+        strcpy ( m_szTeamName, szName );
+    }
 }
 
 
@@ -114,7 +121,7 @@ void CTeam::AddPlayer ( CPlayer* pPlayer, bool bChangePlayer )
 
 void CTeam::RemovePlayer ( CPlayer* pPlayer, bool bChangePlayer )
 {
-    m_Players.remove ( pPlayer );
+    if ( !m_Players.empty() ) m_Players.remove ( pPlayer );
     if ( bChangePlayer )
         pPlayer->SetTeam ( NULL, false );
 }
@@ -123,7 +130,7 @@ void CTeam::RemovePlayer ( CPlayer* pPlayer, bool bChangePlayer )
 void CTeam::RemoveAllPlayers ( void )
 {
     list < CPlayer* > ::const_iterator iter = m_Players.begin ();
-    for ( ; iter != m_Players.end (); ++iter )
+    for ( ; iter != m_Players.end (); iter++ )
     {
         (*iter)->SetTeam ( NULL, false );
     }
@@ -135,14 +142,11 @@ void CTeam::GetPlayers ( lua_State* luaVM )
 {
     unsigned int uiIndex = 0;
     list < CPlayer* > ::const_iterator iter = m_Players.begin ();
-    for ( ; iter != m_Players.end (); ++iter )
+    for ( ; iter != m_Players.end (); iter++ )
     {
-        if ( !( *iter )->IsBeingDeleted ( ) )
-        {
-            lua_pushnumber ( luaVM, ++uiIndex );
-            lua_pushelement ( luaVM, *iter );
-            lua_settable ( luaVM, -3 );
-        }
+        lua_pushnumber ( luaVM, ++uiIndex );
+        lua_pushelement ( luaVM, *iter );
+        lua_settable ( luaVM, -3 );
     }
 }
 

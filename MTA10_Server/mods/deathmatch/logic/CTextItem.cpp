@@ -16,7 +16,6 @@ static unsigned long ulUniqueId = 0;
 
 CTextItem::CTextItem ( const char* szText, const CVector2D& vecPosition, eTextPriority Priority, const SColor color, float fScale, unsigned char ucFormat, unsigned char ucShadowAlpha )
 {
-    m_uiScriptID = CIdArray::PopUniqueId ( this, EIdClass::TEXT_ITEM );
     // Assign us an unique ID
     m_ulUniqueId = ulUniqueId++;
 
@@ -36,7 +35,6 @@ CTextItem::CTextItem ( const char* szText, const CVector2D& vecPosition, eTextPr
 
 CTextItem::CTextItem ( const CTextItem& TextItem )
 {
-    m_uiScriptID = CIdArray::PopUniqueId ( this, EIdClass::TEXT_ITEM );
     // Copy the tex
     m_strText = TextItem.m_strText;
 
@@ -74,7 +72,6 @@ bool CTextItem::operator= ( const CTextItem& TextItem )
 
 CTextItem::~CTextItem ( )
 {
-    CIdArray::PushUniqueId ( this, EIdClass::TEXT_ITEM, m_uiScriptID );
     // Tell all our observers about it
     m_bDeletable = true;
     NotifyObservers ();
@@ -84,7 +81,7 @@ CTextItem::~CTextItem ( )
 void CTextItem::AddObserver ( CTextDisplay* pObserver )
 {
     // Remove them first if they're already added (easier than checking if they are and only marginally slower)
-    m_Observers.remove ( pObserver );
+    if ( !m_Observers.empty() ) m_Observers.remove ( pObserver );
 
     // Add it
     m_Observers.push_back ( pObserver );

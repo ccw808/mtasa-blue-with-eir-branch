@@ -124,7 +124,7 @@ void CGUIElement_Impl::GetPosition ( CVector2D& vecPosition, bool bRelative )
     if ( bRelative )
         type = CEGUI::Relative;
 
-    CEGUI::Point Temp = m_pWindow->getPosition ( type );
+    CEGUI::Point& Temp = m_pWindow->getPosition ( type );
 
     vecPosition.fX = Temp.d_x;
     vecPosition.fY = Temp.d_y;
@@ -184,12 +184,6 @@ void CGUIElement_Impl::GetSize ( CVector2D& vecSize, bool bRelative )
 
     vecSize.fX = TempSize.d_width;
     vecSize.fY = TempSize.d_height;
-}
-
-void CGUIElement_Impl::AutoSize ( const char* Text, float fPaddingX, float fPaddingY )
-{
-    const CEGUI::Font *pFont = m_pWindow->getFont();
-    m_pWindow->setSize ( CEGUI::Absolute, CEGUI::Size ( pFont->getTextExtent ( CGUI_Impl::GetUTFString( Text ? Text : GetText() ) ) + fPaddingX, pFont->getFontHeight() + fPaddingY ) );   // Add hack factor to height to allow for long characters such as 'g' or 'j'
 }
 
 
@@ -257,12 +251,6 @@ void CGUIElement_Impl::SetAlpha ( float fAlpha )
 float CGUIElement_Impl::GetAlpha ( void )
 {
     return m_pWindow->getAlpha ();
-}
-
-
-float CGUIElement_Impl::GetEffectiveAlpha ( void )
-{
-    return m_pWindow->getEffectiveAlpha ();
 }
 
 
@@ -342,10 +330,6 @@ CVector2D CGUIElement_Impl::RelativeToAbsolute ( const CVector2D& Vector )
 
 void CGUIElement_Impl::SetParent ( CGUIElement* pParent )
 {
-    // Disable z-sorting if the label has a parent
-    if ( GetType() == CGUI_LABEL )
-        m_pWindow->setZOrderingEnabled ( pParent == NULL );
-
     if ( pParent )
     {
         CGUIElement_Impl* pElement = dynamic_cast < CGUIElement_Impl* > ( pParent );
@@ -453,9 +437,15 @@ void CGUIElement_Impl::FillProperties ( void )
         CEGUI::String strKey = itPropertySet.getCurrentKey ();
         CEGUI::String strValue = m_pWindow->getProperty ( strKey );
 
+        const char *szKey = strKey.c_str ();
+        const char *szValue = strValue.c_str ();
+
         CGUIProperty* pProperty = new CGUIProperty;
-        pProperty->strKey = strKey.c_str ();
-        pProperty->strValue = strValue.c_str ();
+        pProperty->szKey = new char[strlen ( szKey ) + 1];
+        pProperty->szValue = new char[strlen ( szValue ) + 1];
+
+        strcpy ( pProperty->szKey, szKey );
+        strcpy ( pProperty->szValue, szValue );
 
         m_Properties.push_back ( pProperty );
         itPropertySet++;
@@ -469,6 +459,8 @@ void CGUIElement_Impl::EmptyProperties ( void )
         CGUIPropertyIter iterEnd = m_Properties.end ();
         for ( ; iter != iterEnd; iter++ ) {
             if (*iter) {
+                delete (*iter)->szKey;
+                delete (*iter)->szValue;
                 delete (*iter);
             }
         }
@@ -524,10 +516,6 @@ void CGUIElement_Impl::SetClickHandler ( GUI_CALLBACK Callback )
     m_OnClick = Callback;
 }
 
-void CGUIElement_Impl::SetDoubleClickHandler ( GUI_CALLBACK Callback )
-{
-    m_OnDoubleClick = Callback;
-}
 
 void CGUIElement_Impl::SetMouseEnterHandler ( GUI_CALLBACK Callback )
 {
@@ -540,51 +528,15 @@ void CGUIElement_Impl::SetMouseLeaveHandler ( GUI_CALLBACK Callback )
     m_OnMouseLeave = Callback;
 }
 
-void CGUIElement_Impl::SetMouseButtonDownHandler ( GUI_CALLBACK Callback )
-{
-    m_OnMouseDown = Callback;
-}
-
-void CGUIElement_Impl::SetActivateHandler ( GUI_CALLBACK Callback )
-{
-    m_OnActivate = Callback;
-}
-
-
-void CGUIElement_Impl::SetDeactivateHandler ( GUI_CALLBACK Callback )
-{
-    m_OnDeactivate = Callback;
-}
-
-
-void CGUIElement_Impl::SetKeyDownHandler ( GUI_CALLBACK Callback )
-{
-    m_OnKeyDown = Callback;
-}
-
-
-void CGUIElement_Impl::SetEnterKeyHandler ( GUI_CALLBACK Callback )
-{
-    m_OnEnter = Callback;
-}
-
-
-void CGUIElement_Impl::SetKeyDownHandler ( const GUI_CALLBACK_KEY & Callback )
-{
-    m_OnKeyDownWithArgs = Callback;
-}
-
-
 
 void CGUIElement_Impl::AddEvents ( void )
 {
-    // Note: Mouse Click, Double Click, Enter, Leave and ButtonDown are handled by global events in CGUI_Impl
     // Register our events
     m_pWindow->subscribeEvent ( CEGUI::Window::EventMoved, CEGUI::Event::Subscriber ( &CGUIElement_Impl::Event_OnMoved, this ) );
     m_pWindow->subscribeEvent ( CEGUI::Window::EventSized, CEGUI::Event::Subscriber ( &CGUIElement_Impl::Event_OnSized, this ) );
-    m_pWindow->subscribeEvent ( CEGUI::Window::EventActivated, CEGUI::Event::Subscriber ( &CGUIElement_Impl::Event_OnActivated, this ) );
-    m_pWindow->subscribeEvent ( CEGUI::Window::EventDeactivated, CEGUI::Event::Subscriber ( &CGUIElement_Impl::Event_OnDeactivated, this ) );
-    m_pWindow->subscribeEvent ( CEGUI::Window::EventKeyDown, CEGUI::Event::Subscriber ( &CGUIElement_Impl::Event_OnKeyDown, this ) );
+    m_pWindow->subscribeEvent ( CEGUI::Window::EventMouseClick, CEGUI::Event::Subscriber ( &CGUIElement_Impl::Event_OnClick, this ) );
+    m_pWindow->subscribeEvent ( CEGUI::Window::EventMouseEnters, CEGUI::Event::Subscriber ( &CGUIElement_Impl::Event_OnMouseEnter, this ) );
+    m_pWindow->subscribeEvent ( CEGUI::Window::EventMouseLeaves, CEGUI::Event::Subscriber ( &CGUIElement_Impl::Event_OnMouseLeave, this ) );
 }
 
 
@@ -604,22 +556,15 @@ bool CGUIElement_Impl::Event_OnSized ( const CEGUI::EventArgs& e )
 }
 
 
-bool CGUIElement_Impl::Event_OnClick ( void )
+bool CGUIElement_Impl::Event_OnClick ( const CEGUI::EventArgs& e )
 {
     if ( m_OnClick )
         m_OnClick ( reinterpret_cast < CGUIElement* > ( this ) );
     return true;
 }
 
-bool CGUIElement_Impl::Event_OnDoubleClick ( void )
-{
-    if ( m_OnDoubleClick )
-        m_OnDoubleClick ( reinterpret_cast < CGUIElement* > ( this ) );
-    return true;
-}
 
-
-bool CGUIElement_Impl::Event_OnMouseEnter ( void )
+bool CGUIElement_Impl::Event_OnMouseEnter ( const CEGUI::EventArgs& e )
 {
     if ( m_OnMouseEnter )
         m_OnMouseEnter ( reinterpret_cast < CGUIElement* > ( this ) );
@@ -627,78 +572,13 @@ bool CGUIElement_Impl::Event_OnMouseEnter ( void )
 }
 
 
-bool CGUIElement_Impl::Event_OnMouseLeave ( void )
+bool CGUIElement_Impl::Event_OnMouseLeave ( const CEGUI::EventArgs& e )
 {
     if ( m_OnMouseLeave )
         m_OnMouseLeave ( reinterpret_cast < CGUIElement* > ( this ) );
     return true;
 }
 
-
-bool CGUIElement_Impl::Event_OnMouseButtonDown ( void )
-{
-    if ( m_OnMouseDown )
-        m_OnMouseDown ( reinterpret_cast < CGUIElement* > ( this ) );
-    return true;
-}
-
-bool CGUIElement_Impl::Event_OnActivated ( const CEGUI::EventArgs& e )
-{
-    if ( m_OnActivate )
-        m_OnActivate ( reinterpret_cast < CGUIElement* > ( this ) );
-    return true;
-}
-
-bool CGUIElement_Impl::Event_OnDeactivated ( const CEGUI::EventArgs& e )
-{
-    if ( m_OnDeactivate )
-        m_OnDeactivate ( reinterpret_cast < CGUIElement* > ( this ) );
-    return true;
-}
-
-bool CGUIElement_Impl::Event_OnKeyDown ( const CEGUI::EventArgs& e )
-{
-    const CEGUI::KeyEventArgs& Args = reinterpret_cast < const CEGUI::KeyEventArgs& > ( e );
-    CGUIElement * pCGUIElement      = reinterpret_cast < CGUIElement* > ( this );
-
-    if ( m_OnKeyDown )
-    {
-        m_OnKeyDown ( pCGUIElement );
-    }
-
-    if ( m_OnKeyDownWithArgs )
-    {
-        CGUIKeyEventArgs NewArgs;
-
-        // copy the variables
-        NewArgs.codepoint = Args.codepoint;
-        NewArgs.scancode = (CGUIKeys::Scan) Args.scancode;
-        NewArgs.sysKeys = Args.sysKeys;
-
-        // get the CGUIElement
-        CGUIElement * pElement = reinterpret_cast < CGUIElement* > ( ( Args.window )->getUserData () );
-        NewArgs.pWindow = pElement;
-        
-        m_OnKeyDownWithArgs ( NewArgs );
-    }
-
-    if ( m_OnEnter )
-    {
-        switch ( Args.scancode )
-        {
-            // Return key
-            case CEGUI::Key::NumpadEnter:
-            case CEGUI::Key::Return:
-            {
-                // Fire the event
-                m_OnEnter ( pCGUIElement );
-                break;
-            }
-        }
-    }
-
-    return true;
-}
 
 inline void CGUIElement_Impl::ForceRedraw ( void )
 {

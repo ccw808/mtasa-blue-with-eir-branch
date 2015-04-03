@@ -59,32 +59,3 @@ void CGUITab_Impl::SetCaption ( const char* szCaption )
 {
     m_pWindow->setText ( CGUI_Impl::GetUTFString(szCaption) );
 }
-
-void CGUITab_Impl::SetVisible ( bool bVisible )
-{
-    CGUIElement_Impl* pParent = static_cast < CGUIElement_Impl* > ( m_pParent );
-    CEGUI::TabControl* pControl = reinterpret_cast < CEGUI::TabControl* > ( ((CGUITabPanel_Impl*)pParent)->m_pWindow );
-    pControl->getButtonForTabContents ( m_pWindow )->setVisible ( bVisible );
-    pControl->requestChildWindowLayout();
-}
-
-bool CGUITab_Impl::IsVisible ( void )
-{
-    CGUIElement_Impl* pParent = static_cast < CGUIElement_Impl* > ( m_pParent );
-    CEGUI::TabControl* pControl = reinterpret_cast < CEGUI::TabControl* > ( ((CGUITabPanel_Impl*)pParent)->m_pWindow );
-    return pControl->getButtonForTabContents ( m_pWindow )->isVisible ();
-}
-
-void CGUITab_Impl::SetEnabled ( bool bEnabled )
-{
-    CGUIElement_Impl* pParent = static_cast < CGUIElement_Impl* > ( m_pParent );
-    CEGUI::TabControl* pControl = reinterpret_cast < CEGUI::TabControl* > ( ((CGUITabPanel_Impl*)pParent)->m_pWindow );
-    pControl->getButtonForTabContents ( m_pWindow )->setEnabled ( bEnabled );
-}
-
-bool CGUITab_Impl::IsEnabled ( void )
-{
-    CGUIElement_Impl* pParent = static_cast < CGUIElement_Impl* > ( m_pParent );
-    CEGUI::TabControl* pControl = reinterpret_cast < CEGUI::TabControl* > ( ((CGUITabPanel_Impl*)pParent)->m_pWindow );
-    return !pControl->getButtonForTabContents ( m_pWindow )->isDisabled ();
-}

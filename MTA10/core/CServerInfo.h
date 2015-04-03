@@ -20,7 +20,8 @@ class CServerInfo;
 
 // Dimensions for our window
 #define INFO_WINDOW_DEFAULTWIDTH        370.0f
-#define INFO_WINDOW_DEFAULTHEIGHT       400.0f
+#define INFO_WINDOW_DEFAULTHEIGHT       345.0f
+#define PASSWORD_WINDOW_DEFAULTHEIGHT   375.0f
 
 #define INFO_WINDOW_HSPACING 20
 #define INFO_LABEL_VSPACING 0
@@ -31,18 +32,6 @@ class CServerInfo;
 #include "CServerList.h"
 #include "CSingleton.h"
 
-namespace eWindowTypes
-{
-    enum eWindowType
-    {
-        SERVER_INFO_RAW = 0,
-        SERVER_INFO_QUEUE,
-        SERVER_INFO_PASSWORD,
-    };
-}
-
-using eWindowTypes::eWindowType;
-
 class CServerInfo : public CSingleton < CServerInfo >
 {
     friend class CCore;
@@ -50,6 +39,12 @@ class CServerInfo : public CSingleton < CServerInfo >
 public:
     explicit            CServerInfo                ( void );
                         ~CServerInfo               ( void );
+
+    enum eWindowType {
+            SERVER_INFO_RAW = 0,
+            SERVER_INFO_QUEUE,
+            SERVER_INFO_PASSWORD,
+        };
 
     bool			    IsVisible                   ( void );
     void                Hide                        ( void );
@@ -95,9 +90,9 @@ private:
     eWindowType         m_pCurrentWindowType;
     bool                m_bWaitingToActivatePassword;
 
-    SString             m_strHost;
+    const char*         m_szHost;
     unsigned short      m_usPort;
-    SString             m_strPassword;
+    const char*         m_szPassword;
 
     void                Refresh                     ( void );
     void                Connect                     ( void );

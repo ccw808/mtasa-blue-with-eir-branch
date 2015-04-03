@@ -26,13 +26,7 @@ void CLuaHTTPDefs::LoadFunctions ( lua_State* luaVM )
 
 int CLuaHTTPDefs::httpWrite ( lua_State* luaVM )
 {
-//  bool httpWrite ( string data [, int length] )
-    SString strData;
-    
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strData );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TSTRING )
     {
         CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
         if ( pLuaMain )
@@ -41,25 +35,24 @@ int CLuaHTTPDefs::httpWrite ( lua_State* luaVM )
             if ( file && file->GetType() == CResourceHTMLItem::RESOURCE_FILE_TYPE_HTML )
             {
                 CResourceHTMLItem * html = (CResourceHTMLItem *)file;
-                unsigned long ulLength;
-                if ( argStream.NextIsNumber () )
-                    argStream.ReadNumber ( ulLength );
+                unsigned long length = 0;
+                if ( lua_type ( luaVM, 2 ) == LUA_TNUMBER )
+                    length = static_cast < unsigned long > ( lua_tonumber ( luaVM, 2 ) );
                 else
-                    ulLength = strData.length ();
-
-                html->AppendToPageBuffer ( strData, ulLength );
+                    length = lua_objlen ( luaVM, 1 );
+                const char* szBuffer = lua_tolstring ( luaVM, 1, NULL );
+                html->AppendToPageBuffer ( szBuffer, length );
                 lua_pushboolean ( luaVM, true );
                 return 1;
             }
             else
-                m_pScriptDebugging->LogError ( luaVM, "%s: Can only be used in HTML scripts", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+                m_pScriptDebugging->LogError ( luaVM, "httpWrite: Can only be used in HTML scripts" );
         } 
         else
-            m_pScriptDebugging->LogError ( luaVM, lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+            m_pScriptDebugging->LogError ( luaVM, "httpWrite" );
     }   
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
+        m_pScriptDebugging->LogBadType ( luaVM, "httpWrite" );
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -67,14 +60,7 @@ int CLuaHTTPDefs::httpWrite ( lua_State* luaVM )
 
 int CLuaHTTPDefs::httpSetResponseHeader ( lua_State* luaVM )
 {
-//  bool httpSetResponseHeader ( string headerName, string headerValue )
-    SString strHeaderName; SString strHeaderValue;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strHeaderName );
-    argStream.ReadString ( strHeaderValue );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TSTRING && lua_type ( luaVM, 2 ) == LUA_TSTRING )
     {
         CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
         if ( pLuaMain )
@@ -83,19 +69,20 @@ int CLuaHTTPDefs::httpSetResponseHeader ( lua_State* luaVM )
             if ( file && file->GetType() == CResourceHTMLItem::RESOURCE_FILE_TYPE_HTML )
             {
                 CResourceHTMLItem * html = (CResourceHTMLItem *)file;
-                html->SetResponseHeader ( strHeaderName, strHeaderValue );
+                char* szHeaderName = (char *) lua_tostring ( luaVM, 1 );
+                char* szHeaderValue = (char *) lua_tostring ( luaVM, 2 );
+                html->SetResponseHeader ( szHeaderName, szHeaderValue );
                 lua_pushboolean ( luaVM, true );
                 return 1;
             }
             else
-                m_pScriptDebugging->LogError ( luaVM, "%s: Can only be used in HTML scripts", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+                m_pScriptDebugging->LogError ( luaVM, "httpSetResponseHeader: Can only be used in HTML scripts" );
         } 
         else
-            m_pScriptDebugging->LogError ( luaVM, lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
-    }
+            m_pScriptDebugging->LogError ( luaVM, "httpSetResponseHeader" );
+    }   
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-    
+        m_pScriptDebugging->LogBadType ( luaVM, "httpSetResponseHeader" );
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -103,14 +90,7 @@ int CLuaHTTPDefs::httpSetResponseHeader ( lua_State* luaVM )
 
 int CLuaHTTPDefs::httpSetResponseCookie ( lua_State* luaVM )
 {
-//  bool httpSetResponseCookie ( string cookieName, string cookieValue )
-    SString strCookieName; SString strCookieValue;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strCookieName );
-    argStream.ReadString ( strCookieValue );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TSTRING && lua_type ( luaVM, 2 ) == LUA_TSTRING )
     {
         CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
         if ( pLuaMain )
@@ -119,19 +99,20 @@ int CLuaHTTPDefs::httpSetResponseCookie ( lua_State* luaVM )
             if ( file && file->GetType() == CResourceHTMLItem::RESOURCE_FILE_TYPE_HTML )
             {
                 CResourceHTMLItem * html = (CResourceHTMLItem *)file;
-                html->SetResponseCookie ( strCookieName, strCookieValue );
+                char* szHeaderName = (char *) lua_tostring ( luaVM, 1 );
+                char* szHeaderValue = (char *) lua_tostring ( luaVM, 2 );
+                html->SetResponseCookie ( szHeaderName, szHeaderValue );
                 lua_pushboolean ( luaVM, true );
                 return 1;
             }
             else
-                m_pScriptDebugging->LogError ( luaVM, "%s: Can only be used in HTML scripts", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+                m_pScriptDebugging->LogError ( luaVM, "httpSetResponseCookie: Can only be used in HTML scripts" );
         } 
         else
-            m_pScriptDebugging->LogError ( luaVM, lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
-    }
+            m_pScriptDebugging->LogError ( luaVM, "httpSetResponseCookie" );
+    }   
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
+        m_pScriptDebugging->LogBadType ( luaVM, "httpSetResponseCookie" );
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -139,13 +120,7 @@ int CLuaHTTPDefs::httpSetResponseCookie ( lua_State* luaVM )
 
 int CLuaHTTPDefs::httpSetResponseCode ( lua_State* luaVM )
 {
-//  bool httpSetResponseCode ( int code )
-    unsigned int uiResponseCode;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( uiResponseCode );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TNUMBER  )
     {
         CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
         if ( pLuaMain )
@@ -154,19 +129,19 @@ int CLuaHTTPDefs::httpSetResponseCode ( lua_State* luaVM )
             if ( file && file->GetType() == CResourceHTMLItem::RESOURCE_FILE_TYPE_HTML )
             {
                 CResourceHTMLItem * html = (CResourceHTMLItem *)file;
-                html->SetResponseCode ( uiResponseCode );
+                unsigned int responseCode = static_cast < unsigned int > ( lua_tonumber ( luaVM, 1 ) );
+                html->SetResponseCode ( responseCode );
                 lua_pushboolean ( luaVM, true );
                 return 1;
             }
             else
-                m_pScriptDebugging->LogError ( luaVM, "%s: Can only be used in HTML scripts", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+                m_pScriptDebugging->LogError ( luaVM, "httpSetResponseCode: Can only be used in HTML scripts" );
         } 
         else
-            m_pScriptDebugging->LogError ( luaVM, lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
-    }
+            m_pScriptDebugging->LogError ( luaVM, "httpSetResponseCode" );
+    }   
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-    
+        m_pScriptDebugging->LogBadType ( luaVM, "httpSetResponseCode" );
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -174,8 +149,6 @@ int CLuaHTTPDefs::httpSetResponseCode ( lua_State* luaVM )
 
 int CLuaHTTPDefs::httpClear ( lua_State* luaVM )
 {
-//  bool httpClear ( )
-
     CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
     if ( pLuaMain )
     {
@@ -188,10 +161,10 @@ int CLuaHTTPDefs::httpClear ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogError ( luaVM, "%s: Can only be used in HTML scripts", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+            m_pScriptDebugging->LogError ( luaVM, "httpClear: Can only be used in HTML scripts" );
     } 
     else
-        m_pScriptDebugging->LogError ( luaVM, lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );   
+        m_pScriptDebugging->LogError ( luaVM, "httpClear" );   
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -199,7 +172,6 @@ int CLuaHTTPDefs::httpClear ( lua_State* luaVM )
 
 int CLuaHTTPDefs::httpRequestLogin ( lua_State* luaVM )
 {
-//  bool httpRequestLogin ( )
     CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
     if ( pLuaMain )
     {
@@ -216,10 +188,10 @@ int CLuaHTTPDefs::httpRequestLogin ( lua_State* luaVM )
             return 1;
         }
         else
-            m_pScriptDebugging->LogError ( luaVM, "%s: Can only be used in HTML scripts", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+            m_pScriptDebugging->LogError ( luaVM, "httpRequestLogin: Can only be used in HTML scripts" );
     } 
     else
-        m_pScriptDebugging->LogError ( luaVM, lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );   
+        m_pScriptDebugging->LogError ( luaVM, "httpRequestLogin" );   
     lua_pushboolean ( luaVM, false );
     return 1;
 }

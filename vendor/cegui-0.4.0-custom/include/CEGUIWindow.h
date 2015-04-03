@@ -464,7 +464,7 @@ public:
 	\return
 		A String object that holds the current text for this Window.
 	*/
-	const String&	getText(bool bidified=false) const		{return bidified ? d_text : d_text_raw;}
+	const String&	getText(void) const		{return d_text;}
 
 
 	/*!
@@ -3755,8 +3755,7 @@ protected:
 	Window*			d_oldCapture;		//!< The Window that previously had capture (used for restoreOldCapture mode)
 	Window*			d_parent;			//!< Holds pointer to the parent window.
 	const Font*		d_font;				//!< Holds pointer to the Window objects current Font.
-	String			d_text;				//!< Holds the visual text / label / caption for this Window.
-    String			d_text_raw;			//!< Holds the raw, unprocessed text / label / caption for this Window.
+	String			d_text;				//!< Holds the text / label / caption for this Window.
 	uint			d_ID;				//!< User ID assigned to this Window
 	float			d_alpha;			//!< Alpha transparency setting for the Window
     URect			d_area;             //!< This Window objects area as defined by a URect.

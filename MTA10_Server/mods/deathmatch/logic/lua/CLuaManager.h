@@ -47,11 +47,12 @@ public:
                                                               CEvents* pEvents );
                                     ~CLuaManager            ( void );
 
-    CLuaMain*                       CreateVirtualMachine    ( CResource* pResourceOwner, bool bEnableOOP );
+    void                            StopScriptsOwnedBy      ( int iOwner );
+
+    CLuaMain*                       CreateVirtualMachine    ( CResource* pResourceOwner );
     bool                            RemoveVirtualMachine    ( CLuaMain* vm );
     CLuaMain*                       GetVirtualMachine       ( lua_State* luaVM );
-    void                            OnLuaMainOpenVM         ( CLuaMain* pLuaMain, lua_State* luaVM );
-    void                            OnLuaMainCloseVM        ( CLuaMain* pLuaMain, lua_State* luaVM );
+    CLuaMain*                       GetVirtualMachine       ( const char* szFilename );
 
     inline CLuaModuleManager*       GetLuaModuleManager     ( void ) const              { return m_pLuaModuleManager; };
 
@@ -73,7 +74,6 @@ private:
     CEvents*                        m_pEvents;
     CLuaModuleManager*              m_pLuaModuleManager;
 
-    CFastHashMap < lua_State*, CLuaMain* > m_VirtualMachineMap;
     list < CLuaMain* >              m_virtualMachines;
 };
 

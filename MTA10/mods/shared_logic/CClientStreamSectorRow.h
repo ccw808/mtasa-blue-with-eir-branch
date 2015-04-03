@@ -12,6 +12,8 @@
 #ifndef __CClientStreamSectorRow_H
 #define __CClientStreamSectorRow_H
 
+#define SECTOR_SIZE         300.0f      // was 300.0f
+#define ROW_SIZE            300.0f      // was 300.0f
 #define WORLD_SIZE          6000.0f     // was 3000.0f
 
 #include "CClientCommon.h"
@@ -21,9 +23,9 @@ class CClientStreamer;
 
 class CClientStreamSectorRow
 {
-    friend class CClientStreamer;
+    friend CClientStreamer;
 public:
-                                                    CClientStreamSectorRow      ( float fBottom, float fTop, float fSectorSize, float fRowSize );
+                                                    CClientStreamSectorRow      ( float fBottom, float fTop );
                                                     ~CClientStreamSectorRow     ( void );
 
     std::list < CClientStreamSector * > ::iterator  Begin                       ( void )                            { return m_Sectors.begin (); }
@@ -46,8 +48,6 @@ private:
     bool                                            IsExtra                     ( void )            { return m_bExtra; }
     void                                            SetExtra                    ( bool bExtra )     { m_bExtra = bExtra; }
 
-    const float                                     m_fSectorSize;
-    const float                                     m_fRowSize;
     float                                           m_fBottom, m_fTop;
     std::list < CClientStreamSector * >             m_Sectors;
     bool                                            m_bExtra;

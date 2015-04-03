@@ -67,7 +67,6 @@ public:
                                     ~CGUI_Impl                  ( void );
 
     void                            SetSkin                     ( const char* szName );
-    void                            SetBidiEnabled              ( bool bEnabled );
 
     void                            Draw                        ( void );
     void                            Invalidate                  ( void );
@@ -83,9 +82,10 @@ public:
     bool                            GetGUIInputEnabled          ( void );
     void                            SetGUIInputMode             ( eInputMode a_eMode );
     eInputMode                      GetGUIInputMode             ( void ); 
-    static CEGUI::String            GetUTFString                ( const char* szInput );
-    static CEGUI::String            GetUTFString                ( const std::string& strInput );
-    static CEGUI::String            GetUTFString                ( const CEGUI::String& strInput );      // Not defined
+    eInputMode                      GetInputModeFromString      ( const std::string& a_rstrMode ) const;
+    bool                            GetStringFromInputMode      ( eInputMode a_eMode, std::string& a_rstrResult ) const;
+    static CEGUI::String            GetUTFString                ( std::string strInput );
+    static CEGUI::String            GetUTFString                ( std::wstring strInput );
 
     //
     CGUIMessageBox*                 CreateMessageBox            ( const char* szTitle, const char* szMessage, unsigned int uiFlags );
@@ -124,9 +124,8 @@ public:
     CGUITabPanel*                   CreateTabPanel              ( CGUITab* pParent );
     CGUITabPanel*                   CreateTabPanel              ( void );
 
-    CGUIScrollPane*                 CreateScrollPane            ( CGUIElement* pParent );
-    CGUIScrollPane*                 CreateScrollPane            ( CGUITab* pParent );
-    CGUIScrollPane*                 CreateScrollPane            ( void );
+    CGUIScrollPane*                 CreateScrollPane            ( CGUIElement* pParent = NULL );
+    CGUIScrollPane*                 CreateScrollPane            ( CGUITab* pParent = NULL );
 
     CGUIScrollBar*                  CreateScrollBar             ( bool bHorizontal, CGUIElement* pParent = NULL );
     CGUIScrollBar*                  CreateScrollBar             ( bool bHorizontal, CGUITab* pParent = NULL );
@@ -142,8 +141,6 @@ public:
 
     void                            SetCursorEnabled            ( bool bEnabled );
     bool                            IsCursorEnabled             ( void );
-    void                            SetCursorAlpha              ( float fAlpha, bool bOnlyCurrentServer = false );
-    float                           GetCurrentServerCursorAlpha ( void );
 
     void                            AddChild                    ( CGUIElement_Impl* pChild );
     CEGUI::FontManager*             GetFontManager              ( void );
@@ -153,7 +150,6 @@ public:
     CEGUI::SchemeManager*           GetSchemeManager            ( void );
     CEGUI::WindowManager*           GetWindowManager            ( void );
     void                            GetUniqueName               ( char* pBuf );
-    CEGUI::Window*                  GetMasterWindow             ( CEGUI::Window* Window );
 
     CVector2D                       GetResolution               ( void );
     void                            SetResolution               ( float fWidth, float fHeight );
@@ -167,13 +163,8 @@ public:
     CGUIFont*                       GetSansFont                 ( void );
     bool                            IsFontPresent               ( const char* szFont ) { return m_pFontManager->isFontPresent(szFont); }
 
-    float                           GetTextExtent               ( const char* szText, const char* szFont = "default-normal" );
-    float                           GetMaxTextExtent            ( SString strFont, SString arg, ... );
-
-    const SString&                  GetGuiWorkingDirectory         ( void ) const;
-    void                            SetDefaultGuiWorkingDirectory  ( const SString& strDir );
-    void                            PushGuiWorkingDirectory        ( const SString& strDir );
-    void                            PopGuiWorkingDirectory         ( const SString& strDirCheck = "" );
+    void                            SetWorkingDirectory         ( const char * szDir );
+    inline const char*              GetWorkingDirectory         ( void )    { return const_cast < const char* > ( m_szWorkingDirectory ); }
 
     void                            SetCharacterKeyHandler       ( eInputChannel channel, const GUI_CALLBACK_KEY & Callback )    { CHECK_CHANNEL ( channel ); m_CharacterKeyHandlers[ channel ] = Callback; }
     void                            SetKeyDownHandler            ( eInputChannel channel, const GUI_CALLBACK_KEY & Callback )    { CHECK_CHANNEL ( channel ); m_KeyDownHandlers[ channel ] = Callback; }
@@ -236,8 +227,6 @@ private:
     CGUIComboBox*                   _CreateComboBox             ( CGUIElement_Impl* pParent = NULL, const char* szCaption = "" );
 	
     void                            SubscribeToMouseEvents();
-    CGUIFont*                       CreateFntFromWinFont        ( const char* szFontName, const char* szFontWinReg, const char* szFontWinFile, unsigned int uSize = 8, unsigned int uFlags = 0, bool bAutoScale = false );
-    void                            ApplyGuiWorkingDirectory       ( void );
 
     IDirect3DDevice9*               m_pDevice;
 
@@ -250,7 +239,6 @@ private:
 
     CEGUI::DefaultWindow*           m_pTop;
     const CEGUI::Image*             m_pCursor;
-    float                           m_fCurrentServerCursorAlpha;
 
     CGUIFont_Impl*                  m_pDefaultFont;
     CGUIFont_Impl*                  m_pSmallFont;
@@ -259,7 +247,6 @@ private:
     CGUIFont_Impl*                  m_pSAHeaderFont;
     CGUIFont_Impl*                  m_pSAGothicFont;
     CGUIFont_Impl*                  m_pSansFont;
-    CGUIFont_Impl*                  m_pUniFont;
                 
     std::list < CGUIElement* >      m_RedrawQueue;
 
@@ -284,13 +271,12 @@ private:
 
     eInputChannel                   m_Channel;
 
-    std::list < SString >           m_GuiWorkingDirectoryStack;
+    char                            m_szWorkingDirectory [ MAX_PATH + 1 ];
 
     bool                            m_bTransferBoxVisible;
 
     bool                            m_HasSchemeLoaded;
     SString                         m_CurrentSchemeName;
-    CElapsedTime                    m_RenderOkTimer;
 };
 
 #endif

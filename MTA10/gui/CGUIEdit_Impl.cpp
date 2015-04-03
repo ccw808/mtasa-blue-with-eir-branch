@@ -129,25 +129,25 @@ unsigned int CGUIEdit_Impl::GetSelectionLength ( void )
 }
 
 
-void CGUIEdit_Impl::SetCaretIndex ( unsigned int uiIndex )
+void CGUIEdit_Impl::SetCaratIndex ( unsigned int uiIndex )
 {
     return reinterpret_cast < CEGUI::Editbox* > ( m_pWindow ) -> setCaratIndex ( uiIndex );
 }
 
 
-void CGUIEdit_Impl::SetCaretAtStart ( void )
+void CGUIEdit_Impl::SetCaratAtStart ( void )
 {
     reinterpret_cast < CEGUI::Editbox* > ( m_pWindow ) ->setCaratIndex ( 0 );
 }
 
 
-void CGUIEdit_Impl::SetCaretAtEnd ( void )
+void CGUIEdit_Impl::SetCaratAtEnd ( void )
 {
     reinterpret_cast < CEGUI::Editbox* > ( m_pWindow ) ->setCaratIndex ( GetText ().length () );
 }
 
 
-unsigned int CGUIEdit_Impl::GetCaretIndex ( void )
+unsigned int CGUIEdit_Impl::GetCaratIndex ( void )
 {
     return static_cast < unsigned int > ( reinterpret_cast < CEGUI::Editbox* > ( m_pWindow ) -> getCaratIndex () );
 }
@@ -171,7 +171,7 @@ bool CGUIEdit_Impl::ActivateOnTab ( void )
     if ( IsVisible () && !IsReadOnly () )
     {
         Activate ();
-        SetCaretIndex ( GetText ().length () );
+        SetCaratIndex ( GetText ().length () );
         return true;
     }
     return false;
@@ -188,7 +188,7 @@ bool CGUIEdit_Impl::Event_OnTextChanged ( const CEGUI::EventArgs& e )
 bool CGUIEdit_Impl::Event_OnKeyDown( const CEGUI::EventArgs& e )
 {
     const CEGUI::KeyEventArgs& KeyboardArgs = reinterpret_cast < const CEGUI::KeyEventArgs& > ( e );
-    if( KeyboardArgs.scancode == CGUIKeys::Tab )
+    if( KeyboardArgs.scancode == CGUIKeys::Scan::Tab )
     {
         // tab pressed, if we are in a window with tab enabled, just switch to the next element
         if ( GetParent () == NULL )
@@ -200,7 +200,7 @@ bool CGUIEdit_Impl::Event_OnKeyDown( const CEGUI::EventArgs& e )
             pTabList->SelectNext ( this );
         }
     }
-    else if( KeyboardArgs.scancode == CGUIKeys::Return || KeyboardArgs.scancode == CGUIKeys::NumpadEnter )
+    else if( KeyboardArgs.scancode == CGUIKeys::Scan::Return || KeyboardArgs.scancode == CGUIKeys::Scan::NumpadEnter )
     {
         // Enter/Return event is split from Tab now, since we use that for Console, Quick Connect, etc. as enter-only
         if ( m_OnTextAccepted )

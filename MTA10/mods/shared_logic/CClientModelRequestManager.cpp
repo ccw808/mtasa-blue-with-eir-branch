@@ -106,19 +106,15 @@ CModelInfo* CClientModelRequestManager::GetRequestedModelInfo ( CClientEntity* p
 }
 
 
-bool CClientModelRequestManager::RequestBlocking ( unsigned short usModelID, const char* szTag )
+bool CClientModelRequestManager::RequestBlocking ( unsigned short usModelID )
 {
     // Grab the model info
     CModelInfo* pInfo = g_pGame->GetModelInfo ( usModelID );
     if ( pInfo )
     {
-        pInfo->Request ( BLOCKING, szTag );
-        if ( pInfo->IsLoaded () )
-        {
-            pInfo->MakeCustomModel ();
-            return true;
-        }
-        OutputDebugLine ( SString ( "[Models] RequestBlocking failed for id %d", usModelID ) );
+        pInfo->Request ( TRUE, TRUE );
+        pInfo->MakeCustomModel ();
+        return true;
     }
 
     // Bad model ID probably.
@@ -168,10 +164,10 @@ bool CClientModelRequestManager::Request ( unsigned short usModelID, CClientEnti
                     // If not loaded. Replace the model we're going to load.
                     // Also remember that we requested it now.
                     pEntry->pModel = pInfo;
-                    pEntry->requestTimer.Reset ();
+                    pEntry->dwTimeRequested = timeGetTime ();
 
                     // Start loading the new model.
-                    pInfo->ModelAddRef ( NON_BLOCKING, "CClientModelRequestManager::Request" );
+                    pInfo->AddRef ( false );
 
                     // He has to wait for it.
                     return false;
@@ -188,15 +184,19 @@ bool CClientModelRequestManager::Request ( unsigned short usModelID, CClientEnti
                 return true;
             }
 
+            // Boost loading priority if the object is close to the local player
+            bool bHighPriority = false;
+            if ( pRequester->GetDistanceBetweenBoundingSpheres ( g_pClientGame->GetLocalPlayer () ) < 20 )
+                bHighPriority = true;
+
             // Request it
-            pInfo->ModelAddRef ( NON_BLOCKING, "CClientModelRequestManager::Request #2" );
+            pInfo->AddRef ( false, bHighPriority );
 
             // Add him to the list over models we're waiting for.
             pEntry = new SClientModelRequest;
             pEntry->pModel = pInfo;
             pEntry->pEntity = pRequester;
-            pEntry->requestTimer.SetMaxIncrement ( 500 );
-            pEntry->requestTimer.Reset ();
+            pEntry->dwTimeRequested = timeGetTime ();
             m_Requests.push_back ( pEntry );
 
             // Return false. Caller needs to wait.
@@ -266,6 +266,9 @@ void CClientModelRequestManager::DoPulse ( void )
         // We are now doing the pulse
         m_bDoingPulse = true;
 
+        // Grab the current time
+        DWORD dwTimeNow = timeGetTime ();
+
         // Call the callback for those finished loading and remove them from the list
         SClientModelRequest* pEntry;
         list < SClientModelRequest* > ::iterator iter;
@@ -292,17 +295,17 @@ void CClientModelRequestManager::DoPulse ( void )
             else
             {
                 // Been more than 2 seconds since we requested it? Request it again.
-                if ( pEntry->requestTimer.Get () > 2000 )
+                if ( dwTimeNow - pEntry->dwTimeRequested >= 2000 )
                 {
                     // Request it again. Don't add reference, or we screw up the
                     // reference count.
                     if ( g_pGame->IsASyncLoadingEnabled () )
-                        pEntry->pModel->Request ( NON_BLOCKING, "CClientModelRequestManager::DoPulse #1" );
+                        pEntry->pModel->Request ( FALSE, FALSE );
                     else
-                        pEntry->pModel->Request ( BLOCKING, "CClientModelRequestManager::DoPulse #2" );
+                        pEntry->pModel->Request ( TRUE, FALSE );
 
                     // Remember now as the time we requested it.
-                    pEntry->requestTimer.Reset ();
+                    pEntry->dwTimeRequested = dwTimeNow;
                 }
 
                 // Increment iterator

@@ -14,23 +14,10 @@
 
 #include "StdInc.h"
 
-#define VAR_InputType       ( ( BYTE * ) ( 0xB6EC2E ) )
-#define VAR_MouseInverted   ( ( BYTE * ) ( 0xBA6745 ) )
-#define VAR_FlyWithMouse    ( ( BYTE * ) ( 0xC1CC03 ) )
-#define VAR_SteerWithMouse  ( ( BYTE * ) ( 0xC1CC02 ) )
-#define VAR_VerticalAimSensitivity  ( ( FLOAT * ) ( 0xB6EC18 ) )
-
-static const float VERTICAL_AIM_SENSITIVITY_MIN     = 0.000312f;
-static const float VERTICAL_AIM_SENSITIVITY_DEFAULT = 0.0015f;
-static const float VERTICAL_AIM_SENSITIVITY_MAX     = VERTICAL_AIM_SENSITIVITY_DEFAULT * 2 - VERTICAL_AIM_SENSITIVITY_MIN;
-
 CControllerConfigManagerSA::CControllerConfigManagerSA()
 {
-    m_bSuspendSteerAndFlyWithMouse = false;
-    // Get initial settings
-    m_bSteerWithMouse = *VAR_FlyWithMouse != 0;
-    m_bFlyWithMouse = *VAR_SteerWithMouse != 0;
-    MemSet( (void*)0x5BC7B4, 0x90, 10 );   // Stop vertical aim sensitivity value reset
+    
+
 }
 
 void CControllerConfigManagerSA::SetControllerKeyAssociatedWithAction ( eControllerAction action, int iKey, eControllerType controllerType )
@@ -87,67 +74,42 @@ void CControllerConfigManagerSA::ClearSettingsAssociatedWithAction ( eController
     }
 }
 
-void CControllerConfigManagerSA::SetClassicControls ( bool bClassicControls )
+unsigned char CControllerConfigManagerSA::GetInputType ( void )
 {
-    MemPutFast < unsigned char > ( VAR_InputType, bClassicControls ? 0 : 1 );
+    return * ( unsigned char * ) ( 0xB6EC2E );
+}
+
+void CControllerConfigManagerSA::SetInputType ( unsigned char ucInputType )
+{
+    MemPut < unsigned char > ( 0xB6EC2E, ucInputType );  //     * ( unsigned char * ) ( 0xB6EC2E ) = ucInputType;
+}
+
+bool CControllerConfigManagerSA::IsMouseInverted ( void )
+{
+    return ( * ( BYTE * ) ( 0xBA6745 ) == 0 );
 }
 
 void CControllerConfigManagerSA::SetMouseInverted ( bool bInverted )
 {
-    MemPutFast < BYTE > ( VAR_MouseInverted, ( bInverted ) ? 0 : 1 );
+    MemPut < BYTE > ( 0xBA6745, ( bInverted ) ? 0 : 1 );  //     * ( BYTE * ) ( 0xBA6745 ) = ( bInverted ) ? 0 : 1;
+}
+
+bool CControllerConfigManagerSA::GetFlyWithMouse ( void )
+{
+    return ( * ( BYTE * ) ( 0xC1CC03 ) == 1 );
 }
 
 void CControllerConfigManagerSA::SetFlyWithMouse ( bool bFlyWithMouse )
 {
-    m_bFlyWithMouse = bFlyWithMouse;
-    ApplySteerAndFlyWithMouseSettings ();
+    MemPut < BYTE > ( 0xC1CC03, ( bFlyWithMouse ) ? 1 : 0 );  //     * ( BYTE * ) ( 0xC1CC03 ) = ( bFlyWithMouse ) ? 1 : 0;
+}
+
+bool CControllerConfigManagerSA::GetSteerWithMouse ( void )
+{
+    return ( * ( BYTE * ) ( 0xC1CC02 ) == 1 );
 }
 
 void CControllerConfigManagerSA::SetSteerWithMouse ( bool bSteerWithMouse )
 {
-    m_bSteerWithMouse = bSteerWithMouse;
-    ApplySteerAndFlyWithMouseSettings ();
-}
-
-void CControllerConfigManagerSA::SuspendSteerAndFlyWithMouse ( bool bSuspend )
-{
-    m_bSuspendSteerAndFlyWithMouse = bSuspend;
-    ApplySteerAndFlyWithMouseSettings ();
-}
-
-void CControllerConfigManagerSA::ApplySteerAndFlyWithMouseSettings ( void )
-{
-    if ( m_bSuspendSteerAndFlyWithMouse )
-    {
-        *VAR_FlyWithMouse = 0;
-        *VAR_SteerWithMouse = 0;
-    }
-    else
-    {
-        *VAR_FlyWithMouse = m_bFlyWithMouse;
-        *VAR_SteerWithMouse = m_bSteerWithMouse;
-    }
-}
-
-float CControllerConfigManagerSA::GetVerticalAimSensitivity ( )
-{
-    float fRawValue = GetVerticalAimSensitivityRawValue();
-    return UnlerpClamped( VERTICAL_AIM_SENSITIVITY_MIN, fRawValue, VERTICAL_AIM_SENSITIVITY_MAX );    // Remap to 0-1
-}
-
-void CControllerConfigManagerSA::SetVerticalAimSensitivity ( float fSensitivity )
-{
-    float fRawValue = Lerp( VERTICAL_AIM_SENSITIVITY_MIN, fSensitivity, VERTICAL_AIM_SENSITIVITY_MAX );
-    SetVerticalAimSensitivityRawValue( fRawValue );
-}
-
-// Raw value used for saving so range can be changed without affecting user setting
-float CControllerConfigManagerSA::GetVerticalAimSensitivityRawValue ( )
-{
-    return *(FLOAT *)VAR_VerticalAimSensitivity;
-}
-
-void CControllerConfigManagerSA::SetVerticalAimSensitivityRawValue ( float fRawValue )
-{
-    MemPutFast < FLOAT > ( VAR_VerticalAimSensitivity, fRawValue );
+    MemPut < BYTE > ( 0xC1CC02, ( bSteerWithMouse ) ? 1 : 0 );  //     * ( BYTE * ) ( 0xC1CC02 ) = ( bSteerWithMouse ) ? 1 : 0;
 }

@@ -43,7 +43,7 @@ bool CScriptDebugging::AddPlayer ( CPlayer& Player, unsigned int uiLevel )
         // He's already script debugging? Remove him from our list. 
         if ( Player.m_uiScriptDebugLevel > 0 )
         {
-            m_Players.remove ( &Player );
+            if ( !m_Players.empty() ) m_Players.remove ( &Player );
         }
     }
 
@@ -60,7 +60,7 @@ bool CScriptDebugging::RemovePlayer ( CPlayer& Player )
     {
         // Mark it as not script debugging and remove it from our list
         Player.m_uiScriptDebugLevel = 0;
-        m_Players.remove ( &Player );
+        if ( !m_Players.empty() ) m_Players.remove ( &Player );
 
         return true;
     }
@@ -82,6 +82,25 @@ void CScriptDebugging::ClearPlayers ( void )
     m_Players.clear ();
 }
 
+#if 0   // Currently unused
+void CScriptDebugging::OutputDebugInfo ( lua_State* luaVM, int iLevel, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue )
+{
+    char szDebugDump[255];
+    
+    lua_Debug debugInfo;
+    if ( lua_getstack ( luaVM, 1, &debugInfo ) )
+    {
+        lua_getinfo ( luaVM, "nlS", &debugInfo );
+        
+        // first version includes script path - makes much longer though
+    //  _snprintf ( szDebugDump, 255, "Line: %d (%s + %d) %s", debugInfo.currentline, debugInfo.name, debugInfo.currentline - debugInfo.linedefined, debugInfo.short_src );
+        _snprintf ( szDebugDump, 255, "Line: %d (%s + %d)", debugInfo.currentline, debugInfo.name, debugInfo.currentline - debugInfo.linedefined );
+        szDebugDump[255-1] = '\0';
+
+        LogString ( luaVM, szDebugDump, iLevel, ucRed, ucGreen, ucBlue );
+    }
+}
+#endif
 
 void CScriptDebugging::LogCustom ( lua_State* luaVM, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue, const char* szFormat, ... )
 {
@@ -91,10 +110,10 @@ void CScriptDebugging::LogCustom ( lua_State* luaVM, unsigned char ucRed, unsign
     char szBuffer [MAX_STRING_LENGTH];
     va_list marker;
     va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
+    _VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
     va_end ( marker );
 
-    LogString ( "", GetLuaDebugInfo( luaVM ), szBuffer, 0, ucRed, ucGreen, ucBlue );
+    LogString ( "", luaVM, szBuffer, 0, ucRed, ucGreen, ucBlue );
 }
 
 void CScriptDebugging::LogInformation ( lua_State* luaVM, const char* szFormat, ... )
@@ -105,11 +124,11 @@ void CScriptDebugging::LogInformation ( lua_State* luaVM, const char* szFormat, 
     char szBuffer [MAX_STRING_LENGTH];
     va_list marker;
     va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
+    _VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
     va_end ( marker );
 
     // Log it
-    LogString ( "INFO: ", GetLuaDebugInfo( luaVM ), szBuffer, 3 );
+    LogString ( "INFO: ", luaVM, szBuffer, 3 );
 }
 
 
@@ -121,11 +140,11 @@ void CScriptDebugging::LogWarning ( lua_State* luaVM, const char* szFormat, ... 
     char szBuffer [MAX_STRING_LENGTH];
     va_list marker;
     va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
+    _VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
     va_end ( marker );
 
     // Log it
-    LogString ( "WARNING: ", GetLuaDebugInfo( luaVM ), szBuffer, 2 );
+    LogString ( "WARNING: ", luaVM, szBuffer, 2 );
 }
 
 
@@ -137,62 +156,76 @@ void CScriptDebugging::LogError ( lua_State* luaVM, const char* szFormat, ... )
     char szBuffer [MAX_STRING_LENGTH];
     va_list marker;
     va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
+    _VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
     va_end ( marker );
 
     // Log it
-    LogString ( "ERROR: ", GetLuaDebugInfo( luaVM ), szBuffer, 1 );
+    LogString ( "ERROR: ", luaVM, szBuffer, 1 );
 }
 
-
-void CScriptDebugging::LogWarning ( const SLuaDebugInfo& luaDebugInfo, const char* szFormat, ... )
+void CScriptDebugging::LogError ( SString strFile, int iLine, SString strMsg )
 {
-    assert ( szFormat );
+    SString strText = SString ( "ERROR: %s:%d: %s", strFile.c_str (), iLine, strMsg.c_str () );
 
-    // Compose the formatted message
-    char szBuffer [MAX_STRING_LENGTH];
-    va_list marker;
-    va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
-    va_end ( marker );
+    if ( !m_bTriggeringOnDebugMessage )
+    {
+        m_bTriggeringOnDebugMessage = true;
 
-    // Log it
-    LogString ( "WARNING: ", luaDebugInfo, szBuffer, 2 );
+        // Prepare onDebugMessage
+        CLuaArguments Arguments;
+        Arguments.PushString ( strMsg.c_str ( ) );
+        Arguments.PushNumber ( 1 );
+
+        // Push the file name (if any)
+        if ( strFile.length ( ) > 0 )
+            Arguments.PushString ( strFile.c_str ( ) );
+        else
+            Arguments.PushNil ( );
+
+        // Push the line (if any)
+        if ( iLine > -1 )
+            Arguments.PushNumber ( iLine );
+        else
+            Arguments.PushNil ( );
+        
+        // Call onDebugMessage
+        g_pGame->GetMapManager ( )->GetRootElement ( )->CallEvent ( "onDebugMessage", Arguments );
+
+        m_bTriggeringOnDebugMessage = false;
+    }
+
+    // Log it to the file if enough level
+    if ( m_uiLogFileLevel >= 1 )
+    {
+        PrintLog ( strText );
+    }
+
+    // Log to console
+    CLogger::LogPrintf( "%s\n", strText.c_str () );
+
+    // Tell the players
+    Broadcast ( CDebugEchoPacket ( strText, 1, 255, 255, 255 ), 1 );
 }
 
-
-void CScriptDebugging::LogError ( const SLuaDebugInfo& luaDebugInfo, const char* szFormat, ... )
+void CScriptDebugging::LogBadPointer ( lua_State* luaVM, const char* szFunction, const char* szArgumentType, unsigned int uiArgument )
 {
-    assert ( szFormat );
-
-    // Compose the formatted message
-    char szBuffer [MAX_STRING_LENGTH];
-    va_list marker;
-    va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
-    va_end ( marker );
-
-    // Log it
-    LogString ( "ERROR: ", luaDebugInfo, szBuffer, 1 );
-}
-
-
-void CScriptDebugging::LogBadPointer ( lua_State* luaVM, const char* szArgumentType, unsigned int uiArgument )
-{
+    assert ( szFunction );
     assert ( szArgumentType );
-    LogWarning ( luaVM, "Bad '%s' pointer @ '%s'(%u)", szArgumentType, lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ), uiArgument );
+    LogWarning ( luaVM, "Bad '%s' pointer @ '%s'(%u)", szArgumentType, szFunction, uiArgument );
 }
 
 
-void CScriptDebugging::LogBadType ( lua_State* luaVM )
+void CScriptDebugging::LogBadType ( lua_State* luaVM, const char* szFunction )
 {
-    LogWarning ( luaVM, "Bad argument @ '%s'", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+    assert ( szFunction );
+    LogWarning ( luaVM, "Bad argument @ '%s'", szFunction );
 }
 
 
-void CScriptDebugging::LogBadAccess ( lua_State* luaVM )
+void CScriptDebugging::LogBadAccess ( lua_State* luaVM, const char* szFunction )
 {
-    LogWarning ( luaVM, "Access denied @ '%s'", lua_tostring ( luaVM, lua_upvalueindex ( 1 ) ) );
+    assert ( szFunction );
+    LogWarning ( luaVM, "Access denied @ '%s'", szFunction );
 }
 
 
@@ -200,35 +233,6 @@ void CScriptDebugging::LogCustom ( lua_State* luaVM, const char* szMessage )
 {
     assert ( szMessage );
     LogWarning ( luaVM, "%s", szMessage );
-}
-
-
-// Handle filename/line number in string
-void CScriptDebugging::LogPCallError( lua_State* luaVM, const SString& strRes, bool bInitialCall )
-{   
-    std::vector < SString > vecSplit;
-    strRes.Split( ":", vecSplit );
-                
-    if ( vecSplit.size() >= 3 )
-    {
-        // File+line info present
-        SString strFile = vecSplit[ 0 ];
-        int     iLine   = atoi( vecSplit[ 1 ] );
-        SString strMsg  = vecSplit[2].SubStr( 1 );
-
-        if ( iLine == 0 && bInitialCall )
-        {
-            // Location hint for compiled scripts
-            LogError ( SLuaDebugInfo( strFile, iLine ), "(global scope) %s", *strMsg );
-        }
-        else
-            LogError ( SLuaDebugInfo( strFile, iLine ), "%s", *strMsg );
-    }
-    else
-    {
-        // File+line info not present
-        LogError( luaVM, "%s", strRes.c_str () );
-    }
 }
 
 
@@ -257,100 +261,43 @@ bool CScriptDebugging::SetLogfile ( const char* szFilename, unsigned int uiLevel
 }
 
 
-//
-// Get best debug info we possibly can from the relevent lua state
-//
-const SLuaDebugInfo& CScriptDebugging::GetLuaDebugInfo( lua_State * luaVM )
-{
-    static SLuaDebugInfo scriptDebugInfo;
-    scriptDebugInfo = SLuaDebugInfo();
-
-    // Get a VM from somewhere
-    if ( !luaVM && !m_LuaMainStack.empty () )
-        luaVM = m_LuaMainStack.back ()->GetVM ();
-
-    // Lua oop found at level 4 added one just in case it somehow ends up deeper due to nested calls
-    for ( int level = 1; level <= 5; level++ )
-    {
-        lua_Debug debugInfo;
-        if ( luaVM && lua_getstack ( luaVM, level, &debugInfo ) )
-        {
-            lua_getinfo ( luaVM, "nlS", &debugInfo );
-            // Lua oop handlers get marked as "C", ignore these as the information we want is further up the stack (typically level 4+)
-            if ( strcmp(debugInfo.source, "=[C]") != 0 )
-            {
-                 // Make sure this function isn't defined in a string (eg: from runcode)
-                if ( debugInfo.source[0] == '@' )
-                {
-                    // Get and store the location of the debug message
-                    scriptDebugInfo.strFile = debugInfo.source + 1;
-                    scriptDebugInfo.iLine = debugInfo.currentline;
-                    scriptDebugInfo.infoType = DEBUG_INFO_FILE_AND_LINE;
-                    // Stop here as we now have the best info
-                    break;
-                }
-                else
-                {
-                    scriptDebugInfo.strShortSrc = debugInfo.short_src;
-                    scriptDebugInfo.infoType = DEBUG_INFO_SHORT_SRC;
-                    // Try other levels to see if we can get the calling file
-                }
-            }
-        }
-        else
-        {
-            // Use saved info if set
-            if ( m_SavedLuaDebugInfo.infoType != DEBUG_INFO_NONE )
-            {
-                scriptDebugInfo = m_SavedLuaDebugInfo;
-            }
-            // No point in trying other levels as lua_getstack will fail
-            break;
-        }
-    }
-
-    return scriptDebugInfo;
-}
-
-
-//
-// Make full log message from components
-//
-SString CScriptDebugging::ComposeErrorMessage( const char* szPrePend, const SLuaDebugInfo& luaDebugInfo, const char* szMessage )
+void CScriptDebugging::LogString ( const char* szPrePend, lua_State * luaVM, const char* szMessage, unsigned int uiMinimumDebugLevel, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue )
 {
     SString strText;
+    lua_Debug debugInfo;
 
-    // 1st part - if not empty, it should have a space at the end
-    strText = szPrePend;
+    // Initialize values for onDebugMessage
+    SString strMsg  = szMessage;
+    SString strFile = "";
+    int     iLine   = -1;
 
-    // 2nd part if set
-    if ( luaDebugInfo.infoType == DEBUG_INFO_FILE_AND_LINE )
+    if ( luaVM && lua_getstack ( luaVM, 1, &debugInfo ) )
     {
-        if ( luaDebugInfo.iLine == INVALID_LINE_NUMBER )
-            strText += SString( "%s: ", *luaDebugInfo.strFile );
+        lua_getinfo ( luaVM, "nlS", &debugInfo );
+
+        // Make sure this function isn't defined in a string (eg: from runcode)
+        if ( debugInfo.source[0] == '@' )
+        {
+            // Get and store the location of the debug message
+            strFile = ConformResourcePath ( debugInfo.source );
+            iLine   = debugInfo.currentline;
+
+            // Populate a message to print/send (unless "info" type)
+            if ( uiMinimumDebugLevel < 3 )
+                strText = SString ( "%s%s:%d: %s", szPrePend, strFile.c_str (), debugInfo.currentline, szMessage );
+        }
         else
-            strText += SString( "%s:%d: ", *luaDebugInfo.strFile, luaDebugInfo.iLine );
+        {
+            strFile = debugInfo.short_src;
+
+            if ( uiMinimumDebugLevel < 3 )
+                strText = SString ( "%s%s %s", szPrePend, szMessage, strFile.c_str () );
+        }
     }
-
-    // 3rd part
-    strText += szMessage;
-
-    // 5th part - just kidding. This is actually the 4th part!
-    if ( !luaDebugInfo.strShortSrc.empty() )
+    else
     {
-        if ( luaDebugInfo.strShortSrc.BeginsWith( "[" ) )
-            strText += SString( " %s", *luaDebugInfo.strShortSrc );
-        else
-            strText += SString( " [%s]", *luaDebugInfo.strShortSrc );
+        strText = SString ( "%s%s", szPrePend, szMessage );
     }
-
-    return strText;
-}
-
-
-void CScriptDebugging::LogString ( const char* szPrePend, const SLuaDebugInfo& luaDebugInfo, const char* szMessage, unsigned int uiMinimumDebugLevel, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue )
-{
-    SString strText = ComposeErrorMessage( szPrePend, luaDebugInfo, szMessage );
 
     // Create a different message if type is "INFO"
     if ( uiMinimumDebugLevel > 2 )
@@ -364,18 +311,18 @@ void CScriptDebugging::LogString ( const char* szPrePend, const SLuaDebugInfo& l
 
         // Prepare onDebugMessage
         CLuaArguments Arguments;
-        Arguments.PushString ( szMessage );
+        Arguments.PushString ( strMsg.c_str ( ) );
         Arguments.PushNumber ( uiMinimumDebugLevel );
 
         // Push the file name (if any)
-        if ( !luaDebugInfo.strFile.empty() )
-            Arguments.PushString ( luaDebugInfo.strFile );
+        if ( strFile.length ( ) > 0 )
+            Arguments.PushString ( strFile.c_str ( ) );
         else
             Arguments.PushNil ( );
 
         // Push the line (if any)
-        if ( luaDebugInfo.iLine != INVALID_LINE_NUMBER )
-            Arguments.PushNumber ( luaDebugInfo.iLine );
+        if ( iLine > -1 )
+            Arguments.PushNumber ( iLine );
         else
             Arguments.PushNil ( );
         
@@ -395,7 +342,6 @@ void CScriptDebugging::LogString ( const char* szPrePend, const SLuaDebugInfo& l
     // Log to console
     CLogger::LogPrintf( "%s\n", strText.c_str () );
 
-#if 0
     // Not sure what this is for, seems pretty useless
     if ( m_uiHtmlLogLevel >= uiMinimumDebugLevel )
     {
@@ -414,7 +360,6 @@ void CScriptDebugging::LogString ( const char* szPrePend, const SLuaDebugInfo& l
             }
         }
     }
-#endif
 
     // Tell the players
     Broadcast ( CDebugEchoPacket ( strText, uiMinimumDebugLevel, ucRed, ucGreen, ucBlue ), uiMinimumDebugLevel );
@@ -449,34 +394,4 @@ void CScriptDebugging::Broadcast ( const CPacket& Packet, unsigned int uiMinimum
             (*iter)->Send ( Packet );
         }
     }
-}
-
-
-// Keep a stack of called VMs to give global warnings/errors a context
-void CScriptDebugging::PushLuaMain ( CLuaMain* pLuaMain )
-{
-    m_LuaMainStack.push_back ( pLuaMain );
-}
-
-void CScriptDebugging::PopLuaMain ( CLuaMain* pLuaMain )
-{
-    dassert ( !m_LuaMainStack.empty () );
-    if ( !m_LuaMainStack.empty () )
-    {
-        dassert ( m_LuaMainStack.back () == pLuaMain );
-        m_LuaMainStack.pop_back ();
-    }
-}
-
-void CScriptDebugging::OnLuaMainDestroy ( CLuaMain* pLuaMain )
-{
-    dassert ( !ListContains ( m_LuaMainStack, pLuaMain ) );
-    ListRemove ( m_LuaMainStack, pLuaMain );
-}
-
-CLuaMain* CScriptDebugging::GetTopLuaMain ( void )
-{
-    if ( !m_LuaMainStack.empty () )
-        return m_LuaMainStack.back();
-    return NULL;
 }

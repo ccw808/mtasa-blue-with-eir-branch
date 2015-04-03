@@ -24,7 +24,7 @@ void CLogger::LogPrintf ( const char* szFormat, ... )
     char szBuffer [MAX_STRING_LENGTH];
     va_list marker;
     va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
+    _VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
     va_end ( marker );
 
     // Timestamp and send to the logfile
@@ -38,20 +38,21 @@ void CLogger::LogPrint ( const char* szText )
     HandleLogPrint ( true, "", szText, false, true );
 }
 
+#if 0   // Currently unused
 void CLogger::LogPrintfNoStamp ( const char* szFormat, ... )
 {
     // Compose the formatted message
     char szBuffer [MAX_STRING_LENGTH];
     va_list marker;
     va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
+    _VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
     va_end ( marker );
 
     // Send to the console and logfile
     HandleLogPrint ( false, "", szBuffer, true, true );
 }
 
-#if 0   // Currently unused
+
 void CLogger::LogPrintNoStamp ( const char* szText )
 {
     // Send to the console and logfile
@@ -65,7 +66,7 @@ void CLogger::ErrorPrintf ( const char* szFormat, ... )
     char szBuffer [MAX_STRING_LENGTH];
     va_list marker;
     va_start ( marker, szFormat );
-    VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
+    _VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
     va_end ( marker );
 
     // Timestamp and send to the console and logfile
@@ -80,7 +81,7 @@ void CLogger::DebugPrintf ( const char* szFormat, ... )
         char szBuffer [MAX_STRING_LENGTH];
         va_list marker;
         va_start ( marker, szFormat );
-        VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
+        _VSNPRINTF ( szBuffer, MAX_STRING_LENGTH, szFormat, marker );
         va_end ( marker );
 
         // Timestamp and send to the console and logfile

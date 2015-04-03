@@ -24,8 +24,7 @@ typedef void ( InRenderer ) ( void );
 #include "CAnimBlendAssociation.h"
 #include "CAnimBlock.h"
 #include "CAnimManager.h"
-#include "CAudioEngine.h"
-#include "CAudioContainer.h"
+#include "CAudio.h"
 #include "CCam.h"
 #include "CCamera.h"
 #include "CCarEnterExit.h"
@@ -40,8 +39,6 @@ typedef void ( InRenderer ) ( void );
 #include "CFireManager.h"
 #include "CFont.h"
 #include "CFx.h"
-#include "CFxSystem.h"
-#include "CFxManager.h"
 #include "CGarages.h"
 #include "CHandlingManager.h"
 #include "CHud.h"
@@ -54,7 +51,6 @@ typedef void ( InRenderer ) ( void );
 #include "CPedModelInfo.h"
 #include "CPickups.h"
 #include "CPlayerInfo.h"
-#include "CPointLights.h"
 #include "CPools.h"
 #include "CPopulation.h"
 #include "CProjectile.h"
@@ -72,17 +68,12 @@ typedef void ( InRenderer ) ( void );
 #include "CTheCarGenerators.h"
 #include "CVisibilityPlugins.h"
 #include "CWaterManager.h"
-#include "CWeaponStatManager.h"
 #include "CWeather.h"
 #include "CWeaponInfo.h"
 #include "CWorld.h"
 #include "TaskCarAccessories.h"
 
 #include <windows.h>
-
-typedef bool ( PreWeaponFireHandler ) ( class CPlayerPed* pPlayer, bool bStopIfUsingBulletSync );
-typedef void ( PostWeaponFireHandler ) ( void );
-typedef void ( TaskSimpleBeHitHandler ) ( class CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
 
 enum eGameVersion 
 {
@@ -93,24 +84,6 @@ enum eGameVersion
     VERSION_20 = 20,
     VERSION_UNKNOWN = 0xFF,
 };
-
-struct SMatchChannelStats
-{
-    SString strTag;
-    uint uiNumMatchedTextures;
-    uint uiNumShaderAndEntities;
-};
-
-struct SShaderReplacementStats
-{
-    uint uiNumReplacementRequests;
-    uint uiNumReplacementMatches;
-    uint uiTotalTextures;
-    uint uiTotalShaders;
-    uint uiTotalEntitesRefed;
-    std::map < uint, SMatchChannelStats > channelStatsList;
-};
-
 
 class __declspec(novtable) CGame 
 {
@@ -135,9 +108,7 @@ public:
     virtual C3DMarkers          * Get3DMarkers()=0;
     virtual CPad                * GetPad()=0;
     virtual CAERadioTrackManager* GetAERadioTrackManager()=0;
-    virtual CAudioEngine        * GetAudioEngine()=0;
-    virtual CAudioEngine        * GetAudio()=0;
-    virtual CAudioContainer     * GetAudioContainer()=0;
+    virtual CAudio              * GetAudio()=0;
     virtual CMenuManager        * GetMenuManager()=0;
     virtual CText               * GetText()=0;
     virtual CStats              * GetStats()=0;
@@ -149,18 +120,15 @@ public:
     virtual CCarEnterExit       * GetCarEnterExit()=0;
     virtual CControllerConfigManager * GetControllerConfigManager() = 0;
     virtual CRenderWare         * GetRenderWare()=0;
-    virtual CHandlingManager    * GetHandlingManager () = 0;
+    virtual IHandlingManager    * GetHandlingManager () = 0;
     virtual CAnimManager        * GetAnimManager () = 0;
     virtual CStreaming          * GetStreaming () = 0;
     virtual CVisibilityPlugins  * GetVisibilityPlugins () = 0;
     virtual CKeyGen             * GetKeyGen () = 0;
     virtual CRopes              * GetRopes () = 0;
     virtual CFx                 * GetFx () = 0;
-    virtual CFxManager          * GetFxManager () = 0;
     virtual CWaterManager       * GetWaterManager () = 0;
-    virtual CWeaponStatManager  * GetWeaponStatManager () = 0;
-    virtual CPointLights        * GetPointLights () = 0;
-
+    
     virtual CWeaponInfo         * GetWeaponInfo(eWeaponType weapon,eWeaponSkill skill=WEAPONSKILL_STD)=0;
     virtual CModelInfo          * GetModelInfo(DWORD dwModelID)=0;
 
@@ -201,40 +169,20 @@ public:
     virtual unsigned char       GetBlurLevel ( void ) = 0;
     virtual void                SetBlurLevel ( unsigned char ucLevel ) = 0;
 
-    virtual void                SetJetpackWeaponEnabled     ( eWeaponType weaponType, bool bEnabled );
-    virtual bool                GetJetpackWeaponEnabled     ( eWeaponType weaponType );
-
     virtual eGameVersion        GetGameVersion ( void ) = 0;
 
     virtual bool                IsCheatEnabled              ( const char* szCheatName ) = 0;
     virtual bool                SetCheatEnabled             ( const char* szCheatName, bool bEnable ) = 0;
     virtual void                ResetCheats                 () = 0;
 
-    virtual CWeapon *           CreateWeapon                ( void ) = 0;
-    virtual CWeaponStat *       CreateWeaponStat            ( eWeaponType weaponType, eWeaponSkill weaponSkill ) = 0;
-
     virtual bool                VerifySADataFileNames       () = 0;
     virtual bool                PerformChecks               () = 0;
     virtual int&                GetCheckStatus              () = 0;
 
+    virtual void                SetAsyncLoadingFromSettings     ( bool bSettingsDontUse, bool bSettingsEnabled ) = 0;
     virtual void                SetAsyncLoadingFromScript       ( bool bScriptEnabled, bool bScriptForced ) = 0;
-    virtual void                SuspendASyncLoading             ( bool bSuspend, uint uiAutoUnsuspendDelay = 0 ) = 0;
+    virtual void                SuspendASyncLoading             ( bool bSuspend ) = 0;
     virtual bool                IsASyncLoadingEnabled           ( bool bIgnoreSuspend = false ) = 0;
-
-    virtual bool                HasCreditScreenFadedOut         ( void ) = 0;
-    virtual void                FlushPendingRestreamIPL         ( void ) = 0;
-    virtual void                ResetModelLodDistances          ( void ) = 0;
-    virtual void                ResetAlphaTransparencies         ( void ) = 0;
-    virtual void                DisableVSync                    ( void ) = 0;
-
-    virtual void                OnPedContextChange              ( CPed* pPedContext ) = 0;
-    virtual CPed*               GetPedContext                   ( void ) = 0;
-
-    virtual void                GetShaderReplacementStats       ( SShaderReplacementStats& outStats ) = 0;
-
-    virtual void                SetPreWeaponFireHandler         ( PreWeaponFireHandler* pPreWeaponFireHandler ) = 0;
-    virtual void                SetPostWeaponFireHandler        ( PostWeaponFireHandler* pPostWeaponFireHandler ) = 0;
-    virtual void                SetTaskSimpleBeHitHandler       ( TaskSimpleBeHitHandler* pTaskSimpleBeHitHandler ) = 0;
 };
 
 #endif

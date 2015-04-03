@@ -14,7 +14,6 @@
 #include "detours/include/detours.h"
 
 template<> CDirectInputHook8 * CSingleton< CDirectInputHook8 >::m_pSingleton = NULL;
-IDirectInput8* g_pDirectInput8 = NULL;
 
 CDirectInputHook8::CDirectInputHook8 ( )
 {
@@ -36,18 +35,14 @@ HRESULT CDirectInputHook8::API_DirectInput8Create  ( HINSTANCE  hinst,
                                                      LPVOID*    ppvOut,
                                                      LPUNKNOWN  punkOuter )
 {
+    CDirectInputHook8 *    pThis;
+    HRESULT                hResult;
+
     // Get our self instance.
-    CDirectInputHook8* pThis = CDirectInputHook8::GetSingletonPtr ( );
-    assert( pThis && "API_DirectInput8Create: No CDirectInputHook8" );
+    pThis = CDirectInputHook8::GetSingletonPtr ( );
 
     // Create our interface.
-    HRESULT hResult = pThis->m_pfnDirectInputCreate ( hinst, dwVersion, riidltf, ppvOut, punkOuter );
-
-    if ( FAILED( hResult ) )
-    {
-        WriteDebugEvent ( "DirectInput8Create failed." );
-        return hResult;
-    }
+    hResult = pThis->m_pfnDirectInputCreate ( hinst, dwVersion, riidltf, ppvOut, punkOuter );
 
     // See if it is unicode or ansi.
     if ( riidltf == IID_IDirectInputW ) 
@@ -63,15 +58,11 @@ HRESULT CDirectInputHook8::API_DirectInput8Create  ( HINSTANCE  hinst,
         pThis->m_bIsUnicodeInterface = false;
     }
 
-    // Get the real interface temporarily.
-    IDirectInput8* pDirectInput8 = static_cast < IDirectInput8 * > ( *ppvOut );
+    // Save the real interface temporarily.
+    pThis->m_pDevice = static_cast < IUnknown * > ( *ppvOut );
 
     // Give the caller a proxy interface.
-    CProxyDirectInput8* pProxyDirectInput8 = new CProxyDirectInput8 ( pDirectInput8 );
-    pProxyDirectInput8->AddRef();
-
-    g_pDirectInput8 = pProxyDirectInput8;
-    *ppvOut = pProxyDirectInput8;
+    *ppvOut = new CProxyDirectInput8 ( static_cast < IDirectInput8 * > ( pThis->m_pDevice ) );
 
     return hResult;
 }

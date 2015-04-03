@@ -24,35 +24,21 @@ CHTTPD::CHTTPD ( void )
     m_server = NULL;
     m_bStartedServer = false;
 
-    m_pGuestAccount = new CAccount ( g_pGame->GetAccountManager (), false, HTTP_GUEST_ACCOUNT_NAME );
+    m_pGuestAccount = new CAccount ( g_pGame->GetAccountManager (), false, "http_guest" );
 
     m_HttpDosProtect = CConnectHistory ( g_pGame->GetConfig ()->GetHTTPDosThreshold (), 10000, 60000 * 1 );     // Max of 'n' connections per 10 seconds, then 1 minute ignore
-
-    std::vector< SString > excludeList;
-    g_pGame->GetConfig ()->GetHTTPDosExclude ().Split( ",", excludeList );
-    m_HttpDosExcludeMap = std::set < SString > ( excludeList.begin(), excludeList.end() );
 }
 
 
 CHTTPD::~CHTTPD ()
-{
-    StopHTTPD ();
-}
-
-
-bool CHTTPD::StopHTTPD ( void )
 {
     // Stop the server if we started it
     if ( m_bStartedServer )
     {
         // Stop the server
         StopServer ();
-        m_bStartedServer = false;
-        return true;
     }
-    return false;
 }
-
 
 bool CHTTPD::StartHTTPD ( const char* szIP, unsigned int port )
 {
@@ -89,29 +75,7 @@ bool CHTTPD::StartHTTPD ( const char* szIP, unsigned int port )
     return bResult;
 }
 
-// Called from worker thread.
-// Do some stuff before allowing EHS to do the proper routing
-HttpResponse * CHTTPD::RouteRequest ( HttpRequest * ipoHttpRequest )
-{
-    if ( !g_pGame->IsServerFullyUp () )
-    {
-        // create an HttpRespose object for the message
-        HttpResponse* poHttpResponse = new HttpResponse ( ipoHttpRequest->m_nRequestId, ipoHttpRequest->m_poSourceEHSConnection );
-        SStringX strWait ( "The server is not ready. Please try again in a minute." );
-        poHttpResponse->SetBody ( strWait.c_str (), strWait.size () );
-        poHttpResponse->m_nResponseCode = HTTPRESPONSECODE_200_OK;
-        return poHttpResponse;
-    }
 
-    // Sync with main thread before routing (to a resource)
-    g_pGame->Lock();
-    HttpResponse* poHttpResponse = EHS::RouteRequest( ipoHttpRequest );
-    g_pGame->Unlock();
-
-    return poHttpResponse;
-}
-
-// Called from worker thread. g_pGame->Lock() has already been called.
 // creates a page based on user input -- either displays data from
 //   form or presents a form for users to submit data.
 ResponseCode CHTTPD::HandleRequest ( HttpRequest * ipoHttpRequest,
@@ -128,6 +92,37 @@ ResponseCode CHTTPD::HandleRequest ( HttpRequest * ipoHttpRequest,
             SString strNewURL ( "http://%s/%s/", ipoHttpRequest->oRequestHeaders["host"].c_str(), m_strDefaultResourceName.c_str () );
             ipoHttpResponse->oResponseHeaders["location"] = strNewURL.c_str ();
             return HTTPRESPONSECODE_302_FOUND;
+
+            /*CAccessControlListManager * pACLManager = g_pGame->GetACLManager();
+            char * szAccountName = account->GetName();
+
+            if ( pACLManager->CanObjectUseRight ( szAccountName,
+                                                  CAccessControlListGroupObject::OBJECT_TYPE_USER,
+                                                  m_szDefaultResourceName,
+                                                  CAccessControlListRight::RIGHT_TYPE_RESOURCE,
+                                                  true ) &&
+                pACLManager->CanObjectUseRight ( szAccountName,
+                                                 CAccessControlListGroupObject::OBJECT_TYPE_USER,
+                                                 "http",
+                                                 CAccessControlListRight::RIGHT_TYPE_GENERAL,
+                                                 true ) )
+            {
+                CResource * resource = g_pGame->GetResourceManager()->GetResource ( m_szDefaultResourceName );
+                if ( resource )
+                {
+                    ResponseCode ret = resource->HandleRequest ( ipoHttpRequest, ipoHttpResponse );
+
+                    // Log if this request was not a 200 OK response
+                    if ( ret != HTTPRESPONSECODE_200_OK )
+                        CLogger::LogPrintf ( "HTTPD: Request from %s (%d: %s)\n", ipoHttpRequest->GetAddress ().c_str (), ret, ipoHttpRequest->sUri.c_str () );
+
+                    return ret;
+                }
+            }
+            else
+            {
+                return RequestLogin ( ipoHttpResponse );
+            }*/
         }
     }
 
@@ -174,7 +169,7 @@ CAccount * CHTTPD::CheckAuthentication ( HttpRequest * ipoHttpRequest )
                 return m_pGuestAccount;
             }
 
-            CAccount * account = g_pGame->GetAccountManager()->Get ( authName.c_str());
+            CAccount * account = g_pGame->GetAccountManager()->Get ( (char *)authName.c_str());
             if ( account )
             {
                 // Check that the password is right
@@ -182,7 +177,7 @@ CAccount * CHTTPD::CheckAuthentication ( HttpRequest * ipoHttpRequest )
                 {
                     // Check that it isn't the Console account
                     std::string strAccountName = account->GetName ();
-                    if ( strAccountName.compare ( CONSOLE_ACCOUNT_NAME ) != 0 )
+                    if ( strAccountName.compare ( "Console" ) != 0 )
                     {
                         // Handle initial login logging
                         if ( m_LoggedInMap.find ( authName ) == m_LoggedInMap.end () )
@@ -205,13 +200,6 @@ CAccount * CHTTPD::CheckAuthentication ( HttpRequest * ipoHttpRequest )
 
 void CHTTPD::HttpPulse ( void )
 {
-    // Prevent more than one thread running this at once
-    static int iBusy = 0;
-    if ( ++iBusy > 1 )
-    {
-        iBusy--;
-        return;
-    }
 
     long long llExpireTime = GetTickCount64_ () - 1000 * 60 * 5;    // 5 minute timeout
 
@@ -230,7 +218,6 @@ void CHTTPD::HttpPulse ( void )
             iter++;
     }
 
-    iBusy--;
 }
 
 //
@@ -238,9 +225,6 @@ void CHTTPD::HttpPulse ( void )
 //
 bool CHTTPD::ShouldAllowConnection ( const char * szAddress )
 {
-    if ( MapContains( m_HttpDosExcludeMap, szAddress ) )
-        return true;
-
     if ( m_HttpDosProtect.IsFlooding ( szAddress ) )
         return false;
 

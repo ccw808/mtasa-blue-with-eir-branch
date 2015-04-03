@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="..\..\x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\x86\$(ConfigurationName)"
+			OutputDirectory="..\..\lib"
+			IntermediateDirectory=".\Win32_LIB_Release"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			>
@@ -42,7 +42,7 @@
 				InlineFunctionExpansion="1"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="../../../;../../../zlib"
+				AdditionalIncludeDirectories="../../../"
 				PreprocessorDefinitions="WIN32;NDEBUG;PNG_SETJMP_NOT_SUPPORTED;WIN32_LEAN_AND_MEAN"
 				StringPooling="true"
 				ExceptionHandling="0"
@@ -51,6 +51,7 @@
 				EnableFunctionLevelLinking="false"
 				UsePrecompiledHeader="0"
 				PrecompiledHeaderThrough=""
+				ProgramDataBaseFileName="vc70.pdb"
 				WarningLevel="3"
 				DebugInformationFormat="3"
 				CompileAs="0"
@@ -67,7 +68,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)\libpng.lib"
+				OutputFile="../../lib/libpng2008.lib"
 				IgnoreAllDefaultLibraries="true"
 			/>
 			<Tool
@@ -88,8 +89,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="..\..\x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\x86\$(ConfigurationName)"
+			OutputDirectory="..\..\lib"
+			IntermediateDirectory=".\Win32_LIB_Debug"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			>
@@ -113,7 +114,7 @@
 				Optimization="0"
 				FavorSizeOrSpeed="0"
 				OmitFramePointers="false"
-				AdditionalIncludeDirectories="../../../;../../../zlib"
+				AdditionalIncludeDirectories="../../../"
 				PreprocessorDefinitions="WIN32;_DEBUG;DEBUG;PNG_DEBUG=1;PNG_SETJMP_NOT_SUPPORTED"
 				StringPooling="true"
 				MinimalRebuild="false"
@@ -140,7 +141,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)\libpng_d.lib"
+				OutputFile="$(OutDir)/libpng2008d.lib"
 				IgnoreAllDefaultLibraries="true"
 			/>
 			<Tool
@@ -161,8 +162,8 @@
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="..\..\x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\..\..\obj\x86\$(ConfigurationName)\vendor\$(SafeRootNamespace)"
+			OutputDirectory="..\..\lib"
+			IntermediateDirectory="..\..\..\..\obj\vendor\libpng"
 			ConfigurationType="4"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			>
@@ -186,7 +187,7 @@
 				InlineFunctionExpansion="1"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="../../../;../../../zlib"
+				AdditionalIncludeDirectories="../../../"
 				PreprocessorDefinitions="WIN32;NDEBUG;PNG_SETJMP_NOT_SUPPORTED;WIN32_LEAN_AND_MEAN"
 				StringPooling="true"
 				ExceptionHandling="0"
@@ -210,7 +211,7 @@
 			/>
 			<Tool
 				Name="VCLibrarianTool"
-				OutputFile="$(OutDir)\libpng.lib"
+				OutputFile="$(OutDir)/libpng2008.lib"
 				IgnoreAllDefaultLibraries="true"
 			/>
 			<Tool

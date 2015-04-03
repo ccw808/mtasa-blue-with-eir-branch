@@ -25,7 +25,7 @@ bool CPickupHideShowPacket::Write ( NetBitStreamInterface& BitStream ) const
         unsigned short usPickupModelID;
         CPickup* pPickup;
         vector < CPickup* > ::const_iterator iter = m_List.begin ();
-        for ( ; iter != m_List.end (); ++iter )
+        for ( ; iter != m_List.end (); iter++ )
         {
             pPickup = *iter;
             usPickupModelID = 0;
@@ -45,7 +45,7 @@ bool CPickupHideShowPacket::Write ( NetBitStreamInterface& BitStream ) const
             if ( usPickupModelID != 0 )
             {
                 // Write the pickup model id and id
-                BitStream.Write ( pPickup->GetID () );
+                BitStream.WriteCompressed ( pPickup->GetID () );
                 BitStream.WriteCompressed ( usPickupModelID );
             }
         }

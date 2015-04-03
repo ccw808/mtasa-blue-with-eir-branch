@@ -23,19 +23,15 @@ CConnectManager::CConnectManager ( void )
 {
     g_pConnectManager = this;
 
-    m_Address.s_addr = 0;
     m_usPort = 0;
     m_bReconnect = false;
     m_bIsDetectingVersion = false;
     m_bIsConnecting = false;
-    m_bSave = true;
-    m_bForceInternalHTTPServer = false;
     m_tConnectStarted = 0;
 
     m_pOnCancelClick = new GUI_CALLBACK ( &CConnectManager::Event_OnCancelClick, this );
 
     m_pServerItem = NULL;
-    m_bNotifyServerBrowser = false;
 }
 
 
@@ -52,22 +48,14 @@ CConnectManager::~CConnectManager ( void )
 }
 
 
-bool CConnectManager::Connect ( const char* szHost, unsigned short usPort, const char* szNick, const char* szPassword, bool bNotifyServerBrowser, bool bForceInternalHTTPServer )
+bool CConnectManager::Connect ( const char* szHost, unsigned short usPort, const char* szNick, const char* szPassword )
 {
     assert ( szHost );
     assert ( szNick );
     assert ( szPassword );
 
-    m_bNotifyServerBrowser = bNotifyServerBrowser;
-
-    // Hide certain questions
-    CCore::GetSingleton ().GetLocalGUI ()->GetMainMenu ()->GetQuestionWindow ()->OnConnect ();
-
     // Hide the server queue
     CServerInfo::GetSingletonPtr()->Hide( );
-
-    // Save the browser state
-    CServerBrowser::GetSingletonPtr()->SaveOptions( );
 
     // Are we already connecting?
     CNet* pNet = CCore::GetSingleton ().GetNetwork ();
@@ -79,8 +67,8 @@ bool CConnectManager::Connect ( const char* szHost, unsigned short usPort, const
     // Is the nick valid?
     if ( !CheckNickProvided ( (char*) szNick ) )
     {
-        SString strBuffer = _("Connecting failed. Invalid nick provided!");
-        CCore::GetSingleton ().ShowMessageBox ( _("Error")+_E("CC20"), strBuffer, MB_BUTTON_OK | MB_ICON_ERROR ); // Invalid nick provided
+        SString strBuffer = "Connecting failed. Invalid nick provided!";
+        CCore::GetSingleton ().ShowMessageBox ( "Error", strBuffer, MB_BUTTON_OK | MB_ICON_ERROR );
         return false;
     }
 
@@ -95,79 +83,56 @@ bool CConnectManager::Connect ( const char* szHost, unsigned short usPort, const
     m_strHost = szHost;
     m_strNick = szNick;
     m_strPassword = szPassword;
-    m_Address.s_addr = 0;
     m_usPort = usPort;
-    m_bForceInternalHTTPServer = bForceInternalHTTPServer;
-    m_bSave = true;
 
     m_strLastHost = m_strHost;
     m_usLastPort = m_usPort;
     m_strLastPassword = m_strPassword;
 
     // Parse host into a server item
-    if ( !CServerListItem::Parse ( m_strHost.c_str(), m_Address ) )
+    in_addr Address;
+    if ( !CServerListItem::Parse ( m_strHost.c_str(), Address ) )
     {
-        SString strBuffer = _("Connecting failed. Invalid host provided!");
-        CCore::GetSingleton ().ShowMessageBox ( _("Error")+_E("CC21"), strBuffer, MB_BUTTON_OK | MB_ICON_ERROR ); // Invalid host provided
+        SString strBuffer = "Connecting failed. Invalid host provided!";
+        CCore::GetSingleton ().ShowMessageBox ( "Error", strBuffer, MB_BUTTON_OK | MB_ICON_ERROR );
         return false;
     }
 
-    // No connect if disk space is low
-    if ( !CCore::GetSingleton ().CheckDiskSpace () )
-        return false;
-
     // Set our packet handler
-    pNet->RegisterPacketHandler ( CConnectManager::StaticProcessPacket );
+    pNet->RegisterPacketHandler ( CConnectManager::StaticProcessPacket, true );
 
     // Try to start a network to connect
-    SString strAddress = inet_ntoa ( m_Address );
-    if ( m_usPort && !pNet->StartNetwork ( strAddress, m_usPort, CVARS_GET_VALUE < bool > ( "packet_tag" ) ) )
+    if ( !pNet->StartNetwork ( m_strHost.c_str (), m_usPort ) )
     {
-        SString strBuffer ( _("Connecting to %s at port %u failed!"), m_strHost.c_str (), m_usPort );
-        CCore::GetSingleton ().ShowMessageBox ( _("Error")+_E("CC22"), strBuffer, MB_BUTTON_OK | MB_ICON_ERROR ); // Failed to connect
+        SString strBuffer ( "Connecting to %s at port %u failed!", m_strHost.c_str (), m_usPort );
+        CCore::GetSingleton ().ShowMessageBox ( "Error", strBuffer, MB_BUTTON_OK | MB_ICON_ERROR );
         return false;
     }
 
     m_bIsConnecting = true;
     m_tConnectStarted = time ( NULL );
 
-    // Load server password
-    if ( m_strPassword.empty () )
-        m_strPassword = CServerBrowser::GetSingletonPtr()->GetServerPassword ( m_strHost + ":" + SString ( "%u", m_usPort ) );
-
     // Start server version detection
     SAFE_DELETE ( m_pServerItem );
-    m_pServerItem = new CServerListItem ( m_Address, m_usPort );
+    m_pServerItem = new CServerListItem ( Address, m_usPort + SERVER_LIST_QUERY_PORT_OFFSET );
     m_pServerItem->m_iTimeoutLength = 2000;
     m_bIsDetectingVersion = true;
 
     // Display the status box
-    SString strBuffer ( _("Connecting to %s:%u ..."), m_strHost.c_str(), m_usPort );
-    CCore::GetSingleton ().ShowMessageBox ( _("CONNECTING"), strBuffer, MB_BUTTON_CANCEL | MB_ICON_INFO, m_pOnCancelClick );
-    WriteDebugEvent( SString( "Connecting to %s:%u ...", m_strHost.c_str(), m_usPort ) );
+    SString strBuffer ( "Connecting to %s:%u ...", m_strHost.c_str(), m_usPort );
+    CCore::GetSingleton ().ShowMessageBox ( "CONNECTING", strBuffer, MB_BUTTON_CANCEL | MB_ICON_INFO, m_pOnCancelClick );
     return true;
 }
 
 
-bool CConnectManager::Reconnect ( const char* szHost, unsigned short usPort, const char* szPassword, bool bSave, bool bForceInternalHTTPServer )
+bool CConnectManager::Reconnect ( const char* szHost, unsigned short usPort, const char* szPassword )
 {
-    // Use previous connection datum when function arguments are not set
-    unsigned int uiPort = 0;
-    CVARS_GET ( "host",         m_strHost );
-    CVARS_GET ( "port",         uiPort );
-    m_usPort = uiPort;
-
-    // If keeping the same host & port, retrieve the password as well
-    if ( !szHost || !szHost[0] || m_strHost == szHost )
-        if ( usPort == 0 || m_usPort == usPort )
-            CVARS_GET ( "password",     m_strPassword );
-
     // Allocate a new host and nick buffer and store the strings in them
-    if ( szHost && szHost[0] )
+    if ( szHost )
     {
         m_strHost = szHost;
     }
-    if ( szPassword && szPassword[0] )
+    if ( szPassword )
     {
         m_strPassword = szPassword;
     }
@@ -177,10 +142,7 @@ bool CConnectManager::Reconnect ( const char* szHost, unsigned short usPort, con
         m_usPort = usPort;
     }
 
-    m_bSave = bSave;
-
     m_bReconnect = true;
-    m_bForceInternalHTTPServer = bForceInternalHTTPServer;
 
     return true;
 }
@@ -209,7 +171,6 @@ bool CConnectManager::Abort ( void )
     m_strNick = "";
     m_strPassword = "";
 
-    m_Address.s_addr = 0;
     m_usPort = 0;
     m_bIsConnecting = false;
     m_bIsDetectingVersion = false;
@@ -233,8 +194,6 @@ void CConnectManager::DoPulse ( void )
             // Got some sort of result?
             if ( m_pServerItem->bSkipped || m_pServerItem->bScanned )
             {
-                OnServerExists ();
-
                 m_bIsDetectingVersion = false;
                 // Is different version?
                 if ( m_pServerItem->bScanned && m_pServerItem->strVersion != MTA_DM_ASE_VERSION )
@@ -251,7 +210,7 @@ void CConnectManager::DoPulse ( void )
         if ( time ( NULL ) >= m_tConnectStarted + 8 )
         {
             // Show a message that the connection timed out and abort
-            g_pCore->ShowNetErrorMessageBox ( _("Error")+_E("CC23"), _("Connection timed out"), "connect-timed-out", true );
+            CCore::GetSingleton ().ShowMessageBox ( "Error", "Connection timed out", MB_BUTTON_OK | MB_ICON_ERROR );
             Abort ();
         }
         else
@@ -261,38 +220,34 @@ void CConnectManager::DoPulse ( void )
             if ( ucError != 0 )
             {
                 SString strError;
-                SString strErrorCode;
                 switch ( ucError )
                 {
-                    case RID_RSA_PUBLIC_KEY_MISMATCH:
-                        strError = _("Disconnected: unknown protocol error"); strErrorCode = _E("CC24");  // encryption key mismatch
+                    case ID_RSA_PUBLIC_KEY_MISMATCH:
+                        strError = "Disconnected: unknown protocol error";  // encryption key mismatch
                         break;
-                    case RID_INCOMPATIBLE_PROTOCOL_VERSION:
-                        strError = _("Disconnected: unknown protocol error"); strErrorCode = _E("CC34");  // old raknet version
+                    case ID_REMOTE_DISCONNECTION_NOTIFICATION:
+                        strError = "Disconnected: disconnected remotely";
                         break;
-                    case RID_REMOTE_DISCONNECTION_NOTIFICATION:
-                        strError = _("Disconnected: disconnected remotely"); strErrorCode = _E("CC25");
+                    case ID_REMOTE_CONNECTION_LOST:
+                        strError = "Disconnected: connection lost remotely";
                         break;
-                    case RID_REMOTE_CONNECTION_LOST:
-                        strError = _("Disconnected: connection lost remotely"); strErrorCode = _E("CC26");
+                    case ID_CONNECTION_BANNED:
+                        strError = "Disconnected: you are banned from this server";
                         break;
-                    case RID_CONNECTION_BANNED:
-                        strError = _("Disconnected: you are banned from this server"); strErrorCode = _E("CC27");
+                    case ID_NO_FREE_INCOMING_CONNECTIONS:
+                        CServerInfo::GetSingletonPtr()->Show ( CServerInfo::eWindowType::SERVER_INFO_QUEUE, m_strHost.c_str(), m_usPort, m_strPassword.c_str() );
                         break;
-                    case RID_NO_FREE_INCOMING_CONNECTIONS:
-                        CServerInfo::GetSingletonPtr()->Show ( eWindowTypes::SERVER_INFO_QUEUE, m_strHost.c_str(), m_usPort, m_strPassword.c_str() );
+                    case ID_DISCONNECTION_NOTIFICATION:
+                        strError = "Disconnected: disconnected";
                         break;
-                    case RID_DISCONNECTION_NOTIFICATION:
-                        strError = _("Disconnected: disconnected from the server"); strErrorCode = _E("CC28");
+                    case ID_CONNECTION_LOST:
+                        strError = "Disconnected: connection lost";
                         break;
-                    case RID_CONNECTION_LOST:
-                        strError = _("Disconnected: connection to the server was lost"); strErrorCode = _E("CC29");
-                        break;
-                    case RID_INVALID_PASSWORD:
-                        CServerInfo::GetSingletonPtr()->Show ( eWindowTypes::SERVER_INFO_PASSWORD, m_strHost.c_str(), m_usPort, m_strPassword.c_str() );
+                    case ID_INVALID_PASSWORD:
+                        CServerInfo::GetSingletonPtr()->Show ( CServerInfo::eWindowType::SERVER_INFO_PASSWORD, m_strHost.c_str(), m_usPort, m_strPassword.c_str() );
                         break;
                     default:
-                        strError = _("Disconnected: connection was refused"); strErrorCode = _E("CC30");
+                        strError = "Disconnected: connection refused";
                         break;
                 }
 
@@ -300,9 +255,7 @@ void CConnectManager::DoPulse ( void )
 
                 // Only display the error if we set one
                 if ( strError.length() > 0 )
-                {
-                    CCore::GetSingleton ().ShowNetErrorMessageBox ( _("Error")+strErrorCode, strError );
-                }
+                    CCore::GetSingleton ().ShowMessageBox ( "Error", strError, MB_BUTTON_OK | MB_ICON_ERROR );
                 else // Otherwise, remove the message box and hide quick connect
                 {
                     CCore::GetSingleton ().RemoveMessageBox( false );
@@ -310,6 +263,7 @@ void CConnectManager::DoPulse ( void )
                 }
 
                 CCore::GetSingleton ().GetNetwork ()->SetConnectionError ( 0 );
+                CCore::GetSingleton ().GetNetwork ()->SetImmediateError ( 0 );
                 Abort ();
             }
         }
@@ -321,7 +275,7 @@ void CConnectManager::DoPulse ( void )
     {
         std::string strNick;
         CVARS_GET ( "nick", strNick );
-        Connect ( m_strHost.c_str(), m_usPort, strNick.c_str(), m_strPassword.c_str(), false, m_bForceInternalHTTPServer );
+        Connect ( m_strHost.c_str(), m_usPort, strNick.c_str(), m_strPassword.c_str() );
         m_bReconnect = false;
     }
 }
@@ -332,8 +286,6 @@ bool CConnectManager::StaticProcessPacket ( unsigned char ucPacketID, NetBitStre
     // We're working on connecting?
     if ( g_pConnectManager->m_bIsConnecting )
     {
-        g_pConnectManager->OnServerExists ();
-
         // The packet we're expecting?
         if ( ucPacketID == PACKET_ID_MOD_NAME )
         {
@@ -361,20 +313,19 @@ bool CConnectManager::StaticProcessPacket ( unsigned char ucPacketID, NetBitStre
                     pQuickConnect->SetVisible ( false );
 
                 // Save the connection details into the config
-                if ( g_pConnectManager->m_bSave )
-                {
-                    CVARS_SET ( "host",     g_pConnectManager->m_strHost );
-                    CVARS_SET ( "port",     g_pConnectManager->m_usPort );
-                    CVARS_SET ( "password", g_pConnectManager->m_strPassword );
+                CVARS_SET ( "host",     g_pConnectManager->m_strHost );
+                CVARS_SET ( "port",     g_pConnectManager->m_usPort );
+                CVARS_SET ( "password", g_pConnectManager->m_strPassword );
 
-                }
+                //Conver the Address to an unsigned long
+                unsigned long ulAddr = inet_addr( g_pConnectManager->m_strHost.c_str() );
 
+                //Create an instance of the in_addr structure to store the address
+                in_addr Address;
+                //Set the address to the unsigned long we just created
+                Address.S_un.S_addr = ulAddr;
                 //Set the current server info and Add the ASE Offset to the Query port)
-                CCore::GetSingleton().SetCurrentServer ( g_pConnectManager->m_Address, g_pConnectManager->m_usPort );
-
-                SetApplicationSettingInt ( "last-server-ip", g_pConnectManager->m_Address.s_addr );
-                SetApplicationSettingInt ( "last-server-port", g_pConnectManager->m_usPort );
-                SetApplicationSettingInt ( "last-server-time", _time32 ( NULL ) );
+                CCore::GetSingleton().SetCurrentServer ( Address, g_pConnectManager->m_usPort + 123 );
 
                 // Kevuwk: Forced the config to save here so that the IP/Port isn't lost on crash
                 CCore::GetSingleton ().SaveConfig ();
@@ -384,7 +335,6 @@ bool CConnectManager::StaticProcessPacket ( unsigned char ucPacketID, NetBitStre
                 g_pConnectManager->m_strHost = "";
                 g_pConnectManager->m_strPassword = "";
 
-                g_pConnectManager->m_Address.s_addr = 0;
                 g_pConnectManager->m_usPort = 0;
                 g_pConnectManager->m_bIsConnecting = false;
                 g_pConnectManager->m_bIsDetectingVersion = false;
@@ -394,15 +344,15 @@ bool CConnectManager::StaticProcessPacket ( unsigned char ucPacketID, NetBitStre
                 if ( !CModManager::GetSingleton ().Load ( strModName, strArguments ) )
                 {
                     // Failed loading the mod
-                    strArguments.Format ( _("No such mod installed (%s)"), strModName.c_str() );
-                    CCore::GetSingleton ().ShowMessageBox ( _("Error")+_E("CC31"), strArguments, MB_BUTTON_OK | MB_ICON_ERROR ); // Mod loading failed
+                    strArguments.Format ( "No such mod installed (%s)", strModName.c_str() );
+                    CCore::GetSingleton ().ShowMessageBox ( "Error", strArguments, MB_BUTTON_OK | MB_ICON_ERROR );
                     g_pConnectManager->Abort ();
                 }
             }
             else
             {
                 // Show failed message and abort the attempt
-                CCore::GetSingleton ().ShowNetErrorMessageBox ( _("Error")+_E("CC32"), _("Bad server response (2)") );
+                CCore::GetSingleton ().ShowMessageBox ( "Error", "Bad server response (2)", MB_BUTTON_OK | MB_ICON_ERROR );
                 g_pConnectManager->Abort ();
             }
         }
@@ -412,7 +362,7 @@ bool CConnectManager::StaticProcessPacket ( unsigned char ucPacketID, NetBitStre
             if ( ucPacketID != PACKET_ID_SERVER_JOIN && ucPacketID != PACKET_ID_SERVER_JOIN_DATA )
             {
                 // Show failed message and abort the attempt
-                CCore::GetSingleton ().ShowNetErrorMessageBox ( _("Error")+_E("CC33"), _("Bad server response (1)") );
+                CCore::GetSingleton ().ShowMessageBox ( "Error", "Bad server response (1)", MB_BUTTON_OK | MB_ICON_ERROR );
                 g_pConnectManager->Abort ();
             }
         }
@@ -433,16 +383,4 @@ bool CConnectManager::CheckNickProvided ( const char* szNick )
     if ( stricmp ( szNick, "server" ) == 0 )
         return false;
     return true;
-}
-
-//
-// Called at least once (maybe more) if a MTA server exists at the current address/port
-//
-void CConnectManager::OnServerExists ( void )
-{
-    if ( m_bNotifyServerBrowser )
-    {
-        m_bNotifyServerBrowser = false;
-        CServerBrowser::GetSingletonPtr()->NotifyServerExists ( m_Address, m_usPort );
-    }
 }

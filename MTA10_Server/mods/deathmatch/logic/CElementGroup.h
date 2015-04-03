@@ -16,20 +16,28 @@ class CElementGroup;
 #ifndef CELEMENTGROUP_H
 #define CELEMENTGROUP_H
 
+#include <list>
 #include "CElement.h"
 
 class CElementGroup
 {
 private:
-    CFastList < CElement * >        m_elements;
+    std::list < CElement * >        m_elements;
+    class CResource *               m_pResource;
 public:
+                                    CElementGroup ( CResource * resource )
+                                    {
+                                        m_pResource = resource;
+                                    }
                                     ~CElementGroup();
+
     void                            Add ( CElement * element );
     void                            Remove ( CElement * element );
+    inline CResource *              GetResource ( void ) { return m_pResource; }
     unsigned int                    GetCount ( void );
 
-    CFastList < CElement* > ::const_iterator IterBegin   ( void )    { return m_elements.begin (); }
-    CFastList < CElement* > ::const_iterator IterEnd     ( void )    { return m_elements.end (); }
+    std::list < CElement* > ::const_iterator IterBegin   ( void )    { return m_elements.begin (); };
+    std::list < CElement* > ::const_iterator IterEnd     ( void )    { return m_elements.end (); };
 };
 
 #endif

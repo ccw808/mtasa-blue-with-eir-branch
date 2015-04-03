@@ -23,13 +23,13 @@ class CXMLFileImpl : public CXMLFile
     friend class CXMLNodeImpl;
 
 public:
-                                    CXMLFileImpl        ( const char* szFilename, bool bUseIDs );
+                                    CXMLFileImpl        ( const char* szFilename );
                                     ~CXMLFileImpl       ( void );
 
     const char*                     GetFilename         ( void );
     void                            SetFilename         ( const char* szFilename );
 
-    bool                            Parse               ( std::vector < char >* pOutFileContents = NULL );
+    bool                            Parse               ( void );
     bool                            Write               ( void );
     void                            Clear               ( void );
     void                            Reset               ( void );
@@ -46,13 +46,8 @@ public:
     TiXmlDocument*                  GetDocument         ( void );
 
     eXMLClass                       GetClassType        ( void )    { return CXML_FILE; };
-    unsigned long                   GetID               ( void )    { dassert ( m_bUsingIDs ); return m_ulID; };
-    bool                            IsValid             ( void )    { return !m_bUsingIDs || m_ulID != INVALID_XML_ID; };
-    bool                            IsUsingIDs          ( void )    { return m_bUsingIDs; }
-
-    static void                     InitFileRecovery    ( const char* szSaveFlagDirectory );
-    void                            FileRecoveryPreSave ( const SString& strFilename );
-    void                            FileRecoveryPostSave( void );
+    unsigned long                   GetID               ( void )    { return m_ulID; };
+    bool                            IsValid             ( void )    { return m_ulID != INVALID_XML_ID; };
 
 private:
     bool                            BuildWrapperTree    ( void );
@@ -69,9 +64,6 @@ private:
 
     class CXMLNodeImpl*             m_pRootNode;
     unsigned long                   m_ulID;
-    const bool                      m_bUsingIDs;
-
-    static SString                  ms_strSaveFlagFile;
 };
 
 #endif

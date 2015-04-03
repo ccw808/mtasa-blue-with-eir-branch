@@ -765,10 +765,10 @@ void Combobox::onFontChanged(WindowEventArgs& e)
 void Combobox::onTextChanged(WindowEventArgs& e)
 {
 	// update ourselves only if needed (prevents perpetual event loop & stack overflow)
-	if (d_editbox->getText() != getText())
+	if (d_editbox->getText() != d_text)
 	{
 		// done before doing base class processing so event subscribers see 'updated' version of this.
-		d_editbox->setText(getText());
+		d_editbox->setText(d_text);
 		e.handled = true;
 
 		Window::onTextChanged(e);

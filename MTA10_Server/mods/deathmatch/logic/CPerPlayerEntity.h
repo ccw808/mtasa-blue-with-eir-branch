@@ -40,12 +40,9 @@ public:
     void                        ClearVisibleToReferences        ( void );
     bool                        IsVisibleToReferenced           ( CElement* pElement );
 
-    bool                        IsVisibleToPlayer               ( CPlayer& Player );
+    bool                        IsVisibleToPlayer               ( class CPlayer& Player );
 
-    const std::set < CPlayer * >&   GetPlayersList              ( void )                    { return m_Players; }
-
-    static void                 StaticOnPlayerDelete            ( CPlayer* pPlayer );
-    void                        OnPlayerDelete                  ( CPlayer* pPlayer );
+    list < CPlayer * >          &GetPlayersList                  ( void )                    { return m_Players; }
 
 protected:
     virtual void                CreateEntity                    ( CPlayer* pPlayer );
@@ -57,19 +54,17 @@ protected:
     list < CElement* >          m_ElementReferences;
 
 private:
-    void                        RemoveIdenticalEntries          ( std::set < class CPlayer* >& List1, std::set < class CPlayer* >& List2 );
+    void                        RemoveIdenticalEntries          ( list < class CPlayer* >& List1, list < class CPlayer* >& List2 );
 
-    void                        AddPlayersBelow                 ( CElement* pElement, std::set < class CPlayer* >& Added );
-    void                        RemovePlayersBelow              ( CElement* pElement, std::set < class CPlayer* >& Removed );
+    void                        AddPlayersBelow                 ( CElement* pElement, list < class CPlayer* >& Added );
+    void                        RemovePlayersBelow              ( CElement* pElement, list < class CPlayer* >& Removed );
 
-    void                        AddPlayerReference              ( class CPlayer* pPlayer );
+    inline void                 AddPlayerReference              ( class CPlayer* pPlayer )      { m_Players.push_back ( pPlayer ); };
     void                        RemovePlayerReference           ( class CPlayer* pPlayer );
 
-    std::set < CPlayer* >       m_PlayersAdded;
-    std::set < CPlayer* >       m_PlayersRemoved;
-    std::set < CPlayer* >       m_Players;
-
-    static std::set < CPerPlayerEntity* > ms_AllPerPlayerEntityMap;
+    list < class CPlayer* >     m_PlayersAdded;
+    list < class CPlayer* >     m_PlayersRemoved;
+    list < class CPlayer* >     m_Players;
 };
 
 #endif

@@ -28,15 +28,12 @@ class CProjectileSA : public virtual CProjectile, public virtual CObjectSA
 private:
     CProjectileSAInterface          * internalInterface;
     class CProjectileInfo         * projectileInfo;
-    bool                            m_bDestroyed;
 public:
                     CProjectileSA(class CProjectileSAInterface * projectileInterface);
                     ~CProjectileSA( );
-    void            Destroy( bool bBlow = true );
-    bool            CalculateImpactPosition ( CEntitySAInterface * pCollidedWith, CVector vecInputStart, CVector &vecInputEnd );
+    void            Destroy();
     
     void            SetProjectileInfo ( CProjectileInfo* pProjectileInfo ) { projectileInfo = pProjectileInfo; }
-    bool            CorrectPhysics ( void );
 };
 
 #endif

@@ -13,7 +13,7 @@
 
 #include <StdInc.h>
 
-CScriptFile::CScriptFile ( const char* szFilename, unsigned long ulMaxSize ) : ClassInit ( this ), CClientEntity ( INVALID_ELEMENT_ID )
+CScriptFile::CScriptFile ( const char* szFilename, unsigned long ulMaxSize ) : CClientEntity ( INVALID_ELEMENT_ID )
 {
     // Init
     SetTypeName ( "file" );
@@ -35,31 +35,23 @@ bool CScriptFile::Load ( eMode Mode )
     // If we haven't already got a file
     if ( !m_pFile )
     {
-        m_bDoneResourceFileCheck = false;
-        m_pFile = g_pNet->AllocateBinaryFile ();
-        bool bOk = false;
         switch ( Mode )
         {
             // Open file in read only binary mode
             case MODE_READ:
-                bOk = m_pFile->FOpen ( m_strFilename.c_str (), "rb", true );
+                m_pFile = fopen ( m_strFilename.c_str (), "rb" );
                 break;
 
             // Open file in read write binary mode.
             case MODE_READWRITE:
                 // Try to load the file in rw mode. Use existing content.
-                bOk = m_pFile->FOpen ( m_strFilename.c_str (), "rb+", true );
+                m_pFile = fopen ( m_strFilename.c_str (), "rb+" );
                 break;
 
             // Open file in read write binary mode. Truncate size to 0.
             case MODE_CREATE:
-                bOk = m_pFile->FOpen ( m_strFilename.c_str (), "wb+", true );
+                m_pFile = fopen ( m_strFilename.c_str (), "wb+" );
                 break;
-        }
-
-        if ( !bOk )
-        {
-            SAFE_DELETE( m_pFile );
         }
 
         // Return whether we successfully opened it or not
@@ -73,8 +65,13 @@ bool CScriptFile::Load ( eMode Mode )
 
 void CScriptFile::Unload ( void )
 {
-    // Close the file if required
-    SAFE_DELETE( m_pFile );
+    // Loaded?
+    if ( m_pFile )
+    {
+        // Close the file
+        fclose ( m_pFile );
+        m_pFile = NULL;
+    }
 }
 
 
@@ -84,7 +81,7 @@ bool CScriptFile::IsEOF ( void )
         return true;
 
     // Reached end of file?
-    return m_pFile->FEof ();
+    return feof ( m_pFile ) != 0;
 }
 
 
@@ -93,7 +90,7 @@ long CScriptFile::GetPointer ( void )
     if ( !m_pFile )
         return -1;
 
-    return m_pFile->FTell ();
+    return ftell ( m_pFile );
 }
 
 
@@ -103,14 +100,14 @@ long CScriptFile::GetSize ( void )
         return -1;
 
     // Remember current position and seek to the end
-    long lCurrentPos = m_pFile->FTell ();
-    m_pFile->FSeek ( 0, SEEK_END );
+    long lCurrentPos = ftell ( m_pFile );
+    fseek ( m_pFile, 0, SEEK_END );
 
     // Retrieve size of file
-    long lSize = m_pFile->FTell ();
+    long lSize = ftell ( m_pFile );
 
     // Seek back to where the pointer was
-    m_pFile->FSeek ( lCurrentPos, SEEK_SET );
+    fseek ( m_pFile, lCurrentPos, SEEK_SET );
 
     // Return the size
     return lSize;
@@ -133,7 +130,7 @@ long CScriptFile::SetPointer ( unsigned long ulPosition )
     }
 
     // Move the pointer
-    m_pFile->FSeek ( ulPosition, SEEK_SET );
+    fseek ( m_pFile, ulPosition, SEEK_SET );
 
     // Bigger than file size? Tell the script how far we were able to move it
     long lSize = GetSize ();
@@ -147,12 +144,21 @@ long CScriptFile::SetPointer ( unsigned long ulPosition )
 }
 
 
+void CScriptFile::SetSize ( unsigned long ulNewSize )
+{
+    // TODO: A way to truncate a file
+    if ( !m_pFile )
+        return;
+
+}
+
+
 void CScriptFile::Flush ( void )
 {
     if ( !m_pFile )
         return;
 
-    m_pFile->FFlush ();
+    fflush ( m_pFile );
 }
 
 
@@ -161,10 +167,8 @@ long CScriptFile::Read ( unsigned long ulSize, char* pData )
     if ( !m_pFile )
         return -1;
 
-    DoResourceFileCheck();
-
     // Try to read data into the given block. Return number of bytes we read.
-    return m_pFile->FRead ( pData, ulSize );
+    return fread ( pData, 1, ulSize, m_pFile );
 }
 
 
@@ -174,36 +178,5 @@ long CScriptFile::Write ( unsigned long ulSize, const char* pData )
         return -1;
 
     // Write the data into the given block. Return number of bytes we wrote.
-    return m_pFile->FWrite ( pData, ulSize );
-}
-
-
-// If file was downloaded with a resource, validate checksum
-void CScriptFile::DoResourceFileCheck ( void )
-{
-    if ( !m_pFile || m_bDoneResourceFileCheck )
-        return;
-    m_bDoneResourceFileCheck = true;
-
-    if ( g_pClientGame->GetResourceManager()->IsResourceFile( m_strFilename ) )
-    {
-        // Remember current position and seek to the end
-        long lCurrentPos = m_pFile->FTell ();
-        m_pFile->FSeek ( 0, SEEK_END );
-
-        // Retrieve size of file
-        long lSize = m_pFile->FTell ();
-
-        // Read data
-        CBuffer buffer;
-        buffer.SetSize( lSize );
-        m_pFile->FSeek ( 0, SEEK_SET );
-        m_pFile->FRead ( buffer.GetData(), buffer.GetSize() );
-
-        // Seek back to where the pointer was
-        m_pFile->FSeek ( lCurrentPos, SEEK_SET );
-
-        // Check file content
-        g_pClientGame->GetResourceManager()->ValidateResourceFile( m_strFilename, buffer );
-    }
+    return fwrite ( pData, 1, ulSize, m_pFile );
 }

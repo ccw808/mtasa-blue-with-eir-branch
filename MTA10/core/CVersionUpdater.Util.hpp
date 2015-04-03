@@ -278,7 +278,7 @@ namespace
             // Get first 6 non-digit delimited digits
             for ( uint i = 0 ; i < strDate.length () ; i++ )
             {
-                bool bIsDigit = isdigit ( (uchar)strDate[i] ) != 0;
+                bool bIsDigit = isdigit ( strDate[i] ) != 0;
                 if ( bIsDigit && !bWasDigit )
                     numbers.push_back ( atoi ( &strDate[i] ) );
                 bWasDigit = bIsDigit;
@@ -357,7 +357,7 @@ namespace
             assert ( !m_pXMLFile );
 
             // Try to save
-            m_strTempFileName = MakeUniquePath ( PathJoin ( GetMTADataPath (), "temp", "buffer.xml" ) );
+            m_strTempFileName = MakeUniquePath ( PathJoin ( GetMTALocalAppDataPath (), "temp", "buffer.xml" ) );
             if ( !FileSave ( m_strTempFileName, &data[0], uiSize ) )
             {
                 AddReportLog ( 2501, SString ( "CXMLBuffer::SetFromBuffer: Could not save %s", m_strTempFileName.c_str () ) );
@@ -395,15 +395,6 @@ namespace
         SString strName;
         SString strValue;
         std::map < SString, SString > attributeMap;
-        SString GetAttribute ( const SString& strName ) const
-        {
-            const SString* pValue = MapFind ( attributeMap, strName );
-            return pValue ? *pValue : "";
-        }
-        void SetAttribute ( const SString& strName, const SString& strValue )
-        {
-            MapSet ( attributeMap, strName, strValue );
-        }
     };
 
     // A list of subnodes and their attributes
@@ -576,6 +567,85 @@ namespace
 
     ///////////////////////////////////////////////////////////////
     //
+    // CFilterMap
+    //
+    // Change "+all,-{1000~2006},+2003,-{2050},-2611,-{3120},-{4002~4100},+{4010~4020}"
+    // into a map which can be queried using IsFiltered()
+    //
+    ///////////////////////////////////////////////////////////////
+    class CFilterMap
+    {
+    public:
+        CFilterMap ( const SString& strFilterDesc )
+        {
+            SetAll ( '+' );
+            AddString ( strFilterDesc );
+        }
+
+        bool IsFiltered ( int iValue )
+        {
+            if ( MapContains ( idMap, iValue ) )
+                return cDefaultType == '+';
+            return cDefaultType == '-';
+        }
+
+    protected:
+        void AddString ( const SString& strFilterDesc )
+        {
+            std::vector < SString > partList;
+            strFilterDesc.Split ( ",", partList );
+            for ( uint i = 0; i < partList.size () ; i++ )
+            {
+                const SString& part = partList [ i ];
+                char cType = part.Left ( 1 )[0];
+
+                SString strRest = part.Right ( part.length () - 1 );
+                strRest = strRest.Replace ( "{", "" ).Replace ( "}", "" );
+
+                SString strFrom, strTo;
+                strRest.Split ( "~", &strFrom, &strTo );
+
+                if ( strFrom == "all" )
+                    SetAll ( cType );
+                else
+                if ( strTo.empty () )
+                    AddSingle ( cType, atoi ( strFrom ) );
+                else
+                {
+                    const int iTo = atoi ( strTo );
+                    for ( int i = atoi ( strFrom ) ; i <= iTo ; i++ )
+                        AddSingle ( cType, i );
+                } 
+            }
+        }
+
+        void AddSingle ( char cType, int iValue )
+        {
+            if ( cType != cDefaultType )
+            {
+                // Add
+                MapSet ( idMap, iValue, true );
+            }
+            else
+            {
+                // Remove
+                MapRemove ( idMap, iValue );
+            }
+        }
+
+        void SetAll ( char cType )
+        {
+            idMap.clear ();
+            cDefaultType = cType;
+        }
+
+        std::map < uint, bool >     idMap;
+        char                        cDefaultType;
+    };
+
+
+    ///////////////////////////////////////////////////////////////
+    //
     // CReportWrap
     //
     // gawd knows
@@ -604,7 +674,6 @@ namespace
             m_ArgMap.Set ( "min", iMinSize );
             m_ArgMap.Set ( "max", iMaxSize );
             CVARS_SET ( "reportsettings", m_ArgMap.ToString () );
-            SetApplicationSetting ( "reportsettings", m_ArgMap.ToString () );
         }
 
         void LoadReportSettings ( void )
@@ -622,8 +691,6 @@ namespace
             m_ArgMap.Get ( "filter2", strFilter, GetBuildAge () < 30 ? "+all" : "-all" );
             m_ArgMap.Get ( "min", iMinSize, DEFAULT_MIN_SIZE );
             m_ArgMap.Get ( "max", iMaxSize, DEFAULT_MAX_SIZE );
-            iMinSize = 11;      // To fix parse bug in previous builds
-            iMaxSize = 4001;
             SaveReportSettings ();
         }
 
@@ -644,9 +711,7 @@ namespace
 
         static void ClearLogContents ( const SString& strIdFilter )
         {
-            if ( strIdFilter == "-all" && FileExists ( CalcMTASAPath ( "_keep_report_" ) ) )
-                return;
-            if ( FileExists ( CalcMTASAPath ( "_keep_report_all_" ) ) )
+            if ( strIdFilter == "" && FileExists ( CalcMTASAPath ( "_keep_report_" ) ) )
                 return;
             SetReportLogContents ( GetLogContents ( strIdFilter ) );
         }
@@ -663,24 +728,26 @@ namespace
             strContent.Split ( "\n", lines );
 
             // Filter each line
-            int iSize = 0;
+            int size = 0;
             std::vector < SString > filteredLines;
             for ( int i = lines.size () - 1 ; i  >= 0 ; i-- )
             {
-                const SString& strLine = lines[i];
-                if ( !strLine.empty () && !filterMap.IsFiltered ( atoi ( strLine ) ) )
+                SString strLeft, strRight;
+                lines[i].Split ( ",", &strLeft, NULL );
+                if ( !filterMap.IsFiltered ( atoi ( strLeft ) ) )
                 {
-                    iSize += strLine.length ();
-                    if ( iMaxSize && iSize > iMaxSize )
+                    size += lines[i].length ();
+                    if ( iMaxSize && size > iMaxSize )
                         break;
-                    filteredLines.push_back ( strLine );
+                    filteredLines.push_back ( lines[i] );
                 }
             }
 
             // Compose final output
             SString strResult;
             for ( int i = filteredLines.size () - 1 ; i  >= 0 ; i-- )
-                strResult += filteredLines[i] + "\n";
+                if ( filteredLines[i].length () > 0 )
+                    strResult += filteredLines[i] + "\n";
 
             return strResult;
         }
@@ -731,9 +798,6 @@ namespace
         struct {
             CDataInfoSet    serverInfoMap;
             CTimeSpan       interval;
-            SString         strFilter;
-            CValueInt       iMinSize;
-            CValueInt       iMaxSize;
         } report;
 
         struct {
@@ -748,10 +812,6 @@ namespace
 
         struct {
             CDataInfoSet    serverInfoMap;
-        } gtadatafiles2;
-
-        struct {
-            CDataInfoSet    serverInfoMap;
         } trouble;
 
         struct {
@@ -761,7 +821,6 @@ namespace
         struct {
             CDataInfoSet    serverInfoMap;
             CDataInfoSet    nobrowseInfoMap;
-            CDataInfoSet    onlybrowseInfoMap;
         } sidegrade;
 
         struct {
@@ -770,12 +829,6 @@ namespace
             SString         strOldestPost;
             CValueInt       iMaxHistoryLength;
         } news;
-
-        struct {
-            struct {
-                SString         strFilter;
-            } debug;
-        } misc;
 
         bool IsValid () const
         {
@@ -817,10 +870,7 @@ namespace
                                     , iIdleTimeLeft ( 0 )
                                     , uiBytesDownloaded ( 0 )
                                     , iFilesize ( 0 )
-                                {
-                                    exe.iFilesize = 0;
-                                    rar.iFilesize = 0;
-                                }
+                                {}
         // Input
         int                     iMaxServersToTry;
         int                     iTimeoutConnect;
@@ -841,7 +891,6 @@ namespace
         // Result
         std::vector < char >    downloadBuffer;
         SString                 strStatus;
-        SString                 strParameters;
         SString                 strTitle;
         SString                 strMsg;
         SString                 strMsg2;
@@ -853,23 +902,6 @@ namespace
         CDataInfoSet            serverInfoMap;
         SString                 strMD5;
         SString                 strSaveLocation;
-
-        struct
-        {
-            SString                 strFilename;
-            CValueInt               iFilesize;
-            CDataInfoSet            serverInfoMap;
-            SString                 strMD5;
-        } exe;
-
-        struct
-        {
-            SString                 strFilename;
-            CValueInt               iFilesize;
-            CDataInfoSet            serverInfoMap;
-            SString                 strMD5;
-        } rar;
-
     };
 
 }
@@ -902,7 +934,7 @@ namespace
     #if MTA_DEBUG
             CStringPair* pPair = MapFind ( *this, strType.ToLower () );
             if ( !pPair || pPair->strValue1 != pair.strValue1 || pPair->strValue2 != pair.strValue2 )
-                OutputDebugLine ( SString ( "[Updater] SetCondition %s %s %s", strType.c_str (), strValue1.c_str (), strValue2.c_str () ) );
+                OutputDebugLine ( SString ( "SetCondition %s %s %s", strType.c_str (), strValue1.c_str (), strValue2.c_str () ) );
     #endif
             MapSet ( *this, strType.ToLower (), pair );
         }

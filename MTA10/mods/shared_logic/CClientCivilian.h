@@ -15,16 +15,19 @@ class CClientCivilian;
 #ifndef __CCLIENTCIVILIAN_H
 #define __CCLIENTCIVILIAN_H
 
-#include <game/CCivilianPed.h>
-#include <game/TaskGoTo.h>
-#include <game/TaskCarAccessories.h>
+#ifdef COMPILE_FOR_VC
+    #include <game/CCivilianPed.h>
+#else if COMPILE_FOR_SA
+    #include <game/CCivilianPed.h>
+    #include <game/TaskGoTo.h>
+    #include <game/TaskCarAccessories.h>
+#endif
 
 #include "CClientCommon.h"
 #include "CClientEntity.h"
 
 class CClientCivilian : public CClientEntity
 {
-    DECLARE_CLASS( CClientCivilian, CClientEntity )
     friend class CClientCivilianManager;
 
 public:
@@ -38,9 +41,9 @@ public:
 
     inline void                     GetPosition             ( CVector& vecPosition ) const      { vecPosition = *m_pCivilianPed->GetPosition (); };
     inline void                     SetPosition             ( const CVector& vecPosition )      { m_pCivilianPed->SetPosition ( const_cast < CVector* > ( &vecPosition ) ); };
-    void                            GetRotationRadians      ( CVector& vecRotation ) const;
-    void                            SetRotationRadians      ( const CVector& vecRotation );
     int                             GetRotation             ( void );
+    void                            GetRotation             ( CVector& vecRotation ) const;
+    void                            SetRotation             ( const CVector& vecRotation );
     void                            SetRotation             ( int iRotation );
 
     inline void                     ModelRequestCallback    ( unsigned short usModelID )        {};

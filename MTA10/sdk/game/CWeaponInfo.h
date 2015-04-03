@@ -140,18 +140,11 @@ enum eWeaponType
 
     // Added by us
     WEAPONTYPE_TANK_GRENADE,
-    WEAPONTYPE_INVALID = 255,
-};
-enum eWeaponStats
-{
-    WEAPONTYPE_MIN = WEAPONTYPE_GRENADE,
-    WEAPONTYPE_MAX = WEAPONTYPE_EXTINGUISHER,
 };
 
 // VERY MUCH VC, NEEDS TO BE UPDATED
 enum eWeaponModel
 {
-    WEAPONMODEL_NONE=-1,
     WEAPONMODEL_CELLPHONE=258,
     WEAPONMODEL_BRASSKNUCKLE,
     WEAPONMODEL_SCREWDRIVER,
@@ -191,91 +184,73 @@ enum eWeaponModel
     WEAPONMODEL_MINIGUN2
 };
 
-// Caz - Things such as damage will only work with certain skill levels ( I found 500 to be the magic number )
+//////////////////////////////////////////////
+// flags used to define weapon characteristics
+
+// aiming options
+#define WEAPONTYPE_CANAIM           (0x000001)  // can auto target to aim
+#define WEAPONTYPE_CANAIMWITHARM    (0x000002)  // only needs arm to aim
+#define WEAPONTYPE_FIRSTPERSON      (0x000004)  // uses 1st person aim
+#define WEAPONTYPE_CANFREEAIM       (0x000008)  // can only use free aiming
+
+// movement options
+#define WEAPONTYPE_MOVEAIM          (0x000010)  // can move and aim at same time
+#define WEAPONTYPE_MOVEFIRE         (0x000020)  // can move and fire at same time
+
+// basic characteristics
+#define WEAPONTYPE_THROW            (0x000100)  // is a throwing weapon
+#define WEAPONTYPE_HEAVY            (0x000200)  // heavy weapon - can't jump
+#define WEAPONTYPE_CONTINUOUS_FIRE  (0x000400)  // fires every frame within loop (ie paint spray)
+#define WEAPONTYPE_TWIN_PISTOLS     (0x000800)  // can use 2x guns at same time
+
+// these are gun anim options
+#define WEAPONTYPE_ANIM_RELOAD      (0x001000)  // weapon has reload anims
+#define WEAPONTYPE_ANIM_CROUCHFIRE  (0x002000)  // weapon has crouching anims
+#define WEAPONTYPE_RELOAD2LOOPSTART (0x004000)  // loop from end of reload to fire loop start
+#define WEAPONTYPE_LONG_RELOAD_TIME (0x008000)  // force a longer reload time!
+
+// these are area effect/shot options
+#define WEAPONTYPE_SLOWS_DOWN       (0x010000)  // 
+#define WEAPONTYPE_RANDOM_SPEED     (0x020000)  // 
+#define WEAPONTYPE_FORCE_FINISH_ANIM (0x040000)  // force the anim to finish player after aim/fire rather than blending out
+#define WEAPONTYPE_EXPANDS          (0x080000)  // 
+
 class CWeaponInfo
 {
 public:
-    virtual eWeaponModel                GetModel                ( void )=0;
-    virtual eWeaponModel                GetModel2               ( void )=0;
-
-    virtual float                       GetWeaponRange          ( void )=0;
-    virtual void                        SetWeaponRange          ( float fRange )=0;
-
-    virtual float                       GetTargetRange          ( void )=0;
-    virtual void                        SetTargetRange          ( float fRange )=0;
-
-    virtual CVector *                   GetFireOffset           ( void )=0;
-    virtual void                        SetFireOffset           ( CVector * vecFireOffset )=0;
-
-    virtual short                       GetDamagePerHit         ( void )=0;
-    virtual void                        SetDamagePerHit         ( short sDamagePerHit )=0;
-
-    virtual float                       GetAccuracy             ( void ) = 0;
-    virtual void                        SetAccuracy             ( float fAccuracy ) = 0;
-
-    virtual short                       GetMaximumClipAmmo      ( void ) = 0;
-    virtual void                        SetMaximumClipAmmo      ( short sAccuracy ) = 0;
-
-    virtual float                       GetMoveSpeed            ( void ) = 0;
-    virtual void                        SetMoveSpeed            ( float fMoveSpeed ) = 0;
-
+    virtual eWeaponModel                GetModel()=0;
+    virtual FLOAT                       GetWeaponRange()=0;
+    virtual VOID                        SetWeaponRange(FLOAT fRange)=0;
+    virtual FLOAT                       GetTargetRange()=0;
+    virtual VOID                        SetTargetRange(FLOAT fRange)=0;
+    virtual CVector                     * GetFireOffset()=0;
+    virtual VOID                        SetFireOffset(CVector * vecFireOffset)=0;
+    virtual short                       GetDamagePerHit()=0;
+    virtual VOID                        SetDamagePerHit( short sDamagePerHit )=0;
+    virtual float                       GetAccuracy ( void ) = 0;
+    virtual void                        SetAccuracy ( float fAccuracy ) = 0;
     // projectile/areaeffect only
-    virtual float                       GetFiringSpeed          ( void )=0;
-    virtual void                        SetFiringSpeed          ( float fFiringSpeed )=0;
-
+    virtual FLOAT                       GetFiringSpeed()=0;
+    virtual VOID                        SetFiringSpeed( FLOAT fFiringSpeed )=0;
     // area effect only
-    virtual float                       GetRadius               ( void )=0;
-    virtual void                        SetRadius               ( float fRadius )=0;
-
-    virtual float                       GetLifeSpan             ( void )=0;
-    virtual void                        SetLifeSpan             ( float fLifeSpan )=0;
-
-    virtual float                       GetSpread               ( void )=0;
-    virtual void                        SetSpread               ( float fSpread )=0;
-
-    virtual float                       GetAnimBreakoutTime     ( void )=0;
-    virtual void                        SetAnimBreakoutTime     ( float fBreakoutTime )=0;
-
-    virtual eWeaponSlot                 GetSlot                 ( void )=0;
-    virtual void                        SetSlot                 ( eWeaponSlot dwSlot )=0;
-
-    virtual eWeaponSkill                GetSkill                ( void )=0;
-    virtual void                        SetSkill                ( eWeaponSkill weaponSkill )=0;
-
-    virtual float                       GetRequiredStatLevel    ( void )=0;
-    virtual void                        SetRequiredStatLevel    ( float fStatLevel )=0;
-
-    virtual void                        SetFlags                ( int flags ) = 0;
-    virtual void                        SetFlag                 ( DWORD flag ) = 0;
-    virtual void                        ClearFlag               ( DWORD flag ) = 0;
-    virtual bool                        IsFlagSet               ( DWORD flag ) = 0;
-    virtual short                       GetFlags                ( void ) = 0;
-
-    virtual DWORD                       GetAnimGroup            ( void ) = 0;
-    virtual void                        SetAnimGroup            ( DWORD dwAnimGroup ) = 0;
-
-    virtual eFireType                   GetFireType             ( void ) = 0;
-
-    virtual float                       GetWeaponAnimLoopStart  ( void ) = 0;
-
-    virtual float                       GetWeaponAnimLoopStop   ( void ) = 0;
-
-    virtual float                       GetWeaponAnimLoopFireTime( void ) = 0;
-    virtual void                        SetWeaponAnimLoopFireTime( float animFireTime ) = 0;
-
-    virtual float                       GetWeaponAnim2LoopStart  ( void ) = 0;
-
-    virtual float                       GetWeaponAnim2LoopStop   ( void ) = 0;
-
-    virtual float                       GetWeaponAnim2LoopFireTime( void ) = 0;
-
-    virtual float                       GetWeaponAnimBreakoutTime ( void ) = 0;
-
-    virtual float                       GetWeaponRadius          ( void ) = 0;
-
-    virtual short                       GetAimOffsetIndex        ( void ) = 0;
-    virtual BYTE                        GetDefaultCombo          ( void ) = 0;
-    virtual BYTE                        GetCombosAvailable       ( void ) = 0;
+    virtual FLOAT                       GetRadius()=0;
+    virtual VOID                        SetRadius( FLOAT fRadius )=0;
+    virtual FLOAT                       GetLifeSpan()=0;
+    virtual VOID                        SetLifeSpan( FLOAT fLifeSpan )=0;
+    virtual FLOAT                       GetSpread()=0;
+    virtual VOID                        SetSpread( FLOAT fSpread )=0;
+    virtual FLOAT                       GetAnimBreakoutTime()=0;
+    virtual VOID                        SetAnimBreakoutTime( FLOAT fBreakoutTime )=0;
+    virtual eWeaponSlot                 GetSlot()=0;
+    virtual VOID                        SetSlot( eWeaponSlot dwSlot )=0;
+    virtual eWeaponSkill                GetSkill()=0;
+    virtual VOID                        SetSkill( eWeaponSkill weaponSkill )=0;
+    virtual FLOAT                       GetRequiredStatLevel ()=0;
+    virtual VOID                        SetRequiredStatLevel ( FLOAT fStatLevel )=0;
+    virtual void                        SetFlag         (DWORD flag) = 0;
+    virtual void                        ClearFlag       (DWORD flag) = 0;
+    virtual bool                        IsFlagSet       (DWORD flag) = 0;
+    virtual eFireType                   GetFireType() = 0;
 };
 
 #endif

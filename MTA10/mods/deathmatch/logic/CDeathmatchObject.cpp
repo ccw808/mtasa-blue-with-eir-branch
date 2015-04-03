@@ -17,8 +17,7 @@ using std::list;
 
 extern CClientGame * g_pClientGame;
 
-#ifdef WITH_OBJECT_SYNC
-CDeathmatchObject::CDeathmatchObject ( CClientManager* pManager, CMovingObjectsManager* pMovingObjectsManager, CObjectSync* pObjectSync, ElementID ID, unsigned short usModel ) : ClassInit ( this ), CClientObject ( pManager, ID, usModel )
+CDeathmatchObject::CDeathmatchObject ( CClientManager* pManager, CMovingObjectsManager* pMovingObjectsManager, CObjectSync* pObjectSync, ElementID ID, unsigned short usModel ) : CClientObject ( pManager, ID, usModel )
 {
     m_pMovingObjectsManager = pMovingObjectsManager;
     m_pObjectSync = pObjectSync;
@@ -35,22 +34,6 @@ CDeathmatchObject::~CDeathmatchObject ( void )
         m_pObjectSync->RemoveObject ( this );
     }
 }
-
-#else
-
-CDeathmatchObject::CDeathmatchObject ( CClientManager* pManager, CMovingObjectsManager* pMovingObjectsManager, ElementID ID, unsigned short usModel, bool bLowLod ) : ClassInit ( this ), CClientObject ( pManager, ID, usModel, bLowLod )
-{
-    m_pMovingObjectsManager = pMovingObjectsManager;
-    m_pMoveAnimation = NULL;
-}
-
-
-CDeathmatchObject::~CDeathmatchObject ( void )
-{
-    _StopMovement ( true );
-}
-#endif
-
 
 
 void CDeathmatchObject::StartMovement ( const CPositionRotationAnimation& a_rMoveAnimation )
@@ -187,7 +170,7 @@ void CDeathmatchObject::UpdateContacting ( const CVector& vecCenterOfRotation, c
 
     // Step through each contacting ped
     list < CClientPed * > ::iterator iter = m_Contacts.begin ();
-    for ( ; iter != m_Contacts.end () ; ++iter )
+    for ( ; iter != m_Contacts.end () ; iter++ )
     {
         CClientPed* pPed = *iter;
 
@@ -216,9 +199,10 @@ void CDeathmatchObject::UpdateContacting ( const CVector& vecCenterOfRotation, c
     }
 
     // Look in attached objects for more ped contacts
-    for ( uint i = 0 ; i < m_AttachedEntities.size () ; ++i )
+    list < CClientEntity * > ::iterator itera = m_AttachedEntities.begin ();
+    for ( ; itera != m_AttachedEntities.end () ; itera++ )
     {
-        CClientEntity* pEntity = m_AttachedEntities[i];
+        CClientEntity* pEntity = *itera;
         if ( IS_OBJECT ( pEntity ) )
         {
             CDeathmatchObject* pObject = static_cast < CDeathmatchObject* > ( pEntity );
@@ -226,3 +210,11 @@ void CDeathmatchObject::UpdateContacting ( const CVector& vecCenterOfRotation, c
         }
     }
 }
+
+
+
+
+
+
+
+

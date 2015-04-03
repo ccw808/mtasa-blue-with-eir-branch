@@ -39,14 +39,14 @@ public:
     };
 
 public:
-    CDownloadableResource           ( eResourceType resourceType, const char* szName, const char* szNameShort, CChecksum checksum = CChecksum (), bool bGenerateClientChecksum = false, bool bAutoDownload = true );
+    CDownloadableResource           ( eResourceType resourceType, const char* szName, const char* szNameShort, CChecksum checksum = CChecksum (), bool bGenerateClientChecksum = false );
     virtual ~CDownloadableResource  ( void );
 
     bool DoesClientAndServerChecksumMatch ( void );
 
     eResourceType GetResourceType   ( void ) { return m_resourceType; };
-    const char* GetName             ( void ) { return m_strName; };
-    const char* GetShortName        ( void ) { return m_strNameShort; };
+    const char* GetName             ( void ) { return m_szName; };
+    const char* GetShortName        ( void ) { return m_szNameShort; };
 
     // CRC-based methods
     CChecksum GenerateClientChecksum ( void );
@@ -55,22 +55,14 @@ public:
 
     CChecksum GetServerChecksum      ( void );
     void SetServerChecksum           ( CChecksum serverChecksum );
-
-    bool     IsAutoDownload         ( void )    { return m_bAutoDownload; };
-    void     SetDownloaded          ( void )    { m_bDownloaded = true; };
-    bool     IsDownloaded           ( void )    { return m_bDownloaded; };
-
 protected:
     eResourceType       m_resourceType;
 
-    SString             m_strName;
-    SString             m_strNameShort;
+    char*               m_szName;
+    char*               m_szNameShort;
 
     CChecksum           m_LastClientChecksum;
     CChecksum           m_ServerChecksum;
-
-    bool                m_bAutoDownload;
-    bool                m_bDownloaded;        // File has been downloaded and is ready to use
 };
 
 #endif

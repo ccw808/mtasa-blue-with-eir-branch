@@ -13,16 +13,22 @@
 
 #include <StdInc.h>
 
-CDownloadableResource::CDownloadableResource ( eResourceType resourceType, const char* szName, const char* szNameShort, CChecksum serverChecksum, bool bGenerateClientChecksum, bool bAutoDownload )
+CDownloadableResource::CDownloadableResource ( eResourceType resourceType, const char* szName, const char* szNameShort, CChecksum serverChecksum, bool bGenerateClientChecksum )
 {
     // Store the resource type
     m_resourceType = resourceType;
 
     // Store the name
-    m_strName = szName;
+    size_t sizeName = strlen ( szName );
+    m_szName = new char [ sizeName + 1 ];
+    strcpy ( m_szName, szName );
+    m_szName[sizeName] = '\0';
 
     // Store the  name (short)
-    m_strNameShort = szNameShort;
+    size_t sizeNameShort = strlen ( szNameShort );
+    m_szNameShort = new char [ sizeNameShort + 1 ];
+    strcpy ( m_szNameShort, szNameShort );
+    m_szNameShort[sizeNameShort] = '\0';
 
     // Store the server checksum
     m_ServerChecksum = serverChecksum;
@@ -37,25 +43,41 @@ CDownloadableResource::CDownloadableResource ( eResourceType resourceType, const
         // Default the last client checksum
         m_LastClientChecksum = CChecksum ();
     }
-
-    m_bAutoDownload = bAutoDownload;
-    m_bDownloaded = false;
-    g_pClientGame->GetResourceManager()->OnAddResourceFile( this );
 }
 
 CDownloadableResource::~CDownloadableResource ( void )
 {
-    g_pClientGame->GetResourceManager()->OnRemoveResourceFile( this );
+    if ( m_szName )
+    {
+        delete [] m_szName;
+        m_szName = 0;
+    }
+
+    if ( m_szNameShort )
+    {
+        delete [] m_szNameShort;
+        m_szNameShort = 0;
+    }
 }
 
 bool CDownloadableResource::DoesClientAndServerChecksumMatch ( void )
 {
-    return ( m_LastClientChecksum == m_ServerChecksum );
+    return ( m_LastClientChecksum.CompareWithLegacy ( m_ServerChecksum ) );
 }
 
 CChecksum CDownloadableResource::GenerateClientChecksum ( void )
 {
-    m_LastClientChecksum = CChecksum::GenerateChecksumFromFile ( m_strName );
+    WIN32_FIND_DATA fdInfo;
+    if ( INVALID_HANDLE_VALUE != FindFirstFile( m_szName, &fdInfo ) )
+    {
+        m_LastClientChecksum = CChecksum::GenerateChecksumFromFile ( m_szName );
+    }
+    else
+    {
+        // Reset the last client checksum, as the  does not exist
+        m_LastClientChecksum = CChecksum ();
+    }
+
     return m_LastClientChecksum;
 }
 

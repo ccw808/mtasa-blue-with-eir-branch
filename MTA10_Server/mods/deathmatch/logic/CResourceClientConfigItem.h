@@ -33,6 +33,7 @@ public:
 private:
     class CXMLFile*                     m_pXMLFile;
     CXMLNode*                           m_pXMLRootNode;
+    char                                m_szConfigName [ MAX_PATH ];
 
     bool                                m_bInvalid; // it failed to load
 };

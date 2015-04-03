@@ -15,29 +15,28 @@
 
 #include "StdInc.h"
 
+#define VALID_POSITION_LIMIT 100000
+
 extern CGameSA* pGame;
-int g_bOnlyUpdateRotations = false;
 
 CPedSA::CPedSA (  ) :
     m_pPedIntelligence ( NULL ),
     m_pPedInterface ( NULL ),
-    m_pPedSound ( NULL ),
-    m_iCustomMoveAnim( 0 )
+    m_pPedSound ( NULL )
 {
     DEBUG_TRACE("CPedSA::CPedSA(  )");
 
-    MemSetFast ( this->m_pWeapons, 0, sizeof ( CWeaponSA* ) * WEAPONSLOT_MAX );
+    MemSet ( this->m_pWeapons, 0, sizeof ( CWeaponSA* ) * WEAPONSLOT_MAX );
 }
 
 CPedSA::CPedSA( CPedSAInterface * pPedInterface ) :
     m_pPedIntelligence ( NULL ),
     m_pPedInterface ( pPedInterface ),
-    m_pPedSound ( NULL ),
-    m_iCustomMoveAnim( 0 )
+    m_pPedSound ( NULL )
 {
     DEBUG_TRACE("CPedSA::CPedSA( CPedSAInterface * pedInterface )");
 
-    MemSetFast ( this->m_pWeapons, 0, sizeof ( CWeaponSA* ) * WEAPONSLOT_MAX );
+    MemSet ( this->m_pWeapons, 0, sizeof ( CWeaponSA* ) * WEAPONSLOT_MAX );
 }
 
 VOID CPedSA::SetInterface( CEntitySAInterface * intInterface )
@@ -54,18 +53,6 @@ CPedSA::~CPedSA ( void )
     {
         if ( this->m_pWeapons[i] )
             delete this->m_pWeapons[i];
-    }
-
-    // Make sure this ped is not refed in the flame shot info array
-    CFlameShotInfo* pInfo = (CFlameShotInfo*)ARRAY_CFlameShotInfo;
-    for ( uint i = 0 ; i < MAX_FLAME_SHOT_INFOS ; i++ )
-    {
-        if ( pInfo->pInstigator == m_pInterface )
-        {
-            pInfo->pInstigator = NULL;
-            pInfo->ucFlag1 = 0;
-        }
-        pInfo++;
     }
 }
 
@@ -121,17 +108,6 @@ void CPedSA::SetModelIndex ( DWORD dwModelIndex )
         GetPedInterface ()->pedSound.m_bIsFemale = ( dwType == 5 || dwType == 22 );
     }
 }
-
-// Hacky thing done for the local player when changing model
-void CPedSA::RemoveGeometryRef ( void )
-{
-    RpClump* pClump = (RpClump*)GetInterface ()->m_pRwObject;
-    RpAtomic* pAtomic = (RpAtomic*)( ( pClump->atomics.root.next ) - 0x8 );
-    RpGeometry* pGeometry = pAtomic->geometry;
-    if ( pGeometry->refs > 1 )
-        pGeometry->refs--;
-}
-
 
 bool CPedSA::IsInWater ( void )
 {
@@ -335,16 +311,6 @@ void CPedSA::SetArmor ( float fArmor )
     GetPedInterface ()->fArmor = fArmor;
 }
 
-float CPedSA::GetOxygenLevel ( void )
-{
-    return GetPedInterface ()->pPlayerData->m_fBreath;
-}
-
-void CPedSA::SetOxygenLevel ( float fOxygen )
-{
-    GetPedInterface ()->pPlayerData->m_fBreath = fOxygen;
-}
-
 void CPedSA::SetIsStanding( bool bStanding )
 {
     DWORD dwFunc = FUNC_SetIsStanding;
@@ -399,28 +365,26 @@ void CPedSA::ClearWeapon ( eWeaponType weaponType )
     }
 }
 
-CWeapon * CPedSA::GiveWeapon ( eWeaponType weaponType, unsigned int uiAmmo, eWeaponSkill skill )
+CWeapon * CPedSA::GiveWeapon ( eWeaponType weaponType, unsigned int uiAmmo )
 {
     if ( weaponType != WEAPONTYPE_UNARMED )
     {
-        CWeaponInfo* pInfo = pGame->GetWeaponInfo ( weaponType, skill );
+        CWeaponInfo* pInfo = pGame->GetWeaponInfo ( weaponType );
         if ( pInfo )
         {
             int iModel = pInfo->GetModel();
-
             if ( iModel )
             {
                 CModelInfo * pWeaponModel = pGame->GetModelInfo ( iModel );
                 if ( pWeaponModel )
                 {
-                    pWeaponModel->Request ( BLOCKING, "CPedSA::GiveWeapon" );
-                    pWeaponModel->MakeCustomModel ();
+                    pWeaponModel->Request ( true, true );
                 }
             }
             // If the weapon is satchels, load the detonator too
             if ( weaponType == WEAPONTYPE_REMOTE_SATCHEL_CHARGE )
             {
-                /*int iModel = pGame->GetWeaponInfo ( WEAPONTYPE_DETONATOR )->GetModel();
+                int iModel = pGame->GetWeaponInfo ( WEAPONTYPE_DETONATOR )->GetModel();
                 if ( iModel )
                 {
                     CModelInfo * pWeaponModel = pGame->GetModelInfo ( iModel );
@@ -428,9 +392,7 @@ CWeapon * CPedSA::GiveWeapon ( eWeaponType weaponType, unsigned int uiAmmo, eWea
                     {
                         pWeaponModel->Request ( true, true );
                     }
-                }*/
-                // Load the weapon and give it properly so getPedWeapon shows the weapon is there.
-                GiveWeapon( WEAPONTYPE_DETONATOR, 1, WEAPONSKILL_STD );
+                }
             }
         }
     }
@@ -448,7 +410,13 @@ CWeapon * CPedSA::GiveWeapon ( eWeaponType weaponType, unsigned int uiAmmo, eWea
         mov     dwReturn, eax
     }
 
+    // ryden: Hack to increase the sniper range
     CWeapon* pWeapon = GetWeapon ( (eWeaponSlot)dwReturn );
+    if ( weaponType == WEAPONTYPE_SNIPERRIFLE )
+    {
+        pWeapon->GetInfo ()->SetWeaponRange ( 300.0f );
+        pWeapon->GetInfo ()->SetTargetRange ( 250.0f );
+    }
 
     return pWeapon;
 }
@@ -488,13 +456,6 @@ void CPedSA::ClearWeapons ( void )
     }
 }
 
-void CPedSA::RestoreLastGoodPhysicsState ( void )
-{
-    CPhysicalSA::RestoreLastGoodPhysicsState ();
-    SetCurrentRotation ( 0 );
-    SetTargetRotation ( 0 );
-}
-
 FLOAT CPedSA::GetCurrentRotation()
 {
     return GetPedInterface ()->fCurrentRotation;
@@ -532,7 +493,7 @@ void CPedSA::SetCurrentWeaponSlot ( eWeaponSlot weaponSlot )
         if ( weaponSlot != GetCurrentWeaponSlot () )
         {
             CWeapon * pWeapon = GetWeapon ( currentSlot );
-            if ( pWeapon ) RemoveWeaponModel ( pWeapon->GetInfo ( WEAPONSKILL_STD )->GetModel () );
+            if ( pWeapon ) RemoveWeaponModel ( pWeapon->GetInfo ()->GetModel () );
 
             CPedSAInterface * thisPed = (CPedSAInterface *)this->GetInterface();
          
@@ -573,7 +534,6 @@ void CPedSA::SetCurrentWeaponSlot ( eWeaponSlot weaponSlot )
 
 CVector * CPedSA::GetBonePosition ( eBone bone, CVector * vecPosition )
 {
-    ApplySwimAndSlopeRotations();
     DWORD dwFunc = FUNC_GetBonePosition;
     DWORD dwThis = (DWORD)this->GetInterface();
     _asm
@@ -585,17 +545,11 @@ CVector * CPedSA::GetBonePosition ( eBone bone, CVector * vecPosition )
         call    dwFunc
     }
 
-    // Clamp to a sane range as this function can occasionally return massive values,
-    // which causes ProcessLineOfSight to effectively freeze
-    if ( !IsValidPosition( *vecPosition ) )
-        *vecPosition = *GetPosition();
-
     return vecPosition;
 }
 
 CVector * CPedSA::GetTransformedBonePosition ( eBone bone, CVector * vecPosition )
 {
-    ApplySwimAndSlopeRotations();
     DWORD dwFunc = FUNC_GetTransformedBonePosition;
     DWORD dwThis = (DWORD)this->GetInterface();
     _asm
@@ -609,32 +563,11 @@ CVector * CPedSA::GetTransformedBonePosition ( eBone bone, CVector * vecPosition
 
     // Clamp to a sane range as this function can occasionally return massive values,
     // which causes ProcessLineOfSight to effectively freeze
-    if ( !IsValidPosition( *vecPosition ) )
-        *vecPosition = *GetPosition();
+    vecPosition->fX = Clamp < float > ( -VALID_POSITION_LIMIT, vecPosition->fX, VALID_POSITION_LIMIT );
+    vecPosition->fY = Clamp < float > ( -VALID_POSITION_LIMIT, vecPosition->fY, VALID_POSITION_LIMIT );
+    vecPosition->fZ = Clamp < float > ( -VALID_POSITION_LIMIT, vecPosition->fZ, VALID_POSITION_LIMIT );
 
     return vecPosition;
-}
-
-//
-// Apply the extra ped rotations for slope pitch and swimming.
-// Achieved by calling the code at the start of CPed::PreRenderAfterTest
-//
-void CPedSA::ApplySwimAndSlopeRotations ( void )
-{
-    CPedSAInterface* pPedInterface = GetPedInterface();
-    if ( pPedInterface->pedFlags.bCalledPreRender )
-        return;
-
-    g_bOnlyUpdateRotations = true;
-
-    DWORD dwFunc = FUNC_PreRenderAfterTest;
-    _asm
-    {
-        mov     ecx, pPedInterface
-        call    dwFunc
-    }
-
-    g_bOnlyUpdateRotations = false;
 }
 
 bool CPedSA::IsDucking ( void )
@@ -704,7 +637,7 @@ void CPedSA::SetGogglesState ( bool bIsWearingThem )
     }
 }
 
-void CPedSA::SetClothesTextureAndModel ( const char* szTexture, const char* szModel, int textureType )
+void CPedSA::SetClothesTextureAndModel ( char * szTexture, char * szModel, int textureType )
 {
     DWORD dwFunc = FUNC_CPedClothesDesc__SetTextureAndModel;
     //DWORD dwThis = (DWORD)this->GetInterface()->PlayerPedData.m_pClothes;
@@ -891,15 +824,15 @@ void CPedSA::SetFootBlood ( unsigned int uiFootBlood )
     if (uiFootBlood > 0)
     {
         // Make sure the foot blood flag is activated
-        MemOrFast < unsigned short > ( dwThis + 0x46F, 16 );
+        MemOr < unsigned short > ( dwThis + 0x46F, 16 );  //         *(unsigned short*)(dwThis + 0x46F) |= 16;
     }
     else if (*(unsigned short*)(dwThis + 0x46F) & 16)
     {
         // If the foot blood flag is activated, deactivate it
-        MemSubFast < unsigned short > ( dwThis + 0x46F, 16 );
+        MemSub < unsigned short > ( dwThis + 0x46F, 16 );  //         *(unsigned short*)(dwThis + 0x46F) -= 16;
     }
     // Set the amount of foot blood
-    MemPutFast < unsigned int > ( dwThis + 0x750, uiFootBlood );
+    MemPut < unsigned int > ( dwThis + 0x750, uiFootBlood );  //     *(unsigned int*)(dwThis + 0x750) = uiFootBlood;
 }
 
 unsigned int CPedSA::GetFootBlood ( void )
@@ -1002,53 +935,6 @@ void CPedSA::SetVoice ( const char* szVoiceType, const char* szVoice )
     if ( sVoiceID < 0 )
         return;
     SetVoice ( sVoiceType, sVoiceID );
-}
-
-// GetCurrentWeaponStat will only work if the game ped context is currently set to this ped
-CWeaponStat* CPedSA::GetCurrentWeaponStat ( void )
-{
-    if ( pGame->GetPedContext () != this )
-    {
-        OutputDebugLine ( "WARNING: GetCurrentWeaponStat ped context mismatch" );
-        return NULL;
-    }
-
-    CWeapon* pWeapon = GetWeapon ( GetCurrentWeaponSlot () );
-
-    if ( !pWeapon )
-        return NULL;
-
-    eWeaponType eWeapon = pWeapon->GetType ();
-    ushort usStat = pGame->GetStats ()->GetSkillStatIndex ( eWeapon );
-    float fSkill = pGame->GetStats()->GetStatValue ( usStat );
-    CWeaponStat* pWeaponStat = pGame->GetWeaponStatManager ()->GetWeaponStatsFromSkillLevel ( eWeapon, fSkill );
-    return pWeaponStat;
-}
-
-float CPedSA::GetCurrentWeaponRange ( void )
-{
-    CWeaponStat* pWeaponStat = GetCurrentWeaponStat ();
-    if ( !pWeaponStat )
-        return 1;
-
-    return pWeaponStat->GetWeaponRange ();
-}
-
-void CPedSA::AddWeaponAudioEvent ( EPedWeaponAudioEventType audioEventType )
-{
-    DWORD dwFunc = FUNC_CAEPedWeaponAudioEntity__AddAudioEvent;
-    CPedWeaponAudioEntitySAInterface* pThis = &GetPedInterface ()->weaponAudioEntity;
-    _asm
-    {
-        mov     ecx, pThis
-        push    audioEventType
-        call    dwFunc
-    }
-}
-
-int CPedSA::GetCustomMoveAnim( void )
-{
-    return m_iCustomMoveAnim;
 }
 
 /*
@@ -1492,7 +1378,7 @@ CEntity * CPedSA::GetObjectiveEntity (  )
 
 void CPedSA::GetObjectiveVector ( CVector * vector )
 {
-    MemCpyFast (vector,&(((CPedSAInterface *)this->GetInterface())->ObjectiveVector),sizeof(CVector));
+    MemCpy (vector,&(((CPedSAInterface *)this->GetInterface())->ObjectiveVector),sizeof(CVector));
 }
 */
 /*  CPedSAInterface * pedInterface = ((CPedSAInterface *)this->GetInterface());
@@ -1681,7 +1567,7 @@ void CPedSA::WarpPedIntoCar ( CVehicle * vehicle )
     DWORD dwFunc = 0x6470E0; // CTaskSimpleCarSetPedInAsDriver
     DWORD dwVehicle = (DWORD)((CVehicleSA *)vehicle)->GetInterface();
     DWORD dwTask[50];
-    MemSetFast (dwTask, 0, 50);
+    MemSet (dwTask, 0, 50);
     _asm
     {
         pushad
@@ -1750,7 +1636,7 @@ bool CPedSA::IsInVehicle()
 /*
 void CPedSA::SetAsActivePed()
 {
-    MemPut < DWORD > ( VAR_LocalPlayer, (DWORD)this->GetInterface() );
+    MemPut < DWORD > ( VAR_LocalPlayer, (DWORD)this->GetInterface() );  //     *(DWORD *)VAR_LocalPlayer = (DWORD)this->GetInterface();
 }
 
 void CPedSA::SetPedState(ePedState PedState)
@@ -1762,106 +1648,3 @@ ePedState CPedSA::GetPedState()
 {
     return (ePedState)((CPedSAInterface *)this->GetInterface())->PedState;
 }*/
-
-
-////////////////////////////////////////////////////////////////
-//
-// CPed_PreRenderAfterTest
-//
-// Code at start of CPed::PreRenderAfterTest applies extra rotations for slope pitch and swimming.
-// Check if they have already been applied.
-//
-////////////////////////////////////////////////////////////////
-int _cdecl OnCPed_PreRenderAfterTest( CPedSAInterface* pPedInterface )
-{
-    if ( pPedInterface->pedFlags.bCalledPreRender )
-        return 1;   // Skip slope and swim rotations
-    return 0;
-}
-
-// Hook info
-#define HOOKPOS_CPed_PreRenderAfterTest        0x05E65A0
-#define HOOKSIZE_CPed_PreRenderAfterTest       15
-DWORD RETURN_CPed_PreRenderAfterTest =         0x05E65AF;
-DWORD RETURN_CPed_PreRenderAfterTestSkip =     0x05E6658;
-void _declspec(naked) HOOK_CPed_PreRenderAfterTest()
-{
-    _asm
-    {
-        pushad
-        push    ecx                 // this
-        call    OnCPed_PreRenderAfterTest
-        mov     [esp+0],eax         // Put result temp
-        add     esp, 4*1
-        popad
-
-        mov     eax,[esp-32-4*1]    // Get result temp
-
-        // Replaced code
-        sub         esp,70h 
-        push        ebx  
-        push        ebp
-        push        esi  
-        mov         ebp,ecx 
-        mov         ecx,dword ptr [ebp+47Ch] 
-        push        edi 
- 
-        // Check what to do
-        cmp     eax,0
-        jnz     skip_rotation_update
-
-        // Run code at start of CPed::PreRenderAfterTest
-        jmp     RETURN_CPed_PreRenderAfterTest
-
-skip_rotation_update:
-        // Skip code at start of CPed::PreRenderAfterTest
-        jmp     RETURN_CPed_PreRenderAfterTestSkip
-    }
-}
-
-
-////////////////////////////////////////////////////////////////
-//
-// CPed_PreRenderAfterTest_Mid
-//
-// Code at mid of CPed::PreRenderAfterTest does all sorts of stuff
-// Check if it should not be called because we only wanted to do the extra rotations
-//
-////////////////////////////////////////////////////////////////
-
-// Hook info
-#define HOOKPOS_CPed_PreRenderAfterTest_Mid        0x05E6669
-#define HOOKSIZE_CPed_PreRenderAfterTest_Mid       5
-DWORD RETURN_CPed_PreRenderAfterTest_Mid =         0x05E666E;
-DWORD RETURN_CPed_PreRenderAfterTest_MidSkip =     0x05E766F;
-void _declspec(naked) HOOK_CPed_PreRenderAfterTest_Mid()
-{
-    _asm
-    {
-        // Check what to do
-        mov     eax, g_bOnlyUpdateRotations
-        cmp     eax,0
-        jnz     skip_tail
-
-        // Replaced code
-        mov     al,byte ptr ds:[00B7CB89h]
-        // Run code at mid of CPed::PreRenderAfterTest
-        jmp     RETURN_CPed_PreRenderAfterTest_Mid
-
-skip_tail:
-        // Skip code at mid of CPed::PreRenderAfterTest
-        jmp     RETURN_CPed_PreRenderAfterTest_MidSkip
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// Setup hooks
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void CPedSA::StaticSetHooks( void )
-{
-   EZHookInstall( CPed_PreRenderAfterTest );
-   EZHookInstall( CPed_PreRenderAfterTest_Mid );
-}

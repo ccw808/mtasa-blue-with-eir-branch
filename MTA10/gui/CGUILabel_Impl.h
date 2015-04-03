@@ -26,6 +26,7 @@ public:
                             ~CGUILabel_Impl             ( void );
 
     void                    SetText                     ( const char* Text );
+    void                    AutoSize                    ( const char* Text );
 
     void                    SetVerticalAlign            ( CGUIVerticalAlign eAlign );
     CGUIVerticalAlign       GetVerticalAlign            ( void );
@@ -50,6 +51,8 @@ public:
     #include "CGUIElement_Inc.h"
     #undef EXCLUDE_SET_TEXT
 
+private:
+    CGUIFont*               m_pFont;
 };
 
 #endif

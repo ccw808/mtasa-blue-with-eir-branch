@@ -21,8 +21,6 @@ CClientProjectileManager * g_pProjectileManager = NULL;
 */
 CClientProjectileManager::CClientProjectileManager ( CClientManager * pManager )
 {
-    CClientEntityRefManager::AddEntityRefs ( ENTITY_REF_DEBUG ( this, "CClientProjectileManager" ), &m_pCreator, &m_pLastCreated, NULL );
-
     g_pProjectileManager = this;
     m_pManager = pManager;
 
@@ -38,7 +36,6 @@ CClientProjectileManager::~CClientProjectileManager ( void )
 {
     RemoveAll ();
     if ( g_pProjectileManager == this ) g_pProjectileManager = NULL;
-    CClientEntityRefManager::RemoveEntityRefs ( 0, &m_pCreator, &m_pLastCreated, NULL );
 }
 
 
@@ -56,6 +53,13 @@ void CClientProjectileManager::DoPulse ( void )
         if ( pProjectile->IsActive () )
         {
             pProjectile->DoPulse ();
+        }
+        else
+        {           
+            // Remove this projectile            
+            m_List.remove ( pProjectile );
+            pProjectile->m_bLinked = false;
+            pElementDeleter->Delete ( pProjectile );
         }
     }
 }
@@ -86,24 +90,21 @@ bool CClientProjectileManager::Exists ( CClientProjectile * pProjectile )
     return false;
 }
 
-CClientProjectile* CClientProjectileManager::Get ( CEntitySAInterface * pProjectile )
-{
-    int iCount = m_List.size();
-    assert ( iCount <= 32 );
-    list < CClientProjectile* > ::iterator iter = m_List.begin ();
-    for ( ; iter != m_List.end () ; iter++ )
-    {
-        if ( (*iter)->GetGameEntity ( )->GetInterface() == pProjectile )
-        {
-            return (*iter);
-        }
-    }
-    return NULL;
-}
 
 void CClientProjectileManager::RemoveFromList ( CClientProjectile* pProjectile )
 {
     m_List.remove ( pProjectile );
+}
+
+
+void CClientProjectileManager::OnInitiate ( CClientProjectile * pProjectile )
+{
+    // Do we have a handler for this event?
+    if ( m_pInitiateHandler )
+    {
+        // Call it
+        (*m_pInitiateHandler) ( pProjectile );
+    }
 }
 
 

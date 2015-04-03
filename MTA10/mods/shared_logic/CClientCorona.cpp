@@ -14,8 +14,6 @@
 
 CClientCorona::CClientCorona ( CClientMarker * pThis )
 {
-    CClientEntityRefManager::AddEntityRefs ( ENTITY_REF_DEBUG ( this, "CClientCorona" ), &m_pThis, NULL );
-
     // Init
     m_pThis = pThis;
     m_bStreamedIn = false;
@@ -38,7 +36,6 @@ CClientCorona::~CClientCorona ( void )
     {
         pCorona->Disable ();
     }
-    CClientEntityRefManager::RemoveEntityRefs ( 0, &m_pThis, NULL );
 }
 
 
@@ -71,20 +68,15 @@ void CClientCorona::StreamOut ( void )
 
 void CClientCorona::DoPulse ( void )
 {
-    CRegisteredCorona* pCorona = m_pCoronas->CreateCorona ( m_ulIdentifier, &m_Matrix.vPos );
-    if ( !pCorona )
-        return;
-
-    if ( IsStreamedIn () && m_bVisible )
+    if ( IsStreamedIn () && m_bVisible && m_pThis->GetInterior () == g_pGame->GetWorld ()->GetCurrentArea () )
     {
-        SColor color = GetColor ();
-        if ( m_pThis->GetInterior () != g_pGame->GetWorld ()->GetCurrentArea () )
-            color.A = 0;
-        pCorona->SetColor ( color.R, color.G, color.B, color.A );
-        pCorona->SetSize ( m_fSize );
-    }
-    else
-    {
-        pCorona->Disable ();
+        // Draw it and set the properties
+        CRegisteredCorona* pCorona = m_pCoronas->CreateCorona ( m_ulIdentifier, &m_Matrix.vPos );
+        if ( pCorona )
+        {
+            SColor color = GetColor ();
+            pCorona->SetColor ( color.R, color.G, color.B, color.A );
+            pCorona->SetSize ( m_fSize );
+        }
     }
 }

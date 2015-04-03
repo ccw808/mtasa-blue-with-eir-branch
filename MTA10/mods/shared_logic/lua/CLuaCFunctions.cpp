@@ -12,9 +12,6 @@
 #include <StdInc.h>
 
 static std::vector < CLuaCFunction* > m_sFunctions;
-static std::map < lua_CFunction, CLuaCFunction* > ms_Functions;
-static void* ms_pFunctionPtrLow = (void*)0xffffffff;
-static void* ms_pFunctionPtrHigh = 0;
 
 CLuaCFunction::CLuaCFunction ( const char* szName, lua_CFunction f, bool bRestricted )
 {
@@ -26,9 +23,6 @@ CLuaCFunction::CLuaCFunction ( const char* szName, lua_CFunction f, bool bRestri
 
 CLuaCFunction* CLuaCFunctions::AddFunction ( const char* szName, lua_CFunction f, bool bRestricted )
 {
-    ms_pFunctionPtrLow = Min < void* > ( ms_pFunctionPtrLow, (void*)f );
-    ms_pFunctionPtrHigh = Max < void* > ( ms_pFunctionPtrHigh, (void*)f );
-
     // See if we already have it added. Eventually just return it instead of adding it twice
     CLuaCFunction* pFunction = GetFunction ( szName, f );
     if ( pFunction ) return pFunction;
@@ -36,7 +30,6 @@ CLuaCFunction* CLuaCFunctions::AddFunction ( const char* szName, lua_CFunction f
     // Create it, add to list and return
     pFunction = new CLuaCFunction ( szName, f, bRestricted );
     m_sFunctions.push_back ( pFunction );
-    MapSet ( ms_Functions, f, pFunction );
     return pFunction;
 }
 
@@ -57,30 +50,6 @@ CLuaCFunction* CLuaCFunctions::GetFunction ( const char* szName, lua_CFunction f
     return NULL;
 }
 
-CLuaCFunction* CLuaCFunctions::GetFunction ( const char* szName )
-{
-    // Grab a function of the given name and type
-    std::vector < CLuaCFunction* > ::const_iterator iter = m_sFunctions.begin ();
-    for ( ; iter != m_sFunctions.end (); iter++ )
-    {
-        if ( strcmp ( (*iter)->GetFunctionName (), szName ) == 0 )
-        {
-            return *iter;
-        }
-    }
-
-    return NULL;
-}
-
-CLuaCFunction* CLuaCFunctions::GetFunction ( lua_CFunction f )
-{
-    // Quick cull of unknown pointer range
-    if ( IsNotFunction( f ) )
-        return NULL;
-
-    return MapFindRef ( ms_Functions, f );
-}
-
 
 const char* CLuaCFunctions::GetFunctionName ( lua_CFunction f, bool& bRestricted )
 {
@@ -97,17 +66,6 @@ const char* CLuaCFunctions::GetFunctionName ( lua_CFunction f, bool& bRestricted
 
     bRestricted = false;
     return NULL;
-}
-
-
-//
-// Returns true if definitely not a registered function.
-// Note: Returning false does not mean it is a registered function
-//
-bool CLuaCFunctions::IsNotFunction ( lua_CFunction f )
-{
-    // Return true if unknown pointer range
-    return ( f < ms_pFunctionPtrLow || f > ms_pFunctionPtrHigh );
 }
 
 
@@ -134,9 +92,7 @@ void CLuaCFunctions::RegisterFunctionsWithVM ( lua_State* luaVM )
     std::vector < CLuaCFunction* > ::const_iterator iter = m_sFunctions.begin ();
     for ( ; iter != m_sFunctions.end (); iter++ )
     {
-        lua_pushstring ( luaVM, (*iter)->GetFunctionName () );
-        lua_pushcclosure ( luaVM, (*iter)->GetFunctionAddress (), 1 );
-        lua_setglobal ( luaVM, (*iter)->GetFunctionName () );
+        lua_register ( luaVM, (*iter)->GetFunctionName (), (*iter)->GetFunctionAddress () );
     }
 }
 

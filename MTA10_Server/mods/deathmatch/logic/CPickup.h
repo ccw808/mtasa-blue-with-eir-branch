@@ -120,8 +120,7 @@ public:
     inline unsigned long            GetRespawnIntervals         ( void )                                { return m_ulRespawnIntervals; };
     inline void                     SetRespawnIntervals         ( unsigned long ulRespawnIntervals )    { m_ulRespawnIntervals = ulRespawnIntervals; };
 
-    CTickCount                      GetLastUsedTime             ( void )                                { return m_LastUsedTime; }
-    CTickCount                      GetCreationTime             ( void )                                { return m_CreationTime; }
+    inline unsigned long            GetLastUsedTime             ( void )                                { return m_ulLastUsedTime; }
 
     inline unsigned short           GetModel                    ( void )                                { return m_usModel; };
     inline void                     SetModel                    ( unsigned short usModel )              { m_usModel = usModel; };
@@ -138,12 +137,6 @@ public:
     inline void                     SetSpawned                  ( bool bSpawned )                       { m_bSpawned = bSpawned; }
 
     inline CColShape*               GetColShape                 ( void )                                { return m_pCollision; }
-    inline void                     SetEnabled                  ( bool bEnabled )                       { if ( m_pCollision ) m_pCollision->SetEnabled ( bEnabled ); }
-    inline bool                     IsEnabled                   ( void )                                { return m_pCollision && m_pCollision->IsEnabled (); }
-
-    inline void                     SetDoneDelayHack            ( bool bDone )                          { m_bDoneDelayHack = bDone; }
-    inline bool                     HasDoneDelayHack            ( void )                                { return m_bDoneDelayHack; }
-
 
 private:
     void                            Callback_OnCollision        ( CColShape& Shape, CElement& Element );
@@ -157,8 +150,7 @@ private:
     unsigned short                  m_usAmmo;
     float                           m_fAmount;
     unsigned long                   m_ulRespawnIntervals;
-    CTickCount                      m_LastUsedTime;
-    CTickCount                      m_CreationTime;
+    unsigned long                   m_ulLastUsedTime;
     unsigned short                  m_usModel;
     bool                            m_bVisible;
 
@@ -169,7 +161,6 @@ private:
     CColSphere*                     m_pCollision;
 
     bool                            m_bSpawned;
-    bool                            m_bDoneDelayHack;
 };
 
 #endif

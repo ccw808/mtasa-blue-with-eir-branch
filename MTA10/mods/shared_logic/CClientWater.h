@@ -14,7 +14,6 @@
 
 class CClientWater : public CClientEntity
 {
-    DECLARE_CLASS( CClientWater, CClientEntity )
 public:
                                CClientWater           ( CClientManager* pManager, ElementID ID, CVector& vecBL, CVector& vecBR, CVector& vecTL, CVector& vecTR, bool bShallow = false );
                                CClientWater           ( CClientManager* pManager, ElementID ID, CVector& vecL, CVector& vecR, CVector& vecTB, bool bShallow = false );
@@ -34,7 +33,7 @@ private:
     CWaterPoly*                m_pPoly;
     CClientWaterManager*       m_pWaterManager;
 
-    friend class CClientWaterManager;
+    friend CClientWaterManager;
 };
 
 #endif

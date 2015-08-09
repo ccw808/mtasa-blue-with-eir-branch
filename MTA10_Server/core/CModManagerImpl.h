@@ -35,7 +35,6 @@ public:
 
     bool                RequestLoad             ( const char* szModName );
 
-    const char*         GetServerPath           ( void )                    { return m_strServerPath; };
     inline const char*  GetModPath              ( void )                    { return m_strModPath; };
     virtual SString     GetAbsolutePath         ( const char* szRelative );
 
@@ -43,7 +42,7 @@ public:
     CServerBase*        GetCurrentMod           ( void );
 
     bool                Load                    ( const char* szModName, int iArgumentCount, char* szArguments [] );
-    void                Unload                  ( bool bKeyPressBeforeTerm = false );
+    void                Unload                  ( void );
 
     void                HandleInput             ( const char* szCommand );
     void                GetTag                  ( char* szInfoTag, int iInfoTag );
@@ -52,17 +51,15 @@ public:
 
     bool                IsFinished              ( void );
 
-    bool                PendingWorkToDo         ( void );
-    bool                GetSleepIntervals       ( int& iSleepBusyMs, int& iSleepIdleMs, int& iLogicFpsLimit );
-    CDynamicLibrary&    GetDynamicLibrary       ( void )                { return m_Library; };
+    bool                PendingWorkToDo         ( int& iSleepMs );
 
 private:
     CServerImpl*        m_pServer;
 
     CServerBase*        m_pBase;
     CDynamicLibrary     m_Library;
-    SString             m_strServerPath;    // Root path
-    SString             m_strModPath;       // root/mods/deathmatch
+    SString             m_strServerPath;
+    SString             m_strModPath;
 };
 
 #endif

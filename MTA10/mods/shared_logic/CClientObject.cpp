@@ -41,11 +41,9 @@ CClientObject::CClientObject ( CClientManager* pManager, ElementID ID, unsigned 
     m_bIsStatic = false;
     m_bUsesCollision = true;
     m_ucAlpha = 255;
-    m_vecScale = CVector ( 1.0f, 1.0f, 1.0f );
+    m_fScale = 1.0f;
     m_fHealth = 1000.0f;
-    m_bBreakingDisabled = false;
-    m_bRespawnEnabled = true;
-    m_fMass = -1.0f;
+    m_bBreakable = true;
 
     m_pModelInfo = g_pGame->GetModelInfo ( usModel );
 
@@ -78,8 +76,9 @@ CClientObject::~CClientObject ( void )
 
 void CClientObject::Unlink ( void )
 {
-    m_pObjectManager->RemoveFromLists ( this );
-    g_pClientGame->GetObjectRespawner ()->Unreference ( this );
+    m_pObjectManager->RemoveFromList ( this );
+    m_pObjectManager->m_Attached.remove ( this );
+    ListRemove ( m_pObjectManager->m_StreamedIn, this );
 
     // Remove LowLod refs in others
     SetLowLodObject ( NULL );
@@ -145,9 +144,10 @@ void CClientObject::GetRotationRadians ( CVector& vecRotation ) const
     {
         // We've been returning the rotation that got set last so far (::m_vecRotation)..
         //   but we need to get the real rotation for when the game moves the objects..
+        //  (eg: physics/attaching), the code below returns wrong values, see #2732
         CMatrix matTemp;
         m_pObject->GetMatrix ( &matTemp );
-        vecRotation = matTemp.GetRotation();
+        g_pMultiplayer->ConvertMatrixToEulerAngles ( matTemp, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
     }
     else
     {
@@ -356,26 +356,14 @@ void CClientObject::SetAlpha ( unsigned char ucAlpha )
 }
 
 
-void CClientObject::GetScale ( CVector& vecScale ) const
+void CClientObject::SetScale ( float fScale )
 {
     if ( m_pObject )
     {
-        vecScale = *m_pObject->GetScale ();
+        m_pObject->SetScale ( fScale );
     }
-    else
-    {
-        vecScale = m_vecScale;
-    }
-}
 
-
-void CClientObject::SetScale ( const CVector& vecScale )
-{
-    if ( m_pObject )
-    {
-        m_pObject->SetScale ( vecScale.fX, vecScale.fY, vecScale.fZ );
-    }
-    m_vecScale = vecScale;
+    m_fScale = fScale;
 }
 
 
@@ -414,10 +402,6 @@ void CClientObject::SetHealth ( float fHealth )
 
 void CClientObject::StreamIn ( bool bInstantly )
 {
-    // Don't stream the object in, if respawn is disabled and the object is broken
-    if ( !m_bRespawnEnabled && m_fHealth == 0.0f )
-        return;
-
     // We need to load now?
     if ( bInstantly )
     {
@@ -447,11 +431,7 @@ void CClientObject::StreamOut ( void )
     // Save the health
     if ( m_pObject )
     {
-        // If respawn is enabled, reset the health
-        if ( m_bRespawnEnabled && m_fHealth == 0.0f )
-            m_fHealth = 1000.0f;
-        else
-            m_fHealth = m_pObject->GetHealth ();
+        m_fHealth = m_pObject->GetHealth ();
     }
 
     // Destroy the object.
@@ -461,15 +441,14 @@ void CClientObject::StreamOut ( void )
     m_pModelRequester->Cancel ( this, true );
 }
 
-// Don't call this function directly by lua functions
+
 void CClientObject::ReCreate ( void )
 {
-    m_fHealth = 1000.0f;
-    
     if ( m_pObject )
+    {
         Destroy ();
-    
-    Create ();
+        Create ();
+    }
 }
 
 
@@ -489,7 +468,7 @@ void CClientObject::Create ( void )
             g_pMultiplayer->AllowCreatedObjectsInVerticalLineTest ( !CClientObjectManager::IsBreakableModel ( m_usModel ) );
 
             // Create the object
-            m_pObject = g_pGame->GetPools ()->AddObject ( m_usModel, m_bIsLowLod, m_bBreakingDisabled );
+            m_pObject = g_pGame->GetPools ()->AddObject ( m_usModel, m_bIsLowLod, m_bBreakable );
 
             // Restore default behaviour
             g_pMultiplayer->AllowCreatedObjectsInVerticalLineTest ( false );
@@ -515,17 +494,10 @@ void CClientObject::Create ( void )
 
                 UpdateVisibility ();
                 if ( !m_bUsesCollision ) SetCollisionEnabled ( false );
-                if ( m_vecScale.fX != 1.0f &&
-                     m_vecScale.fY != 1.0f &&
-                     m_vecScale.fZ != 1.0f)
-                    SetScale ( m_vecScale );
+                if ( m_fScale != 1.0f ) SetScale ( m_fScale );
                 m_pObject->SetAreaCode ( m_ucInterior );
                 SetAlpha ( m_ucAlpha );
                 m_pObject->SetHealth ( m_fHealth );
-
-                // Set object mass
-                if ( m_fMass != -1.0f )
-                    m_pObject->SetMass ( m_fMass );
 
                 // Reattach to an entity + any entities attached to this
                 ReattachEntities ();
@@ -631,6 +603,16 @@ void CClientObject::StreamedInPulse ( void )
 }
 
 
+void CClientObject::AttachTo ( CClientEntity* pEntity )
+{
+    // Add/remove us to/from our managers attached list
+    if ( m_pAttachedToEntity && !pEntity ) m_pObjectManager->m_Attached.remove ( this );
+    else if ( !m_pAttachedToEntity && pEntity ) m_pObjectManager->m_Attached.push_back ( this );
+
+    CClientEntity::AttachTo ( pEntity );
+}
+
+
 void CClientObject::GetMoveSpeed ( CVector& vecMoveSpeed ) const
 {
     if ( m_pObject )
@@ -671,54 +653,15 @@ CSphere CClientObject::GetWorldBoundingSphere ( void )
     return sphere;
 }
 
-
-bool CClientObject::IsBreakable ( bool bCheckModelList )
-{
-    if ( !bCheckModelList )
-        return !m_bBreakingDisabled;
-
-    return ( CClientObjectManager::IsBreakableModel ( m_usModel ) && !m_bBreakingDisabled );
-}
-
-
 bool CClientObject::SetBreakable ( bool bBreakable )
 {
-    bool bDisableBreaking = !bBreakable;
     // Are we breakable and have we changed
-    if ( CClientObjectManager::IsBreakableModel ( m_usModel ) && m_bBreakingDisabled != bDisableBreaking )
+    if ( CClientObjectManager::IsBreakableModel ( m_usModel ) && m_bBreakable != bBreakable )
     {
-        m_bBreakingDisabled = bDisableBreaking;
-        // We can't use ReCreate directly (otherwise the game will crash)
-        g_pClientGame->GetObjectRespawner ()->Respawn ( this );
+        m_bBreakable = bBreakable;
+        // Re-create us
+        ReCreate ( );
         return true;
     }
     return false;
-}
-
-
-bool CClientObject::Break ( void )
-{
-    // Are we breakable?
-    if ( m_pObject && CClientObjectManager::IsBreakableModel ( m_usModel ) && !m_bBreakingDisabled )
-    {
-        m_pObject->Break ();
-        return true;
-    }
-    return false;
-}
-
-float CClientObject::GetMass ( void )
-{
-    if ( m_pObject )
-        return m_pObject->GetMass ();
-
-    return m_fMass;
-}
-
-void CClientObject::SetMass ( float fMass )
-{
-    if ( m_pObject )
-        m_pObject->SetMass ( fMass );
-
-    m_fMass = fMass;
 }

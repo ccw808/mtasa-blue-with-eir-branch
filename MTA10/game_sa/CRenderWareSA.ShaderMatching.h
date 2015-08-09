@@ -197,22 +197,25 @@ public:
             const CShaderAndEntityPair& key = *iter;
             if ( key.pClientEntity == pClientEntity && ( key.pShaderInfo->iTypeMask & iEntityType ) )
             {
-                if ( !key.pShaderInfo->bLayered )
+                if ( !key.pShaderInfo->bUsesVertexShader || iEntityType != TYPE_MASK_PED )
                 {
-                    // Base shader
-                    if ( !outShaderLayers.pBase.pShaderInfo )
-                        outShaderLayers.pBase = SShaderInfoInstance ( key.pShaderInfo, key.bAppendLayers );
+                    if ( !key.pShaderInfo->bLayered )
+                    {
+                        // Base shader
+                        if ( !outShaderLayers.pBase.pShaderInfo )
+                            outShaderLayers.pBase = SShaderInfoInstance ( key.pShaderInfo, key.bAppendLayers );
+                        else
+                        {
+                            // Check priority, then bias later additions
+                            if ( outShaderLayers.pBase.pShaderInfo->orderValue < key.pShaderInfo->orderValue )
+                                outShaderLayers.pBase = SShaderInfoInstance ( key.pShaderInfo, key.bAppendLayers );
+                        }
+                    }
                     else
                     {
-                        // Check priority, then bias later additions
-                        if ( outShaderLayers.pBase.pShaderInfo->orderValue < key.pShaderInfo->orderValue )
-                            outShaderLayers.pBase = SShaderInfoInstance ( key.pShaderInfo, key.bAppendLayers );
+                        // Layers
+                        outShaderLayers.layerList.push_back ( SShaderInfoInstance ( key.pShaderInfo, key.bAppendLayers ) );
                     }
-                }
-                else
-                {
-                    // Layers
-                    outShaderLayers.layerList.push_back ( SShaderInfoInstance ( key.pShaderInfo, key.bAppendLayers ) );
                 }
             }
         }

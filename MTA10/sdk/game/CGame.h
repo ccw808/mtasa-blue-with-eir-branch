@@ -25,7 +25,6 @@ typedef void ( InRenderer ) ( void );
 #include "CAnimBlock.h"
 #include "CAnimManager.h"
 #include "CAudioEngine.h"
-#include "CAudioContainer.h"
 #include "CCam.h"
 #include "CCamera.h"
 #include "CCarEnterExit.h"
@@ -40,8 +39,6 @@ typedef void ( InRenderer ) ( void );
 #include "CFireManager.h"
 #include "CFont.h"
 #include "CFx.h"
-#include "CFxSystem.h"
-#include "CFxManager.h"
 #include "CGarages.h"
 #include "CHandlingManager.h"
 #include "CHud.h"
@@ -82,7 +79,6 @@ typedef void ( InRenderer ) ( void );
 
 typedef bool ( PreWeaponFireHandler ) ( class CPlayerPed* pPlayer, bool bStopIfUsingBulletSync );
 typedef void ( PostWeaponFireHandler ) ( void );
-typedef void ( TaskSimpleBeHitHandler ) ( class CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
 
 enum eGameVersion 
 {
@@ -137,7 +133,6 @@ public:
     virtual CAERadioTrackManager* GetAERadioTrackManager()=0;
     virtual CAudioEngine        * GetAudioEngine()=0;
     virtual CAudioEngine        * GetAudio()=0;
-    virtual CAudioContainer     * GetAudioContainer()=0;
     virtual CMenuManager        * GetMenuManager()=0;
     virtual CText               * GetText()=0;
     virtual CStats              * GetStats()=0;
@@ -156,7 +151,6 @@ public:
     virtual CKeyGen             * GetKeyGen () = 0;
     virtual CRopes              * GetRopes () = 0;
     virtual CFx                 * GetFx () = 0;
-    virtual CFxManager          * GetFxManager () = 0;
     virtual CWaterManager       * GetWaterManager () = 0;
     virtual CWeaponStatManager  * GetWeaponStatManager () = 0;
     virtual CPointLights        * GetPointLights () = 0;
@@ -217,14 +211,14 @@ public:
     virtual bool                PerformChecks               () = 0;
     virtual int&                GetCheckStatus              () = 0;
 
+    virtual void                SetAsyncLoadingFromSettings     ( bool bSettingsDontUse, bool bSettingsEnabled ) = 0;
     virtual void                SetAsyncLoadingFromScript       ( bool bScriptEnabled, bool bScriptForced ) = 0;
-    virtual void                SuspendASyncLoading             ( bool bSuspend, uint uiAutoUnsuspendDelay = 0 ) = 0;
+    virtual void                SuspendASyncLoading             ( bool bSuspend ) = 0;
     virtual bool                IsASyncLoadingEnabled           ( bool bIgnoreSuspend = false ) = 0;
 
     virtual bool                HasCreditScreenFadedOut         ( void ) = 0;
     virtual void                FlushPendingRestreamIPL         ( void ) = 0;
     virtual void                ResetModelLodDistances          ( void ) = 0;
-    virtual void                ResetAlphaTransparencies         ( void ) = 0;
     virtual void                DisableVSync                    ( void ) = 0;
 
     virtual void                OnPedContextChange              ( CPed* pPedContext ) = 0;
@@ -234,7 +228,6 @@ public:
 
     virtual void                SetPreWeaponFireHandler         ( PreWeaponFireHandler* pPreWeaponFireHandler ) = 0;
     virtual void                SetPostWeaponFireHandler        ( PostWeaponFireHandler* pPostWeaponFireHandler ) = 0;
-    virtual void                SetTaskSimpleBeHitHandler       ( TaskSimpleBeHitHandler* pTaskSimpleBeHitHandler ) = 0;
 };
 
 #endif

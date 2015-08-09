@@ -29,7 +29,7 @@ CObject::CObject ( CElement* pParent, CXMLNode* pNode, CObjectManager* pObjectMa
     m_usModel = 0xFFFF;
     m_pMoveAnimation = NULL;
     m_ucAlpha = 255;
-    m_vecScale  = CVector ( 1.0f, 1.0f, 1.0f );
+    m_fScale  = 1;
     m_fHealth = 1000.0f;
     m_bSyncable = true;
     m_pSyncer = NULL;
@@ -155,13 +155,8 @@ bool CObject::ReadSpecialData ( void )
     if ( !GetCustomDataBool ( "doublesided", m_bDoubleSided, true ) )
         m_bDoubleSided = false;
 
-    if ( !GetCustomDataFloat ( "scale", m_vecScale.fX, true ) )
-        m_vecScale.fX = 1.0f;
-    m_vecScale.fY = m_vecScale.fX;
-    m_vecScale.fZ = m_vecScale.fX;
-    GetCustomDataFloat ( "scaleX", m_vecScale.fX, true );
-    GetCustomDataFloat ( "scaleY", m_vecScale.fY, true );
-    GetCustomDataFloat ( "scaleZ", m_vecScale.fZ, true );
+    if ( !GetCustomDataFloat ( "scale", m_fScale, true ) )
+        m_fScale = 1;
 
     if ( !GetCustomDataBool ( "collisions", m_bCollisionsEnabled, true ) )
         m_bCollisionsEnabled = true;
@@ -175,40 +170,6 @@ bool CObject::ReadSpecialData ( void )
 
     // Success
     return true;
-}
-
-
-void CObject::GetMatrix( CMatrix& matrix )
-{
-    matrix.vPos = GetPosition();
-    CVector vecRotation;
-    GetRotation( vecRotation );
-
-    // Do extra calculation to change rotation order if it will make a difference
-    if ( vecRotation.fX != 0 && vecRotation.fY != 0 )
-    {
-        CElement* pAttachedToBase = this;
-        while( pAttachedToBase->GetAttachedToElement() )
-            pAttachedToBase = pAttachedToBase->GetAttachedToElement();
-
-        // Only change rotation order if base is an object
-        if ( pAttachedToBase->GetType() == CElement::OBJECT )
-        {
-            ConvertRadiansToDegreesNoWrap( vecRotation );
-            vecRotation = ConvertEulerRotationOrder( vecRotation, EULER_ZXY, EULER_ZYX );
-            ConvertDegreesToRadiansNoWrap( vecRotation );
-        }
-    }
-    matrix.SetRotation( vecRotation );
-}
-
-
-void CObject::SetMatrix( const CMatrix& matrix )
-{
-    // Set position and rotation from matrix
-    SetPosition( matrix.vPos );
-    CVector vecRotation = matrix.GetRotation();
-    SetRotation( vecRotation );
 }
 
 

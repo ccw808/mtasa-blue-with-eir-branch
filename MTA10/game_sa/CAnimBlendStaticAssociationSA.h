@@ -25,13 +25,14 @@ class CAnimBlendHierarchy;
 class CAnimBlendStaticAssociationSAInterface
 {
 public:
-    BYTE                                pad [ 6 ];
-    short                               sAnimID;
-    short                               sAnimGroup;
-    short                               sFlags;
-    BYTE                                pad2 [ 4 ];
-    CAnimBlendHierarchySAInterface *    pAnimHeirarchy;
+    BYTE                                pad [ 6 ]; // 0
+    short                               sAnimID; // 6
+    short                               sAnimGroup; // 8
+    short                               sFlags; // 10
+    BYTE                                pad2 [ 4 ]; // 12
+    CAnimBlendHierarchySAInterface *    pAnimHeirarchy; // 16
 };
+C_ASSERT(sizeof(CAnimBlendStaticAssociationSAInterface) == 0x14);
 
 class CAnimBlendStaticAssociationSA : public CAnimBlendStaticAssociation
 {

@@ -11,13 +11,14 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#include "../../vendor/unrar/dll.hpp"
+#include "../../vendor/unrar/src/dll.hpp"
 
 
 bool TerminateProcessFromPathFilename ( const SString& strPathFilename )
 {
     DWORD dwProcessIDs[250];
     DWORD pBytesReturned = 0;
+    unsigned int uiListSize = 50;
     if ( EnumProcesses ( dwProcessIDs, 250 * sizeof(DWORD), &pBytesReturned ) )
     {
         DWORD id1 = GetCurrentProcessId();
@@ -37,11 +38,10 @@ bool TerminateProcessFromPathFilename ( const SString& strPathFilename )
                 DWORD cbNeeded;
                 if ( EnumProcessModules ( hProcess, &pModule, sizeof ( HMODULE ), &cbNeeded ) )
                 {
-                    WCHAR szModuleName[MAX_PATH*2] = L"";
-                    if ( GetModuleFileNameExW( hProcess, pModule, szModuleName, NUMELMS(szModuleName) ) )
+                    char szModuleName[500];
+                    if ( GetModuleFileNameEx( hProcess, pModule, szModuleName, 500 ) )
                     {
-                        SString strModuleName = ToUTF8( szModuleName );
-                        if ( stricmp ( strModuleName, strPathFilename ) == 0 )
+                        if ( stricmp ( szModuleName, strPathFilename ) == 0 )
                         {
                             TerminateProcess ( hProcess, 0 );
                             CloseHandle ( hProcess );
@@ -76,7 +76,7 @@ struct SFileItem
 ///////////////////////////////////////////////////////////////
 bool DoInstallFiles ( void )
 {
-    SString strCurrentDir = PathConform ( GetSystemCurrentDirectory () );
+    SString strCurrentDir = PathConform ( GetCurrentWorkingDirectory () );
 
     const SString strMTASAPath = PathConform ( GetMTASAPath () );
 
@@ -114,7 +114,7 @@ bool DoInstallFiles ( void )
     for ( unsigned int i = 0 ; i < itemList.size () ; i++ )
     {
         SString strFile = itemList[i].strDestPathFilename;
-        if ( strFile.EndsWithI( ".exe" ) )
+        if ( strFile.ToLower ().substr ( Max < int > ( 0, strFile.length () - 4 ) ) == ".exe" )
             TerminateProcessFromPathFilename ( strFile );
     }
 
@@ -168,9 +168,9 @@ bool DoInstallFiles ( void )
         }
 
         //if ( bPossibleDisaster )
-        //    MessageBox ( NULL, _("Installation may be corrupt. Please redownload from www.mtasa.com"), _("Error"), MB_OK | MB_ICONERROR );
+        //    MessageBox ( NULL, "Installation may be corrupt. Please redownload from www.mtasa.com", "Error", MB_OK | MB_ICONERROR );
         //else 
-        //    MessageBox ( NULL, _("Could not update due to file conflicts."), _("Error"), MB_OK | MB_ICONERROR );
+        //    MessageBox ( NULL, "Could not update due to file conflicts.", "Error", MB_OK | MB_ICONERROR );
     }
 
     // Launch MTA_EXE_NAME
@@ -186,11 +186,11 @@ bool DoInstallFiles ( void )
 // Returns false on fail
 //
 ///////////////////////////////////////////////////////////////
-bool InstallFiles ( bool bHideProgress )
+bool InstallFiles ( bool bSilent )
 {
     // Start progress bar
-    if ( !bHideProgress )
-       StartPseudoProgress( g_hInstance, "MTA: San Andreas", _("Installing update...") );
+    if ( !bSilent )
+       StartPseudoProgress( g_hInstance, "MTA: San Andreas", "Installing update..." );
 
     bool bResult = DoInstallFiles ();
 
@@ -291,8 +291,8 @@ SString CheckOnRestartCommand ( void )
                 return "FileError2";
 
             // Start progress bar
-            if ( !strParameters.Contains( "hideprogress" ) )
-               StartPseudoProgress( g_hInstance, "MTA: San Andreas", _("Extracting files...") );
+            if ( strOperation != "silent" )
+               StartPseudoProgress( g_hInstance, "MTA: San Andreas", "Extracting files..." );
 
             // Try to extract the files
             if ( !ExtractFiles ( strFile ) )
@@ -307,10 +307,10 @@ SString CheckOnRestartCommand ( void )
 
             // If a new "Multi Theft Auto.exe" exists, let that complete the install
             if ( FileExists ( MTA_EXE_NAME_RELEASE ) )
-                return "install from far " + strOperation + " " + strParameters;
+                return "install from far " + strOperation;
 
             // Otherwise use the current exe to install
-            return "install from near " + strOperation + " " + strParameters;
+            return "install from near " + strOperation;
         }
         else
         {

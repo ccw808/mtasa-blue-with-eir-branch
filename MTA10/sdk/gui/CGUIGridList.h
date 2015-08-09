@@ -55,9 +55,6 @@ public:
     virtual void                    RemoveColumn            ( unsigned int uiColumn ) = 0;
     virtual void                    AutoSizeColumn          ( unsigned int hColumn ) = 0;
     virtual void                    SetColumnWidth          ( int hColumn, float fWidth, bool bRelative = true ) = 0;
-    virtual bool                    GetColumnWidth          ( int hColumn, float& fOutWidth, bool bRelative = true ) = 0;
-    virtual void                    SetColumnTitle          ( int hColumn, const char* szTitle ) = 0;
-    virtual const char*             GetColumnTitle          ( int hColumn ) = 0;
 
     virtual void                    SetSelectionMode        ( SelectionMode mode ) = 0;
 
@@ -79,11 +76,6 @@ public:
     virtual void                    SetVerticalScrollBar    ( bool bEnabled ) = 0;
     virtual void                    SetSorting              ( bool bEnabled ) = 0;
     virtual void                    SetItemImage            ( int iRow, int hColumn, CGUIStaticImage* pImage ) = 0;
-
-    virtual float                   GetHorizontalScrollPosition ( void ) = 0;
-    virtual float                   GetVerticalScrollPosition   ( void ) = 0;
-    virtual void                    SetHorizontalScrollPosition ( float fPosition ) = 0;
-    virtual void                    SetVerticalScrollPosition   ( float fPosition ) = 0;
 
     virtual int                     GetColumnIndex          ( int hColumn ) = 0;
     virtual int                     GetItemColumnIndex      ( CGUIListItem* pItem ) = 0;
@@ -108,6 +100,7 @@ public:
     virtual void                    SetSortColumnHandler    ( GUI_CALLBACK Callback ) = 0;
 
     virtual void                    SetIgnoreTextSpacer     ( bool bIgnoreTextSpacer ) = 0;
+    virtual void                    SetVerticalScrollPosition ( float fPosition ) = 0;
 };
 
 #endif

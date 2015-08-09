@@ -47,7 +47,6 @@ typedef void ( PostWeaponFireHandler ) ( void );
 typedef void ( BulletImpactHandler ) ( class CPed* pInitiator, class CEntity* pVictim, const CVector* pvecStartPosition, const CVector* pvecEndPosition );
 typedef void ( BulletFireHandler ) ( class CPed* pInitiator, const CVector* pvecStartPosition, const CVector* pvecEndPosition );
 typedef bool ( DamageHandler ) ( class CPed* pDamagePed, class CEventDamage * pEvent );
-typedef void ( DeathHandler ) ( class CPed* pKilledPed, unsigned char ucDeathReason, unsigned char ucBodyPart );
 typedef void ( FireHandler ) ( class CFire* pFire );
 typedef bool ( ProjectileStopHandler ) ( class CEntity * owner, enum eWeaponType weaponType, class CVector * origin, float fForce, class CVector * target, class CEntity * targetEntity );
 typedef void ( ProjectileHandler ) ( class CEntity * owner, class CProjectile* projectile, class CProjectileInfo* projectileInfo, enum eWeaponType weaponType, class CVector * origin, float fForce, class CVector * target, class CEntity * targetEntity );
@@ -55,7 +54,6 @@ typedef bool ( BreakTowLinkHandler ) ( class CVehicle * towingVehicle );
 typedef bool ( ProcessCamHandler ) ( class CCam* pCam );
 typedef void ( DrawRadarAreasHandler ) ( void );
 typedef void ( Render3DStuffHandler ) ( void );
-typedef void ( PreRenderSkyHandler ) ( void );
 typedef bool ( ChokingHandler ) ( unsigned char ucWeaponType );
 typedef void ( PreWorldProcessHandler ) ( void );
 typedef void ( PostWorldProcessHandler ) ( void );
@@ -66,20 +64,13 @@ typedef void ( AddAnimationHandler ) ( RpClump * pClump, AssocGroupId animGroup,
 typedef void ( BlendAnimationHandler ) ( RpClump * pClump, AssocGroupId animGroup, AnimationId animID, float fBlendDelta );
 typedef bool ( ProcessCollisionHandler ) ( class CEntitySAInterface* pThisInterface, class CEntitySAInterface* pOtherInterface );
 typedef bool ( VehicleCollisionHandler ) ( class CVehicleSAInterface* pCollidingVehicle, class CEntitySAInterface* pCollidedVehicle, int iModelIndex, float fDamageImpulseMag, float fCollidingDamageImpulseMag, uint16 usPieceType, CVector vecCollisionPos, CVector vecCollisionVelocity );
-typedef bool ( VehicleDamageHandler ) ( CEntitySAInterface* pVehicle, float fLoss, CEntitySAInterface* pAttacker, eWeaponType weaponType, const CVector& vecDamagePos, uchar ucTyre );
-typedef bool ( HeliKillHandler ) ( class CVehicleSAInterface* pVehicle, class CEntitySAInterface* pHitInterface );
-typedef bool ( ObjectDamageHandler ) ( class CObjectSAInterface* pObject, float fLoss, class CEntitySAInterface* pAttacker );
-typedef bool ( ObjectBreakHandler ) ( class CObjectSAInterface* pObject, class CEntitySAInterface* pAttacker );
+typedef bool ( HeliKillHandler ) ( class CVehicleSAInterface* pVehicle, class CPedSAInterface* pPed );
 typedef bool ( WaterCannonHitHandler ) ( class CVehicleSAInterface* pCannonVehicle, class CPedSAInterface* pHitPed );
-typedef bool ( VehicleFellThroughMapHandler ) ( class CVehicleSAInterface* pVehicle );
 typedef void ( GameObjectDestructHandler ) ( CEntitySAInterface* pObject );
 typedef void ( GameVehicleDestructHandler ) ( CEntitySAInterface* pVehicle );
 typedef void ( GamePlayerDestructHandler ) ( CEntitySAInterface* pPlayer );
-typedef void ( GameProjectileDestructHandler ) ( CEntitySAInterface* pProjectile );
 typedef void ( GameModelRemoveHandler ) ( ushort usModelId );
 typedef void ( GameEntityRenderHandler ) ( CEntitySAInterface* pEntity );
-typedef void ( FxSystemDestructionHandler ) ( void* pFxSA );
-typedef AnimationId(DrivebyAnimationHandler) (AnimationId animGroup, AssocGroupId animId);
 
 /**
  * This class contains information used for shot syncing, one exists per player.
@@ -157,14 +148,12 @@ public:
     virtual void                        DisableBirds                ( bool bDisabled ) = 0;
     virtual void                        DisableQuickReload          ( bool bDisable ) = 0;
     virtual void                        DisableCloseRangeDamage     ( bool bDisable ) = 0;
-    virtual void                        DisableBadDrivebyHitboxes   ( bool bDisable ) = 0;
 
     virtual bool                        GetExplosionsDisabled       () = 0;
     virtual void                        DisableExplosions           ( bool bDisabled ) = 0;
     virtual void                        SetExplosionHandler         ( ExplosionHandler * pExplosionHandler ) = 0;
     virtual void                        SetBreakTowLinkHandler      ( BreakTowLinkHandler * pBreakTowLinkHandler ) = 0;
     virtual void                        SetDamageHandler            ( DamageHandler * pDamageHandler ) = 0;
-    virtual void                        SetDeathHandler             ( DeathHandler * pDeathHandler ) = 0;
     virtual void                        SetFireHandler              ( FireHandler * pFireHandler ) = 0;
     virtual void                        SetProcessCamHandler        ( ProcessCamHandler* pProcessCamHandler ) = 0;
     virtual void                        SetChokingHandler           ( ChokingHandler* pChokingHandler ) = 0;
@@ -179,20 +168,13 @@ public:
     virtual void                        SetBlendAnimationHandler    ( BlendAnimationHandler * pHandler ) = 0;
     virtual void                        SetProcessCollisionHandler  ( ProcessCollisionHandler * pHandler ) = 0;
     virtual void                        SetVehicleCollisionHandler  ( VehicleCollisionHandler * pHandler ) = 0;
-    virtual void                        SetVehicleDamageHandler     ( VehicleDamageHandler * pHandler ) = 0;
     virtual void                        SetHeliKillHandler          ( HeliKillHandler * pHandler ) = 0;
-    virtual void                        SetObjectDamageHandler      ( ObjectDamageHandler * pHandler ) = 0;
-    virtual void                        SetObjectBreakHandler       ( ObjectBreakHandler * pHandler ) = 0;
-    virtual void                        SetWaterCannonHitHandler ( WaterCannonHitHandler * pHandler ) = 0;
-    virtual void                        SetVehicleFellThroughMapHandler ( VehicleFellThroughMapHandler * pHandler ) = 0;
+    virtual void                        SetWaterCannonHitHandler    ( WaterCannonHitHandler * pHandler ) = 0;
     virtual void                        SetGameObjectDestructHandler    ( GameObjectDestructHandler * pHandler ) = 0;
     virtual void                        SetGameVehicleDestructHandler   ( GameVehicleDestructHandler * pHandler ) = 0;
     virtual void                        SetGamePlayerDestructHandler    ( GamePlayerDestructHandler * pHandler ) = 0;
-    virtual void                        SetGameProjectileDestructHandler( GameProjectileDestructHandler * pHandler ) = 0;
     virtual void                        SetGameModelRemoveHandler       ( GameModelRemoveHandler * pHandler ) = 0;
     virtual void                        SetGameEntityRenderHandler      ( GameEntityRenderHandler * pHandler ) = 0;
-    virtual void                        SetFxSystemDestructionHandler   ( FxSystemDestructionHandler * pHandler ) = 0;
-    virtual void                        SetDrivebyAnimationHandler      (DrivebyAnimationHandler * pHandler) = 0;
 
     virtual void                        AllowMouseMovement          ( bool bAllow ) = 0;
     virtual void                        DoSoundHacksOnLostFocus     ( bool bLostFocus ) = 0;
@@ -211,17 +193,12 @@ public:
     virtual void                        SetCloudsEnabled            ( bool bDisabled ) = 0;
     virtual bool                        GetInteriorSoundsEnabled    () = 0;
     virtual void                        SetInteriorSoundsEnabled    ( bool bEnabled ) = 0;
-    virtual bool                        GetInteriorFurnitureEnabled ( char cRoomId ) = 0;
-    virtual void                        SetInteriorFurnitureEnabled ( char cRoomId, bool bEnabled ) = 0;
     virtual void                        SetWindVelocity             ( float fX, float fY, float fZ ) = 0;
     virtual void                        GetWindVelocity             ( float& fX, float& fY, float& fZ ) = 0;
     virtual void                        RestoreWindVelocity         ( void ) = 0;
     virtual void                        SetFarClipDistance          ( float fDistance ) = 0;
     virtual float                       GetFarClipDistance          ( void ) = 0;
     virtual void                        RestoreFarClipDistance      ( void ) = 0;
-    virtual void                        SetNearClipDistance         ( float fDistance ) = 0;
-    virtual float                       GetNearClipDistance         ( void ) = 0;
-    virtual void                        RestoreNearClipDistance     ( void ) = 0;
     virtual void                        SetFogDistance              ( float fDistance ) = 0;
     virtual float                       GetFogDistance              ( void ) = 0;
     virtual void                        RestoreFogDistance          ( void ) = 0;
@@ -231,9 +208,6 @@ public:
     virtual float                       GetSunSize                  ( ) = 0;
     virtual void                        SetSunSize                  ( float fSize ) = 0;
     virtual void                        ResetSunSize                ( ) = 0;
-    virtual void                        SetMoonSize                 ( int iSize ) = 0;
-    virtual int                         GetMoonSize                 ( ) = 0;
-    virtual void                        ResetMoonSize               ( ) = 0;
 
     virtual void                        DisableEnterExitVehicleKey  ( bool bDisabled ) = 0;
 
@@ -256,7 +230,6 @@ public:
     virtual void                        SetBulletFireHandler        ( BulletFireHandler* pHandler ) = 0;
     virtual void                        SetDrawRadarAreasHandler    ( DrawRadarAreasHandler * pRadarAreasHandler ) = 0;
     virtual void                        SetRender3DStuffHandler     ( Render3DStuffHandler * pHandler ) = 0;
-    virtual void                        SetPreRenderSkyHandler      ( PreRenderSkyHandler * pHandler ) = 0;
 
     virtual void                        Reset                       () = 0;
 
@@ -279,7 +252,6 @@ public:
     virtual void                        SetTrafficLightsLocked      ( bool bLocked ) = 0;
 
     virtual void                        SetLocalStatValue           ( unsigned short usStat, float fValue ) = 0;
-    virtual float                       GetLocalStatValue           ( unsigned short usStat ) = 0;
     virtual void                        SetLocalStatsStatic         ( bool bStatic ) = 0;
 
     virtual void                        SetLocalCameraRotation      ( float fRotation ) = 0;
@@ -302,16 +274,12 @@ public:
     virtual bool                        IsSuspensionEnabled         ( ) = 0;
     virtual void                        SetSuspensionEnabled        ( bool bEnabled ) = 0;
 
-    virtual void                        FlushClothesCache           ( void ) = 0;
     virtual void                        SetFastClothesLoading       ( EFastClothesLoading fastClothesLoading ) = 0;
     virtual void                        SetLODSystemEnabled         ( bool bEnable ) = 0;
     virtual void                        SetAltWaterOrderEnabled     ( bool bEnable ) = 0;
 
     virtual float                       GetAircraftMaxHeight        ( void ) = 0;
     virtual void                        SetAircraftMaxHeight        ( float fHeight ) = 0;
-
-    virtual float                       GetAircraftMaxVelocity      ( void ) = 0;
-    virtual void                        SetAircraftMaxVelocity      ( float fVelocity ) = 0;
 
     virtual void                        SetAutomaticVehicleStartupOnPedEnter    ( bool bSet ) = 0;
 
@@ -321,10 +289,6 @@ public:
     virtual void                        GetRwResourceStats          ( SRwResourceStats& outStats ) = 0;
     virtual void                        GetClothesCacheStats        ( SClothesCacheStats& outStats ) = 0;
     virtual void                        SetIsMinimizedAndNotConnected ( bool bIsMinimizedAndNotConnected ) = 0;
-    virtual void                        SetMirrorsEnabled           ( bool bEnabled ) = 0;
-
-    virtual void                        SetBoatWaterSplashEnabled   ( bool bEnabled ) = 0;
-    virtual void                        SetTyreSmokeEnabled         ( bool bEnabled ) = 0;
 };
 
 #endif

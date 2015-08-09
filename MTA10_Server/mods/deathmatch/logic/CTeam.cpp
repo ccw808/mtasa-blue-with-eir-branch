@@ -98,7 +98,7 @@ bool CTeam::ReadSpecialData ( void )
 void CTeam::SetTeamName ( const char* szName )
 {
     if ( szName )
-        m_strTeamName.AssignLeft( szName, MAX_TEAM_NAME_LENGTH );
+        m_strTeamName = szName;
     else
         m_strTeamName = "";
 }
@@ -123,7 +123,7 @@ void CTeam::RemovePlayer ( CPlayer* pPlayer, bool bChangePlayer )
 void CTeam::RemoveAllPlayers ( void )
 {
     list < CPlayer* > ::const_iterator iter = m_Players.begin ();
-    for ( ; iter != m_Players.end (); ++iter )
+    for ( ; iter != m_Players.end (); iter++ )
     {
         (*iter)->SetTeam ( NULL, false );
     }
@@ -135,14 +135,11 @@ void CTeam::GetPlayers ( lua_State* luaVM )
 {
     unsigned int uiIndex = 0;
     list < CPlayer* > ::const_iterator iter = m_Players.begin ();
-    for ( ; iter != m_Players.end (); ++iter )
+    for ( ; iter != m_Players.end (); iter++ )
     {
-        if ( !( *iter )->IsBeingDeleted ( ) )
-        {
-            lua_pushnumber ( luaVM, ++uiIndex );
-            lua_pushelement ( luaVM, *iter );
-            lua_settable ( luaVM, -3 );
-        }
+        lua_pushnumber ( luaVM, ++uiIndex );
+        lua_pushelement ( luaVM, *iter );
+        lua_settable ( luaVM, -3 );
     }
 }
 

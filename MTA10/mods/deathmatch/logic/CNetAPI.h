@@ -60,8 +60,6 @@ public:
     void                    AddInterpolation                ( const CVector& vecPosition );
     bool                    GetInterpolation                ( CVector& vecPosition, unsigned short usLatency );
     void                    SendBulletSyncFire              ( eWeaponType weaponType, const CVector& vecStart, const CVector& vecEnd );
-    void                    SendBulletSyncCustomWeaponFire  ( CClientWeapon * pWeapon, const CVector& vecStart, const CVector& vecEnd );
-    bool                    IsNetworkTrouble                ( void )            { return m_bIsNetworkTrouble; }
 
     static bool             IsWeaponIDAkimbo                ( unsigned char ucWeaponID );
     static bool             IsDriveByWeapon                 ( unsigned char ucWeaponID );
@@ -74,7 +72,6 @@ private:
     void                    WriteKeysync                    ( CClientPed* pPed, NetBitStreamInterface& BitStream );
 
     void                    ReadBulletsync                  ( CClientPlayer* pPlayer, NetBitStreamInterface& BitStream );
-    void                    ReadWeaponBulletsync            ( CClientPlayer* pWeapon, NetBitStreamInterface& BitStream );
 
     void                    ReadPlayerPuresync              ( CClientPlayer* pPlayer, NetBitStreamInterface& BitStream );
     void                    WritePlayerPuresync             ( CClientPlayer* pPed, NetBitStreamInterface& BitStream );
@@ -100,8 +97,6 @@ private:
     void                    GetLastSentControllerState      ( CControllerState* pControllerState, float* pfCameraRotation, float* pfLastAimY );
     void                    SetLastSentControllerState      ( const CControllerState& ControllerState, float fCameraRotation, float fLastAimY );
 
-    void                    ReadVehiclePartsState           ( CClientVehicle* pVehicle, NetBitStreamInterface& BitStream );
-
 public:
     bool                    IsCameraSyncNeeded              ( void );
     void                    WriteCameraSync                 ( NetBitStreamInterface& BitStream );
@@ -120,11 +115,14 @@ private:
     CVector                 m_vecLastReturnPosition;
     CVector                 m_vecLastReturnRotation;
 
-    CElapsedTime            m_CameraSyncTimer;
+    unsigned long           m_ulLastCameraSyncTime;
+    bool                    m_bLastSentCameraMode;
+    CClientEntity*          m_pLastSentCameraTarget;
+    CVector                 m_vecLastSentCameraPosition;
+    CVector                 m_vecLastSentCameraLookAt;
 
     CInterpolator<CVector>  m_Interpolator;
 
-    bool                    m_bIsNetworkTrouble;
     bool                    m_bIncreaseTimeoutTime;
     CElapsedTime            m_IncreaseTimeoutTimeTimer;
 
@@ -133,7 +131,6 @@ private:
     float                   m_fLastSentCameraRotation;
     float                   m_fLastSentAimY;
     uchar                   m_ucBulletSyncOrderCounter;
-    uchar                   m_ucCustomWeaponBulletSyncOrderCounter;
 };
 
 #endif

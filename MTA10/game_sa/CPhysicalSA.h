@@ -25,8 +25,6 @@
 #define FUNC_ProcessCollision                   0x54DFB0
 #define FUNC_AttachEntityToEntity               0x54D570
 #define FUNC_DetatchEntityFromEntity            0x5442F0
-#define FUNC_CPhysical_AddToMovingList          0x542800
-#define FUNC_CPhysical_RemoveFromMovingList     0x542860
 
 #define PHYSICAL_MAXNOOFCOLLISIONRECORDS        6
 
@@ -43,7 +41,7 @@ public:
     uint32 b0x10 : 1;
     uint32 bDisableMovement : 1;
     uint32 b0x40 : 1;
-    uint32 b0x80 : 1;
+    uint32 bPoolBalCollision : 1;
 
     uint32 bSubmergedInWater : 1; // 65
     uint32 bOnSolidSurface : 1;
@@ -105,8 +103,7 @@ public:
     CVector m_vecAttachedOffset;    // 256
     CVector m_vecAttachedRotation;    // 268
     CVector m_vecUnk;    // 280
-    uint32 m_pad4; // 292
-    class CPtrNodeDoubleLink* m_pControlCodeNodeLink; // 296
+    uint32 m_pad4[2]; // 292
     float m_fLighting; // 300
     float m_fLighting2; // 304
     class CShadowDataSA *m_pShadowData; // 308
@@ -121,8 +118,8 @@ public:
     CVector *   GetTurnSpeed                ( CVector * vecTurnSpeed );
     CVector *   GetMoveSpeedInternal        ( CVector * vecMoveSpeed );
     CVector *   GetTurnSpeedInternal        ( CVector * vecTurnSpeed );
-    void        SetMoveSpeed                ( CVector * vecMoveSpeed );
-    void        SetTurnSpeed                ( CVector * vecTurnSpeed );
+    VOID        SetMoveSpeed                ( CVector * vecMoveSpeed );
+    VOID        SetTurnSpeed                ( CVector * vecTurnSpeed );
 
     float       GetMass                     ( void );
     void        SetMass                     ( float fMass );
@@ -133,8 +130,7 @@ public:
     float       GetBuoyancyConstant         ( void );
     void        SetBuoyancyConstant         ( float fBuoyancyConstant );
 
-    void        ProcessCollision            ( void );
-    void        AddToMovingList             ( void );
+    VOID        ProcessCollision            ( void );
 
     float       GetDamageImpulseMagnitude   ( void );
     void        SetDamageImpulseMagnitude   ( float fMagnitude );

@@ -27,7 +27,6 @@
 #include <list>
 
 class CResource;
-#define INVALID_RESOURCE_NET_ID     0xFFFF
 
 class CResourceManager 
 {
@@ -71,11 +70,11 @@ public:
     CResource*                  GetResourceFromScriptID         ( uint uiScriptID );
     void                        UnloadRemovedResources          ( void );
     void                        CheckResourceDependencies       ( void );
-    void                        ListResourcesLoaded             ( const SString& strListType );
+    void                        ListResourcesLoaded             ( void );
     std::list < CResource* > ::const_iterator  IterBegin        ( void )            { return m_resources.begin (); };
     std::list < CResource* > ::const_iterator  IterEnd          ( void )            { return m_resources.end (); };
 
-    bool                        Refresh                         ( bool bRefreshAll = false, const SString& strJustThisResource = "", bool bShowTiming = false );
+    bool                        Refresh                         ( bool bRefreshAll = false, const SString& strJustThisResource = "" );
     void                        UpgradeResources                ( CResource* pResource = NULL );
     void                        CheckResources                  ( CResource* pResource = NULL );
     inline unsigned int         GetResourceLoadedCount          ( void )            { return m_uiResourceLoadedCount; }
@@ -98,7 +97,7 @@ public:
     CResource*                  GetResourceFromNetID            ( unsigned short usNetID );
 
     CResource*                  GetResourceFromLuaState         ( struct lua_State* luaVM );
-    SString                     GetResourceName                 ( struct lua_State* luaVM );
+    bool                        Install                         ( char * szURL, char * szName );
 
     CResource*                  CreateResource                  ( const SString& strNewResourceName, const SString& strNewOrganizationalPath, SString& strOutStatus );
     CResource*                  CopyResource                    ( CResource* pSourceResource, const SString& strNewResourceName, const SString& strNewOrganizationalPath, SString& strOutStatus );
@@ -126,12 +125,6 @@ public:
     void                        RemoveSyncMapElementDataOption      ( CResource* pResource );
     void                        ReevaluateSyncMapElementDataOption  ( void );
 
-    void                        LoadBlockedFileReasons          ( void );
-    void                        SaveBlockedFileReasons          ( void );
-    void                        ClearBlockedFileReason          ( const SString& strFileHash );
-    void                        AddBlockedFileReason            ( const SString& strFileHash, const SString& strReason );
-    SString                     GetBlockedFileReason            ( const SString& strFileHash );
-
 private:
     SString                     m_strResourceDirectory;
     CMappedList < CResource* >  m_resources;
@@ -141,19 +134,17 @@ private:
     list<CResource *>           m_resourcesToStartAfterRefresh;
 
     // Maps to speed things up
-    CFastHashMap < CResource*, lua_State* > m_ResourceLuaStateMap;
-    CFastHashMap < lua_State*, CResource* > m_LuaStateResourceMap;
-    CFastHashMap < SString, CResource* >    m_NameResourceMap;
-    std::map < ushort, CResource* >         m_NetIdResourceMap;
+    std::map < CResource*, lua_State* >     m_ResourceLuaStateMap;
+    std::map < lua_State*, CResource* >     m_LuaStateResourceMap;
+    std::map < SString, CResource* >        m_NameResourceMap;
 
     list<sResourceQueue>        m_resourceQueue;
 
     SString                                 m_strMinClientRequirement;
-    CFastHashMap < CResource*, SString >    m_MinClientRequirementMap;
-    CFastHashMap < CResource*, bool >       m_SyncMapElementDataOptionMap;
+    std::map < CResource*, SString >        m_MinClientRequirementMap;
+    std::map < CResource*, bool >           m_SyncMapElementDataOptionMap;
 
     ushort                      m_usNextNetId;
-    std::map < SString, SString > m_BlockedFileReasonMap;
 };
 
 #endif

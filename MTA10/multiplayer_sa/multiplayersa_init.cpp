@@ -48,20 +48,12 @@ CMultiplayer* InitMultiplayerInterface(CCoreInterface* pCore)
 
 void MemSet ( void* dwDest, int cValue, uint uiAmount )
 {
-    if ( ismemset( dwDest, cValue, uiAmount ) )
-        return;
-    SMemWrite hMem = OpenMemWrite( dwDest, uiAmount );
     memset ( dwDest, cValue, uiAmount );
-    CloseMemWrite( hMem );
 }
 
 void MemCpy ( void* dwDest, const void* dwSrc, uint uiAmount )
 {
-    if ( memcmp( dwDest, dwSrc, uiAmount ) == 0 )
-        return;
-    SMemWrite hMem = OpenMemWrite( dwDest, uiAmount );
     memcpy ( dwDest, dwSrc, uiAmount );
-    CloseMemWrite( hMem );
 }
 
 void OnCrashAverted ( uint uiId )
@@ -69,25 +61,12 @@ void OnCrashAverted ( uint uiId )
     g_pCore->OnCrashAverted ( uiId );  
 }
 
-void OnEnterCrashZone ( uint uiId )
-{
-    g_pCore->OnEnterCrashZone ( uiId );  
-}
-
 bool GetDebugIdEnabled ( uint uiDebugId )
 {
     return g_pCore->GetDebugIdEnabled ( uiDebugId );  
 }
 
-void LogEvent ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody, uint uiAddReportLogId )
+void LogEvent ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody )
 {
-    g_pCore->LogEvent ( uiDebugId, szType, szContext, szBody, uiAddReportLogId );  
-}
-
-void CallGameEntityRenderHandler( CEntitySAInterface* pEntity )
-{
-    // Only call if not a building or a dummy
-    if ( !pEntity || ( pEntity->nType != ENTITY_TYPE_BUILDING && pEntity->nType != ENTITY_TYPE_DUMMY ) )
-        if ( pGameEntityRenderHandler )
-            pGameEntityRenderHandler( pEntity );
+    g_pCore->LogEvent ( uiDebugId, szType, szContext, szBody );  
 }

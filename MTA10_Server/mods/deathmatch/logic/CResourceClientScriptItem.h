@@ -26,14 +26,14 @@ public:
     bool                        Start                           ( void );
     bool                        Stop                            ( void );
 
-    bool                        IsNoClientCache                 () const { return m_bIsNoClientCache; }
-    const SString&              GetSourceCode                   () const { return m_sourceCode; }
+    bool                        IsProtected                     () const { return m_bIsProtected; }
+    const SString&              GetChunkCode                    () const { return m_chunkCode; }
 
     ResponseCode                Request                         ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse );
     
 private:
-    bool                        m_bIsNoClientCache;
-    SString                     m_sourceCode;
+    bool                        m_bIsProtected;
+    SString                     m_chunkCode;
 };
 
 #endif

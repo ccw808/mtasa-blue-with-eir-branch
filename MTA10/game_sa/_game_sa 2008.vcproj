@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Release"
+			IntermediateDirectory=".\Release"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -63,6 +63,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Release/"
+				ObjectFile=".\Release/"
+				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -86,12 +89,14 @@
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				GenerateMapFile="true"
+				MapFileName="../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Release/game_sa.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -118,8 +123,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Debug"
+			IntermediateDirectory=".\Debug"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -160,6 +165,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Debug/"
+				ObjectFile=".\Debug/"
+				ProgramDataBaseFileName=".\Debug/"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
@@ -183,10 +191,10 @@
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
+				ProgramDatabaseFile=".\Debug/game_sa_d.pdb"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Debug/game_sa_d.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -213,8 +221,8 @@
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\obj\x86\$(ConfigurationName)\$(SafeRootNamespace)"
+			OutputDirectory="..\..\obj\client\game_sa"
+			IntermediateDirectory="..\..\obj\client\game_sa"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -258,6 +266,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=""
+				ObjectFile="$(IntDir)/"
+				ProgramDataBaseFileName="$(IntDir)/vc70.pdb"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -281,12 +292,14 @@
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				GenerateMapFile="true"
+				MapFileName="../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Release/game_sa.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -344,6 +357,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CAnimBlendKeyFrameSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CAnimBlendNodeSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CAnimBlendSequenceSA.cpp"
 				>
 			</File>
@@ -360,14 +381,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CAudioContainerLookupTableSA.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CAudioContainerSA.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CAudioEngineSA.cpp"
 				>
 			</File>
@@ -380,11 +393,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CBirdsSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CBmxSA.cpp"
 				>
 			</File>
 			<File
 				RelativePath="CBoatSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CBreakableInfoSA.cpp"
 				>
 			</File>
 			<File
@@ -492,11 +513,23 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CFxEmitterBPSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CFxEmitterSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CFxManagerSA.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\CFxSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CFxSystemBPSA.cpp"
 				>
 			</File>
 			<File
@@ -516,6 +549,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CGlassSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CHandlingEntrySA.cpp"
 				>
 			</File>
@@ -524,7 +561,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CHeliSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CHudSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CInteriorFurnitureSA.cpp"
 				>
 			</File>
 			<File
@@ -560,6 +605,30 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CParticleEmitterBaseDataSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleEmitterManagerSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleEmitterSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleHeaderSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleInfoSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleManagerSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CParticleObjectSA.cpp"
 				>
 			</File>
@@ -568,7 +637,7 @@
 				>
 			</File>
 			<File
-				RelativePath="CParticleSystemManagerSA.cpp"
+				RelativePath=".\CParticleStorageSA.cpp"
 				>
 			</File>
 			<File
@@ -620,6 +689,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CPlantSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CPlayerInfoSA.cpp"
 				>
 			</File>
@@ -637,6 +710,10 @@
 			</File>
 			<File
 				RelativePath=".\CPopulationSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CProceduralObjectSA.cpp"
 				>
 			</File>
 			<File
@@ -660,11 +737,11 @@
 				>
 			</File>
 			<File
-				RelativePath="CRemoteSA.cpp"
+				RelativePath=".\CRegisteredMotionBlurStreakSA.cpp"
 				>
 			</File>
 			<File
-				RelativePath=".\CRenderWareSA.ClothesReplacing.cpp"
+				RelativePath="CRemoteSA.cpp"
 				>
 			</File>
 			<File
@@ -692,11 +769,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CSeaAnimalSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CSettingsSA.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\CShadowDataSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CShadowSA.cpp"
 				>
 			</File>
 			<File
@@ -728,7 +813,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CTrackNodeSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CTrailerSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CTrainSA.cpp"
 				>
 			</File>
 			<File
@@ -893,6 +986,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CAnimBlendKeyFrameSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CAnimBlendNodeSA.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CAnimBlendSequenceSA.h"
 				>
 			</File>
@@ -909,14 +1010,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CAudioContainerLookupTableSA.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CAudioContainerSA.h"
-				>
-			</File>
-			<File
 				RelativePath=".\CAudioEngineSA.h"
 				>
 			</File>
@@ -929,6 +1022,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CBirdsSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CBmxSA.h"
 				>
 			</File>
@@ -938,6 +1035,10 @@
 			</File>
 			<File
 				RelativePath=".\CBoundingBoxSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CBreakableInfoSA.h"
 				>
 			</File>
 			<File
@@ -1041,7 +1142,7 @@
 				>
 			</File>
 			<File
-				RelativePath="CEventListSA.h"
+				RelativePath=".\CEventListSA.h"
 				>
 			</File>
 			<File
@@ -1066,6 +1167,14 @@
 			</File>
 			<File
 				RelativePath=".\CFontSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CFxEmitterBPSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CFxEmitterSA.h"
 				>
 			</File>
 			<File
@@ -1097,6 +1206,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CGlassSA.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CHandlingEntrySA.h"
 				>
 			</File>
@@ -1105,7 +1218,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CHeliSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CHudSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CInteriorFurnitureSA.h"
 				>
 			</File>
 			<File
@@ -1145,6 +1266,30 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CParticleEmitterBaseDataSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleEmitterManagerSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleEmitterSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleHeaderSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleInfoSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CParticleManagerSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CParticleObjectSA.h"
 				>
 			</File>
@@ -1153,7 +1298,7 @@
 				>
 			</File>
 			<File
-				RelativePath="CParticleSystemManagerSA.h"
+				RelativePath=".\CParticleStorageSA.h"
 				>
 			</File>
 			<File
@@ -1205,6 +1350,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CPlantSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CPlayerInfoSA.h"
 				>
 			</File>
@@ -1225,6 +1374,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CProceduralObjectSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CProjectileInfoSA.h"
 				>
 			</File>
@@ -1242,6 +1395,10 @@
 			</File>
 			<File
 				RelativePath="CRegisteredCoronaSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRegisteredMotionBlurStreakSA.h"
 				>
 			</File>
 			<File
@@ -1269,11 +1426,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CSeaAnimalSA.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CSettingsSA.h"
 				>
 			</File>
 			<File
 				RelativePath=".\CShadowDataSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CShadowSA.h"
 				>
 			</File>
 			<File
@@ -1305,7 +1470,15 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CTrackNodeSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CTrailerSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CTrainSA.h"
 				>
 			</File>
 			<File

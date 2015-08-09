@@ -32,10 +32,7 @@ struct SCrashAvertedInfo
 static std::list < SLogEventInfo >              ms_LogEventList;
 static std::map < int, SCrashAvertedInfo >      ms_CrashAvertedMap;
 static uint                                     ms_uiTickCountBase = 0;
-static void*                                    ms_pReservedMemory = NULL;
-static uint                                     ms_uiInCrashZone = 0;
-static uint                                     ms_uiInvalidParameterCount = 0;
-static uint                                     ms_uiInvalidParameterCountLogged = 0;
+
 
 typedef BOOL (WINAPI *MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD dwPid, HANDLE hFile, MINIDUMP_TYPE DumpType,
                                     CONST PMINIDUMP_EXCEPTION_INFORMATION ExceptionParam,
@@ -67,19 +64,6 @@ void CCrashDumpWriter::OnCrashAverted ( uint uiId )
 
 ///////////////////////////////////////////////////////////////
 //
-// CCrashDumpWriter::OnEnterCrashZone
-//
-// Static function. Called when entering possible crash zone
-//
-///////////////////////////////////////////////////////////////
-void CCrashDumpWriter::OnEnterCrashZone( uint uiId )
-{
-    ms_uiInCrashZone = uiId;
-}
-
-
-///////////////////////////////////////////////////////////////
-//
 // CCrashDumpWriter::LogEvent
 //
 // Static function.
@@ -99,87 +83,11 @@ void CCrashDumpWriter::LogEvent ( const char* szType, const char* szContext, con
 }
 
 
-///////////////////////////////////////////////////////////////
-//
-// CCrashDumpWriter::SetHandlers
-//
-// Static function. Initialize handlers for crash situations
-//
-///////////////////////////////////////////////////////////////
-void CCrashDumpWriter::SetHandlers( void )
-{
-#ifndef MTA_DEBUG
-    _set_invalid_parameter_handler( CCrashDumpWriter::HandleInvalidParameter );
-    SetCrashHandlerFilter ( CCrashDumpWriter::HandleExceptionGlobal );
-    CCrashDumpWriter::ReserveMemoryKBForCrashDumpProcessing( 500 );
-#endif
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CCrashDumpWriter::UpdateCounters
-//
-// Static function. Called every so often, you know
-//
-///////////////////////////////////////////////////////////////
-void CCrashDumpWriter::UpdateCounters( void )
-{
-    if ( ms_uiInvalidParameterCount > ms_uiInvalidParameterCountLogged && ms_uiInvalidParameterCountLogged < 10 )
-    {
-        AddReportLog( 9206, SString( "InvalidParameterCount changed from %d to %d", ms_uiInvalidParameterCountLogged, ms_uiInvalidParameterCount ) );
-        ms_uiInvalidParameterCountLogged = ms_uiInvalidParameterCount;
-    }
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CCrashDumpWriter::HandleInvalidParameter
-//
-// Static function. Called when an invalid parameter is detected by functions such as printf.
-// Can be caused by problems with localized strings.
-//
-///////////////////////////////////////////////////////////////
-void CCrashDumpWriter::HandleInvalidParameter( const wchar_t* expression, const wchar_t* function, const wchar_t* file, unsigned int line, uintptr_t pReserved )
-{
-    ms_uiInvalidParameterCount++;
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CCrashDumpWriter::ReserveMemoryKBForCrashDumpProcessing
-// CCrashDumpWriter::FreeMemoryForCrashDumpProcessing
-//
-// Static functions. Keep some RAM to help avoid mem problems during crash dump saving
-//
-///////////////////////////////////////////////////////////////
-void CCrashDumpWriter::ReserveMemoryKBForCrashDumpProcessing( uint uiMemoryKB )
-{
-    FreeMemoryForCrashDumpProcessing();
-    ms_pReservedMemory = malloc( uiMemoryKB * 1024 );
-}
-
-void CCrashDumpWriter::FreeMemoryForCrashDumpProcessing( void )
-{
-    if ( ms_pReservedMemory )
-    {
-        free( ms_pReservedMemory );
-        ms_pReservedMemory = NULL;
-    }
-}
-
-
 long WINAPI CCrashDumpWriter::HandleExceptionGlobal ( _EXCEPTION_POINTERS* pException )
 {
-    FreeMemoryForCrashDumpProcessing();
-
     // Create the exception information class
     CExceptionInformation_Impl* pExceptionInformation = new CExceptionInformation_Impl;
     pExceptionInformation->Set ( pException->ExceptionRecord->ExceptionCode, pException );
-
-    WriteDebugEvent ( "CCrashDumpWriter::HandleExceptionGlobal" );
 
     // Grab the mod manager
     CModManager* pModManager = CModManager::GetSingletonPtr ();
@@ -237,9 +145,6 @@ long WINAPI CCrashDumpWriter::HandleExceptionGlobal ( _EXCEPTION_POINTERS* pExce
 
 void CCrashDumpWriter::DumpCoreLog ( CExceptionInformation* pExceptionInformation )
 {
-    // Write crash flag for next launch (Simple flag in case of double faults later)
-    fclose( fopen ( CalcMTASAPath ( "mta\\core.log.flag" ), "w" ) );
-
     // Write a log with the generic exception information
     FILE* pFile = fopen ( CalcMTASAPath ( "mta\\core.log" ), "a+" );
     if ( pFile )
@@ -296,19 +201,16 @@ void CCrashDumpWriter::DumpCoreLog ( CExceptionInformation* pExceptionInformatio
 
         // For the crash dialog
         SetApplicationSetting ( "diagnostics", "last-crash-info", strInfo );
-        WriteDebugEvent ( strInfo.Replace( "\n", " " ) );
     }
 }
 
 
 void CCrashDumpWriter::DumpMiniDump ( _EXCEPTION_POINTERS* pException, CExceptionInformation* pExceptionInformation )
 {
-    WriteDebugEvent ( "CCrashDumpWriter::DumpMiniDump" );
-
     // Try to load the DLL in our directory
     HMODULE hDll = NULL;
     char szDbgHelpPath [MAX_PATH];
-    if ( GetModuleFileNameA ( NULL, szDbgHelpPath, MAX_PATH ) )
+    if ( GetModuleFileName ( NULL, szDbgHelpPath, MAX_PATH ) )
     {
         char* pSlash = _tcsrchr ( szDbgHelpPath, '\\' );
         if ( pSlash )
@@ -324,24 +226,15 @@ void CCrashDumpWriter::DumpMiniDump ( _EXCEPTION_POINTERS* pException, CExceptio
         hDll = LoadLibrary( "DBGHELP.DLL" );
     }
 
-    if ( !hDll )
-        AddReportLog( 9201, "CCrashDumpWriter::DumpMiniDump - Could not load DBGHELP.DLL" );
-
     // We could load a dll?
     if ( hDll )
     {
         // Grab the MiniDumpWriteDump proc address
         MINIDUMPWRITEDUMP pDump = reinterpret_cast < MINIDUMPWRITEDUMP > ( GetProcAddress( hDll, "MiniDumpWriteDump" ) );
-        if ( !pDump )
-            AddReportLog( 9202, "CCrashDumpWriter::DumpMiniDump - Could not find MiniDumpWriteDump" );
-
         if ( pDump )
         {
             // Create the file
             HANDLE hFile = CreateFile ( CalcMTASAPath ( "mta\\core.dmp" ), GENERIC_WRITE, FILE_SHARE_WRITE, NULL, CREATE_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL );
-            if ( hFile == INVALID_HANDLE_VALUE )
-                AddReportLog( 9203, SString( "CCrashDumpWriter::DumpMiniDump - Could not create '%s'", *CalcMTASAPath ( "mta\\core.dmp" ) ) );
-
             if ( hFile != INVALID_HANDLE_VALUE )
             {
                 // Create an exception information struct
@@ -351,12 +244,7 @@ void CCrashDumpWriter::DumpMiniDump ( _EXCEPTION_POINTERS* pException, CExceptio
                 ExInfo.ClientPointers = FALSE;
 
                 // Write the dump
-                BOOL bResult = pDump ( GetCurrentProcess(), GetCurrentProcessId(), hFile, (MINIDUMP_TYPE)( MiniDumpNormal | MiniDumpWithIndirectlyReferencedMemory ), &ExInfo, NULL, NULL );
-
-                if ( !bResult )
-                    AddReportLog( 9204, SString( "CCrashDumpWriter::DumpMiniDump - MiniDumpWriteDump failed (%08x)", GetLastError() ) );
-                else
-                    WriteDebugEvent ( "CCrashDumpWriter::DumpMiniDump - MiniDumpWriteDump succeeded" );
+                pDump ( GetCurrentProcess(), GetCurrentProcessId(), hFile, (MINIDUMP_TYPE)( MiniDumpNormal | MiniDumpWithIndirectlyReferencedMemory ), &ExInfo, NULL, NULL );
 
                 // Close the dumpfile
                 CloseHandle ( hFile );
@@ -368,7 +256,6 @@ void CCrashDumpWriter::DumpMiniDump ( _EXCEPTION_POINTERS* pException, CExceptio
 
                 // Create the dump directory
                 CreateDirectory ( CalcMTASAPath ( "mta\\dumps" ), 0 );
-                CreateDirectory ( CalcMTASAPath ( "mta\\dumps\\private" ), 0 );
 
                 SString strModuleName = pExceptionInformation->GetModuleBaseName ();
                 strModuleName = strModuleName.ReplaceI ( ".dll", "" ).Replace ( ".exe", "" ).Replace ( "_", "" ).Replace ( ".", "" ).Replace ( "-", "" );
@@ -407,7 +294,7 @@ void CCrashDumpWriter::DumpMiniDump ( _EXCEPTION_POINTERS* pException, CExceptio
                 }
 
                 // Ensure filename parts match up with EDumpFileNameParts
-                SString strFilename ( "mta\\dumps\\private\\client_%s_%s_%08x_%x_%s_%08X_%04X_%03X_%s_%04d%02d%02d_%02d%02d.dmp",
+                SString strFilename ( "mta\\dumps\\client_%s_%s_%08x_%x_%s_%08X_%04X_%03X_%s_%04d%02d%02d_%02d%02d.dmp",
                                              strMTAVersionFull.c_str (),
                                              strModuleName.c_str (),
                                              pExceptionInformation->GetAddressModuleOffset (),
@@ -481,35 +368,11 @@ void CCrashDumpWriter::DumpMiniDump ( _EXCEPTION_POINTERS* pException, CExceptio
                 GetMemoryInfo ( memInfo );
                 AppendToDumpFile ( strPathFilename, memInfo, 'MEMs', 'MEMe' );
                 SetApplicationSetting ( "diagnostics", "last-dump-extra", "added-mem" );
-
-                // Try to logfile.txt to dump file
-                SetApplicationSetting ( "diagnostics", "last-dump-extra", "try-logfile" );
-                CBuffer logfileContent;
-                logfileContent.LoadFromFile( CalcMTASAPath( PathJoin( "mta", "logfile.txt" ) ) );
-                AppendToDumpFile ( strPathFilename, logfileContent, 'LOGs', 'LOGe' );
-                SetApplicationSetting ( "diagnostics", "last-dump-extra", "added-logfile" );
-
-                // Try to report.log to dump file
-                SetApplicationSetting ( "diagnostics", "last-dump-extra", "try-report" );
-                CBuffer reportLogContent;
-                reportLogContent.LoadFromFile( PathJoin( GetMTADataPath(), "report.log" ) );
-                AppendToDumpFile ( strPathFilename, reportLogContent, 'REPs', 'REPe' );
-                SetApplicationSetting ( "diagnostics", "last-dump-extra", "added-report" );
             }
         }
 
         // Free the DLL again
         FreeLibrary ( hDll );
-    }
-
-    // Auto-fixes
-
-    // Check if crash was in volumetric shadow code
-    if ( ms_uiInCrashZone == 1 || ms_uiInCrashZone == 2 )
-    {
-        CVARS_SET( "volumetric_shadows", false );
-        CCore::GetSingleton().SaveConfig();
-        AddReportLog( 9205, "Disabled volumetric shadows" );
     }
 }
 
@@ -658,9 +521,6 @@ namespace
             case POINT_ROUTE_POOL:          cPtr = 0x5511AF; break;
             case POINTER_DOUBLE_LINK_POOL:  iPtr = 0x550F82; break;
             case POINTER_SINGLE_LINK_POOL:  iPtr = 0x550F46; break;
-            case ENV_MAP_MATERIAL_POOL:     iPtr = 0x5DA08E; break;
-            case ENV_MAP_ATOMIC_POOL:       iPtr = 0x5DA0CA; break;
-            case SPEC_MAP_MATERIAL_POOL:    iPtr = 0x5DA106; break;
         }
         if ( iPtr )
             return *(int*)iPtr;
@@ -772,7 +632,7 @@ void CCrashDumpWriter::GetD3DInfo ( CBuffer& buffer )
     // Try to get CRenderWare pointer
     CCore* pCore = CCore::GetSingletonPtr ();
     CGame* pGame = pCore ? pCore->GetGame () : NULL;
-    CRenderWare* pRenderWare = pGame ? pGame->GetRenderWare () : NULL;
+    CRenderWare* pRenderWare = pGame->GetRenderWare ();
     // Write on how we got on with doing that
     stream.Write ( (uchar)( pCore ? 1 : 0 ) );
     stream.Write ( (uchar)( pGame ? 1 : 0 ) );
@@ -903,16 +763,13 @@ void CCrashDumpWriter::GetMiscInfo ( CBuffer& buffer )
     CBufferWriteStream stream ( buffer );
 
     // Write info version
-    stream.Write ( 2 );
+    stream.Write ( 1 );
 
     // US/Euro gta_sa.exe
     unsigned char ucA = *reinterpret_cast < unsigned char* > ( 0x748ADD );
     unsigned char ucB = *reinterpret_cast < unsigned char* > ( 0x748ADE );
     stream.Write ( ucA );
     stream.Write ( ucB );
-
-    // Crash zone if any
-    stream.Write ( ms_uiInCrashZone );
 }
 
 

@@ -22,15 +22,16 @@
 int CLuaFunctionDefs::CreateObject ( lua_State* luaVM )
 {
 //  object createObject ( int modelid, float x, float y, float z, [float rx, float ry, float rz, bool lowLOD] )
-    ushort usModelID;
-    CVector vecPosition;
-    CVector vecRotation;
-    bool bLowLod;
+    ushort usModelID; CVector vecPosition; CVector vecRotation; bool bLowLod;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadNumber ( usModelID );
-    argStream.ReadVector3D ( vecPosition );
-    argStream.ReadVector3D ( vecRotation, vecRotation );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
+    argStream.ReadNumber ( vecRotation.fX, 0 );
+    argStream.ReadNumber ( vecRotation.fY, 0 );
+    argStream.ReadNumber ( vecRotation.fZ, 0 );
     argStream.ReadBool ( bLowLod, false );
 
     if ( !argStream.HasErrors () )
@@ -104,13 +105,11 @@ int CLuaFunctionDefs::GetObjectScale ( lua_State* luaVM )
 
     if ( !argStream.HasErrors () )
     {
-        CVector vecScale;
-        if ( CStaticFunctionDefinitions::GetObjectScale ( *pObject, vecScale ) )
+        float fScale;
+        if ( CStaticFunctionDefinitions::GetObjectScale ( *pObject, fScale ) )
         {
-            lua_pushnumber ( luaVM, vecScale.fX );
-            lua_pushnumber ( luaVM, vecScale.fY );
-            lua_pushnumber ( luaVM, vecScale.fZ );
-            return 3;
+            lua_pushnumber ( luaVM, fScale );
+            return 1;
         }
     }
     else
@@ -120,29 +119,16 @@ int CLuaFunctionDefs::GetObjectScale ( lua_State* luaVM )
     return 1;
 }
 
-
 int CLuaFunctionDefs::IsObjectBreakable ( lua_State* luaVM )
 {
-//  bool isObjectBreakable ( int modelId )
-    
+    //  bool isObjectBreakable ( object theObject )
+    CClientObject* pObject; 
+    bool bBreakable;
+
     CScriptArgReader argStream ( luaVM );
-
-    if ( argStream.NextIsNumber () )
-    {
-        unsigned short usModel;
-        argStream.ReadNumber ( usModel );
-
-        lua_pushboolean ( luaVM, CClientObjectManager::IsBreakableModel ( usModel ) );
-        return 1;
-    }
-
-//  bool isObjectBreakable ( object theObject )
-    CClientObject* pObject;
-
     argStream.ReadUserData ( pObject );
     if ( !argStream.HasErrors () )
     {
-        bool bBreakable;
         if ( CStaticFunctionDefinitions::IsObjectBreakable ( *pObject, bBreakable ) )
         {
             lua_pushboolean ( luaVM, bBreakable );
@@ -157,28 +143,6 @@ int CLuaFunctionDefs::IsObjectBreakable ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::GetObjectMass ( lua_State* luaVM )
-{
-//  float getObjectMass ( object theObject )
-    CClientObject* pObject; float fMass;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pObject );
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::GetObjectMass ( *pObject, fMass ) )
-        {
-            lua_pushnumber ( luaVM, fMass );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
 int CLuaFunctionDefs::MoveObject ( lua_State* luaVM )
 {
 //  bool moveObject ( object theObject, int time, float targetx, float targety, float targetz,
@@ -189,8 +153,12 @@ int CLuaFunctionDefs::MoveObject ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
     argStream.ReadNumber ( iTime );
-    argStream.ReadVector3D ( vecTargetPosition );
-    argStream.ReadVector3D ( vecTargetRotation, CVector ( ) );
+    argStream.ReadNumber ( vecTargetPosition.fX );
+    argStream.ReadNumber ( vecTargetPosition.fY );
+    argStream.ReadNumber ( vecTargetPosition.fZ );
+    argStream.ReadNumber ( vecTargetRotation.fX, 0 );
+    argStream.ReadNumber ( vecTargetRotation.fY, 0 );
+    argStream.ReadNumber ( vecTargetRotation.fZ, 0 );
     argStream.ReadEnumString ( easingType, CEasingCurve::Linear );
     argStream.ReadNumber ( fEasingPeriod, 0.3f );
     argStream.ReadNumber ( fEasingAmplitude, 1.0f );
@@ -239,32 +207,15 @@ int CLuaFunctionDefs::StopObject ( lua_State* luaVM )
 int CLuaFunctionDefs::SetObjectScale ( lua_State* luaVM )
 {
 //  bool setObjectScale ( object theObject, float scale )
-    CClientEntity* pEntity;
-    CVector vecScale;
+    CClientEntity* pEntity; float fScale;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
+    argStream.ReadNumber ( fScale );
 
-
-    // Caz - This function looks totally wrong
-    // the function is designed to support the following syntaxes
-    // setObjectScale ( obj, 2 ) -- all other components are set to 2
-    // setObjectScale ( obj, 2, 1, 5 ) -- custom scaling on 3 axis
-
-    if ( argStream.NextIsVector3D ( ) )
-    {
-        argStream.ReadVector3D ( vecScale );
-    }
-    else
-    {
-        // Caz - Here is what I am talking about.
-        argStream.ReadNumber ( vecScale.fX );
-        argStream.ReadNumber ( vecScale.fY, vecScale.fX );
-        argStream.ReadNumber ( vecScale.fZ, vecScale.fX );
-    }
     if ( !argStream.HasErrors () )
     {
-        if ( CStaticFunctionDefinitions::SetObjectScale ( *pEntity, vecScale ) )
+        if ( CStaticFunctionDefinitions::SetObjectScale ( *pEntity, fScale ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
@@ -302,7 +253,6 @@ int CLuaFunctionDefs::SetObjectStatic ( lua_State* luaVM )
     return 1;
 }
 
-
 int CLuaFunctionDefs::SetObjectBreakable ( lua_State* luaVM )
 {
     //  bool setObjectBreakable ( object theObject, bool bBreakable )
@@ -324,103 +274,6 @@ int CLuaFunctionDefs::SetObjectBreakable ( lua_State* luaVM )
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::BreakObject ( lua_State* luaVM )
-{
-//  bool breakObject( object theObject )
-    CClientEntity* pEntity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::BreakObject ( *pEntity ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::RespawnObject ( lua_State* luaVM )
-{
-//  bool respawnObject ( object theObject )
-    CClientEntity* pEntity;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::RespawnObject ( *pEntity ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::ToggleObjectRespawn ( lua_State* luaVM )
-{
-//  bool toggleObjectRespawn ( object theObject, bool respawn )
-    CClientEntity* pEntity; bool bRespawn;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bRespawn );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::ToggleObjectRespawn ( *pEntity, bRespawn ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaFunctionDefs::SetObjectMass ( lua_State* luaVM )
-{
-//  bool setObjectMass ( object theObject, float fMass )
-    CClientEntity* pEntity; float fMass;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( fMass );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetObjectMass ( *pEntity, fMass ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-    
     lua_pushboolean ( luaVM, false );
     return 1;
 }

@@ -29,18 +29,22 @@ CResourceManager::~CResourceManager ( void )
     while ( !m_resources.empty () )
     {
         CResource* pResource = m_resources.back ();
-        Remove( pResource );
+
+        CLuaArguments Arguments;
+        Arguments.PushResource ( pResource );
+        pResource->GetResourceEntity ()->CallEvent ( "onClientResourceStop", Arguments, true );
+        delete pResource;
+
+        m_resources.pop_back ();
     }
 }
 
-CResource* CResourceManager::Add ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq, bool bEnableOOP )
+CResource* CResourceManager::Add ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq )
 {
-    CResource* pResource = new CResource ( usNetID, szResourceName, pResourceEntity, pResourceDynamicEntity, strMinServerReq, strMinClientReq, bEnableOOP );
+    CResource* pResource = new CResource ( usNetID, szResourceName, pResourceEntity, pResourceDynamicEntity, strMinServerReq, strMinClientReq );
     if ( pResource )
     {
         m_resources.push_back ( pResource );
-        assert( !MapContains( m_NetIdResourceMap, pResource->GetNetID() ) );
-        MapSet( m_NetIdResourceMap, usNetID, pResource );
         return pResource;
     }
     return NULL;
@@ -49,21 +53,11 @@ CResource* CResourceManager::Add ( unsigned short usNetID, const char* szResourc
 
 CResource* CResourceManager::GetResourceFromNetID ( unsigned short usNetID )
 {
-    CResource* pResource = MapFindRef( m_NetIdResourceMap, usNetID );
-    if ( pResource )
-    {
-        assert( pResource->GetNetID() == usNetID );
-        return pResource;
-    }
-
     list < CResource* > ::const_iterator iter = m_resources.begin ();
-    for ( ; iter != m_resources.end (); ++iter )
+    for ( ; iter != m_resources.end (); iter++ )
     {
         if ( ( *iter )->GetNetID() == usNetID )
-        {
-            assert( 0 );    // Should be in map
             return ( *iter );
-        }
     }
     return NULL;
 }
@@ -76,25 +70,11 @@ CResource* CResourceManager::GetResourceFromScriptID ( uint uiScriptID )
     return pResource;
 }
 
-CResource* CResourceManager::GetResourceFromLuaState ( lua_State* luaVM )
-{
-    CLuaMain* pLuaMain = g_pClientGame->GetLuaManager()->GetVirtualMachine ( luaVM );
-    CResource* pResource = pLuaMain ? pLuaMain->GetResource() : NULL;
-    return pResource;
-}
-
-SString CResourceManager::GetResourceName ( lua_State* luaVM )
-{
-    CResource* pResource = GetResourceFromLuaState( luaVM );
-    if ( pResource )
-        return pResource->GetName();
-    return "";
-}
 
 CResource* CResourceManager::GetResource ( const char* szResourceName )
 {
     list < CResource* > ::const_iterator iter = m_resources.begin ();
-    for ( ; iter != m_resources.end (); ++iter )
+    for ( ; iter != m_resources.end (); iter++ )
     {
         if ( stricmp ( ( *iter )->GetName(), szResourceName ) == 0 )
             return ( *iter );
@@ -106,7 +86,7 @@ CResource* CResourceManager::GetResource ( const char* szResourceName )
 void CResourceManager::LoadUnavailableResources ( CClientEntity *pRootEntity )
 {
     list < CResource* > ::const_iterator iter = m_resources.begin ();
-    for ( ; iter != m_resources.end (); ++iter )
+    for ( ; iter != m_resources.end (); iter++ )
     {
         if ( !( ( *iter )->GetActive () ) )
             ( *iter )->Load ( pRootEntity );
@@ -127,16 +107,11 @@ bool CResourceManager::RemoveResource ( unsigned short usNetID )
 
 void CResourceManager::Remove ( CResource* pResource )
 {
-    // Triggger the onStop event, and set resource state to 'stopping'
-    pResource->Stop (); 
-
     // Delete all the resource's locally created children (the server won't do that)
     pResource->DeleteClientChildren ();
 
     // Delete the resource
-    m_resources.remove ( pResource );
-    assert( MapContains( m_NetIdResourceMap, pResource->GetNetID() ) );
-    MapRemove( m_NetIdResourceMap, pResource->GetNetID() );
+    if ( !m_resources.empty() ) m_resources.remove ( pResource );
     delete pResource;
 }
 
@@ -198,77 +173,4 @@ bool CResourceManager::ParseResourcePathInput ( std::string strInput, CResource*
         return true;
     }
     return false;
-}
-
-// When a resource file is created
-void CResourceManager::OnAddResourceFile( CDownloadableResource* pResourceFile )
-{
-    SString strFilename = PathConform( pResourceFile->GetName() ).ToLower();
-    dassert( !MapContains( m_ResourceFileMap, strFilename ) );
-    MapSet( m_ResourceFileMap, strFilename, pResourceFile );
-}
-
-// When a resource file is delected
-void CResourceManager::OnRemoveResourceFile( CDownloadableResource* pResourceFile )
-{
-    SString strFilename = PathConform( pResourceFile->GetName() ).ToLower();
-    dassert( MapFindRef( m_ResourceFileMap, strFilename ) == pResourceFile );
-    MapRemove( m_ResourceFileMap, strFilename );
-}
-
-// Update downloaded flag for this file
-void CResourceManager::OnDownloadedResourceFile( const SString& strInFilename )
-{
-    SString strFilename = PathConform( strInFilename ).ToLower();
-    CDownloadableResource* pResourceFile = MapFindRef( m_ResourceFileMap, strFilename );
-    if ( pResourceFile )
-        pResourceFile->SetDownloaded();
-}
-
-// Check given file name is a resource file
-bool CResourceManager::IsResourceFile( const SString& strInFilename )
-{
-    SString strFilename = PathConform( strInFilename ).ToLower();
-    return MapContains( m_ResourceFileMap, strFilename );
-}
-
-// Check resource file data matches server checksum
-void CResourceManager::ValidateResourceFile( const SString& strInFilename, const CBuffer& fileData )
-{
-    SString strFilename = PathConform( strInFilename ).ToLower();
-    CDownloadableResource* pResourceFile = MapFindRef( m_ResourceFileMap, strFilename );
-    if ( pResourceFile )
-    {
-        if ( pResourceFile->IsAutoDownload() && !pResourceFile->IsDownloaded() )
-        {
-            // Scripting error
-            g_pClientGame->GetScriptDebugging()->LogError( NULL, "Attempt to load '%s' before onClientFileDownloadComplete event", *ConformResourcePath( strInFilename ) );
-        }
-        else
-        {
-            CChecksum checksum = CChecksum::GenerateChecksumFromBuffer( fileData.GetData(), fileData.GetSize() );
-            if ( checksum != pResourceFile->GetServerChecksum() )
-            {
-                if ( pResourceFile->IsDownloaded() )
-                {
-                    char szMd5[33];
-                    CMD5Hasher::ConvertToHex( checksum.md5, szMd5 );
-                    SString strMessage( "Resource file checksum failed: %s [Size:%d MD5:%s] %08x ", *ConformResourcePath( strInFilename ), fileData.GetSize(), szMd5, fileData.GetData() );
-                    g_pClientGame->TellServerSomethingImportant( 1007, strMessage, false );
-                    g_pCore->GetConsole ()->Print( strMessage );
-                    AddReportLog( 7057, strMessage + g_pNet->GetConnectedServer( true ), 10 );
-                }
-                else
-                if ( !pResourceFile->IsAutoDownload() )
-                {
-                    char szMd5[33];
-                    CMD5Hasher::ConvertToHex( checksum.md5, szMd5 );
-                    SString strMessage( "Attempt to load resource file before it is ready: %s [Size:%d MD5:%s] %08x ", *ConformResourcePath( strInFilename ), fileData.GetSize(), szMd5, fileData.GetData() );
-                    g_pClientGame->TellServerSomethingImportant( 1008, strMessage, false );
-                    g_pCore->GetConsole ()->Print( strMessage );
-                    AddReportLog( 7058, strMessage + g_pNet->GetConnectedServer( true ), 10 );
-                }
-            }
-        }
-    }
 }

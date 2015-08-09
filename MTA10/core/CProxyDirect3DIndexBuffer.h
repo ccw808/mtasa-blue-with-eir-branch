@@ -47,7 +47,5 @@ protected:
     IDirect3DIndexBuffer9*  m_pOriginal;
     int                     m_iMemUsed;
     DWORD                   m_dwUsage;
-    D3DFORMAT               m_format;
-    D3DPOOL                 m_pool;
     CProxyDirect3DDevice9::SResourceMemory&     m_stats;
 };

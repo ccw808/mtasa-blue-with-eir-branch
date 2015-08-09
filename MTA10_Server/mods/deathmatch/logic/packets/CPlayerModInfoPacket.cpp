@@ -28,32 +28,27 @@ bool CPlayerModInfoPacket::Read ( NetBitStreamInterface& BitStream )
     {
         SModInfoItem item;
 
-        BitStream.Read ( item.usId );
-        BitStream.Read ( item.uiHash );
-        BitStream.ReadString ( item.strName );
+        if ( !BitStream.Read ( item.usId ) )
+            return false;
+
+        if ( !BitStream.Read ( item.uiHash ) )
+            return false;
+
+        if ( !BitStream.ReadString ( item.strName ) )
+            return false;
 
         int iHasSize;
-        BitStream.Read ( iHasSize );
+        if ( !BitStream.Read ( iHasSize ) )
+            return false;
         item.bHasSize = iHasSize != 0;
 
-        BitStream.Read ( item.vecSize.fX );
-        BitStream.Read ( item.vecSize.fY );
-        BitStream.Read ( item.vecSize.fZ );
+        if ( !BitStream.Read ( item.vecSize.fX ) )
+            return false;
 
-        BitStream.Read ( item.vecOriginalSize.fX );
-        BitStream.Read ( item.vecOriginalSize.fY );
-        BitStream.Read ( item.vecOriginalSize.fZ );
+        if ( !BitStream.Read ( item.vecSize.fY ) )
+            return false;
 
-        int iHashInfo;
-        BitStream.Read ( iHashInfo );
-        item.bHasHashInfo = iHashInfo != 0;
-
-        BitStream.Read ( item.uiShortBytes );
-        BitStream.ReadString ( item.strShortMd5 );
-        BitStream.ReadString ( item.strShortSha256 );
-        BitStream.Read ( item.uiLongBytes );
-        BitStream.ReadString ( item.strLongMd5 );
-        if ( !BitStream.ReadString ( item.strLongSha256 ) )
+        if ( !BitStream.Read ( item.vecSize.fZ ) )
             return false;
 
         m_ModInfoItemList.push_back ( item );

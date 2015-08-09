@@ -35,9 +35,7 @@ public:
     eClientEntityType       GetType                 ( void ) const                      { return CCLIENTSOUND; }
 
     bool                    Play                    ( const SString& strPath, bool bLoop );
-    bool                    Play                    ( void* pMemory, unsigned int uiLength, bool bLoop );
     bool                    Play3D                  ( const SString& strPath, bool bLoop );
-    bool                    Play3D                  ( void* pMemory, unsigned int uiLength, bool bLoop );
     void                    PlayStream              ( const SString& strURL, bool bLoop, bool b3D = false );
 
     void                    SetPaused               ( bool bPaused  );
@@ -68,6 +66,7 @@ public:
 
     void                    ApplyFXModifications    ( float fSampleRate, float fTempo, float fPitch, bool bReversed );
     void                    GetFXModifications      ( float &fSampleRate, float &fTempo, float &fPitch, bool &bReversed );
+    bool                    IsTempoChanged          ( void )                            { return m_fSampleRate != 0.0f || m_fSampleRate != 0.0f || m_fTempo != 0.0f; }
     float*                  GetFFTData              ( int iLength );
     float*                  GetWaveData             ( int iLength );
     bool                    IsPanEnabled            ( void );
@@ -76,9 +75,6 @@ public:
     float                   GetSoundBPM             ( void );
 
     SString                 GetMetaTags             ( const SString& strFormat );
-
-    bool                    SetPan                  ( float fPan );
-    bool                    GetPan                   ( float& fPan );
 
     bool                    SetFxEffect             ( uint uiFxEffect, bool bEnable );
     bool                    IsFxEffectEnabled       ( uint uiFxEffect );
@@ -111,8 +107,6 @@ private:
     bool        m_b3D;
     SString     m_strPath;
     bool        m_bLoop;
-    void*       m_pBuffer;
-    unsigned int m_uiBufferLength;
 
     // Info
     bool        m_bDoneCreate;
@@ -125,7 +119,6 @@ private:
     float       m_fSampleRate;
     bool        m_bReversed;
     bool        m_bPan;
-    float       m_fPan;
 
     // Saved state
     bool        m_bPaused;
@@ -136,7 +129,6 @@ private:
     float       m_fMinDistance;
     float       m_fMaxDistance;
     SFixedArray < int, 9 >  m_EnabledEffects;
-    uint        m_uiFrameNumberCreated;
 };
 
 #endif

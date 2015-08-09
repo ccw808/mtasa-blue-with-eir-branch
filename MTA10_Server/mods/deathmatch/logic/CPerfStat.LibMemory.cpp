@@ -39,7 +39,7 @@ namespace
     };
 
 
-    typedef unsigned long (*PFNGETALLOCSTATS) ( uint, void*, unsigned long );
+    typedef unsigned long (*PFNGETALLOCSTATS) ( unsigned long*, unsigned long );
 
     struct CLibraryInfo
     {
@@ -198,7 +198,6 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
     //
     bool bHelp = MapContains ( strOptionMap, "h" );
     bool bMoreInfo = MapContains ( strOptionMap, "i" );
-    bool bTopTags = MapContains ( strOptionMap, "t" );
 
     //
     // Process help
@@ -207,7 +206,6 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
     {
         pResult->AddColumn ( "Lib memory help" );
         pResult->AddRow ()[0] ="Option h - This help";
-        pResult->AddRow ()[0] ="Option t - Top allocations";
         pResult->AddRow ()[0] ="Option i - More information";
         return;
     }
@@ -217,17 +215,21 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
     {
         if ( m_LibraryList.size () == 0 )
         {
-            const char* libs [] = {
-                            SERVER_BIN_PATH "core",
-                            SERVER_BIN_PATH_MOD "deathmatch",
-                            SERVER_BIN_PATH "net",
-                            SERVER_BIN_PATH "xmll",
+            struct {
+                bool bModDir;
+                const char* szName;
+            } libs [] = {
+                            { false,  "core", },
+                            { true,   "deathmatch", },
+                            { false,  "net", },
+                            { false,  "xmll", },
                         };
 
             for ( unsigned int i = 0 ; i < NUMELMS ( libs ) ; i++ )
             {
                 CLibraryInfo info;
-                info.strName = libs[i];
+                bool bModDir = libs[i].bModDir;
+                info.strName = libs[i].szName;
                 #if MTA_DEBUG
                     info.strName += "_d";
                 #endif
@@ -238,7 +240,12 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
                 #endif
                 info.pLibrary = new CDynamicLibrary();
 
-                SString strPathFilename = g_pServerInterface->GetAbsolutePath ( info.strName );
+                SString strPathFilename;
+                char szBuffer [MAX_PATH];
+                if ( bModDir )
+                    strPathFilename = g_pServerInterface->GetModManager ()->GetAbsolutePath ( info.strName );
+                else
+                    strPathFilename = g_pServerInterface->GetAbsolutePath ( info.strName, szBuffer, MAX_PATH );
 
                 if ( info.pLibrary->Load ( strPathFilename ) )
                 {
@@ -257,7 +264,7 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
         {
             CLibraryInfo& info = m_LibraryList[i];
             unsigned long stats[9];
-            unsigned long numgot = info.pfnGetAllocStats ( 0, stats, NUMELMS ( stats ) );
+            unsigned long numgot = info.pfnGetAllocStats ( stats, NUMELMS ( stats ) );
             if ( numgot >= 2 )
                 UpdateLibMemory ( info.strName, ( stats[0] + 1023 ) / 1024, ( stats[1] + 1023 ) / 1024 );
         }
@@ -278,15 +285,6 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
         pResult->AddColumn ( "Frees" );
         pResult->AddColumn ( "UnmatchedFrees" );
         pResult->AddColumn ( "DupeMem" );
-    }
-    else
-    if ( bTopTags )
-    {
-        pResult->AddColumn ( "1" );
-        pResult->AddColumn ( "2" );
-        pResult->AddColumn ( "3" );
-        pResult->AddColumn ( "4" );
-        pResult->AddColumn ( "5" );
     }
 
     // Calc totals
@@ -354,7 +352,7 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
                 if ( strName == info.strName )
                 {
                     unsigned long stats[9];
-                    unsigned long numgot = info.pfnGetAllocStats ( 0, stats, NUMELMS(stats) );
+                    unsigned long numgot = info.pfnGetAllocStats ( stats, NUMELMS(stats) );
                     if ( numgot >= 9 )
                     {
                         row[c++] = SString ( "%d", stats[2] );
@@ -364,25 +362,6 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
                         row[c++] = SString ( "%d", stats[6]  );
                         row[c++] = SString ( "%d", stats[7]  );
                         row[c++] = SString ( "%d KB", ( stats[8] + 1023 ) / 1024  );
-                    }
-                    break;
-                }
-            }
-        }
-        else
-        if ( bTopTags )
-        {
-            for ( unsigned int i = 0 ; i < m_LibraryList.size () ; i++ )
-            {
-                CLibraryInfo& info = m_LibraryList[i];
-                if ( strName == info.strName )
-                {
-                    SAllocTrackingTagInfo stats[5];
-                    unsigned long numgot = info.pfnGetAllocStats ( 1, stats, NUMELMS ( stats ) );
-                    for ( uint i = 0 ; i < numgot && i < 5 ; i++ )
-                    {
-                        const SAllocTrackingTagInfo& info = stats[i];
-                        row[c++] = SString ( "[%d KB (%d) {%s}]", info.size/ 1024, info.countAllocs, info.tag );
                     }
                     break;
                 }

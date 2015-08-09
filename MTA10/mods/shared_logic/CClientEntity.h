@@ -23,7 +23,6 @@ class CClientEntity;
 #include "CElementArray.h"
 #include "CClientCommon.h"
 #include <core/CClientEntityBase.h>
-#include "logic/CClientEntityRefManager.h"
 class CLuaFunctionRef;
 
 // Used to check fast version of getElementsByType
@@ -77,11 +76,6 @@ enum eClientEntityType
     CCLIENTTEXTURE,
     CCLIENTSHADER,
     CCLIENTWEAPON,
-    CCLIENTEFFECT,
-    CCLIENTPOINTLIGHTS,
-    CCLIENTSCREENSOURCE,
-    CCLIENTRENDERTARGET,
-    CCLIENTBROWSER,
     CCLIENTUNKNOWN,
 };
 
@@ -94,11 +88,6 @@ class CLuaArguments;
 class CLuaMain;
 class CMapEventManager;
 typedef CFastList < CClientEntity* > CChildListType;
-
-// List of elements which is auto deleted when the last user calls Release()
-class CElementListSnapshot : public std::vector < CClientEntity* >, public CRefCountableST
-{
-};
 
 enum eCClientEntityClassTypes
 {
@@ -142,10 +131,7 @@ enum eCClientEntityClassTypes
     CLASS_CClientShader,
     CLASS_CClientRenderTarget,
     CLASS_CClientScreenSource,
-    CLASS_CClientWebBrowser,
     CLASS_CClientWeapon,
-    CLASS_CClientEffect,
-    CLASS_CClientPointLights,
 };
 
 
@@ -175,16 +161,7 @@ public:
     // ignored. Note that if this value is 0, all sync packets should be accepted. This is
     // so we don't need this byte when the element is created first.
     inline unsigned char                        GetSyncTimeContext      ( void )                    { return m_ucSyncTimeContext; };
-    inline void                                 SetSyncTimeContext      ( unsigned char ucContext ) 
-    {
-        #ifdef MTA_DEBUG
-        if ( GetType ( ) == eClientEntityType::CCLIENTPLAYER )
-        {
-            g_pCore->GetConsole ( )->Printf ( "Player Sync Context Updated from %i to %i.", m_ucSyncTimeContext, ucContext );
-        }
-        #endif
-        m_ucSyncTimeContext = ucContext;
-    };
+    inline void                                 SetSyncTimeContext      ( unsigned char ucContext ) { m_ucSyncTimeContext = ucContext; };
     bool                                        CanUpdateSync           ( unsigned char ucRemote );
 
     inline const char*                          GetName                 ( void )                    { return m_strName; }
@@ -205,7 +182,6 @@ public:
 
     CChildListType ::const_iterator             IterBegin               ( void )                    { return m_Children.begin (); }
     CChildListType ::const_iterator             IterEnd                 ( void )                    { return m_Children.end (); }
-    CElementListSnapshot*                       GetChildrenListSnapshot ( void );
 
     inline ElementID                            GetID                   ( void )                    { return m_ID; };
     void                                        SetID                   ( ElementID ID );
@@ -226,7 +202,6 @@ public:
     virtual void                                GetPosition             ( CVector& vecPosition ) const = 0;
     void                                        GetPositionRelative     ( CClientEntity * pOrigin, CVector& vecPosition ) const;
     virtual void                                SetPosition             ( const CVector& vecPosition ) = 0;
-    virtual void                                SetPosition             ( const CVector& vecPosition, bool bResetInterpolation, bool bAllowGroundLoadFreeze = true ) { SetPosition( vecPosition ); }
     void                                        SetPositionRelative     ( CClientEntity * pOrigin, const CVector& vecPosition );
     virtual void                                Teleport                ( const CVector& vecPosition ) { SetPosition(vecPosition); }
 
@@ -247,9 +222,11 @@ public:
     virtual void                                AttachTo                ( CClientEntity * pEntity );
     virtual void                                GetAttachedOffsets      ( CVector & vecPosition, CVector & vecRotation );
     virtual void                                SetAttachedOffsets      ( CVector & vecPosition, CVector & vecRotation );
+    inline void                                 AddAttachedEntity       ( CClientEntity* pEntity )      { m_AttachedEntities.push_back ( pEntity ); }
+    inline void                                 RemoveAttachedEntity    ( CClientEntity* pEntity )      { if ( !m_AttachedEntities.empty() ) m_AttachedEntities.remove ( pEntity ); }
     bool                                        IsEntityAttached        ( CClientEntity* pEntity );
-    uint                                        GetAttachedEntityCount  ( void )                        { return m_AttachedEntities.size(); }
-    CClientEntity*                              GetAttachedEntity       ( uint uiIndex )                { return m_AttachedEntities[ uiIndex ]; }
+    std::list < CClientEntity* > ::const_iterator AttachedEntitiesBegin ( void )                        { return m_AttachedEntities.begin (); }
+    std::list < CClientEntity* > ::const_iterator AttachedEntitiesEnd   ( void )                        { return m_AttachedEntities.end (); }
     void                                        ReattachEntities        ( void );
     virtual bool                                IsAttachable            ( void );
     virtual bool                                IsAttachToable          ( void );
@@ -330,15 +307,10 @@ public:
 
     float                                       GetDistanceBetweenBoundingSpheres   ( CClientEntity* pOther );
 
-    bool                                        IsCallPropagationEnabled    ( void )                { return m_bCallPropagationEnabled; }
-    virtual void                                SetCallPropagationEnabled   ( bool bEnabled )       { m_bCallPropagationEnabled = bEnabled; }
-
 protected:
     CClientManager*                             m_pManager;
     CClientEntity*                              m_pParent;
     CChildListType                              m_Children;
-    CElementListSnapshot*                       m_pChildrenListSnapshot;
-    uint                                        m_uiChildrenListSnapshotRevision;
 
     CCustomData*                                m_pCustomData;
 
@@ -360,8 +332,7 @@ protected:
     CClientEntity*                              m_pAttachedToEntity;
     CVector                                     m_vecAttachedPosition;
     CVector                                     m_vecAttachedRotation;
-    std::vector < CClientEntity* >              m_AttachedEntities;
-    bool                                        m_bDisallowAttaching;  // Protect against attaching in destructor
+    std::list < CClientEntity* >                m_AttachedEntities;
 
     bool                                        m_bBeingDeleted;
     bool                                        m_bSystemEntity;
@@ -376,7 +347,6 @@ protected:
     bool                                        m_bDoubleSided;
     bool                                        m_bDoubleSidedInit;
     bool                                        m_bWorldIgnored;
-    bool                                        m_bCallPropagationEnabled;
 
 public:
     // Optimization for getElementsByType starting at root

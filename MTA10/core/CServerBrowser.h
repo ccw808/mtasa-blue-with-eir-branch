@@ -115,11 +115,9 @@ public:
     void                OnQuickConnectButtonClick ( void );
     void                NotifyServerExists      ( in_addr Address, ushort usPort );
 
-    void                TabSkip                 ( bool bBackwards );
+    void                AddKnownLanServer       ( in_addr Address );
+    bool                IsKnownLanServer        ( in_addr Address );
 
-    bool                IsActive                ( void );
-
-    void                SetSelectedIndex        ( unsigned int uiIndex );
 protected:
     bool                OnMouseClick            ( CGUIMouseEventArgs Args );
     bool                OnMouseDoubleClick      ( CGUIMouseEventArgs Args );
@@ -271,6 +269,8 @@ private:
     ServerBrowserType       m_BeforeTempServerBrowserType;
     CGUIWindow*             m_pGeneralHelpWindow;
     long long               m_llLastGeneralHelpTime;
+
+    std::set < ulong >      m_KnownLanServerAddressMap;
 };
 
 #endif

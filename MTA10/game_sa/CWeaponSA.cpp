@@ -15,6 +15,8 @@
 
 #include "StdInc.h"
 
+extern CGameSA * pGame;
+
 CWeaponSA::CWeaponSA( CWeaponSAInterface * weaponInterface, CPed * ped, eWeaponSlot weaponSlot )
 {
     DEBUG_TRACE("CWeaponSA::CWeaponSA( CWeaponSAInterface * weaponInterface, CPed * ped, DWORD dwSlot )");

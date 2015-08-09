@@ -64,6 +64,7 @@ public:
     inline void                     SetNametagText          ( const char* szText );
     inline bool                     IsNametagShowing        ( void )                                { return m_bNametagShowing; }
     inline void                     SetNametagShowing       ( bool bShowing )                       { m_bNametagShowing = bShowing; }
+    inline CGUIStaticImage*         GetStatusIcon           ( void )                                { return m_pStatusIcon; }
     inline unsigned long            GetLastNametagShow      ( void )                                { return m_ulLastNametagShow; }
     inline void                     SetLastNametagShow      ( unsigned long ulTime )                { m_ulLastNametagShow = ulTime; }
 
@@ -93,11 +94,10 @@ public:
     inline unsigned int             GetVehicleSyncCount     ( void )                                { return m_uiVehicleSyncCount; }
     
     inline CClientTeam*             GetTeam                 ( void )                                { return m_pTeam; }
-    void                            SetTeam                 ( CClientTeam* pTeam, bool bChangeTeam );
+    void                            SetTeam                 ( CClientTeam* pTeam, bool bChangeTeam = false);
     bool                            IsOnMyTeam              ( CClientPlayer* pPlayer );
 
     CClientPlayerVoice*             GetVoice                ( void )                                { return m_voice; }
-    void                            SetPlayerVoice          ( CClientPlayerVoice* voice )           { m_voice = voice; }
 
     inline float                    GetNametagDistance      ( void )                                { return m_fNametagDistance; }
     inline void                     SetNametagDistance      ( float fDistance )                     { m_fNametagDistance = fDistance; }
@@ -106,7 +106,7 @@ public:
     inline void                     SetDeadOnNetwork        ( bool bDead )                          { m_bNetworkDead = bDead; }
 
     void                            Reset                   ( void );
-    
+
     inline CClientManager*          GetManager              ( void )                                { return m_pManager; }
 
     void                            DischargeWeapon         ( eWeaponType weaponType, const CVector& vecStart, const CVector& vecEnd );
@@ -118,6 +118,7 @@ public:
     CVector                         m_vecPrevBulletSyncStart;
     CVector                         m_vecPrevBulletSyncEnd;
     uchar                           m_ucPrevBulletSyncOrderCounter;
+    bool                            m_bMessageShown;
 private:
     bool                            m_bIsLocalPlayer;
     SString                         m_strNick;
@@ -149,6 +150,7 @@ private:
 
     CClientTeam*                    m_pTeam;
 
+    CGUIStaticImage*                m_pStatusIcon;
     bool                            m_bNametagShowing;
     unsigned long                   m_ulLastNametagShow;
     unsigned char                   m_ucNametagColorR, m_ucNametagColorG, m_ucNametagColorB;

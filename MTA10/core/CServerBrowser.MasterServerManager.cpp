@@ -71,7 +71,7 @@ CMasterServerManager::CMasterServerManager ( void )
 CMasterServerManager::~CMasterServerManager ( void )
 {
     for ( uint i = 0 ; i < m_MasterServerList.size () ; i++ )
-        SAFE_RELEASE( m_MasterServerList[i] );
+        delete m_MasterServerList[i];
 
     m_MasterServerList.clear ();
 }

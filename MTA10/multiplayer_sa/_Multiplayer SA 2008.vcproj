@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="Client - Multiplayer SA"
 	ProjectGUID="{916D94E2-FB0B-4992-A52C-3698CCBB0A41}"
 	RootNamespace="Client - Multiplayer SA"
@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Debug"
+			IntermediateDirectory=".\Debug"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -59,6 +59,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Debug/"
+				ObjectFile=".\Debug/"
+				ProgramDataBaseFileName=".\Debug/"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
@@ -82,10 +85,10 @@
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
+				ProgramDatabaseFile=".\Debug/multiplayer_sa_d.pdb"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Debug/multiplayer_sa_d.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -112,8 +115,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Release"
+			IntermediateDirectory=".\Release"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -157,6 +160,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Release/"
+				ObjectFile=".\Release/"
+				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -180,12 +186,14 @@
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				GenerateMapFile="true"
+				MapFileName="../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Release/multiplayer_SA.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -212,8 +220,8 @@
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\obj\x86\$(ConfigurationName)\$(SafeRootNamespace)"
+			OutputDirectory="..\..\obj\client\multiplayer_sa"
+			IntermediateDirectory="..\..\obj\client\multiplayer_sa"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -257,6 +265,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=""
+				ObjectFile="$(IntDir)/"
+				ProgramDataBaseFileName="$(IntDir)/vc70.pdb"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -280,12 +291,14 @@
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				GenerateMapFile="true"
+				MapFileName="../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Release/multiplayer_SA.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -347,10 +360,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CMultiplayerSA_Direct3D.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CMultiplayerSA_Files.cpp"
 				>
 			</File>
@@ -359,15 +368,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CMultiplayerSA_FixLineOfSightArgs.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CMultiplayerSA_HookDestructors.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CMultiplayerSA_LicensePlate.cpp"
 				>
 			</File>
 			<File
@@ -380,14 +381,6 @@
 			</File>
 			<File
 				RelativePath=".\CMultiplayerSA_RwResources.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CMultiplayerSA_VehicleDamage.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CMultiplayerSA_VehicleLights.cpp"
 				>
 			</File>
 			<File
@@ -467,6 +460,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CMultiplayerSA_ClothesCache.h"
+				>
+			</File>
+			<File
 				RelativePath=".\COffsets.h"
 				>
 			</File>
@@ -480,10 +477,6 @@
 			</File>
 			<File
 				RelativePath=".\CRemoteDataSA.h"
-				>
-			</File>
-			<File
-				RelativePath="..\game_sa\gamesa_renderware.hpp"
 				>
 			</File>
 			<File

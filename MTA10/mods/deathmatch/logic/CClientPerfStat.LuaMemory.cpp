@@ -267,7 +267,6 @@ void CClientPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CClientPerfStatResult* pR
     pResult->AddColumn ( "Shaders" );
     pResult->AddColumn ( "RenderTargets" );
     pResult->AddColumn ( "ScreenSources" );
-    pResult->AddColumn ( "WebBrowsers" );
 
     // Calc totals
     if ( strFilter == "" )
@@ -308,7 +307,6 @@ void CClientPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CClientPerfStatResult* pR
         int ShaderCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetShaderCount ();
         int RenderTargetCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetRenderTargetCount ();
         int ScreenSourceCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetScreenSourceCount ();
-        int WebBrowserCount = g_pClientGame->GetManager ()->GetRenderElementManager ()->GetWebBrowserCount ();
         TextItemCount = Max ( TextItemCount - 4, 0 );   // Remove count for radar items
         row[c++] = !TextItemCount ? "-" : SString ( "%d", TextItemCount );
         row[c++] = !DxFontCount ? "-" : SString ( "%d", DxFontCount );
@@ -317,7 +315,6 @@ void CClientPerfStatLuaMemoryImpl::GetLuaMemoryStats ( CClientPerfStatResult* pR
         row[c++] = !ShaderCount ? "-" : SString ( "%d", ShaderCount );
         row[c++] = !RenderTargetCount ? "-" : SString ( "%d", RenderTargetCount );
         row[c++] = !ScreenSourceCount ? "-" : SString ( "%d", ScreenSourceCount );
-        row[c++] = !WebBrowserCount ? "-" : SString ( "%d", WebBrowserCount );
     }
 
     // For each VM

@@ -24,31 +24,6 @@ class CCustomData;
 
 class CPacketHandler
 {
-    enum ePlayerDisconnectType
-    {
-        NO_REASON,
-        INVALID_PASSWORD,
-        INVALID_NICKNAME,
-        BANNED_SERIAL,
-        BANNED_IP,
-        BANNED_ACCOUNT,
-        VERSION_MISMATCH,
-        JOIN_FLOOD,
-        INCORRECT_PASSWORD,
-        DIFFERENT_BRANCH,
-        BAD_VERSION,
-        SERVER_NEWER,
-        SERVER_OLDER,
-        NICK_CLASH,
-        ELEMENT_FAILURE,
-        GENERAL_REFUSED,
-        SERIAL_VERIFICATION,
-        CONNECTION_DESYNC,
-        BAN,
-        KICK,
-        CUSTOM
-    };
-
     struct SEntityDependantStuff
     {
         CClientEntity*      pEntity;
@@ -100,17 +75,6 @@ public:
     void                Packet_UpdateInfo               ( NetBitStreamInterface& bitStream );
     void                Packet_LatentTransfer           ( NetBitStreamInterface& bitStream );
     void                Packet_SyncSettings             ( NetBitStreamInterface& bitStream );
-    void                Packet_PedTask                  ( NetBitStreamInterface& bitStream );
-
-    // For debugging protocol errors during ENTITY_ADD packet
-    void                EntityAddDebugBegin             ( uint uiNumEntities, NetBitStreamInterface* pBitStream );
-    void                EntityAddDebugNext              ( uint uiEntityIndex, int iReadOffset );
-    void                RaiseEntityAddError             ( uint uiCode );
-    SString             EntityAddDebugRead              ( NetBitStreamInterface& bitStream );
-
-    std::vector < int >         m_EntityAddReadOffsetStore;
-    NetBitStreamInterface*      m_pEntityAddBitStream;
-    uint                        m_uiEntityAddNumEntities;
 };
 
 #endif

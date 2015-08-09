@@ -33,9 +33,6 @@ CDirect3DHookManager::~CDirect3DHookManager ( )
     
 void CDirect3DHookManager::ApplyHook ( )
 {
-    if ( UsingAltD3DSetup() )
-        return;
-
     if ( m_pDirect3DHook9 )
     {
         WriteDebugEvent ( "CDirect3DHookManager::ApplyHook - Ignoring second call" );

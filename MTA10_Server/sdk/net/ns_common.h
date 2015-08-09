@@ -107,6 +107,7 @@ struct NetStatistics
     uint    messagesInResendBuffer;
     bool    isLimitedByCongestionControl;
     bool    isLimitedByOutgoingBandwidthLimit;
+    int     encryptionStatus;
 
     // Copy of raknet statistics
     NetRawStatistics raw;
@@ -122,37 +123,7 @@ struct SBandwidthStatistics
     long long llIncomingUDPPacketCountBlocked;
     long long llOutgoingUDPByteResentCount;
     long long llOutgoingUDPMessageResentCount;
-    SThreadCPUTimes threadCPUTimes;
-};
-
-struct SNetPerformanceStatistics
-{
-    uint uiUpdateCycleRecvTimeAvgUs;
-    uint uiUpdateCycleSendTimeAvgUs;
-    uint uiUpdateCycleRecvTimeMaxUs;
-    uint uiUpdateCycleSendTimeMaxUs;
-    float fUpdateCycleRecvDatagramsAvg;
-    uint uiUpdateCycleRecvDatagramsMax;
-    float fUpdateCycleDatagramsAvg;
-    uint uiUpdateCycleDatagramsMax;
-    uint uiUpdateCycleDatagramsLimit;
-    float fUpdateCycleMessagesAvg;
-    uint uiUpdateCycleMessagesMax;
-    uint uiUpdateCycleMessagesLimit;
-    uint uiUpdateCycleSendsLimitedTotal;
-    float fUpdateCycleSendsLimitedPercent;
-};
-
-struct SSyncThreadStatistics
-{
-    uint uiRecvTimeAvgUs;
-    uint uiSendTimeAvgUs;
-    uint uiRecvTimeMaxUs;
-    uint uiSendTimeMaxUs;
-    float fRecvMsgsAvg;
-    uint uiRecvMsgsMax;
-    float fSendCmdsAvg;
-    uint uiSendCmdsMax;
+    uint uiNetworkUpdateLoopProcessorNumber;
 };
 
 enum ePacketOrdering

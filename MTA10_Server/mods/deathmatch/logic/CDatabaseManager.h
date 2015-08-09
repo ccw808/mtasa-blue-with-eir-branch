@@ -10,7 +10,7 @@
 *****************************************************************************/
 
 typedef uint SDbConnectionId;
-typedef intptr_t SDbJobId;
+typedef uint SDbJobId;
 typedef SDbConnectionId SConnectionHandle;
 #define INVALID_DB_HANDLE (0)
 
@@ -91,11 +91,10 @@ public:
     bool        SetCallback     ( PFN_DBRESULT pfnDbResult, void* pContext );
     bool        HasCallback     ( void );
     void        ProcessCallback ( void );
-    void        SetLuaDebugInfo ( const SLuaDebugInfo& luaDebugInfo ) { m_LuaDebugInfo = luaDebugInfo; }
+    void        SetDebugInfo    ( const SString& strMsg )   { m_strDebugInfo = strMsg; }
 
     EJobStageType       stage;
     SDbJobId            id;
-    SLuaDebugInfo       m_LuaDebugInfo;
 
     struct
     {
@@ -112,7 +111,6 @@ public:
         bool                bErrorSuppressed;
         SConnectionHandle   connectionHandle;
         uint                uiNumAffectedRows;
-        uint64              ullLastInsertId;
         CRegistryResult     registryResult;
         CTickCount          timeReady;
         bool                bLoggedWarning;
@@ -126,6 +124,7 @@ public:
         bool                bSet;
         bool                bDone;
     } callback;
+    SString                 m_strDebugInfo;
 };
 
 

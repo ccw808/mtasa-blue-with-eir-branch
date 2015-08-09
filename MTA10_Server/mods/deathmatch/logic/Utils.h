@@ -25,7 +25,6 @@
 
 bool            CheckNickProvided           ( const char* szNick );
 float           DistanceBetweenPoints2D     ( const CVector& vecPosition1, const CVector& vecPosition2 );
-float           DistanceBetweenPoints2D     ( const CVector2D& vecPosition1, const CVector2D& vecPosition2 );
 float           DistanceBetweenPoints3D     ( const CVector& vecPosition1, const CVector& vecPosition2 );
 bool            IsPointNearPoint2D          ( const CVector& vecPosition1, const CVector& vecPosition2, float fDistance );
 bool            IsPointNearPoint3D          ( const CVector& vecPosition1, const CVector& vecPosition2, float fDistance );
@@ -44,8 +43,6 @@ bool            IsNumericString             ( const char* szString );
 bool            IsNumericString             ( const char* szString, size_t sizeString );
 
 void            DisconnectPlayer            ( class CGame* pGame, class CPlayer& Player, const char* szMessage );
-void            DisconnectPlayer            ( class CGame* pGame, class CPlayer& Player, CPlayerDisconnectedPacket::ePlayerDisconnectType eDisconnectType,  const char* szMessage = "" );
-void            DisconnectPlayer            ( class CGame* pGame, class CPlayer& Player, CPlayerDisconnectedPacket::ePlayerDisconnectType eDisconnectType,  time_t BanDuration, const char* szMessage = "" );
 void            DisconnectConnectionDesync  ( class CGame* pGame, class CPlayer& Player, unsigned int uiCode );
 
 bool            InitializeSockets           ( void );
@@ -56,12 +53,16 @@ double          GetRandomDouble             ( void );
 int             GetRandom                   ( int iLow, int iHigh );
 
 bool            IsValidFilePath             ( const char* szPath );
-bool            IsValidOrganizationPath     ( const char* szPath );
 
 unsigned int    HexToInt                    ( const char* szHex );
 bool            XMLColorToInt               ( const char* szColor, unsigned long& ulColor );
 bool            XMLColorToInt               ( const char* szColor, unsigned char& ucRed, unsigned char& ucGreen, unsigned char& ucBlue, unsigned char& ucAlpha );
 
+
+inline unsigned long GetTime ( void )
+{
+    return GetTickCount32 ();
+}
 
 inline float WrapAround ( float fValue, float fHigh )
 {
@@ -167,7 +168,7 @@ bool            IsNametagValid              ( const char* szNick );
 void            RotateVector                ( CVector& vecLine, const CVector& vecRotation );
 
 // Network funcs
-SString         LongToDottedIP              ( unsigned long ulIP );
+void            LongToDottedIP              ( unsigned long ulIP, char* szDottedIP );
 
 
 inline bool IsVisibleCharacter ( unsigned char c )
@@ -191,6 +192,16 @@ inline SString SQLEscape ( const SString& strEscapeString, bool bSingleQuotes, b
 }
 
 // Maths utility functions
+enum eEulerRotationOrder
+{
+    EULER_DEFAULT,
+    EULER_ZXY,
+    EULER_ZYX,
+    EULER_MINUS_ZYX,
+    EULER_INVALID = 0xFF,
+};
+
+eEulerRotationOrder EulerRotationOrderFromString( const char* szString );
 CVector             ConvertEulerRotationOrder   ( const CVector& a_vRotation, eEulerRotationOrder a_eSrcOrder, eEulerRotationOrder a_eDstOrder );
 
 // Clear list of object pointers

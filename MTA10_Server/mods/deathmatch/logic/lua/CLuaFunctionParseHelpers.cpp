@@ -188,25 +188,6 @@ IMPLEMENT_ENUM_BEGIN( eWeaponProperty )
 
     ADD_ENUM ( WEAPON_DEFAULT_COMBO,                    "default_combo" ) 
     ADD_ENUM ( WEAPON_COMBOS_AVAILABLE,                 "combos_available" ) 
-
-    ADD_ENUM ( WEAPON_FLAG_AIM_NO_AUTO,                 "flag_aim_no_auto" ) 
-    ADD_ENUM ( WEAPON_FLAG_AIM_ARM,                     "flag_aim_arm" ) 
-    ADD_ENUM ( WEAPON_FLAG_AIM_1ST_PERSON,              "flag_aim_1st_person" ) 
-    ADD_ENUM ( WEAPON_FLAG_AIM_FREE,                    "flag_aim_free" ) 
-    ADD_ENUM ( WEAPON_FLAG_MOVE_AND_AIM,                "flag_move_and_aim" ) 
-    ADD_ENUM ( WEAPON_FLAG_MOVE_AND_SHOOT,              "flag_move_and_shoot" ) 
-    ADD_ENUM ( WEAPON_FLAG_TYPE_THROW,                  "flag_type_throw" ) 
-    ADD_ENUM ( WEAPON_FLAG_TYPE_HEAVY,                  "flag_type_heavy" ) 
-    ADD_ENUM ( WEAPON_FLAG_TYPE_CONSTANT,               "flag_type_constant" ) 
-    ADD_ENUM ( WEAPON_FLAG_TYPE_DUAL,                   "flag_type_dual" ) 
-    ADD_ENUM ( WEAPON_FLAG_ANIM_RELOAD,                 "flag_anim_reload" ) 
-    ADD_ENUM ( WEAPON_FLAG_ANIM_CROUCH,                 "flag_anim_crouch" ) 
-    ADD_ENUM ( WEAPON_FLAG_ANIM_RELOAD_LOOP,            "flag_anim_reload_loop" ) 
-    ADD_ENUM ( WEAPON_FLAG_ANIM_RELOAD_LONG,            "flag_anim_reload_long" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_SLOWS,                  "flag_shot_slows" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_RAND_SPEED,             "flag_shot_rand_speed" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_ANIM_ABRUPT,            "flag_shot_anim_abrupt" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_EXPANDS,                "flag_shot_expands" ) 
 IMPLEMENT_ENUM_END( "weapon-property" )
 
 IMPLEMENT_ENUM_BEGIN( eWeaponSkill )
@@ -214,21 +195,6 @@ IMPLEMENT_ENUM_BEGIN( eWeaponSkill )
     ADD_ENUM ( WEAPONSKILL_STD,                             "std" )
     ADD_ENUM ( WEAPONSKILL_PRO,                             "pro" )
 IMPLEMENT_ENUM_END( "weapon-skill" )
-
-IMPLEMENT_ENUM_BEGIN( eWeaponState )
-    ADD_ENUM ( WEAPONSTATE_READY,                           "ready" )
-    ADD_ENUM ( WEAPONSTATE_FIRING,                          "firing" )
-    ADD_ENUM ( WEAPONSTATE_RELOADING,                       "reloading" )
-IMPLEMENT_ENUM_END( "weapon-state" )
-
-
-IMPLEMENT_ENUM_BEGIN ( eWeaponFlags )
-    ADD_ENUM ( WEAPONFLAGS_DISABLE_MODEL,          "disable_model")
-    ADD_ENUM ( WEAPONFLAGS_FLAGS,                  "flags" )
-    ADD_ENUM ( WEAPONFLAGS_INSTANT_RELOAD,         "instant_reload")
-    ADD_ENUM ( WEAPONFLAGS_SHOOT_IF_OUT_OF_RANGE,  "shoot_if_out_of_range")
-    ADD_ENUM ( WEAPONFLAGS_SHOOT_IF_TARGET_BOCKED, "shoot_if_blocked")
-IMPLEMENT_ENUM_END( "weapon-flags" )
 
 IMPLEMENT_ENUM_BEGIN( CAccessControlListRight::ERightType )
     ADD_ENUM ( CAccessControlListRight::RIGHT_TYPE_COMMAND,      "command" )
@@ -365,120 +331,4 @@ void MinServerReqCheck ( CScriptArgReader& argStream, const char* szVersionReq, 
             }
         }
     }
-}
-
-
-//
-// Read next as preg option flags
-//
-void ReadPregFlags( CScriptArgReader& argStream, pcrecpp::RE_Options& pOptions )
-{
-    if ( argStream.NextIsNumber() )
-    {
-        uint uiFlags = 0;
-        argStream.ReadNumber ( uiFlags );
-        pOptions.set_caseless ( ( uiFlags & 1 ) != 0 );
-        pOptions.set_multiline ( ( uiFlags & 2 ) != 0 );
-        pOptions.set_dotall ( ( uiFlags & 4 ) != 0 );
-        pOptions.set_extended ( ( uiFlags & 8 ) != 0 );
-    }
-    else
-    if ( argStream.NextIsString() )
-    {
-        SString strFlags;
-        argStream.ReadString ( strFlags );
-        for( uint i = 0 ; i < strFlags.length() ; i++ )
-        {
-            switch ( strFlags[i] )
-            {
-                case 'i':
-                    pOptions.set_caseless ( true );
-                    break;
-                case 'm':
-                    pOptions.set_multiline ( true );
-                    break;
-                case 'd':
-                    pOptions.set_dotall ( true );
-                    break;
-                case 'e':
-                    pOptions.set_extended ( true );
-                    break;
-                default:
-                    argStream.SetCustomError( "Flags all wrong" );
-                    return;       
-            }
-        }
-    }
-}
-
-
-//
-// 4x4 matrix into CMatrix
-//
-bool ReadMatrix ( lua_State* luaVM, uint uiArgIndex, CMatrix& outMatrix )
-{
-    float m[4][4] = { { 1,0,0,0 }, { 0,1,0,0 }, { 0,0,1,0 }, { 0,0,0,1 } };
-    uint uiRow = 0;
-    uint uiCell = 0;
-
-    if ( lua_type ( luaVM, uiArgIndex ) == LUA_TTABLE )
-    {
-        for ( lua_pushnil ( luaVM ) ; lua_next ( luaVM, uiArgIndex ) != 0 ; lua_pop ( luaVM, 1 ), uiRow++ )
-        {
-            //int idx = lua_tonumber ( luaVM, -2 );
-            //int iArgumentType = lua_type ( luaVM, -1 );
-            if ( lua_type ( luaVM, -1 ) == LUA_TTABLE )
-            {
-                uint uiCol = 0;
-                for ( lua_pushnil ( luaVM ) ; lua_next ( luaVM, -2 ) != 0 ; lua_pop ( luaVM, 1 ), uiCol++, uiCell++ )
-                {
-                    //int idx = lua_tonumber ( luaVM, -2 );
-                    int iArgumentType = lua_type ( luaVM, -1 );
-                    if ( iArgumentType == LUA_TNUMBER || iArgumentType == LUA_TSTRING )
-                    {
-                        if ( uiRow < 4 && uiCol < 4 )
-                            m[uiRow][uiCol] = static_cast < float > ( lua_tonumber ( luaVM, -1 ) );
-                    }
-                }
-
-                if ( uiCol != 4 )
-                    return false;
-            }
-        }
-    }
-
-    if ( uiRow != 4 || uiCell != 16 )
-        return false;
-
-    outMatrix.vRight = CVector ( m[0][0], m[0][1], m[0][2] );
-    outMatrix.vFront = CVector ( m[1][0], m[1][1], m[1][2] );
-    outMatrix.vUp    = CVector ( m[2][0], m[2][1], m[2][2] );
-    outMatrix.vPos   = CVector ( m[3][0], m[3][1], m[3][2] );
-    return true;
-}
-
-
-//
-// Return true if weapon property is a flag type
-//
-bool IsWeaponPropertyFlag( eWeaponProperty weaponProperty )
-{
-    return ( weaponProperty >= WEAPON_FLAG_FIRST && weaponProperty <= WEAPON_FLAG_LAST );
-}
-
-
-//
-// Get bit pattern for a weapon property flag
-//
-uint GetWeaponPropertyFlagBit( eWeaponProperty weaponProperty )
-{
-    if ( !IsWeaponPropertyFlag( weaponProperty ) )
-        return 0;
-
-    // Check 20 bits from first to last
-    dassert( WEAPON_FLAG_LAST + 1 - WEAPON_FLAG_FIRST == 20 );
-
-    uint uiFlagIndex = ( weaponProperty - WEAPON_FLAG_FIRST );
-    uint uiFlagBit = 1 << uiFlagIndex;
-    return uiFlagBit;
 }

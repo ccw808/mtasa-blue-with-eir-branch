@@ -31,7 +31,6 @@ public:
     virtual CShaderItem*        CreateShader                        ( const SString& strFullFilePath, const SString& strRootPath, SString& strOutStatus, float fPriority, float fMaxDistance, bool bLayered, bool bDebug, int iTypeMask );
     virtual CRenderTargetItem*  CreateRenderTarget                  ( uint uiSizeX, uint uiSizeY, bool bWithAlphaChannel, bool bForce = false );
     virtual CScreenSourceItem*  CreateScreenSource                  ( uint uiSizeX, uint uiSizeY );
-    virtual CWebBrowserItem*    CreateWebBrowser                    ( uint uiSizeX, uint uiSizeY );
     virtual bool                SetRenderTarget                     ( CRenderTargetItem* pItem, bool bClear );
     virtual void                EnableSetRenderTargetOldVer         ( bool bEnable );
     virtual bool                IsSetRenderTargetEnabledOldVer      ( void );
@@ -62,7 +61,6 @@ public:
     void                        OnResetDevice                       ( void );
     void                        UpdateBackBufferCopySize            ( void );
     bool                        SaveDefaultRenderTarget             ( void );
-    bool                        IsUsingDefaultRenderTarget          ( void );
     void                        ChangeRenderTarget                  ( uint uiSizeX, uint uiSizeY, IDirect3DSurface9* pD3DRenderTarget, IDirect3DSurface9* pD3DZStencilSurface );
     void                        RemoveShaderItemFromWatchLists      ( CShaderItem* pShaderItem );
     void                        UpdateMemoryUsage                   ( void );
@@ -86,8 +84,8 @@ protected:
     CRenderTargetItem*                          m_pBackBufferCopy;
     bool                                        m_bBackBufferCopyMaybeNeedsResize;
     uint                                        m_uiBackBufferCopyRevision;
-    CFastHashSet < CD3DDUMMY* >                 m_FrameTextureUsage;
-    CFastHashSet < CD3DDUMMY* >                 m_PrevFrameTextureUsage;
+    std::set < CD3DDUMMY* >                     m_FrameTextureUsage;
+    std::set < CD3DDUMMY* >                     m_PrevFrameTextureUsage;
     class CRenderWare*                          m_pRenderWare;
     CEffectCloner*                              m_pEffectCloner;
     eDxTestMode                                 m_TestMode;
@@ -107,6 +105,4 @@ protected:
     IDirect3DSurface9*                          m_pSavedSceneRenderTargetAA;
     IDirect3DSurface9*                          m_pNonAADepthSurface2;
     IDirect3DSurface9*                          m_pNonAARenderTarget;
-    IDirect3DTexture9*                          m_pNonAARenderTargetTexture;
-    bool                                        m_bIsSwiftShader;
 };

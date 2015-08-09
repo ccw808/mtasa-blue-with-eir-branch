@@ -31,7 +31,7 @@ bool CPlayerStatsPacket::Write ( NetBitStreamInterface& BitStream ) const
         BitStream.WriteCompressed ( usNumStats );
 
         map < unsigned short, sPlayerStat > ::const_iterator iter = m_List.begin ();
-        for ( ; iter != m_List.end () ; ++iter )
+        for ( ; iter != m_List.end () ; iter++ )
         {
             const sPlayerStat& playerStat = (*iter).second;
             BitStream.Write ( playerStat.id );
@@ -56,7 +56,7 @@ void CPlayerStatsPacket::Add ( unsigned short usID, float fValue )
         }
         else
         {
-            sPlayerStat& stat = (*iter).second;
+            sPlayerStat stat = (*iter).second;
             stat.value = fValue;
         }
     }

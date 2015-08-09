@@ -383,9 +383,11 @@ void CClientVehicleManager::DoPulse ( void )
 {
     CClientVehicle * pVehicle = NULL;
     // Loop through our streamed-in vehicles
-    for( uint i = 0 ; i < m_StreamedIn.size() ; i++ )
+    vector < CClientVehicle * > cloneList = m_StreamedIn;
+    vector < CClientVehicle* > ::iterator iter = cloneList.begin ();
+    for ( ; iter != cloneList.end (); ++iter )
     {
-        CClientVehicle* pVehicle = m_StreamedIn[i];
+        pVehicle = *iter;
         // We should have a game vehicle here
         assert ( pVehicle->GetGameVehicle () );
         pVehicle->StreamedInPulse ();
@@ -451,7 +453,7 @@ bool CClientVehicleManager::IsTrainModel ( unsigned long ulModel )
 
 bool CClientVehicleManager::IsValidModel ( unsigned long ulModel )
 {
-    return ulModel >= 400 && ulModel <= 611;
+    return ulModel >= 400 && ulModel <= 611 && ulModel != 570;
 }
 
 
@@ -731,19 +733,27 @@ bool CClientVehicleManager::HasDoors ( unsigned long ulModel )
 }
 
 
-void CClientVehicleManager::RemoveFromLists ( CClientVehicle* pVehicle )
+void CClientVehicleManager::RemoveFromList ( CClientVehicle* pVehicle )
 {
     if ( m_bCanRemoveFromList )
     {
-        ListRemove( m_List, pVehicle );
+        m_List.remove ( pVehicle );
     }
-    ListRemove( m_StreamedIn, pVehicle );
 }
 
 
 bool CClientVehicleManager::Exists ( CClientVehicle* pVehicle )
 {
-    return ListContains( m_List, pVehicle );
+    vector < CClientVehicle* > ::const_iterator iter = m_List.begin ();
+    for ( ; iter != m_List.end () ; iter++ )
+    {
+        if ( *iter == pVehicle )
+        {
+            return true;
+        }
+    }
+
+    return false;
 }
 
 
@@ -770,13 +780,12 @@ void CClientVehicleManager::RestreamVehicles ( unsigned short usModel )
 {
     g_pClientGame->GetModelCacheManager ()->OnRestreamModel ( usModel );
 
-    // This can speed up initial connect
-    if ( m_StreamedIn.empty() )
-        return;
-
-    for( uint i = 0 ; i < m_List.size() ; i++ )
+    // Store the affected vehicles
+    CClientVehicle* pVehicle;
+    std::vector < CClientVehicle* > ::const_iterator iter = IterBegin ();
+    for ( ; iter != IterEnd (); iter++ )
     {
-        CClientVehicle* pVehicle = m_List[i];
+        pVehicle = *iter;
 
         // Streamed in and same vehicle ID?
         if ( pVehicle->IsStreamedIn () && pVehicle->GetModel () == usModel )
@@ -791,9 +800,9 @@ void CClientVehicleManager::RestreamVehicles ( unsigned short usModel )
 
 void CClientVehicleManager::RestreamVehicleUpgrades ( unsigned short usModel )
 {
-    for( uint i = 0 ; i < m_List.size() ; i++ )
+    for ( std::vector < CClientVehicle* > ::const_iterator iter = IterBegin () ; iter != IterEnd (); iter++ )
     {
-        CClientVehicle* pVehicle = m_List[i];
+        CClientVehicle* pVehicle = *iter;
         pVehicle->GetUpgrades ()->RestreamVehicleUpgrades ( usModel );
     }
 }

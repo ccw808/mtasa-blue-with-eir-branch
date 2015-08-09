@@ -232,8 +232,8 @@ void CCameraSA::RestoreLastGoodState ( void )
         pCamInterface->m_fBetaSpeedOverOneFrame = 0;
         pCamInterface->m_fTrueBeta = 1;
         pCamInterface->m_fTrueAlpha = 1;
-        pCamInterface->m_fVerticalAngle = 1;
-        pCamInterface->m_fHorizontalAngle = 1;
+        pCamInterface->Alpha = 1;
+        pCamInterface->Beta = 1;
         pCamInterface->BetaSpeed = 0;
         pCamInterface->SpeedVar = 0;
 
@@ -571,11 +571,6 @@ void CCameraSA::SetCameraClip ( bool bObjects, bool bVehicles )
     bCameraClipVehicles = bVehicles;
 }
 
-void CCameraSA::GetCameraClip( bool &bObjects, bool &bVehicles )
-{
-    bObjects = bCameraClipObjects;
-    bVehicles = bCameraClipVehicles;
-}
 
 void _cdecl DoCameraCollisionDetectionPokes ()
 {
@@ -613,17 +608,5 @@ BYTE CCameraSA::GetCameraViewMode ( void )
 
 VOID CCameraSA::SetCameraViewMode ( BYTE dwCamMode )
 {
-    MemPutFast < BYTE > ( VAR_VehicleCameraView, dwCamMode );
-}
-
-void CCameraSA::SetShakeForce ( float fShakeForce )
-{
-    CCameraSAInterface* pCameraInterface = GetInterface ();
-    pCameraInterface->m_fCamShakeForce = fShakeForce;
-}
-
-float CCameraSA::GetShakeForce ( void )
-{
-    CCameraSAInterface* pCameraInterface = GetInterface ();
-    return pCameraInterface->m_fCamShakeForce;
+    MemPut < BYTE > ( VAR_VehicleCameraView, dwCamMode );
 }

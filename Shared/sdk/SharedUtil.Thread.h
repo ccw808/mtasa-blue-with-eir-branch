@@ -60,20 +60,17 @@ namespace SharedUtil
     {
         pthread_mutex_t     mutex;
         pthread_cond_t      cond;
-        bool                m_bInCondWait;  // Hacky flag to avoid deadlock on dll exit
     public:
         CComboMutex ( void )
         {
-            m_bInCondWait = false;
             pthread_mutex_init ( &mutex, NULL );
             pthread_cond_init ( &cond, NULL );
         }
 
         ~CComboMutex ( void )
         {
-            if ( !m_bInCondWait )
-                pthread_cond_destroy ( &cond );
             pthread_mutex_destroy ( &mutex );
+            pthread_cond_destroy ( &cond );
         }
 
         void Lock ( void )
@@ -94,11 +91,7 @@ namespace SharedUtil
             if ( uiTimeout == 0 )
                 return 0;
             if ( uiTimeout == (uint)-1 )
-            {
-                m_bInCondWait = true;
                 pthread_cond_wait ( &cond, &mutex );
-                m_bInCondWait = false;
-            }
             else
             {
                 // Get time now
@@ -121,10 +114,7 @@ namespace SharedUtil
                 timespec t;
                 t.tv_sec = tv.tv_sec;
                 t.tv_nsec = tv.tv_usec * 1000;
-                m_bInCondWait = true;
-                int ret = pthread_cond_timedwait ( &cond, &mutex, &t );
-                m_bInCondWait = false;
-                return ret;
+                return pthread_cond_timedwait ( &cond, &mutex, &t );
             }
             return 0;
         }

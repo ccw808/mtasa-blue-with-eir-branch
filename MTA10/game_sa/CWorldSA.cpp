@@ -492,28 +492,16 @@ float CWorldSA::GetAircraftMaxHeight ( void )
     return g_pCore->GetMultiplayer ( )->GetAircraftMaxHeight ( );
 }
 
-void CWorldSA::SetAircraftMaxVelocity ( float fVelocity )
-{
-    g_pCore->GetMultiplayer ( )->SetAircraftMaxVelocity ( fVelocity );
-}
-
-float CWorldSA::GetAircraftMaxVelocity ( void )
-{
-    return g_pCore->GetMultiplayer ( )->GetAircraftMaxVelocity ( );
-}
-
 void CWorldSA::SetOcclusionsEnabled ( bool bEnabled )
 {
     if ( !bEnabled )
     {
         MemPut < BYTE > ( FUNC_COcclusion_ProcessBeforeRendering, 0xC3 );   // retn
         MemPutFast < int > ( VAR_COcclusion_NumActiveOccluders, 0 );
-        MemCpy ( (void*)CALL_CCullZones_FindTunnelAttributesForCoors, "\xB8\x80\x28\x00\x00", 5 );  // mov eax, 0x2880
     }
     else
     {
         MemPut < BYTE > ( FUNC_COcclusion_ProcessBeforeRendering, 0x51 );   // Standard value
-        MemCpy ( (void*)CALL_CCullZones_FindTunnelAttributesForCoors, "\xE8\xDE\x82\x1D\x00", 5 );   // call 0x72D9F0
     }
 }
 
@@ -524,75 +512,7 @@ bool CWorldSA::GetOcclusionsEnabled ( void )
     return false;
 }
 
-void CWorldSA::FindWorldPositionForRailTrackPosition ( float fRailTrackPosition, int iTrackId, CVector* pOutVecPosition )
-{
-    DWORD dwFunc = FUNC_CWorld_FindPositionForTrackPosition; // __cdecl
-    
-    _asm
-    {
-        push pOutVecPosition
-        push iTrackId
-        push fRailTrackPosition
-        call dwFunc
-        add  esp, 3*4
-    }
-}
-
-int CWorldSA::FindClosestRailTrackNode ( const CVector& vecPosition, uchar& ucOutTrackId, float& fOutRailDistance )
-{
-    // Original function @ 0x6F7550
-    int iNodeId = -1;
-    float fMinDistance = 99999.898f;
-    int* aNumTrackNodes = (int*)ARRAY_NumRailTrackNodes;
-    SRailNodeSA** aTrackNodes = (SRailNodeSA**)ARRAY_RailTrackNodePointers;
-    uchar ucDesiredTrackId = ucOutTrackId;
-
-    for ( uchar ucTrackId = 0; ucTrackId < NUM_RAILTRACKS; ++ucTrackId )
-    {
-        if ( ( ucDesiredTrackId == 0xFF || ucTrackId == ucDesiredTrackId ) && aNumTrackNodes[ucTrackId] > 0 )
-        {
-            for ( int i = 0; i < aNumTrackNodes[ucTrackId]; ++i )
-            {
-                SRailNodeSA& railNode = aTrackNodes[ucTrackId][i];
-
-                float fDistance = sqrt ( pow(vecPosition.fZ - railNode.sZ * 0.125f, 2) + pow(vecPosition.fY - railNode.sY * 0.125f, 2) + pow(vecPosition.fX - railNode.sX * 0.125f, 2) );
-                if ( fDistance < fMinDistance )
-                {
-                    fMinDistance = fDistance;
-                    iNodeId = i;
-                    ucOutTrackId = ucTrackId;
-                }
-            }
-        }
-    }
-
-    // Read rail distance
-    fOutRailDistance = aTrackNodes[ucOutTrackId][iNodeId].sRailDistance * 3.33333334f;
-    
-    return iNodeId;
-    
-    /*DWORD dwFunc = FUNC_GetTrainNodeNearPoint; // __cdecl
-    int iNodeId;
-    *pOutTrackId = 0;
-    float fX = vecPosition.fX;
-    float fY = vecPosition.fY;
-    float fZ = vecPosition.fZ;
-
-    _asm
-    {
-        push pOutTrackId
-        push fZ
-        push fY
-        push fZ
-        call dwFunc
-        mov iNodeId, eax
-        add esp, 4*4
-    }
-    
-    return iNodeId;*/
-}
-
-void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, float fX, float fY, float fZ, char cInterior, uint* pOutAmount )
+void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, float fX, float fY, float fZ, char cInterior )
 {    
     // New building Removal
     SBuildingRemoval* pRemoval = new SBuildingRemoval();
@@ -606,7 +526,6 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
     m_pBuildingRemovals->insert ( std::pair<unsigned short, SBuildingRemoval*> ( usModelToRemove, pRemoval ) );
 
     bool bFound = false;
-    uint uiAmount = 0;
     // Init loop variables
     std::pair < std::multimap < unsigned short, sDataBuildingRemovalItem*>::iterator, std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator> iterators = m_pDataBuildings->equal_range ( usModelToRemove );
     std::multimap < unsigned short, sDataBuildingRemovalItem* > ::const_iterator iter = iterators.first;
@@ -650,7 +569,6 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
                                 pRemoval->AddDataBuilding ( pInterface );
                                 // Remove the model from the world
                                 Remove ( pInterface, BuildingRemoval2 );
-                                m_pRemovedEntities[(DWORD)pInterface] = true;
                                 bFound = true;
 
                             }
@@ -707,9 +625,7 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
                                 pRemoval->AddBinaryBuilding ( pInterface );
                                 // Remove the model from the world
                                 Remove ( pInterface, BuildingRemoval2 );
-                                m_pRemovedEntities[(DWORD)pInterface] = true;
                                 bFound = true;
-                                ++uiAmount;
                             }
                         }
                         // Get next LOD ( LOD's can have LOD's so we keep checking pInterface )
@@ -723,16 +639,11 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
     }
     if ( bFound )
         pGame->GetModelInfo ( usModelToRemove )->RestreamIPL ();
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
 }
 
-bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, float fX, float fY, float fZ, char cInterior, uint* pOutAmount  )
+bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, float fX, float fY, float fZ, char cInterior )
 {        
     bool bSuccess = false;
-    uint uiAmount = 0;
-
     // Init some variables
     std::pair < std::multimap < unsigned short, SBuildingRemoval* >::iterator, std::multimap < unsigned short, SBuildingRemoval* >::iterator> iterators = m_pBuildingRemovals->equal_range ( usModelToRestore );
     std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = iterators.first;
@@ -765,8 +676,6 @@ bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, 
                         // if it's valid re-add it to the world.
                         if ( pEntity != NULL )
                         {
-                            // Remove it from the binary list
-                            pFind->m_pBinaryRemoveList->erase ( entityIter++ );
                             // if the building type is dummy or building and it's not already being removed
                             if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
                             {
@@ -774,12 +683,10 @@ bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, 
                                 if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
                                 {
                                     Add ( pEntity, Building_Restore );
-                                    m_pRemovedEntities[(DWORD)pEntity] = false;
-                                    // If the building isn't streamed in, we won't find the building in the list (because the hook wasn't called) -> removeWorldModel doesn't work next time
-                                    AddBinaryBuilding ( pEntity );
-                                    ++uiAmount;
                                 }
                             }
+                            // Remove it from the binary list
+                            pFind->m_pBinaryRemoveList->erase ( entityIter++ );
                         }
                         else
                             ++entityIter;
@@ -797,16 +704,15 @@ bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, 
                         // if it's valid re-add it to the world.
                         if ( pEntity != NULL )
                         {
-                            pFind->m_pDataRemoveList->erase ( entityIter++ );
                             // if the building type is dummy or building and it's not already being removed
                             if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
                             {
                                 if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
                                 {
                                     Add ( pEntity, Building_Restore2 );
-                                    m_pRemovedEntities[(DWORD)pEntity] = false;
                                 }
                             }
+                            pFind->m_pDataRemoveList->erase ( entityIter++ );
                         }
                         else
                         {
@@ -887,10 +793,6 @@ bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, 
             }
         }
     }
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
-
     return bSuccess;
 }
 
@@ -975,19 +877,12 @@ bool CWorldSA::IsDataModelRemoved ( unsigned short usModelID )
     return m_pBuildingRemovals->count ( usModelID ) > 0;
 }
 
-// Check if a given model is replaced
-bool CWorldSA::IsEntityRemoved ( CEntitySAInterface * pInterface )
-{
-    return m_pRemovedEntities.find ( (DWORD)pInterface ) != m_pRemovedEntities.end ( ) && m_pRemovedEntities[(DWORD)pInterface] == true;
-}
 
 // Resets deleted list
-void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
+void CWorldSA::ClearRemovedBuildingLists ( )
 {
     // Ensure no memory leaks by deleting items.
-    uint uiAmount = 0;
     std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = m_pBuildingRemovals->begin ( );
-
     for ( ; iter != m_pBuildingRemovals->end ( ); )
     {
         SBuildingRemoval * pFind = (*iter).second;
@@ -1013,8 +908,6 @@ void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
                             if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
                             {
                                 Add ( pEntity, BuildingRemovalReset );
-                                m_pRemovedEntities[(DWORD)pEntity] = false;
-                                ++uiAmount;
                             }
                         }
                     }
@@ -1038,7 +931,6 @@ void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
                             if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
                             {
                                 Add ( pEntity, BuildingRemovalReset2 );
-                                m_pRemovedEntities[(DWORD)pEntity] = false;
                             }
                         }
                     }
@@ -1077,10 +969,6 @@ void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
     delete m_pBuildingRemovals;
     // Create new
     m_pBuildingRemovals = new std::multimap< unsigned short, SBuildingRemoval* >;
-    m_pRemovedEntities.clear ( );
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
 }
 
 
@@ -1122,28 +1010,18 @@ SBuildingRemoval* CWorldSA::GetBuildingRemoval ( CEntitySAInterface * pInterface
 
 void CWorldSA::AddDataBuilding ( CEntitySAInterface * pInterface )
 {
-    if ( m_pAddedEntities.find ( (DWORD)pInterface ) == m_pAddedEntities.end ( ) || m_pAddedEntities[(DWORD)pInterface] == false )
-    {
-        // Create a new building removal
-        sDataBuildingRemovalItem * pBuildingRemoval = new sDataBuildingRemovalItem ( pInterface, true );
-        // Insert it with the model index so we can fast lookup
-        m_pDataBuildings->insert ( std::pair<unsigned short, sDataBuildingRemovalItem*> ( (unsigned short)pInterface->m_nModelIndex, pBuildingRemoval ) );
-        m_pAddedEntities[(DWORD)pInterface] = true;
-        m_pRemovedEntities[(DWORD)pInterface] = false;
-    }
+    // Create a new building removal
+    sDataBuildingRemovalItem * pBuildingRemoval = new sDataBuildingRemovalItem ( pInterface, true );
+    // Insert it with the model index so we can fast lookup
+    m_pDataBuildings->insert ( std::pair<unsigned short, sDataBuildingRemovalItem*> ( (unsigned short)pInterface->m_nModelIndex, pBuildingRemoval ) );
 }
 
 void CWorldSA::AddBinaryBuilding ( CEntitySAInterface * pInterface )
 {
-    if ( m_pAddedEntities.find ( (DWORD)pInterface ) == m_pAddedEntities.end ( ) || m_pAddedEntities[(DWORD)pInterface] == false )
-    {
-        // Create a new building removal
-        sBuildingRemovalItem * pBuildingRemoval = new sBuildingRemovalItem ( pInterface, false );
-        // Insert it with the model index so we can fast lookup
-        m_pBinaryBuildings->insert ( std::pair<unsigned short, sBuildingRemovalItem*> ( (unsigned short)pInterface->m_nModelIndex, pBuildingRemoval ) );
-        m_pAddedEntities[(DWORD)pInterface] = true;
-        m_pRemovedEntities[(DWORD)pInterface] = false;
-    }
+    // Create a new building removal
+    sBuildingRemovalItem * pBuildingRemoval = new sBuildingRemovalItem ( pInterface, false );
+    // Insert it with the model index so we can fast lookup
+    m_pBinaryBuildings->insert ( std::pair<unsigned short, sBuildingRemovalItem*> ( (unsigned short)pInterface->m_nModelIndex, pBuildingRemoval ) );
 }
 
 void CWorldSA::RemoveWorldBuildingFromLists ( CEntitySAInterface * pInterface )
@@ -1175,7 +1053,7 @@ void CWorldSA::RemoveWorldBuildingFromLists ( CEntitySAInterface * pInterface )
                         pFind->m_pBinaryRemoveList->erase ( entityIter++ );
                     }
                     else
-                        entityIter++; 
+                        entityIter++;
                 }
             }
             if ( pFind->m_pDataRemoveList->empty ( ) == false )
@@ -1186,11 +1064,16 @@ void CWorldSA::RemoveWorldBuildingFromLists ( CEntitySAInterface * pInterface )
                 {
                     // Grab the pEntity
                     pEntity = (*entityIter);
-                    // is the pointer the same as the one being deleted
-                    if ( (DWORD)pEntity == (DWORD)pInterface )
+                    if ( pEntity )
                     {
-                        // remove it from the data removed list for this removal
-                        pFind->m_pDataRemoveList->erase ( entityIter++ );
+                        // is the pointer the same as the one being deleted
+                        if ( (DWORD)pEntity == (DWORD)pInterface )
+                        {
+                            // remove it from the data removed list for this removal
+                            pFind->m_pDataRemoveList->erase ( entityIter++ );
+                        }
+                        else
+                            entityIter++;
                     }
                     else
                         entityIter++;
@@ -1198,99 +1081,46 @@ void CWorldSA::RemoveWorldBuildingFromLists ( CEntitySAInterface * pInterface )
             }
         }
     }
+
+    // Init some variables
+    std::pair < std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator, std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator> dataIterators = m_pDataBuildings->equal_range ( pInterface->m_nModelIndex );
+    std::multimap < unsigned short, sDataBuildingRemovalItem* > ::const_iterator iterator = dataIterators.first;
+    for ( ; iterator != dataIterators.second; )
     {
-        // Init some variables
-        std::pair < std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator, std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator> dataIterators = m_pDataBuildings->equal_range ( pInterface->m_nModelIndex );
-        std::multimap < unsigned short, sDataBuildingRemovalItem* > ::const_iterator iterator = dataIterators.first;
-        for ( ; iterator != dataIterators.second; )
+        sDataBuildingRemovalItem * pFound = (*iterator).second;
+        if ( pFound )
         {
-            sDataBuildingRemovalItem * pFound = (*iterator).second;
-            if ( pFound )
+            // is the pointer the same as the one being deleted
+            if ( (DWORD)pFound->m_pInterface == (DWORD)pInterface )
             {
-                // is the pointer the same as the one being deleted
-                if ( (DWORD)pFound->m_pInterface == (DWORD)pInterface )
-                {
-                    // remove it from the data buildings list so we don't try and remove or add it again.
-                    m_pDataBuildings->erase ( iterator++ );
-                }
-                else
-                    iterator++;
+                // remove it from the data buildings list so we don't try and remove or add it again.
+                m_pDataBuildings->erase ( iterator++ );
             }
             else
                 iterator++;
         }
+        else
+            iterator++;
     }
+    // Init some variables
+    std::pair < std::multimap < unsigned short, sBuildingRemovalItem* >::iterator, std::multimap < unsigned short, sBuildingRemovalItem* >::iterator> binaryIterators = m_pBinaryBuildings->equal_range ( pInterface->m_nModelIndex );
+    std::multimap < unsigned short, sBuildingRemovalItem* > ::const_iterator iteratorBinary = binaryIterators.first;
+    for ( ; iteratorBinary != binaryIterators.second; )
     {
-        // Init some variables
-        std::pair < std::multimap < unsigned short, sBuildingRemovalItem* >::iterator, std::multimap < unsigned short, sBuildingRemovalItem* >::iterator> binaryIterators = m_pBinaryBuildings->equal_range ( pInterface->m_nModelIndex );
-        std::multimap < unsigned short, sBuildingRemovalItem* > ::const_iterator iteratorBinary = binaryIterators.first;
-        for ( ; iteratorBinary != binaryIterators.second; )
+        sBuildingRemovalItem * pFound = (*iteratorBinary).second;
+        if ( pFound )
         {
-            sBuildingRemovalItem * pFound = (*iteratorBinary).second;
-            if ( pFound )
+            // is the pointer the same as the one being deleted
+            if ( (DWORD)pFound->m_pInterface == (DWORD)pInterface )
             {
-                // is the pointer the same as the one being deleted
-                if ( (DWORD)pFound->m_pInterface == (DWORD)pInterface )
-                {
-                    // remove it from the data buildings list so we don't try and remove or add it again.
-                    m_pBinaryBuildings->erase ( iteratorBinary++ );
-                }
-                else
-                    iteratorBinary++;
+                // remove it from the data buildings list so we don't try and remove or add it again.
+                m_pBinaryBuildings->erase ( iteratorBinary++ );
             }
             else
                 iteratorBinary++;
         }
+        else
+            iteratorBinary++;
     }
-    m_pRemovedEntities[(DWORD)pInterface] = false;
-    m_pAddedEntities[(DWORD)pInterface] = false;
 
-}
-
-bool CWorldSA::CalculateImpactPosition ( const CVector &vecInputStart, CVector &vecInputEnd )
-{
-    // get our position
-    CVector vecStart = vecInputStart;
-    // get our end position by projecting forward a few velocities more
-    CVector vecEnd = vecInputEnd;
-    // grab the difference between our reported and actual end position
-    CVector diff = vecEnd - vecStart;
-    // normalize our difference
-    diff.Normalize ( );
-    // project forward another unit
-    vecEnd = vecEnd + diff * 1;
-    // create a variable to store our collision data
-    CColPoint * pColPoint;
-    // create a variable to store our collision entity
-    CEntity * pCollisionEntity;
-
-    // flags
-    SLineOfSightFlags flags;
-    flags.bCheckCarTires = false;
-    flags.bIgnoreSomeObjectsForCamera = true;
-    flags.bCheckBuildings = true;
-    flags.bCheckPeds = true;
-    flags.bCheckObjects = true;
-    flags.bCheckDummies = true;
-
-    // Include dead peds
-    MemPutFast < DWORD > ( 0xB7CD71, 1 );
-
-    SLineOfSightBuildingResult result;
-    // process forward another 1 unit
-    if ( ProcessLineOfSight ( &vecStart, &vecEnd, &pColPoint, &pCollisionEntity, flags, &result ) )
-    {
-        // set our collision position
-        vecInputEnd = pColPoint->GetPosition ( );
-
-        // destroy our colshape
-        pColPoint->Destroy ( );
-
-        // reset include dead peds
-        MemPutFast < DWORD > ( 0xB7CD71, 0 );
-        return true;
-    }
-    // Include dead peds
-    MemPutFast < DWORD > ( 0xB7CD71, 0 );
-    return false;
 }

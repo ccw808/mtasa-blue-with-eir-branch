@@ -26,7 +26,7 @@ CLuaArgument::CLuaArgument ( void )
 {
     m_iType = LUA_TNIL;
     m_pTableData = NULL;
-    m_pUserData = NULL;
+    m_pLightUserData = NULL;
 }
 
 
@@ -67,11 +67,9 @@ void CLuaArgument::CopyRecursive ( const CLuaArgument& Argument, CFastHashMap < 
     // Destroy our old tabledata if neccessary
     DeleteTableData ();
 
-#ifdef MTA_DEBUG
     // Copy over line and filename too
     m_strFilename = Argument.m_strFilename;
     m_iLine = Argument.m_iLine;
-#endif
 
     // Set our variable equally to the copy class
     m_iType = Argument.m_iType;
@@ -84,9 +82,8 @@ void CLuaArgument::CopyRecursive ( const CLuaArgument& Argument, CFastHashMap < 
         }
 
         case LUA_TLIGHTUSERDATA:
-        case LUA_TUSERDATA:
         {
-            m_pUserData = Argument.m_pUserData;
+            m_pLightUserData = Argument.m_pLightUserData;
             break;
         }
 
@@ -156,10 +153,9 @@ bool CLuaArgument::CompareRecursive ( const CLuaArgument& Argument, std::set < C
             return m_bBoolean == Argument.m_bBoolean;
         }
 
-        case LUA_TUSERDATA:
         case LUA_TLIGHTUSERDATA:
         {
-            return m_pUserData == Argument.m_pUserData;
+            return m_pLightUserData == Argument.m_pLightUserData;
         }
 
         case LUA_TNUMBER:
@@ -183,8 +179,8 @@ bool CLuaArgument::CompareRecursive ( const CLuaArgument& Argument, std::set < C
                         return false;
                 }
             
-                ++iter;
-                ++iterCompare;
+                iter++;
+                iterCompare++;
             }
             return true;
         }
@@ -199,7 +195,6 @@ bool CLuaArgument::CompareRecursive ( const CLuaArgument& Argument, std::set < C
 
 void CLuaArgument::Read ( lua_State* luaVM, int iArgument, CFastHashMap < const void*, CLuaArguments* > * pKnownTables )
 {
-#ifdef MTA_DEBUG
     // Store debug data for later retrieval
     m_iLine = 0;
     m_strFilename = "";
@@ -211,7 +206,6 @@ void CLuaArgument::Read ( lua_State* luaVM, int iArgument, CFastHashMap < const 
         m_strFilename = debugInfo.source;
         m_iLine = debugInfo.currentline;
     }
-#endif
 
     // Eventually delete our previous string
     m_strString = "";
@@ -251,13 +245,7 @@ void CLuaArgument::Read ( lua_State* luaVM, int iArgument, CFastHashMap < const 
 
             case LUA_TLIGHTUSERDATA:
             {
-                m_pUserData = lua_touserdata ( luaVM, iArgument );
-                break;
-            }
-
-            case LUA_TUSERDATA:
-            {
-                m_pUserData = * ( ( void** ) lua_touserdata ( luaVM, iArgument ) );
+                m_pLightUserData = lua_touserdata ( luaVM, iArgument );
                 break;
             }
 
@@ -319,9 +307,8 @@ void CLuaArgument::Push ( lua_State* luaVM, CFastHashMap < CLuaArguments*, int >
             }
 
             case LUA_TLIGHTUSERDATA:
-            case LUA_TUSERDATA:
             {
-                lua_pushuserdata ( luaVM, m_pUserData );
+                lua_pushlightuserdata ( luaVM, m_pLightUserData );
                 break;
             }
 
@@ -398,35 +385,26 @@ void CLuaArgument::ReadElement ( CElement* pElement )
     DeleteTableData ();
     if ( pElement )
     {
-        m_iType = LUA_TUSERDATA;
-        m_pUserData = reinterpret_cast<void*>(pElement->GetID ().Value());
+        m_iType = LUA_TLIGHTUSERDATA;
+        m_pLightUserData = (void*) reinterpret_cast<unsigned int *>(pElement->GetID ().Value());
     }
     else
         m_iType = LUA_TNIL;
 }
-
-void CLuaArgument::ReadElementID ( ElementID ID )
-{
-    m_strString = "";
-    DeleteTableData ();
-    m_iType = LUA_TUSERDATA;
-    m_pUserData = (void*) reinterpret_cast<unsigned int *>(ID.Value());
-}
-
 
 
 void CLuaArgument::ReadScriptID ( uint uiScriptID )
 {
     m_strString = "";
     DeleteTableData ();
-    m_iType = LUA_TUSERDATA;
-    m_pUserData = reinterpret_cast < void* > ( uiScriptID );
+    m_iType = LUA_TLIGHTUSERDATA;
+    m_pLightUserData = reinterpret_cast < void* > ( uiScriptID );
 }
 
 
 CElement* CLuaArgument::GetElement ( void ) const
 {
-    ElementID ID = TO_ELEMENTID ( m_pUserData );
+    ElementID ID = TO_ELEMENTID ( m_pLightUserData );
     return CElementIDs::GetElement ( ID );
 }
 
@@ -448,22 +426,18 @@ bool CLuaArgument::GetAsString ( SString& strBuffer )
         case LUA_TSTRING:
             strBuffer = m_strString;
             break;
-        case LUA_TUSERDATA:
+        case LUA_TLIGHTUSERDATA:
             return false;
             break;
         case LUA_TNUMBER:
-            if ( m_Number == static_cast <int> ( m_Number ) )
-                strBuffer = SString ( "%d", static_cast <int> ( m_Number ) );
-            else
-                strBuffer = SString ( "%f", m_Number );
-
+            strBuffer = SString ( "%d", ( int ) m_Number );
             break;
         default: return false; break;
     }
     return true;
 }
 
-// Can't use bitStream.Version() here as it is sometimes not set
+
 bool CLuaArgument::ReadFromBitStream ( NetBitStreamInterface& bitStream, std::vector < CLuaArguments* > * pKnownTables )
 {
     DeleteTableData ();
@@ -494,26 +468,18 @@ bool CLuaArgument::ReadFromBitStream ( NetBitStreamInterface& bitStream, std::ve
             // Number type
             case LUA_TNUMBER:
             {
-                if ( bitStream.ReadBit() )
+                bool bIsFloatingPoint;
+                if ( bitStream.ReadBit ( bIsFloatingPoint ) && bIsFloatingPoint )
                 {
-                    if ( bitStream.ReadBit()  )
-                    {
-                        double dNum;
-                        if ( bitStream.Read ( dNum ) )
-                            ReadNumber ( dNum );
-                    }
-                    else
-                    {
-                        float fNum;
-                        if ( bitStream.Read ( fNum ) )
-                            ReadNumber ( RoundFromFloatSource( fNum ) );
-                    }
+                    float fNum;
+                    if ( bitStream.Read ( fNum ) )
+                        ReadNumber ( fNum );
                 }
                 else
                 {
-                    int iNum;
-                    if ( bitStream.ReadCompressed ( iNum ) )
-                        ReadNumber ( iNum );
+                    long lNum;
+                    if ( bitStream.ReadCompressed ( lNum ) )
+                        ReadNumber ( lNum );
                 }
                 break;
             }
@@ -597,12 +563,12 @@ bool CLuaArgument::ReadFromBitStream ( NetBitStreamInterface& bitStream, std::ve
 
             // Element type?
             case LUA_TLIGHTUSERDATA:
-            case LUA_TUSERDATA:
             {
                 ElementID ElementID;
                 if ( bitStream.Read ( ElementID ) )
                 {
-                    ReadElementID ( ElementID );
+                    CElement * element = CElementIDs::GetElement ( ElementID );
+                    ReadElement ( element );
                 }
                 break;
             }
@@ -612,7 +578,6 @@ bool CLuaArgument::ReadFromBitStream ( NetBitStreamInterface& bitStream, std::ve
 }
 
 
-// Can't use bitStream.Version() here as it is sometimes not set
 bool CLuaArgument::WriteToBitStream ( NetBitStreamInterface& bitStream, CFastHashMap < CLuaArguments*, unsigned long > * pKnownTables ) const
 {
     SLuaTypeSync type;
@@ -665,28 +630,21 @@ bool CLuaArgument::WriteToBitStream ( NetBitStreamInterface& bitStream, CFastHas
         {
             type.data.ucType = LUA_TNUMBER;
             bitStream.Write ( &type );
+            float fNumber = static_cast < float > ( GetNumber () );
+            long lNumber = static_cast < long > ( fNumber );
+            float fNumberInteger = static_cast < float > ( lNumber );
 
-            int iNumber;
-            float fNumber;
-            double dNumber;
-            EDataType dataType = GetDataTypeToUse( GetNumber(), &iNumber, &fNumber, &dNumber );
-            if ( dataType == DATA_TYPE_INT )
-            {
-                bitStream.WriteBit ( false );
-                bitStream.WriteCompressed ( iNumber );
-            }
-            else
-            if ( dataType == DATA_TYPE_FLOAT )
+            // Check if the number is an integer and can fit a long datatype
+            if ( fabs ( fNumber ) > fabs ( fNumberInteger + 1 ) ||
+                 fabs ( fNumber - fNumberInteger ) >= FLOAT_EPSILON )
             {
                 bitStream.WriteBit ( true );
-                bitStream.WriteBit ( false );
                 bitStream.Write ( fNumber );
             }
             else
             {
-                bitStream.WriteBit ( true );
-                bitStream.WriteBit ( true );
-                bitStream.Write ( dNumber );
+                bitStream.WriteBit ( false );
+                bitStream.WriteCompressed ( lNumber );
             }
             break;
         }
@@ -735,14 +693,13 @@ bool CLuaArgument::WriteToBitStream ( NetBitStreamInterface& bitStream, CFastHas
 
         // Element argument
         case LUA_TLIGHTUSERDATA:
-        case LUA_TUSERDATA:
         {
             // Grab the element from this userdata pointer. Valid and has a synced element ID?
             CElement* pElement = GetElement ();
             if ( pElement && pElement->GetID () != INVALID_ELEMENT_ID )
             {
                 // Write its ID
-                type.data.ucType = LUA_TUSERDATA;
+                type.data.ucType = LUA_TLIGHTUSERDATA;
                 bitStream.Write ( &type );
                 bitStream.Write ( pElement->GetID () );
             }
@@ -780,13 +737,11 @@ bool CLuaArgument::WriteToBitStream ( NetBitStreamInterface& bitStream, CFastHas
 
 void CLuaArgument::LogUnableToPacketize ( const char* szMessage ) const
 {
-#ifdef MTA_DEBUG
     if ( m_strFilename.length () > 0 )
     {
         g_pGame->GetScriptDebugging ()->LogWarning ( NULL, "%s:%d: %s\n", ConformResourcePath ( m_strFilename.c_str () ).c_str (), m_iLine, szMessage );
     }
     else
-#endif
     {
         g_pGame->GetScriptDebugging ()->LogWarning ( NULL, "Unknown: %s\n", szMessage );
     }
@@ -832,23 +787,25 @@ json_object * CLuaArgument::WriteToJSONObject ( bool bSerialize, CFastHashMap < 
         }
         case LUA_TNUMBER:
         {
-            int iNumber;
-            if ( ShouldUseInt( GetNumber(), &iNumber ) )
+            float fNum = static_cast < float > ( GetNumber () );
+            int iNum = static_cast < int > ( GetNumber () );
+            if ( iNum == fNum )
             {
-                return json_object_new_int( iNumber );
+                return json_object_new_int(iNum);
             }
             else
             {
-                return json_object_new_double( static_cast < float > ( GetNumber() ) );
+                return json_object_new_double(fNum);
             }
             break;
         }
         case LUA_TSTRING:
         {
-            SString strTemp = GetString ( );
-            if ( strTemp.length() <= USHRT_MAX )
+            const char* szTemp = GetString ().c_str ();
+            unsigned short usLength = static_cast < unsigned short > ( strlen ( szTemp ) );
+            if ( strlen ( szTemp ) == usLength )
             {
-                return json_object_new_string_len ( (char *)strTemp.c_str(), strTemp.length() );
+                return json_object_new_string_len ( (char *)szTemp, usLength );
             }
             else
             {
@@ -857,10 +814,9 @@ json_object * CLuaArgument::WriteToJSONObject ( bool bSerialize, CFastHashMap < 
             break;
         }
         case LUA_TLIGHTUSERDATA:
-        case LUA_TUSERDATA:
         {
             CElement* pElement = GetElement ();
-            CResource* pResource = g_pGame->GetResourceManager ()->GetResourceFromScriptID ( reinterpret_cast < unsigned long > ( GetUserData () ) );
+            CResource* pResource = g_pGame->GetResourceManager ()->GetResourceFromScriptID ( reinterpret_cast < unsigned long > ( GetLightUserData () ) );
             
             // Elements are dynamic, so storing them is potentially unsafe
             if ( pElement && bSerialize )
@@ -921,15 +877,16 @@ char * CLuaArgument::WriteToString ( char * szBuffer, int length )
         }
         case LUA_TNUMBER:
         {
-            int iNumber;
-            if ( ShouldUseInt( GetNumber(), &iNumber ) )
+            float fNum = static_cast < float > ( GetNumber () );
+            int iNum = static_cast < int > ( GetNumber () );
+            if ( iNum == fNum )
             {
-                snprintf ( szBuffer, length, "%d", iNumber );
+                snprintf ( szBuffer, length, "%d", iNum );
                 return szBuffer;
             }
             else
             {
-                snprintf ( szBuffer, length, "%f", static_cast < float > ( GetNumber() ) );
+                snprintf ( szBuffer, length, "%f", fNum );
                 return szBuffer;
             }
             break;
@@ -949,12 +906,10 @@ char * CLuaArgument::WriteToString ( char * szBuffer, int length )
             }
             break;
         }
-
         case LUA_TLIGHTUSERDATA:
-        case LUA_TUSERDATA:
         {
             CElement* pElement = GetElement ();
-            CResource* pResource = g_pGame->GetResourceManager ()->GetResourceFromScriptID ( reinterpret_cast < unsigned long > ( GetUserData () ) );
+            CResource* pResource = g_pGame->GetResourceManager ()->GetResourceFromScriptID ( reinterpret_cast < unsigned long > ( GetLightUserData () ) );
             if ( pElement )
             {
                 snprintf ( szBuffer, length, "#E#%d", (int)pElement->GetID().Value() );
@@ -983,84 +938,86 @@ char * CLuaArgument::WriteToString ( char * szBuffer, int length )
 
 bool CLuaArgument::ReadFromJSONObject ( json_object* object, std::vector < CLuaArguments* > * pKnownTables )
 {
-    DeleteTableData ( );
-
-    if ( !object )
-        m_iType = LUA_TNIL;
-    else
+    if ( !is_error(object) )
     {
-        switch ( json_object_get_type ( object ) )
+        DeleteTableData ();
+
+        if ( !object )
+            m_iType = LUA_TNIL; 
+        else
         {
-        case json_type_null:
-            m_iType = LUA_TNIL;
-            break;
-        case json_type_boolean:
-            if ( json_object_get_boolean ( object ) == TRUE )
-                ReadBool ( true );
-            else
-                ReadBool ( false );
-            break;
-        case json_type_double:
-        case json_type_int:
-            ReadNumber ( json_object_get_double ( object ) );
-            break;
-        case json_type_object:
-            m_pTableData = new CLuaArguments ( );
-            m_pTableData->ReadFromJSONObject ( object, pKnownTables );
-            m_bWeakTableRef = false;
-            m_iType = LUA_TTABLE;
-            break;
-        case json_type_array:
-            m_pTableData = new CLuaArguments ( );
-            m_pTableData->ReadFromJSONArray ( object, pKnownTables );
-            m_bWeakTableRef = false;
-            m_iType = LUA_TTABLE;
-            break;
-        case json_type_string:
+            switch ( json_object_get_type ( object ) )
             {
-                int iLength = json_object_get_string_len ( object );
-                SString strString;
-                strString.assign ( json_object_get_string ( object ), iLength );
-                if ( iLength > 3 && strString [0] == '^' && strString [2] == '^' && strString [1] != '^' )
+            case json_type_null:
+                m_iType = LUA_TNIL;
+                break;
+            case json_type_boolean:
+                if ( json_object_get_boolean ( object ) == TRUE )
+                    ReadBool ( true );
+                else
+                    ReadBool ( false );
+                break;
+            case json_type_double:
+                ReadNumber ( json_object_get_double ( object ) );
+                break;
+            case json_type_int:
+                ReadNumber ( json_object_get_int ( object ) );
+                break;
+            case json_type_object:
+                m_pTableData = new CLuaArguments();
+                m_pTableData->ReadFromJSONObject ( object, pKnownTables );
+                m_bWeakTableRef = false;
+                m_iType = LUA_TTABLE;
+                break;
+            case json_type_array:
+                m_pTableData = new CLuaArguments();
+                m_pTableData->ReadFromJSONArray ( object, pKnownTables );
+                m_bWeakTableRef = false;
+                m_iType = LUA_TTABLE;
+                break;
+            case json_type_string:
                 {
-                    switch ( strString [1] )
+                char * szString = json_object_get_string ( object );
+                if ( strlen(szString) > 3 && szString[0] == '^' && szString[2] == '^' && szString[1] != '^' )
+                {
+                    switch ( szString[1] )
                     {
-                    case 'E': // element
+                        case 'E': // element
                         {
-                            int id = atoi ( strString.c_str ( ) + 3 );
+                            int id = atoi ( szString + 3 );
                             CElement * element = NULL;
                             if ( id != INT_MAX && id != INT_MIN && id != 0 )
-                                element = CElementIDs::GetElement ( id );
+                                element = CElementIDs::GetElement(id);
                             if ( element )
                             {
                                 ReadElement ( element );
                             }
-                            else
+                            else 
                             {
                                 // Appears sometimes when a player quits
-                                //g_pClientGame->GetScriptDebugging()->LogError ( NULL, "Invalid element specified in JSON string '%s'.", szString );
+                                //g_pGame->GetScriptDebugging()->LogError ( NULL, SString ( "Invalid element specified in JSON string '%s'.", szString ) );
                                 m_iType = LUA_TNIL;
                             }
                             break;
                         }
-                    case 'R': // resource
+                        case 'R': // resource
                         {
-                            CResource * resource = g_pGame->GetResourceManager ( )->GetResource ( strString.c_str ( ) + 3 );
+                            CResource * resource = g_pGame->GetResourceManager()->GetResource(szString+3);
                             if ( resource )
                             {
-                                ReadScriptID ( resource->GetScriptID ( ) );
+                                ReadScriptID ( resource->GetScriptID () );
                             }
-                            else
+                            else 
                             {
-                                g_pGame->GetScriptDebugging ( )->LogError ( NULL, "Invalid resource specified in JSON string '%s'.", strString.c_str ( ) );
+                                g_pGame->GetScriptDebugging()->LogError ( NULL, SString ( "Invalid resource specified in JSON string '%s'.", szString ) );
                                 m_iType = LUA_TNIL;
                             }
                             break;
                         }
-                    case 'T':   // Table reference
+                        case 'T':   // Table reference
                         {
-                            unsigned long ulTableID = static_cast < unsigned long > ( atol ( strString.c_str ( ) + 3 ) );
-                            if ( pKnownTables && ulTableID < pKnownTables->size ( ) )
+                            unsigned long ulTableID = static_cast < unsigned long > ( atol ( szString + 3 ) );
+                            if ( pKnownTables && ulTableID >= 0 && ulTableID < pKnownTables->size () )
                             {
                                 m_pTableData = pKnownTables->at ( ulTableID );
                                 m_bWeakTableRef = true;
@@ -1068,7 +1025,7 @@ bool CLuaArgument::ReadFromJSONObject ( json_object* object, std::vector < CLuaA
                             }
                             else
                             {
-                                g_pGame->GetScriptDebugging ( )->LogError ( NULL, "Invalid table reference specified in JSON string '%s'.", strString.c_str ( ) );
+                                g_pGame->GetScriptDebugging()->LogError ( NULL, SString ( "Invalid table reference specified in JSON string '%s'.", szString ) );
                                 m_iType = LUA_TNIL;
                             }
                             break;
@@ -1076,12 +1033,14 @@ bool CLuaArgument::ReadFromJSONObject ( json_object* object, std::vector < CLuaA
                     }
                 }
                 else
-                    ReadString ( strString );
+                    ReadString ( szString );
                 break;
+                }
+            default:
+                return false;
             }
-        default:
-            return false;
         }
+        return true;
     }
-    return true;
+    return false;
 }

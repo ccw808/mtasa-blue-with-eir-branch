@@ -75,7 +75,7 @@ CVertexStreamBoundingBoxManager::~CVertexStreamBoundingBoxManager ( void )
 CVertexStreamBoundingBoxManager* CVertexStreamBoundingBoxManager::GetSingleton ( void )
 {
     if ( !ms_Singleton )
-        ms_Singleton = new CVertexStreamBoundingBoxManager ();
+        ms_Singleton = new CVertexStreamBoundingBoxManager ();;
     return ms_Singleton;
 }
 
@@ -177,8 +177,8 @@ bool CVertexStreamBoundingBoxManager::GetVertexStreamBoundingBox ( SCurrentState
         pStreamBoundsInfo = CreateStreamBoundsInfo ( state );
 
     // Calc area we are going to use
-    uint viMinBased = state.args.MinVertexIndex + state.args.BaseVertexIndex;
-    uint viMaxBased = state.args.MinVertexIndex + state.args.NumVertices + state.args.BaseVertexIndex;
+    WORD viMinBased = state.args.MinVertexIndex + state.args.BaseVertexIndex;
+    WORD viMaxBased = state.args.MinVertexIndex + state.args.NumVertices + state.args.BaseVertexIndex;
 
     uint ReadOffsetStart = viMinBased * state.stream.Stride + state.stream.OffsetInBytes;
     uint ReadOffsetSize = ( viMaxBased - viMinBased ) * state.stream.Stride;

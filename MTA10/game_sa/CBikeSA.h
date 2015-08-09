@@ -20,8 +20,13 @@
 
 class CBikeSAInterface : public CVehicleSAInterface
 {
-    // fill this
+public:
+    RwFrame* pBikeParts[6];
+    uint8 pad1[168];
+    CColPointSAInterface WheelColPointArray[4];
+    uint8 pad2[260];
 };
+C_ASSERT(sizeof(CBikeSAInterface) == 0x814);
 
 class CBikeSA : public virtual CBike, public virtual CVehicleSA
 {

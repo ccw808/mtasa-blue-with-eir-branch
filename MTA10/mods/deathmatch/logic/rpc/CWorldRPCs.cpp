@@ -40,7 +40,6 @@ void CWorldRPCs::LoadFunctions ( void )
     AddHandler ( SET_TRAFFIC_LIGHT_STATE, SetTrafficLightState, "SetTrafficLightState" );
     AddHandler ( SET_JETPACK_MAXHEIGHT, SetJetpackMaxHeight, "SetJetpackMaxHeight" );
     AddHandler ( SET_AIRCRAFT_MAXHEIGHT, SetAircraftMaxHeight, "SetAircraftMaxHeight" );
-    AddHandler ( SET_AIRCRAFT_MAXVELOCITY, SetAircraftMaxVelocity, "SetAircraftMaxVelocity" );
     AddHandler ( SET_OCCLUSIONS_ENABLED, SetOcclusionsEnabled, "SetOcclusionsEnabled" );
 
     AddHandler ( SET_INTERIOR_SOUNDS_ENABLED, SetInteriorSoundsEnabled, "SetInteriorSoundsEnabled" );
@@ -62,9 +61,6 @@ void CWorldRPCs::LoadFunctions ( void )
     AddHandler ( RESTORE_WORLD_MODEL, RestoreWorldModel, "RestoreWorldModel");
     AddHandler ( RESTORE_ALL_WORLD_MODELS, RestoreAllWorldModels, "RestoreAllWorldModels");
     AddHandler ( SET_SYNC_INTERVALS, SetSyncIntervals, "SetSyncIntervals" );
-
-    AddHandler ( SET_MOON_SIZE, SetMoonSize, "SetMoonSize" );
-    AddHandler ( RESET_MOON_SIZE, ResetMoonSize, "ResetMoonSize" );
 }
 
 
@@ -373,19 +369,6 @@ void CWorldRPCs::SetAircraftMaxHeight ( NetBitStreamInterface& bitStream )
     }
 }
 
-void CWorldRPCs::SetAircraftMaxVelocity ( NetBitStreamInterface& bitStream )
-{
-    float fVelocity;
-
-    if ( bitStream.Version () >= 0x3E )
-    {
-        if ( bitStream.Read ( fVelocity ) )
-        {
-            g_pGame->GetWorld ()->SetAircraftMaxVelocity ( fVelocity );
-        }
-    }
-}
-
 void CWorldRPCs::SetOcclusionsEnabled ( NetBitStreamInterface& bitStream )
 {
     bool bEnabled;
@@ -436,6 +419,7 @@ void CWorldRPCs::SetWeaponProperty ( NetBitStreamInterface& bitStream )
     if ( bitStream.Read ( ucWeapon ) && bitStream.Read ( ucProperty ) && bitStream.Read ( ucWeaponSkill ) )
     {
         CWeaponStat* pWeaponInfo = g_pGame->GetWeaponStatManager()->GetWeaponStats( static_cast < eWeaponType > ( ucWeapon ), static_cast < eWeaponSkill > ( ucWeaponSkill ) );
+        CWeaponStat* pOriginalWeaponInfo = g_pGame->GetWeaponStatManager()->GetOriginalWeaponStats( static_cast < eWeaponType > ( ucWeapon ), static_cast < eWeaponSkill > ( ucWeaponSkill ) );
         switch ( ucProperty )
         {
             case WEAPON_WEAPON_RANGE:
@@ -532,50 +516,40 @@ void CWorldRPCs::SetWeaponProperty ( NetBitStreamInterface& bitStream )
                 }
             case WEAPON_FLAGS:
                 {
-                    int iData = 0;
-                    if ( bitStream.Version() < 0x57 )
+                    bitStream.Read ( sData );
+                    if ( pWeaponInfo->IsFlagSet ( sData ) )
                     {
-                        bitStream.Read ( sData );
-                        iData = sData;
+                        if ( sData == 0x800 )
+                        {
+                            // if it can support this anim group
+                            if ( ( ucWeapon >= WEAPONTYPE_PISTOL && ucWeapon <= WEAPONTYPE_SNIPERRIFLE ) || ucWeapon == WEAPONTYPE_MINIGUN )
+                            {
+                                // Revert anim group to default
+                                pWeaponInfo->SetAnimGroup ( pOriginalWeaponInfo->GetAnimGroup ( ) );
+                            }
+                        }
+                        pWeaponInfo->ClearFlag ( sData );
                     }
                     else
-                        bitStream.Read ( iData );
+                    {
+                        if ( sData == 0x800 )
+                        {
+                            // if it can support this anim group
+                            if ( ( ucWeapon >= WEAPONTYPE_PISTOL && ucWeapon <= WEAPONTYPE_SNIPERRIFLE ) || ucWeapon == WEAPONTYPE_MINIGUN )
+                            {
+                                // sawn off shotgun anim group
+                                pWeaponInfo->SetAnimGroup ( 17 );
+                            }
+                        }
+                        pWeaponInfo->SetFlag ( sData );
+                    }
 
-                    pWeaponInfo->ToggleFlagBits( iData );
                     break;
                 }
             case WEAPON_ANIM_GROUP:
                 {
                     bitStream.Read ( sData );
                     pWeaponInfo->SetAnimGroup ( sData );
-                    break;
-                }
-            case WEAPON_FLAG_AIM_NO_AUTO:
-            case WEAPON_FLAG_AIM_ARM:
-            case WEAPON_FLAG_AIM_1ST_PERSON:
-            case WEAPON_FLAG_AIM_FREE:
-            case WEAPON_FLAG_MOVE_AND_AIM:
-            case WEAPON_FLAG_MOVE_AND_SHOOT:
-            case WEAPON_FLAG_TYPE_THROW:
-            case WEAPON_FLAG_TYPE_HEAVY:
-            case WEAPON_FLAG_TYPE_CONSTANT:
-            case WEAPON_FLAG_TYPE_DUAL:
-            case WEAPON_FLAG_ANIM_RELOAD:
-            case WEAPON_FLAG_ANIM_CROUCH:
-            case WEAPON_FLAG_ANIM_RELOAD_LOOP:
-            case WEAPON_FLAG_ANIM_RELOAD_LONG:
-            case WEAPON_FLAG_SHOT_SLOWS:
-            case WEAPON_FLAG_SHOT_RAND_SPEED:
-            case WEAPON_FLAG_SHOT_ANIM_ABRUPT:
-            case WEAPON_FLAG_SHOT_EXPANDS:
-                {
-                    bool bEnable;
-                    bitStream.ReadBit ( bEnable );
-                    uint uiFlagBit = GetWeaponPropertyFlagBit( (eWeaponProperty)ucProperty );
-                    if ( bEnable )
-                        pWeaponInfo->SetFlagBits ( uiFlagBit );
-                    else
-                        pWeaponInfo->ClearFlagBits ( uiFlagBit );
                     break;
                 }
         }
@@ -631,20 +605,4 @@ void CWorldRPCs::SetSyncIntervals ( NetBitStreamInterface& bitStream )
     bitStream.Read ( g_TickRateSettings.iObjectSync );
     bitStream.Read ( g_TickRateSettings.iKeySyncRotation );
     bitStream.Read ( g_TickRateSettings.iKeySyncAnalogMove );
-}
-
-
-void CWorldRPCs::SetMoonSize ( NetBitStreamInterface& bitStream )
-{
-    int iMoonSize;
-        
-    if ( bitStream.Read ( iMoonSize ) )
-    {
-        g_pMultiplayer->SetMoonSize ( iMoonSize );
-    }
-}
-
-void CWorldRPCs::ResetMoonSize ( NetBitStreamInterface& bitStream )
-{
-    g_pMultiplayer->ResetMoonSize ();
 }

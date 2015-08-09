@@ -27,8 +27,6 @@ CProxyDirect3DIndexBuffer::CProxyDirect3DIndexBuffer ( IDirect3DDevice9* InD3DDe
 	m_pOriginal = pOriginal;
     m_iMemUsed = Length;
     m_dwUsage = Usage;
-    m_format = Format;
-    m_pool = Pool;
 
     m_stats.iCurrentCount++;
     m_stats.iCurrentBytes += m_iMemUsed;
@@ -107,26 +105,5 @@ ULONG CProxyDirect3DIndexBuffer::Release ( void )
 HRESULT CProxyDirect3DIndexBuffer::Lock ( UINT OffsetToLock, UINT SizeToLock, void** ppbData, DWORD Flags )
 {
     m_stats.iLockedCount++;
-
-    *ppbData = NULL;
-    HRESULT hr = m_pOriginal->Lock ( OffsetToLock, SizeToLock, ppbData, Flags);
-
-    if( FAILED( hr ) )
-    {
-        SString strMessage( "Lock IndexBuffer fail: hr:%x Length:%x Usage:%x Format:%x Pool:%x OffsetToLock:%x SizeToLock:%x Flags:%x"
-                                                        , hr, m_iMemUsed, m_dwUsage, m_format, m_pool, OffsetToLock, SizeToLock, Flags );
-        WriteDebugEvent( strMessage );
-        AddReportLog( 8625, strMessage );
-        CCore::GetSingleton ().LogEvent ( 625, "Lock IndexBuffer", "", strMessage );
-    }
-    else
-    if ( *ppbData == NULL )
-    {
-        SString strMessage( "Lock IndexBuffer result NULL: hr:%x Length:%x Usage:%x Format:%x Pool:%x OffsetToLock:%x SizeToLock:%x Flags:%x"
-                                                        , hr, m_iMemUsed, m_dwUsage, m_format, m_pool, OffsetToLock, SizeToLock, Flags );
-        WriteDebugEvent( strMessage );
-        AddReportLog( 8626, strMessage );
-        CCore::GetSingleton ().LogEvent ( 626, "Lock IndexBuffer NULL", "", strMessage );
-    }
-    return hr;
+    return m_pOriginal->Lock ( OffsetToLock, SizeToLock, ppbData, Flags);
 }

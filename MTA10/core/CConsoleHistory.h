@@ -13,13 +13,12 @@ class CConsoleHistory
 {
 public:
                     CConsoleHistory             ( unsigned int uiHistoryLength );
-    void            LoadFromFile                ( void );
+    void            LoadFromFile                ( const char* szFilename );
     void            Add                         ( const char* szLine );
     const char*     Get                         ( unsigned int uiIndex );
 
 protected:
     CMappedList < SString > m_History;
-    CMappedList < SString > m_HistoryNotSaved;
     unsigned int            m_uiHistoryLength;
     SString                 m_strFilename;
 };

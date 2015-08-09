@@ -26,7 +26,6 @@ bool CPixelsManager::GetVolumeTexturePixels ( IDirect3DVolumeTexture9* pD3DVolum
         return false;
 
     IDirect3DVolume9* pVolume = NULL;
-    CAutoReleaseMe < IDirect3DVolume9 > Thanks( pVolume );
 
     UINT Level = 0;
     pD3DVolumeTexture->GetVolumeLevel ( Level, &pVolume );
@@ -50,6 +49,7 @@ bool CPixelsManager::GetVolumeTexturePixels ( IDirect3DVolumeTexture9* pD3DVolum
         }
     }
 
+    SAFE_RELEASE ( pVolume );
     return bResult;
 }
 
@@ -67,7 +67,6 @@ bool CPixelsManager::SetVolumeTexturePixels ( IDirect3DVolumeTexture9* pD3DVolum
         return false;
 
     IDirect3DVolume9* pVolume = NULL;
-    CAutoReleaseMe < IDirect3DVolume9 > Thanks( pVolume );
 
     UINT Level = 0;
     pD3DVolumeTexture->GetVolumeLevel ( Level, &pVolume );
@@ -91,6 +90,7 @@ bool CPixelsManager::SetVolumeTexturePixels ( IDirect3DVolumeTexture9* pD3DVolum
         }
     }
 
+    SAFE_RELEASE ( pVolume );
     return bResult;
 }
 

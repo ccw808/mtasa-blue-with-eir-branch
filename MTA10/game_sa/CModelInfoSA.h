@@ -13,18 +13,13 @@
 *
 *****************************************************************************/
 
-#ifndef __CGAMESA_MODELINFO
-#define __CGAMESA_MODELINFO
+#pragma once
 
 #include <game/CModelInfo.h>
 #include <game/Common.h>
 
 #include "CColModelSA.h"
 #include "CRenderWareSA.h"
-class CPedModelInfoSA;
-class CPedModelInfoSAInterface;
-
-#define     RpGetFrame(__c)                 ((RwFrame*)(((RwObject *)(__c))->parent))
 
 #define     ARRAY_ModelLoaded               0x8E4CD0 // ##SA##
 
@@ -65,7 +60,6 @@ class CPedModelInfoSAInterface;
 #define     FUNC_RequestVehicleUpgrade      0x408C70
 
 #define     FUNC_CVehicleModelInfo__GetNumRemaps        0x4C86B0
-#define     FUNC_CVehicleStructure_delete   0x4C9580
 
 #define     FUNC_SetColModel                0x4C4BC0
 #define     FUNC_AddPedModel                0x4c67a0
@@ -158,10 +152,10 @@ public:
 
     // Flags used by CBaseModelInfo
     unsigned char           bHasBeenPreRendered: 1;     // +18
-    unsigned char           bAlphaTransparency: 1;
+    unsigned char           bIsBackfaceCulled: 1;
     unsigned char           bIsLod: 1;
-    unsigned char           bDontWriteZBuffer: 1;
     unsigned char           bDontCastShadowsOn: 1;
+    unsigned char           bDontWriteZBuffer: 1;
     unsigned char           bDrawAdditive: 1;
     unsigned char           bDrawLast: 1;
     unsigned char           bDoWeOwnTheColModel: 1;
@@ -223,32 +217,10 @@ public:
     // +772 = Anim file index
 };
 
-
-class CVehicleModelInfoSAInterface : public CBaseModelInfoSAInterface
-{
-public:
-    uint32          pad1;               // +32
-    RpMaterial*     pPlateMaterial;     // +36
-    char            plateText[8];       // +40
-    char            pad[44];
-    class CVehicleStructure* pSomeInfo; // +92
-};
-
-enum eModelInfoType : unsigned char
-{
-    MODEL_INFO_TYPE_ATOMIC = 1,
-    MODEL_INFO_TYPE_TIME = 3,
-    MODEL_INFO_TYPE_WEAPON = 4,
-    MODEL_INFO_TYPE_CLUMP = 5,
-    MODEL_INFO_TYPE_VEHICLE = 6, 
-    MODEL_INFO_TYPE_PED = 7,
-    MODEL_INFO_TYPE_LOD_ATOMIC = 8,
-};
-
-
 /**
  * \todo Someone move GetLevelFromPosition out of here or delete it entirely please
  */
+
 
 class CModelInfoSA : public CModelInfo
 {
@@ -262,9 +234,7 @@ protected:
     RpClump*                        m_pCustomClump;
     static std::map < unsigned short, int > ms_RestreamTxdIDMap;
     static std::map < DWORD, float > ms_ModelDefaultLodDistanceMap;
-    static std::map < DWORD, BYTE > ms_ModelDefaultAlphaTransparencyMap;
     bool                            m_bAddedRefForCollision;
-    SVehicleSupportedUpgrades       m_ModelSupportedUpgrades;
 public:
     static std::set < uint >        ms_ReplacedColModels;
 
@@ -272,10 +242,9 @@ public:
                                     CModelInfoSA            ( DWORD dwModelID );
 
     CBaseModelInfoSAInterface *     GetInterface             ( void );
-    CPedModelInfoSAInterface *      GetPedModelInfoInterface ( void )              { return reinterpret_cast < CPedModelInfoSAInterface * > ( GetInterface () ); }
+    class CPedModelInfoSAInterface *      GetPedModelInfoInterface ( void )              { return reinterpret_cast < CPedModelInfoSAInterface * > ( GetInterface () ); }
 
     DWORD                           GetModel                ( void )               { return m_dwModelID; }
-    eModelInfoType                  GetModelType            ( void );
     uint                            GetAnimFileIndex        ( void );
 
     bool                            IsPlayerModel           ( void );
@@ -314,11 +283,6 @@ public:
     static void                     StaticFlushPendingRestreamIPL ( void );
     static void                     StaticSetHooks          ( void );
 
-    void                            SetAlphaTransparencyEnabled ( BOOL bEnabled );
-    bool                            IsAlphaTransparencyEnabled ();
-    void                            ResetAlphaTransparency  ( void );
-    static void                     StaticResetAlphaTransparencies ( void );
-
     void                            ModelAddRef             ( EModelRequestType requestType, const char* szTag );
     int                             GetRefCount             ( void );
     void                            RemoveRef               ( bool bRemoveExtraGTARef = false );
@@ -351,13 +315,4 @@ public:
     // CModelInfoSA methods
     void                            MakePedModel            ( char * szTexture );
 
-    SVehicleSupportedUpgrades       GetVehicleSupportedUpgrades ( void ) { return m_ModelSupportedUpgrades; }
-
-    void                            InitialiseSupportedUpgrades ( RpClump * pClump );
-    void                            ResetSupportedUpgrades      ( void );
-
-private:
-    void                            RwSetSupportedUpgrades      ( RwFrame * parent, DWORD dwModel );
 };
-
-#endif

@@ -31,9 +31,6 @@ public:
     void                                RemoveColumn            ( unsigned int uiColumn );
     void                                AutoSizeColumn          ( unsigned int hColumn );
     void                                SetColumnWidth          ( int hColumn, float fWidth, bool bRelative = true );
-    bool                                GetColumnWidth          ( int hColumn, float& fOutWidth, bool bRelative = true );
-    void                                SetColumnTitle          ( int hColumn, const char* szTitle );
-    const char*                         GetColumnTitle          ( int hColumn );
 
     void                                SetSelectionMode        ( SelectionMode mode );
 
@@ -55,11 +52,6 @@ public:
     void                                SetVerticalScrollBar    ( bool bEnabled );
     void                                SetSorting              ( bool bEnabled );
     void                                SetItemImage            ( int iRow, int hColumn, CGUIStaticImage* pImage );
-
-    float                               GetHorizontalScrollPosition ( void );
-    float                               GetVerticalScrollPosition   ( void );
-    void                                SetHorizontalScrollPosition ( float fPosition );
-    void                                SetVerticalScrollPosition   ( float fPosition );
 
     int                                 GetColumnIndex          ( int hColumn );
     int                                 GetItemColumnIndex      ( CGUIListItem* pItem );
@@ -84,6 +76,7 @@ public:
     void                                SetSortColumnHandler    ( GUI_CALLBACK Callback );
 
     void                                SetIgnoreTextSpacer     ( bool bIgnoreTextSpacer ) { m_bIgnoreTextSpacer = bIgnoreTextSpacer; };
+    void                                SetVerticalScrollPosition ( float fPosition );
     eCGUIType                           GetType                 ( void ) { return CGUI_GRIDLIST; };
 
     #include "CGUIElement_Inc.h"
@@ -97,7 +90,7 @@ private:
     CGUIListItem_Impl*                  GetListItem             ( CEGUI::ListboxItem* pItem );
     unsigned int                        m_hUniqueHandle;
 
-    CFastHashMap < CEGUI::ListboxItem*, CGUIListItem_Impl* > m_Items;
+    google::dense_hash_map < CEGUI::ListboxItem*, CGUIListItem_Impl* > m_Items;
 
     GUI_CALLBACK                        m_OnSortColumn;
 

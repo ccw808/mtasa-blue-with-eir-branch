@@ -31,7 +31,6 @@ public:
     void                    DeleteAll                       ( void );
     bool                    HandleExists                    ( CLuaMain* pLuaMain, const char* szName, const CLuaFunctionRef& iLuaFunction );
     bool                    HasEvents                       ( void ) const          { return m_bHasEvents; }
-    void                    GetHandles                      ( CLuaMain* pLuaMain, const char* szName, lua_State* luaVM );
 
     bool                    Call                            ( const char* szName, const CLuaArguments& Arguments, class CClientEntity* pSource, class CClientEntity* pThis );
 
@@ -43,6 +42,7 @@ private:
     bool                                    m_bIteratingList;
     std::multimap < SString, CMapEvent* >   m_EventsMap;
     std::list < CMapEvent* >                m_TrashCan;
+    std::list < CMapEvent* >                m_PendingAddList;
 
     // Types for m_EventsMap access
     typedef std::multimap < SString, CMapEvent* > ::const_iterator  EventsConstIter;

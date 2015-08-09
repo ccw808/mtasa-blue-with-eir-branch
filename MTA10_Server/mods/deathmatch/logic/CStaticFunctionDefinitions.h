@@ -59,9 +59,8 @@ public:
     static CLuaArgument*        GetElementData                      ( CElement* pElement, const char* szName, bool bInherit );
     static CLuaArguments*       GetAllElementData                   ( CElement* pElement, CLuaArguments * table );
     static CElement*            GetElementParent                    ( CElement* pElement );
-    static bool                 GetElementMatrix                    ( CElement* pElement, CMatrix& matrix );
     static bool                 GetElementPosition                  ( CElement* pElement, CVector& vecPosition );
-    static bool                 GetElementRotation                  ( CElement* pElement, CVector& vecRotation, eEulerRotationOrder rotationOrder );
+    static bool                 GetElementRotation                  ( CElement* pElement, CVector& vecRotation, const char* szRotationOrder );
     static bool                 GetElementVelocity                  ( CElement* pElement, CVector& vecVelocity );
     static bool                 GetElementInterior                  ( CElement* pElement, unsigned char& ucInterior );
     static bool                 IsElementWithinColShape             ( CElement* pElement, CColShape* pColShape, bool& bWithin );
@@ -82,7 +81,6 @@ public:
     static bool                 IsElementFrozen                     ( CElement* pElement, bool& bFrozen );
     static bool                 GetLowLodElement                    ( CElement* pElement, CElement*& pOutLowLodElement );
     static bool                 IsElementLowLod                     ( CElement* pElement, bool& bOutLowLod );
-    static bool                 IsElementCallPropagationEnabled     ( CElement* pElement, bool& bOutEnabled );
 
     // Element set funcs
     static bool                 ClearElementVisibleTo               ( CElement* pElement );
@@ -90,9 +88,8 @@ public:
     static bool                 SetElementData                      ( CElement* pElement, const char* szName, const CLuaArgument& Variable, CLuaMain* pLuaMain, bool bSynchronize );
     static bool                 RemoveElementData                   ( CElement* pElement, const char* szName );
     static bool                 SetElementParent                    ( CElement* pElement, CElement* pParent );
-    static bool                 SetElementMatrix                    ( CElement* pElement, const CMatrix& matrix );
     static bool                 SetElementPosition                  ( CElement* pElement, const CVector& vecPosition, bool bWarp = true );
-    static bool                 SetElementRotation                  ( CElement* pElement, const CVector& vecRotation, eEulerRotationOrder rotationOrder, bool bNewWay );
+    static bool                 SetElementRotation                  ( CElement* pElement, const CVector& vecRotation, const char* szRotationOrder, bool bNewWay );
     static bool                 SetElementVelocity                  ( CElement* pElement, const CVector& vecVelocity );
     static bool                 SetElementVisibleTo                 ( CElement* pElement, CElement* pReference, bool bVisible );
     static bool                 SetElementInterior                  ( CElement* pElement, unsigned char ucInterior, bool bSetPosition, CVector& vecPosition );
@@ -108,7 +105,6 @@ public:
     static bool                 SetElementCollisionsEnabled         ( CElement* pElement, bool bEnable );
     static bool                 SetElementFrozen                    ( CElement* pElement, bool bFrozen );
     static bool                 SetLowLodElement                    ( CElement* pElement, CElement* pLowLodElement );
-    static bool                 SetElementCallPropagationEnabled    ( CElement* pElement, bool bEnable );
 
     // Scoreboard
     static bool                 AddScoreboardColumn                 ( const char* szID, const char* szName, float fWidth );
@@ -131,7 +127,7 @@ public:
     static bool                 GetPlayerNametagText                ( CPlayer* pPlayer, SString& strOutText );
     static bool                 GetPlayerNametagColor               ( CPlayer* pPlayer, unsigned char& ucR, unsigned char& ucG, unsigned char& ucB );
     static bool                 IsPlayerNametagShowing              ( CPlayer* pPlayer, bool& bShowing );
-    static const std::string&   GetPlayerSerial                     ( CPlayer* pPlayer, uint uiIndex );
+    static const std::string&   GetPlayerSerial                     ( CPlayer* pPlayer );
     static const std::string&   GetPlayerUserName                   ( CPlayer* pPlayer );
     static const std::string&   GetPlayerCommunityID                ( CPlayer* pPlayer );
     static bool                 GetPlayerBlurLevel                  ( CPlayer* pPlayer, unsigned char& ucLevel );
@@ -141,7 +137,7 @@ public:
     static const SString&       GetPlayerVersion                    ( CPlayer* pPlayer );
 
     // Player set functions
-    static bool                 SetPlayerMoney                      ( CElement* pElement, long lMoney, bool bInstant );
+    static bool                 SetPlayerMoney                      ( CElement* pElement, long lMoney );
     static bool                 SetPlayerAmmo                       ( CElement* pElement, unsigned char ucSlot, unsigned short usAmmo, unsigned short usAmmoInClip );
     static bool                 GivePlayerMoney                     ( CElement* pElement, long lMoney );
     static bool                 TakePlayerMoney                     ( CElement* pElement, long lMoney );
@@ -158,7 +154,7 @@ public:
     static bool                 RedirectPlayer                      ( CElement* pElement, const char* szHost, unsigned short usPort, const char* szPassword );
     static bool                 SetPlayerName                       ( CElement* pElement, const char* szName );
     static bool                 DetonateSatchels                    ( CElement* pElement );
-    static bool                 TakePlayerScreenShot                ( CElement* pElement, uint uiSizeX, uint uiSizeY, const SString& strTag, uint uiQuality, uint uiMaxBandwidth, uint uiMaxPacketSize, CResource* pResource );
+    static bool                 TakePlayerScreenShot                ( CElement* pElement, uint uiSizeX, uint uiSizeY, const SString& strTag, uint uiQuality, uint uiMaxBandwidth, uint uiMaxPacketSize, const SString& strResourceName );
 
     // Ped get funcs
     static CPed*                CreatePed                           ( CResource* pResource, unsigned short usModel, const CVector& vecPosition, float fRotation = 0.0f, bool bSynced = true );
@@ -183,13 +179,11 @@ public:
     static CVehicle*            GetPedOccupiedVehicle               ( CPed* pPed );
     static bool                 GetPedOccupiedVehicleSeat           ( CPed* pPed, unsigned int& uiSeat );
     static bool                 GetWeaponProperty                   ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, float & fData );
-    static bool                 GetWeaponProperty                   ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, int & sData );
+    static bool                 GetWeaponProperty                   ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, short & sData );
     static bool                 GetWeaponProperty                   ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, CVector & vecData );
-    static bool                 GetWeaponPropertyFlag               ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, bool& bEnable );
     static bool                 GetOriginalWeaponProperty           ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, float & fData );
-    static bool                 GetOriginalWeaponProperty           ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, int & sData );
+    static bool                 GetOriginalWeaponProperty           ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, short & sData );
     static bool                 GetOriginalWeaponProperty           ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, CVector & vecData );
-    static bool                 GetOriginalWeaponPropertyFlag       ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, bool& bEnable );
 
     // Ped set funcs
     static bool                 SetPedArmor                         ( CElement* pElement, float fArmor );
@@ -215,8 +209,7 @@ public:
     static bool                 SetPedFrozen                        ( CElement * pElement, bool bIsFrozen );
     static bool                 reloadPedWeapon                     ( CElement * pElement );
     static bool                 SetWeaponProperty                   ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, float fData );
-    static bool                 SetWeaponProperty                   ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, int sData );
-    static bool                 SetWeaponPropertyFlag               ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, bool bEnable );
+    static bool                 SetWeaponProperty                   ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, short sData );
 
     // Camera get functions
     static bool                 GetCameraMatrix                     ( CPlayer * pPlayer, CVector& vecPosition, CVector& vecLookAt, float& fRoll, float& fFOV );
@@ -333,7 +326,6 @@ public:
     static bool                 SetVehicleHeadLightColor            ( CVehicle* pVehicle, const SColor color );
     static bool                 SetVehicleTurretPosition            ( CVehicle* pVehicle, float fHorizontal, float fVertical );
     static bool                 SetVehicleDoorOpenRatio             ( CElement* pElement, unsigned char ucDoor, float fRatio, unsigned long ulTime = 0 );
-    static bool                 SetVehiclePlateText                 ( CElement* pElement, const SString& strPlateText );
 
     //static bool                 SetVehicleHandling                  ( CVehicle* pVehicle, bool bValue );
     static bool                 ResetVehicleHandling                ( CVehicle* pVehicle, bool bUseOriginal );
@@ -405,7 +397,7 @@ public:
 
     // Object set functions
     static bool                 SetObjectRotation                   ( CElement* pElement, const CVector& vecRotation );
-    static bool                 SetObjectScale                      ( CElement* pElement, const CVector& vecScale );
+    static bool                 SetObjectScale                      ( CElement* pElement, float fScale );
     static bool                 MoveObject                          ( CResource * pResource, CElement* pElement, unsigned long ulTime, const CVector& vecPosition, const CVector& vecRotation, CEasingCurve::eType a_easingType, double a_fEasingPeriod, double a_fEasingAmplitude, double a_fEasingOvershoot );
     static bool                 StopObject                          ( CElement* pElement );
 
@@ -440,41 +432,17 @@ public:
     static bool                 UsePickup                           ( CElement* pElement, CPlayer * pPlayer );
 
     // Shape create funcs
-    static CColCircle*          CreateColCircle                     ( CResource* pResource, const CVector2D& vecPosition, float fRadius );
+    static CColCircle*          CreateColCircle                     ( CResource* pResource, const CVector& vecPosition, float fRadius );
     static CColCuboid*          CreateColCuboid                     ( CResource* pResource, const CVector& vecPosition, const CVector& vecSize );
     static CColSphere*          CreateColSphere                     ( CResource* pResource, const CVector& vecPosition, float fRadius );
-    static CColRectangle*       CreateColRectangle                  ( CResource* pResource, const CVector2D& vecPosition, const CVector2D& vecSize );
-    static CColPolygon*         CreateColPolygon                    ( CResource* pResource, const std::vector < CVector2D >& vecPointList );
+    static CColRectangle*       CreateColRectangle                  ( CResource* pResource, const CVector& vecPosition, const CVector2D& vecSize );
+    static CColPolygon*         CreateColPolygon                    ( CResource* pResource, const CVector& vecPosition );
     static CColTube*            CreateColTube                       ( CResource* pResource, const CVector& vecPosition, float fRadius, float fHeight );
     static void                 RefreshColShapeColliders            ( CColShape *pColShape );
 
-    // Weapon funcs 
-    static CCustomWeapon*       CreateWeapon                        ( CResource* pResource, eWeaponType weaponType, CVector vecPosition );
+    // Weapon funcs
     static bool                 GetWeaponNameFromID                 ( unsigned char ucID, char* szName );
     static bool                 GetWeaponIDFromName                 ( const char* szName, unsigned char& ucID );
-    static bool                 FireWeapon                          ( CCustomWeapon * pWeapon );
-    static bool                 SetWeaponProperty                   ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, short sData );
-    static bool                 GetWeaponProperty                   ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, short &sData );
-    static bool                 GetWeaponProperty                   ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, float &fData );
-    static bool                 SetWeaponProperty                   ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, float fData );
-    static bool                 SetWeaponState                      ( CCustomWeapon * pWeapon, eWeaponState weaponState );
-    static bool                 SetWeaponTarget                     ( CCustomWeapon * pWeapon, CElement * pTarget, int boneTarget );
-    static bool                 SetWeaponTarget                     ( CCustomWeapon * pWeapon, CVector vecTarget );
-    static bool                 ClearWeaponTarget                   ( CCustomWeapon * pWeapon );
-    static bool                 SetWeaponOwner                      ( CCustomWeapon * pWeapon, CPlayer * pPlayer );
-
-    static bool                 SetWeaponFlags                      ( CCustomWeapon * pWeapon, eWeaponFlags flag, bool bData );
-    static bool                 SetWeaponFlags                      ( CCustomWeapon * pWeapon, const SLineOfSightFlags &flags );
-    static bool                 GetWeaponFlags                      ( CCustomWeapon * pWeapon, SLineOfSightFlags& flags );
-    static bool                 GetWeaponFlags                      ( CCustomWeapon * pWeapon, eWeaponFlags flag, bool &bData );
-
-    static bool                 SetWeaponFiringRate                 ( CCustomWeapon * pWeapon, int iFiringRate );
-    static bool                 ResetWeaponFiringRate               ( CCustomWeapon * pWeapon );
-    static bool                 GetWeaponFiringRate                 ( CCustomWeapon * pWeapon, int &iFiringRate );
-    static bool                 GetWeaponClipAmmo                   ( CCustomWeapon * pWeapon, int &iClipAmmo );
-    static bool                 GetWeaponAmmo                       ( CCustomWeapon * pWeapon, int &iAmmo );
-    static bool                 SetWeaponAmmo                       ( CCustomWeapon * pWeapon, int iAmmo );
-    static bool                 SetWeaponClipAmmo                   ( CCustomWeapon * pWeapon, int iAmmo );
 
     // Explosion funcs
     static bool                 CreateExplosion                     ( const CVector& vecPosition, unsigned char ucType, CElement* pElement );
@@ -552,7 +520,6 @@ public:
     static bool                 GetTrafficLightState                ( unsigned char& ucState );
     static bool                 GetTrafficLightsLocked              ( bool& bLocked );
     static bool                 GetJetpackMaxHeight                 ( float& fMaxHeight );
-    static bool                 GetAircraftMaxVelocity              ( float& fVelocity );
     static bool                 GetInteriorSoundsEnabled            ( bool& bEnabled );
     static bool                 GetRainLevel                        ( float& fRainLevel );
     static bool                 GetSunSize                          ( float& fSunSize );
@@ -562,7 +529,6 @@ public:
     static bool                 GetFogDistance                      ( float& fFogDist );
     static bool                 GetAircraftMaxHeight                ( float& fMaxHeight );
     static bool                 GetOcclusionsEnabled                ( bool& bEnabled );
-    static bool                 GetMoonSize                         ( int& iSize );
 
     // General world set funcs
     static bool                 SetTime                             ( unsigned char ucHour, unsigned char ucMinute );
@@ -597,7 +563,6 @@ public:
     static bool                 SetFarClipDistance                  ( float fFarClip );
     static bool                 SetFogDistance                      ( float fFogDist );
     static bool                 SetAircraftMaxHeight                ( float fMaxHeight );
-    static bool                 SetAircraftMaxVelocity              ( float fVelocity );
     static bool                 SetOcclusionsEnabled                ( bool bEnabled );
     static bool                 ResetRainLevel                      ( void );
     static bool                 ResetSunSize                        ( void );
@@ -605,14 +570,12 @@ public:
     static bool                 ResetWindVelocity                   ( void );
     static bool                 ResetFarClipDistance                ( void );
     static bool                 ResetFogDistance                    ( void );
-    static bool                 RemoveWorldModel                    ( unsigned short usModel, float fRadius, const CVector& vecPosition, char cInterior );
-    static bool                 RestoreWorldModel                   ( unsigned short usModel, float fRadius, const CVector& vecPosition, char cInterior );
+    static bool                 RemoveWorldModel                    ( unsigned short usModel, float fRadius, float fX, float fY, float fZ, char cInterior );
+    static bool                 RestoreWorldModel                   ( unsigned short usModel, float fRadius, float fX, float fY, float fZ, char cInterior );
     static bool                 RestoreAllWorldModels               ( void );
     static bool                 SendSyncIntervals                   ( CPlayer* pPlayer = NULL );
     static bool                 SetPedTargetingMarkerEnabled        ( bool bEnabled );
-    static bool                 IsPedTargetingMarkerEnabled         ( void );
-    static bool                 SetMoonSize                         ( int iMoonSize );
-    static bool                 ResetMoonSize                       ( void );
+    static bool                 IsPedTargetingMarkerEnabled        ( void );
 
     // Loaded Map Functions
     static CElement*            GetRootElement                      ( void );
@@ -645,8 +608,6 @@ public:
     static bool                 IsGuestAccount                      ( CAccount* pAccount, bool& bGuest );
     static CLuaArgument*        GetAccountData                      ( CAccount* pAccount, const char* szKey );
     static bool                 GetAllAccountData                   ( lua_State* pLua, CAccount* pAccount );
-    static bool                 GetAccountSerial                    ( CAccount* pAccount, SString& strSerial );
-    static bool                 GetAccountsBySerial                 ( const SString& strSerial, std::vector<CAccount*>& outAccounts );
 
     // Account set funcs
     static CAccount*            AddAccount                          ( const char* szName, const char* szPassword );
@@ -678,11 +639,6 @@ public:
 
     static bool                 GetBanTime                          ( CBan* pBan, time_t& time );
     static bool                 GetUnbanTime                        ( CBan* pBan, time_t& time );
-
-    static bool                 SetUnbanTime                        ( CBan* pBan, time_t time);
-    static bool                 SetBanReason                        ( CBan* pBan, const SString& strReason );
-    static bool                 SetBanAdmin                         ( CBan* pBan, const SString& strAdminName );
-    static bool                 SetBanNick                          ( CBan* pBan, const SString& strNick );
 
     // Cursor get funcs
     static bool                 IsCursorShowing                     ( CPlayer* pPlayer, bool& bShowing );

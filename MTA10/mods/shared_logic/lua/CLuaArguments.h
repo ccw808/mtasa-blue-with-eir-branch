@@ -29,11 +29,13 @@ extern "C"
 #include <vector>
 #include "CLuaFunctionRef.h"
 
-inline void LUA_CHECKSTACK( lua_State *L, int size )
-{
-    if ( lua_getstackgap( L ) < size + 5 )
-        lua_checkstack( L, ( size + 2 ) * 3 + 4 );
-}
+#if MTA_DEBUG
+    // Tight allocation in debug to find trouble.
+    #define LUA_CHECKSTACK(vm,space) lua_checkstack(vm, (space) )
+#else
+    // Extra room in release to avoid trouble.
+    #define LUA_CHECKSTACK(vm,space) lua_checkstack(vm, ((space)+2)*3 )
+#endif
 
 class CLuaArguments;
 
@@ -53,7 +55,7 @@ public:
     void                                                ReadArgument        ( lua_State* luaVM, signed int uiIndex );
     void                                                ReadArguments       ( lua_State* luaVM, signed int uiIndexBegin = 1 );
     void                                                PushArguments       ( lua_State* luaVM ) const;
-    void                                                PushArguments       ( const CLuaArguments& Arguments );
+    void                                                PushArguments       ( CLuaArguments& Arguments );
     bool                                                Call                ( class CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFunction, CLuaArguments * returnValues = NULL ) const;
     bool                                                CallGlobal          ( class CLuaMain* pLuaMain, const char* szFunction, CLuaArguments * returnValues = NULL ) const;
 
@@ -67,7 +69,6 @@ public:
     CLuaArgument*                                       PushElement         ( CClientEntity* pElement );
     CLuaArgument*                                       PushArgument        ( const CLuaArgument& argument );
     CLuaArgument*                                       PushResource        ( CResource* pResource );
-    CLuaArgument*                                       PushTable           ( CLuaArguments * table );
 
     void                                                DeleteArguments     ( void );
 
@@ -82,8 +83,8 @@ public:
     bool                                                ReadFromJSONArray   ( json_object * object, std::vector < CLuaArguments* > * pKnownTables = NULL );
 
     unsigned int                                        Count               ( void ) const          { return static_cast < unsigned int > ( m_Arguments.size () ); };
-    std::vector < CLuaArgument* > ::const_iterator      IterBegin           ( void ) const          { return m_Arguments.begin (); };
-    std::vector < CLuaArgument* > ::const_iterator      IterEnd             ( void ) const          { return m_Arguments.end (); };
+    std::vector < CLuaArgument* > ::const_iterator      IterBegin           ( void )                { return m_Arguments.begin (); };
+    std::vector < CLuaArgument* > ::const_iterator      IterEnd             ( void )                { return m_Arguments.end (); };
 
 private:
     std::vector < CLuaArgument* >                       m_Arguments;

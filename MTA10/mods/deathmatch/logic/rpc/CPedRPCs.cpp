@@ -54,10 +54,7 @@ void CPedRPCs::SetPedArmor ( CClientEntity* pSource, NetBitStreamInterface& bitS
         if ( pPed )
         {
             pPed->SetSyncTimeContext ( ucTimeContext );
-            if ( pPed->IsArmorLocked() )
-                pPed->LockArmor ( fArmor );
-            else
-                pPed->SetArmor ( fArmor );
+            pPed->SetArmor ( fArmor );
         }
     }
 }

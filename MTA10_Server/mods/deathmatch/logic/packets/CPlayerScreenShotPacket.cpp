@@ -13,8 +13,6 @@
 
 bool CPlayerScreenShotPacket::Read ( NetBitStreamInterface& BitStream )
 {
-    m_pResource = NULL;
-
     CPlayer* pPlayer = GetSourcePlayer ();
     if ( !pPlayer )
         return false;
@@ -25,32 +23,17 @@ bool CPlayerScreenShotPacket::Read ( NetBitStreamInterface& BitStream )
     // Read status
     BitStream.Read ( m_ucStatus );
 
-    if ( m_ucStatus != EPlayerScreenShotResult::SUCCESS )
+    if ( m_ucStatus != 1 )
     {
-        // minimized, disabled or error
+        // minimized or disabled
         bHasGrabTime = true;
         BitStream.Read ( uiServerGrabTime );
-        if ( BitStream.Version() >= 0x053 )
-        {
-            ushort usResourceNetId;
-            BitStream.Read ( usResourceNetId );
-            m_pResource = g_pGame->GetResourceManager ()->GetResourceFromNetID ( usResourceNetId );
-        }
-        else
-        {
-            SString strResourceName;
-            BitStream.ReadString ( strResourceName );
-            m_pResource = g_pGame->GetResourceManager ()->GetResource ( strResourceName );
-        }
-
+        BitStream.ReadString ( m_strResourceName );
         if ( !BitStream.ReadString ( m_strTag ) )
             return false;
-
-        if ( BitStream.Version() >= 0x53 )
-            BitStream.ReadString ( m_strError );
     }
     else
-    if ( m_ucStatus == EPlayerScreenShotResult::SUCCESS )
+    if ( m_ucStatus == 1 )
     {
         // Read info
         BitStream.Read ( m_usScreenShotId );
@@ -72,18 +55,7 @@ bool CPlayerScreenShotPacket::Read ( NetBitStreamInterface& BitStream )
             BitStream.Read ( uiServerGrabTime );
             BitStream.Read ( m_uiTotalBytes );
             BitStream.Read ( m_usTotalParts );
-            if ( BitStream.Version() >= 0x053 )
-            {
-                ushort usResourceNetId;
-                BitStream.Read ( usResourceNetId );
-                m_pResource = g_pGame->GetResourceManager ()->GetResourceFromNetID ( usResourceNetId );
-            }
-            else
-            {
-                SString strResourceName;
-                BitStream.ReadString ( strResourceName );
-                m_pResource = g_pGame->GetResourceManager ()->GetResource ( strResourceName );
-            }
+            BitStream.ReadString ( m_strResourceName );
             if ( !BitStream.ReadString ( m_strTag ) )
                 return false;
         }

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="Client - Core"
 	ProjectGUID="{4C71249E-EA08-4A3D-9AEF-28707ACC6531}"
 	RootNamespace="Client - Core"
@@ -17,8 +17,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Debug"
+			IntermediateDirectory=".\Debug"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -45,7 +45,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories=".;../../vendor;../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../../vendor/pthreads/include;&quot;../../vendor/jpeg/jpeg-8d&quot;;../../vendor/zlib;../../vendor/tinygettext;../../vendor/awesomium/include"
+				AdditionalIncludeDirectories=".;../../vendor;../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../../vendor/pthreads/include;&quot;../../vendor/jpeg/jpeg-8d&quot;"
 				PreprocessorDefinitions="_WIN32_WINNT=0x502;WIN32;MTA_DEBUG;_CRT_SECURE_NO_WARNINGS;INITGUID;PNG_SETJMP_NOT_SUPPORTED"
 				StringPooling="true"
 				BasicRuntimeChecks="3"
@@ -56,6 +56,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Debug/"
+				ObjectFile=".\Debug/"
+				ProgramDataBaseFileName=".\Debug/"
 				BrowseInformation="1"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
@@ -77,19 +80,20 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="strmiids.lib libv2.lib zlib_d.lib libpng_d.lib odbc32.lib odbccp32.lib dinput8.lib dxguid.lib shlwapi.lib d3dx9.lib winmm.lib Imagehlp.lib ws2_32.lib gdi32.lib Userenv.lib Imm32.lib pthread_d.lib jpeg_d.lib Psapi.lib xinput.lib awesomium.lib"
+				AdditionalDependencies="strmiids.lib libv2.lib zlibd_2008.lib libpng2008d.lib odbc32.lib odbccp32.lib dinput8.lib dxguid.lib shlwapi.lib d3dx9d.lib winmm.lib Imagehlp.lib ws2_32.lib gdi32.lib Userenv.lib Imm32.lib pthreadVC2.lib jpegd.lib Psapi.lib"
 				ShowProgress="0"
 				OutputFile="C:\Program Files\MTA San Andreas 1.4\mta\core_d.dll"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../../Shared/XML;../../vendor/libv2/lib;&quot;../../vendor/libpng/x86/$(ConfigurationName)&quot;;&quot;../../vendor/zlib/x86/$(ConfigurationName)&quot;;../../vendor/detours/lib;&quot;../../vendor/pthreads/x86/$(ConfigurationName)&quot;;&quot;../../vendor/jpeg/x86/$(ConfigurationName)&quot;;../../vendor/awesomium/build/lib"
+				AdditionalLibraryDirectories="../../Shared/XML;../../vendor/libv2/lib;../../vendor/libpng/lib;../../vendor/zlib/lib;../../vendor/detours/lib;../../vendor/pthreads/lib;../../vendor/jpeg/lib"
 				IgnoreDefaultLibraryNames=""
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
+				ProgramDatabaseFile=".\Debug/core_.pdb"
+				GenerateMapFile="false"
 				MapFileName=""
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Debug/mta_blue_d.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -116,8 +120,8 @@
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Release"
+			IntermediateDirectory=".\Release"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -149,7 +153,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories=".;../../vendor;../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../../vendor/pthreads/include;&quot;../../vendor/jpeg/jpeg-8d&quot;;../../vendor/zlib;../../vendor/tinygettext;../../vendor/awesomium/include"
+				AdditionalIncludeDirectories=".;../../vendor;../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../../vendor/pthreads/include;&quot;../../vendor/jpeg/jpeg-8d&quot;"
 				PreprocessorDefinitions="_WIN32_WINNT=0x502;WIN32;_CRT_SECURE_NO_WARNINGS;INITGUID;PNG_SETJMP_NOT_SUPPORTED"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -157,6 +161,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Release/"
+				ObjectFile=".\Release/"
+				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -176,20 +183,22 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="strmiids.lib libv2.lib zlib.lib libpng.lib odbc32.lib odbccp32.lib dinput8.lib dxguid.lib shlwapi.lib d3dx9.lib wsock32.lib winmm.lib Imagehlp.lib gdi32.lib Userenv.lib Imm32.lib pthread.lib jpeg.lib Psapi.lib xinput.lib awesomium.lib"
+				AdditionalDependencies="strmiids.lib libv2.lib zlib_2008.lib libpng2008.lib odbc32.lib odbccp32.lib dinput8.lib dxguid.lib shlwapi.lib d3dx9.lib wsock32.lib winmm.lib Imagehlp.lib gdi32.lib Userenv.lib Imm32.lib pthreadVC2.lib jpeg.lib Psapi.lib"
 				OutputFile="C:\Program Files\MTA San Andreas 1.4\MTA\core.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../../Shared/XML;../../vendor/libv2/lib;&quot;../../vendor/libpng/x86/$(ConfigurationName)&quot;;&quot;../../vendor/zlib/x86/$(ConfigurationName)&quot;;../../vendor/detours/lib;&quot;../../vendor/pthreads/x86/$(ConfigurationName)&quot;;&quot;../../vendor/jpeg/x86/$(ConfigurationName)&quot;;../../vendor/awesomium/build/lib"
+				AdditionalLibraryDirectories="../../Shared/XML;../../vendor/libv2/lib;../../vendor/libpng/lib;../../vendor/zlib/lib;../../vendor/detours/lib;../../vendor/pthreads/lib;../../vendor/jpeg/lib"
 				IgnoreDefaultLibraryNames="LIBCMT"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				GenerateMapFile="true"
+				MapFileName="../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Release/mta_blue.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -216,8 +225,8 @@
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\obj\x86\$(ConfigurationName)\$(SafeRootNamespace)"
+			OutputDirectory="..\..\obj\client\core"
+			IntermediateDirectory="..\..\obj\client\core"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -249,7 +258,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories=".;../../vendor;../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../../vendor/pthreads/include;&quot;../../vendor/jpeg/jpeg-8d&quot;;../../vendor/zlib;../../vendor/tinygettext;../../vendor/awesomium/include"
+				AdditionalIncludeDirectories=".;../../vendor;../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../../vendor/pthreads/include;&quot;../../vendor/jpeg/jpeg-8d&quot;"
 				PreprocessorDefinitions="_WIN32_WINNT=0x502;WIN32;_CRT_SECURE_NO_WARNINGS;INITGUID;PNG_SETJMP_NOT_SUPPORTED"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -257,6 +266,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=""
+				ObjectFile="$(IntDir)/"
+				ProgramDataBaseFileName="$(IntDir)/vc70.pdb"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -276,20 +288,22 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				AdditionalDependencies="strmiids.lib libv2.lib zlib.lib libpng.lib odbc32.lib odbccp32.lib dinput8.lib dxguid.lib shlwapi.lib d3dx9.lib wsock32.lib winmm.lib Imagehlp.lib gdi32.lib Userenv.lib Imm32.lib pthread.lib jpeg.lib Psapi.lib xinput.lib awesomium.lib"
+				AdditionalDependencies="strmiids.lib libv2.lib zlib_2008.lib libpng2008.lib odbc32.lib odbccp32.lib dinput8.lib dxguid.lib shlwapi.lib d3dx9.lib wsock32.lib winmm.lib Imagehlp.lib gdi32.lib Userenv.lib Imm32.lib pthreadVC2.lib jpeg.lib Psapi.lib"
 				OutputFile="..\..\output\MTA San Andreas\mta\core.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="../../Shared/XML;../../vendor/libv2/lib;&quot;../../vendor/libpng/x86/$(ConfigurationName)&quot;;&quot;../../vendor/zlib/x86/$(ConfigurationName)&quot;;../../vendor/detours/lib;&quot;../../vendor/pthreads/x86/$(ConfigurationName)&quot;;&quot;../../vendor/jpeg/x86/$(ConfigurationName)&quot;;../../vendor/awesomium/build/lib"
+				AdditionalLibraryDirectories="../../Shared/XML;../../vendor/libv2/lib;../../vendor/libpng/lib;../../vendor/zlib/lib;../../vendor/detours/lib;../../vendor/pthreads/lib;../../vendor/jpeg/lib"
 				IgnoreDefaultLibraryNames="LIBCMT"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				GenerateMapFile="true"
+				MapFileName="../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary=".\Release/mta_blue.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -399,11 +413,19 @@
 				>
 			</File>
 			<File
+				RelativePath="CDirect3DHook.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CDirect3DHook9.cpp"
 				>
 			</File>
 			<File
 				RelativePath="CDirect3DHookManager.cpp"
+				>
+			</File>
+			<File
+				RelativePath="CDirectInputEvents8.cpp"
 				>
 			</File>
 			<File
@@ -451,10 +473,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CGraphStats.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CGUI.cpp"
 				>
 			</File>
@@ -467,7 +485,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CLanguage.cpp"
+				RelativePath="CLanguageLocale.cpp"
 				>
 			</File>
 			<File
@@ -475,7 +493,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CLocalization.cpp"
+				RelativePath="CLogger.cpp"
 				>
 			</File>
 			<File
@@ -516,10 +534,6 @@
 			</File>
 			<File
 				RelativePath=".\CNewsBrowser.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CNickGen.cpp"
 				>
 			</File>
 			<File
@@ -655,10 +669,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CRenderItem.WebBrowser.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CRenderItemManager.cpp"
 				>
 			</File>
@@ -723,18 +733,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CWebCore.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CWebsiteRequests.cpp"
-				>
-			</File>
-			<File
-				RelativePath=".\CWebView.cpp"
-				>
-			</File>
-			<File
 				RelativePath=".\CXfireQuery.cpp"
 				>
 			</File>
@@ -790,238 +788,6 @@
 					>
 				</File>
 			</Filter>
-			<Filter
-				Name="utils"
-				>
-				<Filter
-					Name="tinygettext"
-					>
-					<File
-						RelativePath="..\..\vendor\tinygettext\dictionary.cpp"
-						>
-						<FileConfiguration
-							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Release|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\dictionary_manager.cpp"
-						>
-						<FileConfiguration
-							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Release|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\language.cpp"
-						>
-						<FileConfiguration
-							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Release|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\log.cpp"
-						>
-						<FileConfiguration
-							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Release|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\plural_forms.cpp"
-						>
-						<FileConfiguration
-							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Release|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\po_parser.cpp"
-						>
-						<FileConfiguration
-							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Release|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\tinygettext.cpp"
-						>
-						<FileConfiguration
-							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Release|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\unix_file_system.cpp"
-						>
-						<FileConfiguration
-							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Release|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-					</File>
-				</Filter>
-			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -1029,10 +795,6 @@
 			>
 			<File
 				RelativePath=".\CAdditionalVertexStreamManager.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CAspectRatioConverter.h"
 				>
 			</File>
 			<File
@@ -1108,6 +870,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CDirect3DHook.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CDirect3DHook9.h"
 				>
 			</File>
@@ -1116,11 +882,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CDirectInputEvents8.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CDirectInputHook8.h"
 				>
 			</File>
 			<File
 				RelativePath=".\CDirectInputHookManager.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CDirectXHook.h"
 				>
 			</File>
 			<File
@@ -1156,10 +930,6 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CGraphStats.h"
-				>
-			</File>
-			<File
 				RelativePath=".\CGUI.h"
 				>
 			</File>
@@ -1172,7 +942,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CLanguage.h"
+				RelativePath=".\CLanguageLocale.h"
 				>
 			</File>
 			<File
@@ -1180,7 +950,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CLocalization.h"
+				RelativePath=".\CLogger.h"
 				>
 			</File>
 			<File
@@ -1229,10 +999,6 @@
 			</File>
 			<File
 				RelativePath=".\CNewsBrowser.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CNickGen.h"
 				>
 			</File>
 			<File
@@ -1360,27 +1126,11 @@
 				>
 			</File>
 			<File
-				RelativePath=".\CWebCore.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CWebsiteRequests.h"
-				>
-			</File>
-			<File
-				RelativePath=".\CWebView.h"
-				>
-			</File>
-			<File
 				RelativePath=".\CXfireQuery.h"
 				>
 			</File>
 			<File
 				RelativePath=".\StdInc.h"
-				>
-			</File>
-			<File
-				RelativePath=".\WebBrowserHelpers.h"
 				>
 			</File>
 			<File
@@ -1478,10 +1228,6 @@
 						>
 					</File>
 					<File
-						RelativePath="..\sdk\core\CLocalizationInterface.h"
-						>
-					</File>
-					<File
 						RelativePath="..\sdk\core\CModManagerInterface.h"
 						>
 					</File>
@@ -1499,10 +1245,6 @@
 					</File>
 					<File
 						RelativePath="..\sdk\core\CSetCursorPosHookInterface.h"
-						>
-					</File>
-					<File
-						RelativePath="..\sdk\core\CWebBrowserEventsInterface.h"
 						>
 					</File>
 				</Filter>
@@ -1575,10 +1317,6 @@
 					</File>
 					<File
 						RelativePath="..\..\MTA10\sdk\game\CAudio.h"
-						>
-					</File>
-					<File
-						RelativePath="..\..\MTA10\sdk\game\CAudioContainer.h"
 						>
 					</File>
 					<File
@@ -1695,6 +1433,10 @@
 					</File>
 					<File
 						RelativePath="..\..\MTA10\sdk\game\CFx.h"
+						>
+					</File>
+					<File
+						RelativePath="..\sdk\game\CFxManager.h"
 						>
 					</File>
 					<File
@@ -2055,27 +1797,7 @@
 					>
 				</File>
 				<File
-					RelativePath="..\..\Shared\sdk\CVector4D.h"
-					>
-				</File>
-				<File
 					RelativePath="..\..\Shared\sdk\RTree.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\Shared\sdk\sha1.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\Shared\sdk\sha1.hpp"
-					>
-				</File>
-				<File
-					RelativePath="..\..\Shared\sdk\sha2.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\Shared\sdk\sha2.hpp"
 					>
 				</File>
 				<File
@@ -2143,14 +1865,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\..\Shared\sdk\SharedUtil.IntervalCounter.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\Shared\sdk\SharedUtil.IntervalCounter.hpp"
-					>
-				</File>
-				<File
 					RelativePath="..\..\Shared\sdk\SharedUtil.Logging.h"
 					>
 				</File>
@@ -2168,14 +1882,6 @@
 				</File>
 				<File
 					RelativePath="..\..\Shared\sdk\SharedUtil.Math.hpp"
-					>
-				</File>
-				<File
-					RelativePath="..\..\Shared\sdk\SharedUtil.MemAccess.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\Shared\sdk\SharedUtil.MemAccess.hpp"
 					>
 				</File>
 				<File
@@ -2219,10 +1925,6 @@
 					>
 				</File>
 				<File
-					RelativePath="..\..\Shared\sdk\SharedUtil.Win32Utf8FileHooks.hpp"
-					>
-				</File>
-				<File
 					RelativePath="..\..\Shared\sdk\SString.h"
 					>
 				</File>
@@ -2242,54 +1944,6 @@
 					RelativePath="..\..\Shared\sdk\WString.hpp"
 					>
 				</File>
-			</Filter>
-			<Filter
-				Name="utils"
-				>
-				<Filter
-					Name="tinygettext"
-					>
-					<File
-						RelativePath="..\..\vendor\tinygettext\dictionary.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\dictionary_manager.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\file_system.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\language.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\log.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\log_stream.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\plural_forms.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\po_parser.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\tinygettext.hpp"
-						>
-					</File>
-					<File
-						RelativePath="..\..\vendor\tinygettext\unix_file_system.hpp"
-						>
-					</File>
-				</Filter>
 			</Filter>
 		</Filter>
 	</Files>

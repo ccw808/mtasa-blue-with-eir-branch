@@ -36,30 +36,12 @@ void CElementRPCs::LoadFunctions ( void )
     AddHandler ( SET_ELEMENT_COLLISIONS_ENABLED, SetElementCollisionsEnabled, "SetElementCollisionsEnabled" );
     AddHandler ( SET_ELEMENT_FROZEN,             SetElementFrozen,            "SetElementFrozen" );
     AddHandler ( SET_LOW_LOD_ELEMENT,            SetLowLodElement,            "SetLowLodElement" );
-    AddHandler ( FIRE_CUSTOM_WEAPON,             FireCustomWeapon,            "fireWeapon" );
-    AddHandler ( SET_CUSTOM_WEAPON_STATE,        SetCustomWeaponState,        "setWeaponState" );
-    AddHandler ( SET_CUSTOM_WEAPON_CLIP_AMMO,    SetCustomWeaponClipAmmo,     "setWeaponClipAmmo" );
-    AddHandler ( SET_CUSTOM_WEAPON_AMMO,         SetCustomWeaponAmmo,         "setWeaponAmmo" );
-    AddHandler ( SET_CUSTOM_WEAPON_TARGET,       SetCustomWeaponTarget,       "setWeaponTarget" );
-    AddHandler ( RESET_CUSTOM_WEAPON_TARGET,     ResetCustomWeaponTarget,     "resetWeaponTarget" );
-    AddHandler ( SET_CUSTOM_WEAPON_FLAGS,        SetCustomWeaponFlags,        "setWeaponFlags" );
-    AddHandler ( SET_CUSTOM_WEAPON_FIRING_RATE,  SetCustomWeaponFiringRate,   "setWeaponFiringRate" );
-    AddHandler ( RESET_CUSTOM_WEAPON_FIRING_RATE,ResetCustomWeaponFiringRate, "resetWeaponFiringRate" );
-    AddHandler ( SET_WEAPON_OWNER,               SetWeaponOwner,              "setWeaponOwner" );
-    AddHandler ( SET_CUSTOM_WEAPON_FLAGS,        SetWeaponConfig,             "setWeaponFlags" );
-    AddHandler ( SET_PROPAGATE_CALLS_ENABLED,    SetCallPropagationEnabled,   "setCallPropagationEnabled" );
 }
 
-#define RUN_CHILDREN_SERVER( func ) \
-    if ( pSource->CountChildren () && pSource->IsCallPropagationEnabled() ) \
-    { \
-        CElementListSnapshot* pList = pSource->GetChildrenListSnapshot(); \
-        pList->AddRef();    /* Keep list alive during use */ \
-        for ( CElementListSnapshot::const_iterator iter = pList->begin() ; iter != pList->end() ; iter++ ) \
-            if ( !(*iter)->IsBeingDeleted() && !(*iter)->IsLocalEntity() ) \
-                func; \
-        pList->Release(); \
-    }
+#define RUN_CHILDREN_SERVER \
+    if ( pSource->CountChildren() ) \
+        for ( CChildListType::const_iterator iter = pSource->IterBegin () ; iter != pSource->IterEnd () ; iter++ ) \
+            if ( !(*iter)->IsLocalEntity () )
 
 void CElementRPCs::SetElementParent ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
@@ -124,9 +106,9 @@ void CElementRPCs::RemoveElementData ( CClientEntity* pSource, NetBitStreamInter
     }
 }
 
-
 void CElementRPCs::SetElementPosition ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementPosition ( *iter, bitStream );
     // Read out the entity id and the position
     CVector vecPosition;
     unsigned char ucTimeContext;
@@ -165,6 +147,8 @@ void CElementRPCs::SetElementPosition ( CClientEntity* pSource, NetBitStreamInte
         else if ( pSource->GetType () == CCLIENTVEHICLE ) 
         {
             CClientVehicle* pVehicle = static_cast < CClientVehicle* > ( pSource );
+            CVector vecOldPosition;
+            pVehicle->GetPosition (vecOldPosition);
             pVehicle->RemoveTargetPosition ();
             pVehicle->SetPosition ( vecPosition );
         }
@@ -179,6 +163,7 @@ void CElementRPCs::SetElementPosition ( CClientEntity* pSource, NetBitStreamInte
 
 void CElementRPCs::SetElementVelocity ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementVelocity ( *iter, bitStream );
     // Read out the entity id and the speed
     CVector vecVelocity;
     if ( bitStream.Read ( vecVelocity.fX ) &&
@@ -224,6 +209,7 @@ void CElementRPCs::SetElementVelocity ( CClientEntity* pSource, NetBitStreamInte
 
 void CElementRPCs::SetElementInterior ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementInterior ( *iter, bitStream );
     unsigned char ucInterior, ucSetPosition;
     if ( bitStream.Read ( ucInterior ) && bitStream.Read ( ucSetPosition ) )
     {
@@ -245,6 +231,7 @@ void CElementRPCs::SetElementInterior ( CClientEntity* pSource, NetBitStreamInte
 
 void CElementRPCs::SetElementDimension ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementDimension ( *iter, bitStream );
     unsigned short usDimension;
     if ( bitStream.Read ( usDimension ) )
     {
@@ -325,6 +312,7 @@ void CElementRPCs::DetachElements ( CClientEntity* pSource, NetBitStreamInterfac
 
 void CElementRPCs::SetElementAlpha ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementAlpha ( *iter, bitStream );
     unsigned char ucAlpha;
     if ( bitStream.Read ( ucAlpha ) )
     {
@@ -358,6 +346,7 @@ void CElementRPCs::SetElementAlpha ( CClientEntity* pSource, NetBitStreamInterfa
 
 void CElementRPCs::SetElementDoubleSided ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementDoubleSided ( *iter, bitStream );
     bool bDoubleSided;
     if ( bitStream.ReadBit ( bDoubleSided ) )
     {
@@ -376,6 +365,7 @@ void CElementRPCs::SetElementName ( CClientEntity* pSource, NetBitStreamInterfac
 
 void CElementRPCs::SetElementHealth ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementHealth ( *iter, bitStream );
     float fHealth;
     unsigned char ucTimeContext;
     if ( bitStream.Read ( fHealth ) &&
@@ -388,11 +378,8 @@ void CElementRPCs::SetElementHealth ( CClientEntity* pSource, NetBitStreamInterf
             case CCLIENTPED:
             case CCLIENTPLAYER:
             {
-                CClientPed* pPed = static_cast < CClientPed * > ( pSource );
-                if ( pPed->IsHealthLocked() )
-                    pPed->LockHealth ( fHealth );
-                else
-                    pPed->SetHealth ( fHealth );
+                CClientPed* pPed = static_cast < CClientPed * > ( pSource );                    
+                pPed->SetHealth ( fHealth );
                 break;
             }
 
@@ -417,6 +404,7 @@ void CElementRPCs::SetElementHealth ( CClientEntity* pSource, NetBitStreamInterf
 
 void CElementRPCs::SetElementModel ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementModel ( *iter, bitStream );
     unsigned short usModel;
     if ( bitStream.Read ( usModel ) )
     {
@@ -457,6 +445,7 @@ void CElementRPCs::SetElementModel ( CClientEntity* pSource, NetBitStreamInterfa
 
 void CElementRPCs::SetElementAttachedOffsets ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementAttachedOffsets ( *iter, bitStream );
     SPositionSync position ( true );
     SRotationRadiansSync rotation ( true );
     if ( position.Read ( bitStream ) && rotation.Read ( bitStream ) )
@@ -500,6 +489,7 @@ void CElementRPCs::SetElementCollisionsEnabled ( CClientEntity* pSource, NetBitS
 
 void CElementRPCs::SetElementFrozen ( CClientEntity* pSource, NetBitStreamInterface& bitStream )
 {
+    RUN_CHILDREN_SERVER SetElementFrozen ( *iter, bitStream );
     bool bFrozen;
 
     if ( bitStream.ReadBit ( bFrozen ) )
@@ -547,170 +537,5 @@ void CElementRPCs::SetLowLodElement ( CClientEntity* pSource, NetBitStreamInterf
                 break;
             }
         }
-    }
-}
-
-void CElementRPCs::FireCustomWeapon ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    if ( pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        pWeapon->Fire ( true );
-    }
-}
-
-void CElementRPCs::SetCustomWeaponState ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    char cWeaponState = 0;
-    if ( bitStream.Read ( cWeaponState ) &&
-        pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        pWeapon->SetWeaponState ( (eWeaponState) cWeaponState );
-    }
-}
-
-void CElementRPCs::SetCustomWeaponClipAmmo ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    int iAmmo = 0;
-    if ( bitStream.Read ( iAmmo ) &&
-        pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        pWeapon->SetClipAmmo ( iAmmo );
-    }
-}
-
-void CElementRPCs::SetCustomWeaponAmmo ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    int iAmmo = 0;
-    if ( bitStream.Read ( iAmmo ) &&
-        pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        pWeapon->SetAmmo ( iAmmo );
-    }
-}
-
-void CElementRPCs::SetCustomWeaponTarget ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    ElementID elementID = INVALID_ELEMENT_ID;
-    char cTargetBone = 0;
-    bool bVector = false;
-    CVector vecTarget;
-
-    if ( bitStream.ReadBit ( bVector ) &&
-        pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        if ( bVector )
-        {
-            if ( bitStream.ReadVector ( vecTarget.fX, vecTarget.fY, vecTarget.fZ ) )
-            {
-                pWeapon->SetWeaponTarget ( vecTarget );
-            }
-        }
-        else
-        {
-            if ( bitStream.Read ( elementID ) && 
-                bitStream.Read ( cTargetBone ) )
-            {
-                pWeapon->SetWeaponTarget ( CElementIDs::GetElement( elementID ), cTargetBone );
-            }
-        }
-    }
-}
-
-void CElementRPCs::ResetCustomWeaponTarget ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    if ( pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        pWeapon->ResetWeaponTarget ( );
-    }
-}
-
-void CElementRPCs::SetCustomWeaponFlags ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    if ( pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        pWeapon->Fire ( );
-    }
-}
-
-void CElementRPCs::SetCustomWeaponFiringRate ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    int iFiringRate = 0;
-    if ( bitStream.Read ( iFiringRate ) &&
-        pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        pWeapon->SetWeaponFireTime ( iFiringRate );
-    }
-}
-
-void CElementRPCs::ResetCustomWeaponFiringRate ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    if ( pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        pWeapon->ResetWeaponFireTime ( );
-    }
-}
-
-void CElementRPCs::SetWeaponOwner ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    if ( pSource->GetType() == CCLIENTWEAPON )
-    {
-        ElementID PlayerID;
-        if ( bitStream.Read ( PlayerID ) )
-        {
-            CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-            CClientPlayer * pPlayer = NULL;
-            if ( PlayerID != INVALID_ELEMENT_ID )
-            {
-                pPlayer = DynamicCast < CClientPlayer > ( CElementIDs::GetElement ( PlayerID ) );
-            }
-            else
-                pPlayer = NULL;
-
-            pWeapon->SetOwner ( pPlayer );
-        }
-    }
-}
-
-void CElementRPCs::SetWeaponConfig ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    if ( pSource->GetType() == CCLIENTWEAPON )
-    {
-        CClientWeapon * pWeapon = static_cast < CClientWeapon * > ( pSource );
-        SWeaponConfiguration weaponConfig;
-
-        if ( bitStream.ReadBit ( weaponConfig.bDisableWeaponModel ) &&
-            bitStream.ReadBit ( weaponConfig.bInstantReload ) &&
-            bitStream.ReadBit ( weaponConfig.bShootIfTargetBlocked ) &&
-            bitStream.ReadBit ( weaponConfig.bShootIfTargetOutOfRange ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bCheckBuildings ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bCheckCarTires ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bCheckDummies ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bCheckObjects ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bCheckPeds ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bCheckVehicles ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bIgnoreSomeObjectsForCamera ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bSeeThroughStuff ) &&
-            bitStream.ReadBit ( weaponConfig.flags.bShootThroughStuff ) )
-        {
-            pWeapon->SetFlags ( weaponConfig );
-        }
-    }
-}
-
-void CElementRPCs::SetCallPropagationEnabled ( CClientEntity * pSource, NetBitStreamInterface& bitStream )
-{
-    bool bEnabled;
-    if ( bitStream.ReadBit ( bEnabled ) )
-    {
-        pSource->SetCallPropagationEnabled ( bEnabled );
     }
 }

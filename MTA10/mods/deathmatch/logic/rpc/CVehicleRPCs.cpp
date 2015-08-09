@@ -50,7 +50,6 @@ void CVehicleRPCs::LoadFunctions ( void )
     AddHandler ( GIVE_VEHICLE_SIRENS, GiveVehicleSirens, "giveVehicleSirens");
     AddHandler ( REMOVE_VEHICLE_SIRENS, RemoveVehicleSirens, "removeVehicleSirens");
     AddHandler ( SET_VEHICLE_SIRENS, SetVehicleSirens, "setVehicleSirens");
-    AddHandler ( SET_VEHICLE_PLATE_TEXT, SetVehiclePlateText, "setVehiclePlateText");
 }
 
 
@@ -601,8 +600,11 @@ void CVehicleRPCs::GiveVehicleSirens ( CClientEntity* pSourceEntity, NetBitStrea
         CClientVehicle* pVehicle = m_pVehicleManager->Get ( pSourceEntity->GetID () );
         if ( pVehicle )
         {
-            pVehicle->GiveVehicleSirens( sirenData.data.m_ucSirenType, sirenData.data.m_ucSirenCount );
-            pVehicle->SetVehicleFlags ( sirenData.data.m_b360Flag, sirenData.data.m_bUseRandomiser, sirenData.data.m_bDoLOSCheck, sirenData.data.m_bEnableSilent );
+            if ( sirenData.data.m_ucSirenCount >= 0 )
+            {
+                pVehicle->GiveVehicleSirens( sirenData.data.m_ucSirenType, sirenData.data.m_ucSirenCount );
+                pVehicle->SetVehicleFlags ( sirenData.data.m_b360Flag, sirenData.data.m_bUseRandomiser, sirenData.data.m_bDoLOSCheck, sirenData.data.m_bEnableSilent );
+            }
         }
     }
 }
@@ -618,7 +620,6 @@ void CVehicleRPCs::SetVehicleSirens ( CClientEntity* pSourceEntity, NetBitStream
             pVehicle->SetVehicleSirenPosition ( sirenData.data.m_ucSirenID, sirenData.data.m_vecSirenPositions );
             pVehicle->SetVehicleSirenMinimumAlpha ( sirenData.data.m_ucSirenID, sirenData.data.m_dwSirenMinAlpha );
             pVehicle->SetVehicleSirenColour ( sirenData.data.m_ucSirenID, sirenData.data.m_colSirenColour );
-            pVehicle->SetVehicleFlags ( sirenData.data.m_b360Flag, sirenData.data.m_bUseRandomiser, sirenData.data.m_bDoLOSCheck, sirenData.data.m_bEnableSilent );
         }
     }
 }
@@ -629,19 +630,5 @@ void CVehicleRPCs::RemoveVehicleSirens ( CClientEntity* pSourceEntity, NetBitStr
     if ( pVehicle )
     {
         pVehicle->RemoveVehicleSirens ( );
-    }
-}
-
-
-void CVehicleRPCs::SetVehiclePlateText ( CClientEntity* pSourceEntity, NetBitStreamInterface& bitStream )
-{
-    SString strText;
-    if ( bitStream.ReadString ( strText ) )
-    {
-        CClientVehicle* pVehicle = m_pVehicleManager->Get ( pSourceEntity->GetID () );
-        if ( pVehicle )
-        {
-            pVehicle->SetRegPlate ( strText );
-        }
     }
 }

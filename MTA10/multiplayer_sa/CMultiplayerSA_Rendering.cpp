@@ -10,18 +10,13 @@
 
 #include "StdInc.h"
 extern CCoreInterface* g_pCore;
-GameEntityRenderHandler* pGameEntityRenderHandler = NULL;
-PreRenderSkyHandler* pPreRenderSkyHandlerHandler = NULL;
-
-#define VAR_CCullZones_NumMirrorAttributeZones  0x0C87AC4   // int
-#define VAR_CMirrors_d3dRestored                0x0C7C729   // uchar
 
 namespace
 {
     CEntitySAInterface* ms_Rendering = NULL;
     CEntitySAInterface* ms_RenderingOneNonRoad = NULL;
+    GameEntityRenderHandler* pGameEntityRenderHandler = NULL;
     bool ms_bIsMinimizedAndNotConnected = false;
-    int ms_iSavedNumMirrorZones = 0;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -76,18 +71,26 @@ void _declspec(naked) HOOK_CallIdle()
 //////////////////////////////////////////////////////////////////////////////////////////
 void OnMY_CEntity_Render_Pre( CEntitySAInterface* pEntity )
 {
+    // Ignore buildings
+    if ( pEntity->vtbl == (CEntitySAInterfaceVTBL*)0x08585c8 )
+        return;
+    // Ignore dummy objects
+    if ( pEntity->vtbl == (CEntitySAInterfaceVTBL*)0x0866E78 )
+        return;
+
     ms_Rendering = pEntity;
 
-    if ( ms_Rendering )
-        CallGameEntityRenderHandler ( ms_Rendering );
+    if ( pGameEntityRenderHandler && ms_Rendering )
+        pGameEntityRenderHandler ( ms_Rendering );
 }
 
-void OnMY_CEntity_Render_Post( void )
+void OnMY_CEntity_Render_Post( CEntitySAInterface* pEntity )
 {
     if ( ms_Rendering )
     {
         ms_Rendering = NULL;
-        CallGameEntityRenderHandler ( ms_RenderingOneNonRoad ); // restore value set in RenderOneNonRoad
+        if ( pGameEntityRenderHandler )
+            pGameEntityRenderHandler ( ms_RenderingOneNonRoad );
     }
 }
 
@@ -108,7 +111,9 @@ void _declspec(naked) HOOK_CEntity_Render()
         call inner
 
         pushad
+        push    ecx
         call    OnMY_CEntity_Render_Post
+        add     esp, 4*1
         popad
         retn
 
@@ -129,18 +134,28 @@ inner:
 // Detect entity rendering
 //
 //////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CEntity_RenderOneNonRoad_Pre( CEntitySAInterface* pEntity )
+void OnMY_CEntity_RenderOneNonRoad_Pre( DWORD calledFrom, CEntitySAInterface* pEntity )
 {
+    // Ignore buildings
+    if ( pEntity->vtbl == (CEntitySAInterfaceVTBL*)0x08585c8 )
+        return;
+    // Ignore dummy objects
+    if ( pEntity->vtbl == (CEntitySAInterfaceVTBL*)0x0866E78 )
+        return;
+
     ms_RenderingOneNonRoad = pEntity;
-    CallGameEntityRenderHandler ( ms_RenderingOneNonRoad );
+
+    if ( pGameEntityRenderHandler )
+        pGameEntityRenderHandler ( ms_RenderingOneNonRoad );
 }
 
-void OnMY_CEntity_RenderOneNonRoad_Post( CEntitySAInterface* pEntity )
+void OnMY_CEntity_RenderOneNonRoad_Post( DWORD calledFrom, CEntitySAInterface* pEntity )
 {
     if ( ms_RenderingOneNonRoad )
     {
         ms_RenderingOneNonRoad = NULL;
-        CallGameEntityRenderHandler ( ms_RenderingOneNonRoad );
+        if ( pGameEntityRenderHandler )
+            pGameEntityRenderHandler ( ms_RenderingOneNonRoad );
     }
 }
 
@@ -154,8 +169,9 @@ void _declspec(naked) HOOK_CEntity_RenderOneNonRoad()
     {
         pushad
         push    [esp+32+4*1]
+        push    [esp+32+4*1]
         call    OnMY_CEntity_RenderOneNonRoad_Pre
-        add     esp, 4*1
+        add     esp, 4*2
         popad
 
         push    [esp+4*1]
@@ -164,8 +180,9 @@ void _declspec(naked) HOOK_CEntity_RenderOneNonRoad()
 
         pushad
         push    [esp+32+4*1]
+        push    [esp+32+4*1]
         call    OnMY_CEntity_RenderOneNonRoad_Post
-        add     esp, 4*1
+        add     esp, 4*2
         popad
         retn
 
@@ -173,70 +190,6 @@ inner:
         push    esi  
         mov     esi, [esp+08h]
         jmp     RETURN_CEntity_RenderOneNonRoad
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// CVisibilityPlugin::RenderWeaponPedsForPC_Mid
-//
-// Detect next ped weapon rendering
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CVisibilityPlugins_RenderWeaponPedsForPC_Mid( CPedSAInterface* pEntity )
-{
-    CallGameEntityRenderHandler( pEntity );
-}
-
-// Hook info
-#define HOOKPOS_CVisibilityPlugins_RenderWeaponPedsForPC_Mid                0x733080
-#define HOOKSIZE_CVisibilityPlugins_RenderWeaponPedsForPC_Mid               6
-DWORD RETURN_CVisibilityPlugins_RenderWeaponPedsForPC_Mid =                 0x733086;
-void _declspec(naked) HOOK_CVisibilityPlugins_RenderWeaponPedsForPC_Mid()
-{
-    _asm
-    {
-        pushad
-        push    ebx
-        call    OnMY_CVisibilityPlugins_RenderWeaponPedsForPC_Mid
-        add     esp, 4*1
-        popad
-
-        // Continue original code
-        mov     ecx,dword ptr [ebx+4F4h]
-        jmp     RETURN_CVisibilityPlugins_RenderWeaponPedsForPC_Mid
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// CVisibilityPlugin::RenderWeaponPedsForPC_End
-//
-// End of all ped weapon rendering
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CVisibilityPlugins_RenderWeaponPedsForPC_End( void )
-{
-    CallGameEntityRenderHandler( NULL );
-}
-
-// Hook info
-#define HOOKPOS_CVisibilityPlugins_RenderWeaponPedsForPC_End                0x73314D
-#define HOOKSIZE_CVisibilityPlugins_RenderWeaponPedsForPC_End               5
-void _declspec(naked) HOOK_CVisibilityPlugins_RenderWeaponPedsForPC_End()
-{
-    _asm
-    {
-        pushad
-        call    OnMY_CVisibilityPlugins_RenderWeaponPedsForPC_End
-        popad
-
-        // Continue original code
-        pop         esi  
-        add         esp,0Ch 
-        ret
     }
 }
 
@@ -336,18 +289,6 @@ void OnMY_psGrabScreen_GetRect( HWND hWnd, LPRECT pRect )
     LPPOINT pPoints = (LPPOINT)pRect;
     ClientToScreen( hWnd, pPoints );
     ClientToScreen( hWnd, pPoints + 1 );
-
-    // Clip to desktop
-    RECT desktopRect;
-    GetWindowRect( GetDesktopWindow(), &desktopRect );
-    pRect->left = Max( pRect->left, desktopRect.left );
-    pRect->top = Max( pRect->top, desktopRect.top );
-    pRect->right = Min( pRect->right, desktopRect.right );
-    pRect->bottom = Min( pRect->bottom, desktopRect.bottom );
-
-    // Ensure at least 1 pixel 
-    pRect->bottom = Max( pRect->bottom, pRect->top + 1 );
-    pRect->right = Max( pRect->right, pRect->left + 1 );
 }
 
 bool OnMY_psGrabScreen_ShouldUseRect( void )
@@ -356,6 +297,7 @@ bool OnMY_psGrabScreen_ShouldUseRect( void )
     g_pCore->GetCVars()->Get( "display_windowed", bWindowed );
     return bWindowed;
 }
+
 
 // Hook info
 #define HOOKPOS_psGrabScreen                        0x7452FC
@@ -391,105 +333,6 @@ use_rect:
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// CClouds::RenderSkyPolys
-//
-// This is the first thing drawn by GTA
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CClouds_RenderSkyPolys( void )
-{
-    if ( pPreRenderSkyHandlerHandler )
-        pPreRenderSkyHandlerHandler();
-}
-
-// Hook info
-#define HOOKCHECK_CClouds_RenderSkyPolys            0xA1
-#define HOOKPOS_CClouds_RenderSkyPolys              0x714650
-#define HOOKSIZE_CClouds_RenderSkyPolys             5
-DWORD RETURN_CClouds_RenderSkyPolys =               0x714655;
-void _declspec(naked) HOOK_CClouds_RenderSkyPolys ()
-{
-    _asm
-    {
-        pushad
-        call    OnMY_CClouds_RenderSkyPolys
-        popad
-
-        mov     eax, ds:0x0B6F03C
-        jmp     RETURN_CClouds_RenderSkyPolys
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// RwCameraSetNearClipPlane
-//
-// Called multiple times, with varying distances from 2.0f down to 0.05f
-//  - The lower values are used when near walls and peds
-//  - The higher values are used to reduce z-flicker when flying etc
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-float OnMY_RwCameraSetNearClipPlane( DWORD dwCalledFrom, void* pUnknown, float fDistance )
-{
-    float fSetting = pMultiplayer->GetNearClipDistance();
-    if ( fSetting == DEFAULT_NEAR_CLIP_DISTANCE )
-    {
-        // Do nothing if setting is default value
-        return fDistance;
-    }
-
-    // Don't process calls from RenderScene as they are restoring saved values (which have already been processed here)
-    if ( dwCalledFrom > 0x53DF40 && dwCalledFrom < 0x53E160 )
-    {
-        return fDistance;
-    }
-
-    if ( fSetting < DEFAULT_NEAR_CLIP_DISTANCE )
-    {
-        // If required setting is lower than default, ensure value used is not higher.
-        return Min( fSetting, fDistance );
-    }
-    else
-    {
-        // If required setting is higher than default, converge value towards it.
-        float fAlpha = UnlerpClamped( DEFAULT_NEAR_CLIP_DISTANCE, fSetting, DEFAULT_NEAR_CLIP_DISTANCE * 3 );
-        return Lerp( fDistance, fAlpha, fSetting );
-    }
-}
-
-// Hook info
-#define HOOKCHECK_RwCameraSetNearClipPlane_US       0xD9
-#define HOOKCHECK_RwCameraSetNearClipPlane_EU       0xD9
-#define HOOKPOS_RwCameraSetNearClipPlane_US         0x7EE1D0
-#define HOOKPOS_RwCameraSetNearClipPlane_EU         0x7EE210
-#define HOOKSIZE_RwCameraSetNearClipPlane_US        5
-#define HOOKSIZE_RwCameraSetNearClipPlane_EU        5
-DWORD RETURN_RwCameraSetNearClipPlane_US =          0x7EE1D5;
-DWORD RETURN_RwCameraSetNearClipPlane_EU =          0x7EE215;
-DWORD RETURN_RwCameraSetNearClipPlane_BOTH =        0;
-void _declspec(naked) HOOK_RwCameraSetNearClipPlane ()
-{
-    _asm
-    {
-        pushad
-        push    [esp+32+4*2]
-        push    [esp+32+4*2]
-        push    [esp+32+4*2]
-        call    OnMY_RwCameraSetNearClipPlane
-        add     esp, 4*3
-        popad
-
-        // Result is on fp stack
-        //fld     [esp+8]
-        push    esi
-        jmp     RETURN_RwCameraSetNearClipPlane_BOTH
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
 // CMultiplayerSA::SetGameEntityRenderHandler
 //
 //
@@ -497,18 +340,6 @@ void _declspec(naked) HOOK_RwCameraSetNearClipPlane ()
 void CMultiplayerSA::SetGameEntityRenderHandler ( GameEntityRenderHandler * pHandler )
 {
     pGameEntityRenderHandler = pHandler;
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// CMultiplayerSA::SetPreRenderSkyHandler
-//
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void CMultiplayerSA::SetPreRenderSkyHandler ( PreRenderSkyHandler * pHandler )
-{
-    pPreRenderSkyHandlerHandler = pHandler;
 }
 
 
@@ -526,40 +357,6 @@ void CMultiplayerSA::SetIsMinimizedAndNotConnected ( bool bIsMinimizedAndNotConn
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// CMultiplayerSA::SetMirrorsEnabled
-//
-// Stop mirrors by skipping the frame setup and rendering code.
-// Forces mirror render buffer recreation when enabling.
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void CMultiplayerSA::SetMirrorsEnabled ( bool bEnabled )
-{
-    int& iNumMirrorZones = *(int*)VAR_CCullZones_NumMirrorAttributeZones;
-    uchar& bResetMirror = *(uchar*)VAR_CMirrors_d3dRestored;
-
-    if ( !bEnabled )
-    {
-        // Remove mirror zones
-        ms_iSavedNumMirrorZones += iNumMirrorZones;
-        iNumMirrorZones = 0;
-    }
-    else
-    {
-        if ( ms_iSavedNumMirrorZones )
-        {
-            // Restore mirror zones
-            iNumMirrorZones += ms_iSavedNumMirrorZones;
-            ms_iSavedNumMirrorZones = 0;
-
-            // Recreate render buffers
-            bResetMirror = true;
-        }
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
 // CMultiplayerSA::InitHooks_Rendering
 //
 // Setup hook
@@ -570,12 +367,8 @@ void CMultiplayerSA::InitHooks_Rendering ( void )
     EZHookInstall ( CallIdle );
     EZHookInstall ( CEntity_Render );
     EZHookInstall ( CEntity_RenderOneNonRoad );
-    EZHookInstall ( CVisibilityPlugins_RenderWeaponPedsForPC_Mid );
-    EZHookInstall ( CVisibilityPlugins_RenderWeaponPedsForPC_End );
     EZHookInstall ( Check_NoOfVisibleLods );
     EZHookInstall ( Check_NoOfVisibleEntities );
     EZHookInstall ( WinLoop );
     EZHookInstall ( psGrabScreen );
-    EZHookInstallChecked ( CClouds_RenderSkyPolys );
-    EZHookInstallChecked ( RwCameraSetNearClipPlane );
 }

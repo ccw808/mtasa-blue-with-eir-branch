@@ -23,6 +23,7 @@ class CClientPed;
 #include "CClientStreamElement.h"
 
 #include <multiplayer/CMultiplayer.h>
+#include "net/Packets.h"
 #include "CClientPad.h"
 
 class CClientCamera;
@@ -104,16 +105,6 @@ struct SLastSyncedPedData
     CVector             vPosition;
     CVector             vVelocity;
     float               fRotation;
-    bool                bOnFire;
-    bool                bIsInWater;
-};
-
-struct SRestoreWeaponItem
-{
-    DWORD               dwAmmo;
-    DWORD               dwClipAmmo;
-    bool                bCurrentWeapon;
-    eWeaponType         eWeaponID;
 };
 
 class CClientObject;
@@ -149,8 +140,8 @@ public:
     virtual CSphere             GetWorldBoundingSphere      ( void );
 
     void                        GetPosition                 ( CVector& vecPosition ) const;
-    void                        SetPosition                 ( const CVector& vecPosition )              { SetPosition ( vecPosition, true, true ); }
-    void                        SetPosition                 ( const CVector& vecPosition, bool bResetInterpolation, bool bAllowGroundLoadFreeze = true );
+    void                        SetPosition                 ( const CVector& vecPosition )              { SetPosition ( vecPosition, true ); }
+    void                        SetPosition                 ( const CVector& vecPosition, bool bResetInterpolation );
 
     void                        SetInterior                 ( unsigned char ucInterior );
 
@@ -175,6 +166,7 @@ public:
                                                               unsigned short usModel,
                                                               unsigned char ucInterior );
 
+    void                        SetTargetPosition           ( unsigned long ulDelay, const CVector& vecPosition );
     void                        ResetInterpolation          ( void );
 
     float                       GetCurrentRotation          ( void );
@@ -248,10 +240,8 @@ public:
 
     bool                        IsDying                     ( void );
     bool                        IsDead                      ( void );
-    inline void                 SetIsDead                   ( bool bDead ) { m_bDead = bDead; };
     void                        Kill                        ( eWeaponType weaponType, unsigned char ucBodypart, bool bStealth = false, bool bSetDirectlyDead = false, AssocGroupId animGroup = 0, AnimationId animID = 15 );
     void                        StealthKill                 ( CClientPed * pPed );
-    void                        BeHit                       ( CClientPed* pClientPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
 
     inline int                  GetRespawnState             ( void )                                    { return m_pRespawnState; };
     inline void                 SetRespawnState             ( int iRespawnState )                       { m_pRespawnState = iRespawnState; };
@@ -310,7 +300,7 @@ public:
     void                        ResetToOutOfVehicleWeapon   ( void );
 
     void                        RebuildModel                ( bool bDelayChange = false );
-    void                        ProcessRebuildPlayer        ( bool bNeedsClothesUpdate );
+    void                        ProcessRebuildPlayer        ( void );
     void                        SetStat                     ( unsigned short usStat, float fValue );
     float                       GetStat                     ( unsigned short usStat );
     void                        ResetStats                  ( void );
@@ -329,7 +319,6 @@ public:
 
     float                       GetDistanceFromGround       ( void );
 
-    void                        SetInWater                  ( bool bIsInWater ) { m_bIsInWater = bIsInWater; };
     bool                        IsInWater                   ( void );
     bool                        IsOnGround                  ( void );
 
@@ -383,7 +372,6 @@ public:
     void                        SetTargetPosition       ( const CVector& vecPosition, unsigned long ulDelay, CClientEntity* pTargetOriginSource = NULL );
     void                        RemoveTargetPosition    ( void );
     void                        UpdateTargetPosition    ( void );
-    void                        UpdateUnderFloorFix     ( const CVector& vecTargetPosition, const CVector& vecOrigin );
 
     CClientEntity*              GetTargetedEntity       ( void );    
     CClientPed*                 GetTargetedPed          ( void );
@@ -423,7 +411,7 @@ public:
     bool                        IsFootBloodEnabled      ( void );
     void                        SetFootBloodEnabled     ( bool bHasFootBlood );
 
-    bool                        IsOnFire                ( void );
+    inline bool                 IsOnFire                ( void )                                        { return m_bIsOnFire; }
     void                        SetOnFire               ( bool bOnFire );
 
     void                        GetVoice                ( short* psVoiceType, short* psVoiceID );
@@ -457,8 +445,8 @@ protected:
 
     void                        Init                        ( CClientManager* pManager, unsigned long ulModelID, bool bIsLocalPlayer );
 
-    void                        StreamedInPulse             ( bool bDoStandardPulses );
-    void                        ApplyControllerStateFixes   ( CControllerState& Current );
+    void                        Dump                        ( FILE* pFile, bool bDumpDetails, unsigned int uiIndex );
+    void                        StreamedInPulse             ( void );
 
     void                        Interpolate                 ( void );
     void                        UpdateKeysync               ( bool bCleanup = false );
@@ -479,7 +467,6 @@ protected:
 
     bool                        PerformChecks               ( void );
     void                        HandleWaitingForGroundToLoad ( void );
-    void                        UpdateStreamPosition        ( const CVector & vecPosition );
 
     // Used to start and stop radio for local player
     void                        StartRadio                  ( void );
@@ -507,8 +494,8 @@ public:
     bool                        m_bHealthLocked;
     bool                        m_bArmorLocked;
     unsigned long               m_ulLastOnScreenTime;
-    CClientVehiclePtr           m_pOccupiedVehicle;
-    CClientVehiclePtr           m_pOccupyingVehicle;
+    CClientVehicle*             m_pOccupiedVehicle;
+    CClientVehicle*             m_pOccupyingVehicle;
     //unsigned int                m_uiOccupyingSeat;
     unsigned int                m_uiOccupiedVehicleSeat;
     bool                        m_bForceGettingIn;
@@ -523,11 +510,6 @@ public:
     unsigned long               m_ulLastTimeBeganCrouch;
     unsigned long               m_ulLastTimeBeganStand;
     unsigned long               m_ulLastTimeMovedWhileCrouched;
-    unsigned long               m_ulLastTimePressedLeftOrRight;
-    unsigned long               m_ulLastTimeUseGunCrouched;
-    unsigned long               m_ulLastTimeSprintPressed;
-    unsigned long               m_ulBlockSprintReleaseTime;
-    bool                        m_bWasSprintButtonDown;
     CModelInfo*                 m_pLoadedModelInfo;
     eWeaponSlot                 m_pOutOfVehicleWeaponSlot;
     float                       m_fBeginAimX;
@@ -552,7 +534,7 @@ public:
     CVector                     m_vecTargetTarget;
     CVector                     m_vecTargetTargetAngle;
     CVector                     m_vecTargetInterpolateAngle;
-    CClientEntityPtr            m_pTargetedEntity;
+    CClientEntity*              m_pTargetedEntity;
     std::list < SDelayedSyncData* >  m_SyncBuffer;
     bool                        m_bDucked;
     bool                        m_bWasDucked; //For knowing when to register standing up
@@ -562,7 +544,7 @@ public:
     bool                        m_bUsesCollision;
     float                       m_fHealth;
     float                       m_fArmor;
-    bool                        m_bDead;
+    float                       m_fOxygenLevel;
     bool                        m_bWorldIgnored;
     float                       m_fCurrentRotation;
     float                       m_fMoveSpeed;
@@ -572,7 +554,6 @@ public:
     CVector                     m_vecTurnSpeed;
     eWeaponSlot                 m_CurrentWeaponSlot;
     SFixedArray < eWeaponType, WEAPONSLOT_MAX > m_WeaponTypes;
-    SFixedArray < ushort, WEAPONSLOT_MAX > m_usWeaponAmmo;
     bool                        m_bHasJetPack;
     CClientPlayerClothes*       m_pClothes;
     eFightingStyle              m_FightingStyle;
@@ -582,7 +563,7 @@ public:
     float                       m_fTargetRotation;
     int                         m_iVehicleInOutState;
     bool                        m_bRecreatingModel;
-    CClientEntityPtr            m_pCurrentContactEntity;
+    CClientEntity *             m_pCurrentContactEntity;
     bool                        m_bSunbathing;
     CClientPad                  m_Pad;
     bool                        m_bDestroyingSatchels;
@@ -602,7 +583,6 @@ public:
     float                       m_fObjectsAroundTolerance;
     int                         m_iLoadAllModelsCounter;
     bool                        m_bIsOnFire;
-    bool                        m_bIsInWater;
     SLastSyncedPedData*         m_LastSyncedData;
     bool                        m_bSpeechEnabled;
     bool                        m_bStealthAiming;
@@ -613,7 +593,7 @@ public:
     uint                        m_uiFrameLastRebuildPlayer;
 
     bool                        m_bBulletImpactData;
-    CClientEntityPtr            m_pBulletImpactEntity;
+    CClientEntity*              m_pBulletImpactEntity;
     CVector                     m_vecBulletImpactHit;
 
     // Time dependent interpolation
@@ -628,7 +608,7 @@ public:
             float           fLastAlpha;
         } pos;
 
-        CClientEntityPtr    pTargetOriginSource;
+        CClientEntity*      pTargetOriginSource;
         // These variables are used to track the last known position
         // of the contact entity for if it's removed during the
         // interpolation.
@@ -638,10 +618,10 @@ public:
 
     // Hacks for player model replacement and weapon model replacement respectively
     unsigned long               m_ulStoredModel;
-    std::list < SRestoreWeaponItem > m_RestoreWeaponList;
-
-    CVector                     m_vecPrevTargetPosition;
-    uint                        m_uiForceLocalCounter;
+    DWORD                       m_dwStoredAmmo;
+    DWORD                       m_dwStoredClipAmmo;
+    bool                        m_bStoredCurrentWeapon;
+    eWeaponType                 m_eStoredWeaponID;
 };
 
 #endif

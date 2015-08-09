@@ -135,7 +135,7 @@ bool CConsoleCommands::RestartResource ( CConsole* pConsole, const char* szArgum
 bool CConsoleCommands::RefreshResources ( CConsole* pConsole, const char* szArguments, CClient* pClient, CClient* pEchoClient )
 {
     BeginConsoleOutputCapture ( pEchoClient );
-    g_pGame->GetResourceManager ()->Refresh ( false, "", SStringX( szArguments ) == "t" );
+    g_pGame->GetResourceManager ()->Refresh ( false );
     EndConsoleOutputCapture ( pEchoClient, "refresh completed" );
     return true;
 }
@@ -154,11 +154,7 @@ bool CConsoleCommands::ListResources ( CConsole* pConsole, const char* szArgumen
     if ( pClient->GetClientType () != CClient::CLIENT_CONSOLE )
         return false;
 
-    SString strListType = szArguments;
-    if ( strListType.empty () )
-        strListType = "all";
-
-    g_pGame->GetResourceManager()->ListResourcesLoaded ( strListType );
+    g_pGame->GetResourceManager()->ListResourcesLoaded();
     return true;
 }
 
@@ -238,6 +234,46 @@ bool CConsoleCommands::StopAllResources ( CConsole* pConsole, const char* szArgu
     return true;
 }
 
+
+bool CConsoleCommands::InstallResource ( CConsole* pConsole, const char* szArguments, CClient* pClient, CClient* pEchoClient )
+{
+    return false;
+
+    COPY_CSTR_TO_TEMP_BUFFER( szBuffer, szArguments, 256 );
+
+    char* szURL = strtok ( szBuffer, " " );
+    char* szName = strtok ( NULL, "\0" );
+    if ( strlen ( szURL ) < 150 && strlen ( szURL ) > 1 )
+    {
+        if ( szName && strncmp(szURL, "http://", 7 ) == 0 )
+        {
+            if ( strlen ( szName ) < 100 && strlen ( szName ) > 1 )
+            {
+                if ( g_pGame->GetResourceManager()->Install ( szURL, szName ) )
+                {
+                    char szOutput[512];
+                    snprintf ( szOutput, 511, "Resource %s from %s installed succesfully.", szName, szURL );
+                    pEchoClient->SendConsole ( szOutput );
+                    g_pGame->GetResourceManager()->Refresh();
+                }
+            }
+        }
+        else
+        {
+            char szNewURL[250];
+            szNewURL[249] = '\0';
+            snprintf ( szNewURL, 249, "http://development.mtasa.com/%s.zip", szURL );
+            if ( g_pGame->GetResourceManager()->Install ( szNewURL, szURL ) )
+            {
+                char szOutput[512];
+                snprintf ( szOutput, 511, "Resource %s installed succesfully.", szURL );
+                pEchoClient->SendConsole ( szOutput );
+                g_pGame->GetResourceManager()->Refresh();
+            }
+        }
+    }
+    return true;
+}
 
 bool CConsoleCommands::UpgradeResources ( CConsole* pConsole, const char* szArguments, CClient* pClient, CClient* pEchoClient )
 {
@@ -1036,7 +1072,7 @@ bool CConsoleCommands::LogIn ( CConsole* pConsole, const char* szArguments, CCli
             szPassword = szTempPassword;
         }
 
-        if ( CAccountManager::IsValidAccountName( szNick ) && CAccountManager::IsValidPassword( szPassword ) )
+        if ( szNick && szPassword )
         {
             return g_pGame->GetAccountManager ()->LogIn ( pClient, pEchoClient, szNick, szPassword );
         }
@@ -1080,7 +1116,7 @@ bool CConsoleCommands::ChgMyPass ( CConsole* pConsole, const char* szArguments, 
             // Split it up into nick and password
             char* szOldPassword = strtok ( szBuffer, " " );
             char* szNewPassword = strtok ( NULL, "\0" );
-            if ( CAccountManager::IsValidPassword( szOldPassword ) && CAccountManager::IsValidNewPassword( szNewPassword ) )
+            if ( szOldPassword && szNewPassword && strlen ( szOldPassword ) > 0 && strlen ( szNewPassword ) > 0 )
             {
                 // Grab the account with that nick
                 CAccount* pAccount = pClient->GetAccount ();
@@ -1145,7 +1181,7 @@ bool CConsoleCommands::AddAccount ( CConsole* pConsole, const char* szArguments,
         if ( szNick && szPassword )
         {
             // Long enough strings?
-            if ( CAccountManager::IsValidNewAccountName( szNick ) && CAccountManager::IsValidNewPassword( szPassword ) )
+            if ( strlen ( szNick ) > 0 && strlen ( szPassword ) > MIN_PASSWORD_LENGTH && strlen ( szPassword ) <= MAX_PASSWORD_LENGTH )
             {
                 // Try creating the account
                 if ( !g_pGame->GetAccountManager ()->Get ( szNick ) )
@@ -1249,7 +1285,7 @@ bool CConsoleCommands::ChgPass ( CConsole* pConsole, const char* szArguments, CC
         // Split it up into nick and password
         char* szNick = strtok ( szBuffer, " " );
         char* szPassword = strtok ( NULL, "\0" );
-        if ( CAccountManager::IsValidAccountName( szNick ) && CAccountManager::IsValidNewPassword( szPassword ) )
+        if ( szNick && szPassword && strlen ( szNick ) > 0 && strlen ( szPassword ) > 0 )
         {
             // Grab the account with that nick
             CAccount* pAccount = g_pGame->GetAccountManager ()->Get ( szNick );
@@ -1443,13 +1479,15 @@ bool CConsoleCommands::WhoWas ( CConsole* pConsole, const char* szArguments, CCl
                     if ( ++uiCount <= 20 )
                     {
                         // Convert the IP to a string
-                        SString strIP = LongToDottedIP ( iter->ulIP );
+                        char szIP [32];
+                        szIP[0] = '\0';
+                        LongToDottedIP ( iter->ulIP, szIP );
 
                         // Populate a line about him
                         SString strName = iter->strNick;
                         if ( iter->strAccountName != GUEST_ACCOUNT_NAME )
                             strName += SString ( " (%s)", *iter->strAccountName );
-                        pClient->SendEcho ( SString ( "%s  -  IP:%s  serial:%s  version:%s", *strName, *strIP, iter->strSerial.c_str (), iter->strPlayerVersion.c_str () ) );
+                        pClient->SendEcho ( SString ( "%s  -  IP:%s  serial:%s  version:%s", *strName, szIP, iter->strSerial.c_str (), iter->strPlayerVersion.c_str () ) );
                     }
                     else
                     {
@@ -1623,11 +1661,6 @@ bool CConsoleCommands::LoadModule ( CConsole* pConsole, const char* szArguments,
         if ( pClient->GetNick () )
             CLogger::LogPrintf ( "loadmodule: Requested by %s\n", GetAdminNameForLog ( pClient ).c_str () );
 
-        if ( !IsValidFilePath ( szArguments ) )
-        {
-            pEchoClient->SendConsole ( "loadmodule: Invalid module path" );
-            return false;
-        }
         SString strFilename ( "%s/modules/%s", g_pServerInterface->GetModManager ()->GetModPath (), szArguments );
 
         // These modules are late loaded
@@ -1806,14 +1839,6 @@ bool CConsoleCommands::OpenPortsTest ( CConsole* pConsole, const char* szArgumen
 {
     if ( pClient->GetClientType () == CClient::CLIENT_CONSOLE )
     {
-#if MTASA_VERSION_TYPE < VERSION_TYPE_RELEASE
-        if ( SStringX( szArguments ) == "crashme" )
-        {
-            // For testing crash handling
-            int* pData = NULL;
-            *pData = 0;
-        }
-#endif
         g_pGame->StartOpenPortsTest ();
         return true;
     }
@@ -1953,54 +1978,5 @@ bool CConsoleCommands::FakeLag ( CConsole* pConsole, const char* szArguments, CC
     pEchoClient->SendConsole ( SString ( "Server send lag is now: %d%% packet loss and %d extra ping with %d extra ping variance and %d KBPS limit", iPacketLoss, iExtraPing, iExtraPingVary, iKBPSLimit ) );
 
 #endif
-    return true;
-}
-
-
-bool CConsoleCommands::DebugJoinFlood ( CConsole* pConsole, const char* szArguments, CClient* pClient, CClient* pEchoClient )
-{
-    if ( !pClient->GetClientType () == CClient::CLIENT_CONSOLE )
-    {
-        if ( !g_pGame->GetACLManager()->CanObjectUseRight ( pClient->GetAccount ()->GetName ().c_str (), CAccessControlListGroupObject::OBJECT_TYPE_USER, "debugjoinflood", CAccessControlListRight::RIGHT_TYPE_COMMAND, false ) )
-        {
-            pEchoClient->SendConsole ( "debugjoinflood: You do not have sufficient rights to use this command." );
-            return false;
-        }
-    }
-
-    long long llTickCountAdd = 0;
-    if ( szArguments )
-    {
-        llTickCountAdd = atoi( szArguments );
-        llTickCountAdd *= 0x10000000LL;
-    }
-
-    SString strOutput = g_pGame->GetJoinFloodProtector()->DebugDump( llTickCountAdd );
-    pEchoClient->SendConsole ( strOutput );
-    return true;
-}
-
-
-bool CConsoleCommands::DebugUpTime ( CConsole* pConsole, const char* szArguments, CClient* pClient, CClient* pEchoClient )
-{
-    if ( !pClient->GetClientType () == CClient::CLIENT_CONSOLE )
-    {
-        if ( !g_pGame->GetACLManager()->CanObjectUseRight ( pClient->GetAccount ()->GetName ().c_str (), CAccessControlListGroupObject::OBJECT_TYPE_USER, "debuguptime", CAccessControlListRight::RIGHT_TYPE_COMMAND, false ) )
-        {
-            pEchoClient->SendConsole ( "debuguptime: You do not have sufficient rights to use this command." );
-            return false;
-        }
-    }
-
-    int iDaysAdd = 0;
-    if ( szArguments )
-    {
-        iDaysAdd = atoi( szArguments );
-        iDaysAdd = Clamp( 0, iDaysAdd, 10 );
-    }
-
-    long long llTickCountAdd = iDaysAdd * 1000 * 60 * 60 * 24;
-    AddTickCount( llTickCountAdd );
-    pEchoClient->SendConsole ( SString( "TickCount advanced by %d days", iDaysAdd ) );
     return true;
 }

@@ -77,7 +77,7 @@ void CDirect3DData::GetTransform ( D3DTRANSFORMSTATETYPE dwRequestedMatrix, D3DM
             break;
         default:
             // Zero out the structure for the user.
-            memset ( pMatrixOut, 0, sizeof ( D3DMATRIX ) );
+            memcpy ( pMatrixOut, 0, sizeof ( D3DMATRIX ) );
             break;
     }
 

@@ -17,9 +17,7 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#define ALLOC_STATS_MODULE_NAME "game_sa"
 #include "SharedUtil.hpp"
-#include "SharedUtil.MemAccess.hpp"
 
 unsigned long* CGameSA::VAR_SystemTime;
 unsigned long* CGameSA::VAR_IsAtMenu;
@@ -40,13 +38,16 @@ unsigned long* CGameSA::VAR_Framelimiter;
  */
 CGameSA::CGameSA()
 {
-    pGame = this;
+    m_bAsyncSettingsDontUse = false;
+    m_bAsyncSettingsEnabled = false;
     m_bAsyncScriptEnabled = false;
     m_bAsyncScriptForced = false;
     m_bASyncLoadingSuspended = false;
     m_iCheckStatus = 0;
 
-    SetInitialVirtualProtect();
+    // Unprotect all of the GTASA code at once and leave it that way
+    DWORD oldProt;
+    VirtualProtect((LPVOID)0x401000, 0x4A3000, PAGE_EXECUTE_READWRITE, &oldProt);
 
     // Initialize the offsets
     eGameVersion version = FindGameVersion ();
@@ -66,7 +67,6 @@ CGameSA::CGameSA()
 
     DEBUG_TRACE("CGameSA::CGameSA()");
     this->m_pAudioEngine            = new CAudioEngineSA((CAudioEngineSAInterface*)CLASS_CAudioEngine);
-    this->m_pAudioContainer         = new CAudioContainerSA();
     this->m_pWorld                  = new CWorldSA();
     this->m_pPools                  = new CPoolsSA();
     this->m_pClock                  = new CClockSA();
@@ -109,6 +109,7 @@ CGameSA::CGameSA()
     this->m_pWaterManager           = new CWaterManagerSA ();
     this->m_pWeaponStatsManager     = new CWeaponStatManagerSA ();
     this->m_pPointLights            = new CPointLightsSA ();
+
 
     // Normal weapon types (WEAPONSKILL_STD)
     for ( int i = 0; i < NUM_WeaponInfosStdSkill; i++)
@@ -183,13 +184,6 @@ CGameSA::CGameSA()
     MemPut < WORD > ( 0x05B8EB0, 30000 );         // Default is 12000
 
     CModelInfoSA::StaticSetHooks ();
-    CPlayerPedSA::StaticSetHooks ();
-    CRenderWareSA::StaticSetHooks ();
-    CRenderWareSA::StaticSetClothesReplacingHooks ();
-    CTasksSA::StaticSetHooks ();
-    CPedSA::StaticSetHooks ();
-    CSettingsSA::StaticSetHooks ();
-    CFxSystemSA::StaticSetHooks ();
 }
 
 CGameSA::~CGameSA ( void )
@@ -234,7 +228,6 @@ CGameSA::~CGameSA ( void )
     delete reinterpret_cast < CPoolsSA* > ( m_pPools );
     delete reinterpret_cast < CWorldSA* > ( m_pWorld );
     delete reinterpret_cast < CAudioEngineSA* > ( m_pAudioEngine );
-    delete reinterpret_cast < CAudioContainerSA* > ( m_pAudioContainer );
     delete reinterpret_cast < CPointLightsSA * > ( m_pPointLights );
 }
 
@@ -478,7 +471,6 @@ void CGameSA::Initialize ( void )
     // Initialize garages
     m_pGarages->Initialize();
     SetupSpecialCharacters ();
-    m_pRenderWare->Initialize();
 
     // *Sebas* Hide the GTA:SA Main menu.
     MemPutFast < BYTE > ( CLASS_CMenuManager+0x5C, 0 );
@@ -635,40 +627,31 @@ bool CGameSA::VerifySADataFileNames ()
            !strcmp ( *(char **)0x5BE686, "DATA\\WEAPON.DAT" );
 }
 
+void CGameSA::SetAsyncLoadingFromSettings ( bool bSettingsDontUse, bool bSettingsEnabled )
+{
+    m_bAsyncSettingsDontUse = bSettingsDontUse;
+    m_bAsyncSettingsEnabled = bSettingsEnabled;
+}
+
 void CGameSA::SetAsyncLoadingFromScript ( bool bScriptEnabled, bool bScriptForced )
 {
     m_bAsyncScriptEnabled = bScriptEnabled;
     m_bAsyncScriptForced = bScriptForced;
 }
 
-void CGameSA::SuspendASyncLoading ( bool bSuspend, uint uiAutoUnsuspendDelay )
+void CGameSA::SuspendASyncLoading ( bool bSuspend )
 {
     m_bASyncLoadingSuspended = bSuspend;
-    // Setup auto unsuspend time if required
-    if ( uiAutoUnsuspendDelay && bSuspend )
-        m_llASyncLoadingAutoUnsuspendTime = CTickCount::Now() + CTickCount( (long long)uiAutoUnsuspendDelay );
-    else
-        m_llASyncLoadingAutoUnsuspendTime = CTickCount();
 }
 
 bool CGameSA::IsASyncLoadingEnabled ( bool bIgnoreSuspend )
 {
-    // Process auto unsuspend time if set
-    if ( m_llASyncLoadingAutoUnsuspendTime.ToLongLong() != 0 )
-    {
-        if ( CTickCount::Now() > m_llASyncLoadingAutoUnsuspendTime )
-        {
-            m_llASyncLoadingAutoUnsuspendTime = CTickCount();
-            m_bASyncLoadingSuspended = false;
-        }
-    }
-
     if ( m_bASyncLoadingSuspended && !bIgnoreSuspend )
         return false;
 
-    if ( m_bAsyncScriptForced )
+    if ( m_bAsyncScriptForced || m_bAsyncSettingsDontUse )
         return m_bAsyncScriptEnabled;
-    return true;
+    return m_bAsyncSettingsEnabled;
 }
 
 void CGameSA::SetupSpecialCharacters ( void )
@@ -745,11 +728,6 @@ void CGameSA::GetShaderReplacementStats ( SShaderReplacementStats& outStats )
 void CGameSA::ResetModelLodDistances ( void )
 {
     CModelInfoSA::StaticResetLodDistances ();
-}
-
-void CGameSA::ResetAlphaTransparencies ( void )
-{
-    CModelInfoSA::StaticResetAlphaTransparencies ();
 }
 
 // Disable VSync by forcing what normally happends at the end of the loading screens

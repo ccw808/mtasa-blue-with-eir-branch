@@ -179,7 +179,7 @@ void CEffectClonerImpl::DoPulse ( void )
 ////////////////////////////////////////////////////////////////
 void CEffectClonerImpl::MaybeTidyUp ( void )
 {
-    if ( m_TidyupTimer.Get () < 1000 )
+    if ( m_TidyupTimer.Get () < 0 )
         return;
 
     m_TidyupTimer.Reset ();

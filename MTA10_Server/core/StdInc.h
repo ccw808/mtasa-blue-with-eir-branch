@@ -18,5 +18,3 @@
 #ifdef WIN32
     #include "CExceptionInformation_Impl.h"
 #endif
-
-void WaitForKey ( int iKey );

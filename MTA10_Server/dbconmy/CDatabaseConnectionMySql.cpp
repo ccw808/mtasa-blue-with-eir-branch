@@ -33,7 +33,6 @@ public:
     virtual const SString&  GetLastErrorMessage     ( void );
     virtual uint            GetLastErrorCode        ( void );
     virtual uint            GetNumAffectedRows      ( void );
-    virtual uint64          GetLastInsertId         ( void );
     virtual void            AddRef                  ( void );
     virtual void            Release                 ( void );
     virtual bool            Query                   ( const SString& strQuery, CRegistryResult& registryResult );
@@ -54,7 +53,6 @@ public:
     SString                 m_strLastErrorMessage;
     uint                    m_uiLastErrorCode;
     uint                    m_uiNumAffectedRows;
-    uint64                  m_ullLastInsertId;
     int                     m_bAutomaticReconnect;
     int                     m_bAutomaticTransactionsEnabled;
     bool                    m_bInAutomaticTransaction;
@@ -90,7 +88,6 @@ CDatabaseConnectionMySql::CDatabaseConnectionMySql ( CDatabaseType* pManager, co
 
     SString strHostname;
     SString strDatabaseName;
-    SString strCharset;
     int iPort = 0;
     SString strUnixSocket;
     ulong ulClientFlags = 0;
@@ -102,15 +99,12 @@ CDatabaseConnectionMySql::CDatabaseConnectionMySql ( CDatabaseType* pManager, co
     argMap.Get ( "host", strHostname, "localhost" );
     argMap.Get ( "port", iPort, 0 );
     argMap.Get ( "unix_socket", strUnixSocket, "" );
-    argMap.Get ( "charset", strCharset, "" );
 
     m_handle = mysql_init ( NULL );
     if ( m_handle )
     {
         my_bool reconnect = m_bAutomaticReconnect;
         mysql_options ( m_handle, MYSQL_OPT_RECONNECT, &reconnect );
-        if ( !strCharset.empty() )
-            mysql_options( m_handle, MYSQL_SET_CHARSET_NAME, strCharset );
 
         if ( mysql_real_connect ( m_handle, strHostname, strUsername, strPassword, strDatabaseName, iPort, strUnixSocket, ulClientFlags ) )
             m_bOpened = true;
@@ -245,19 +239,6 @@ uint CDatabaseConnectionMySql::GetNumAffectedRows ( void )
 
 ///////////////////////////////////////////////////////////////
 //
-// CDatabaseConnectionMySql::GetLastInsertId
-//
-// Only valid when Query() returns true
-//
-///////////////////////////////////////////////////////////////
-uint64 CDatabaseConnectionMySql::GetLastInsertId ( void )
-{
-    return m_ullLastInsertId;
-}
-
-
-///////////////////////////////////////////////////////////////
-//
 // CDatabaseConnectionMySql::Query
 //
 //
@@ -280,7 +261,7 @@ bool CDatabaseConnectionMySql::Query ( const SString& strQuery, CRegistryResult&
 ///////////////////////////////////////////////////////////////
 bool CDatabaseConnectionMySql::QueryInternal ( const SString& strQuery, CRegistryResult& registryResult )
 {
-    CRegistryResult& pResult = registryResult;
+    CRegistryResult* pResult = &registryResult;
 
     int status = mysql_real_query ( m_handle, strQuery, static_cast < unsigned long > ( strQuery.length () ) );
     if ( status )
@@ -293,7 +274,6 @@ bool CDatabaseConnectionMySql::QueryInternal ( const SString& strQuery, CRegistr
     MYSQL_RES* res = mysql_store_result ( m_handle );
 
     m_uiNumAffectedRows = static_cast < uint > ( mysql_affected_rows ( m_handle ) );
-    m_ullLastInsertId = mysql_insert_id( m_handle );
 
     if ( !res )
     {
@@ -321,7 +301,7 @@ bool CDatabaseConnectionMySql::QueryInternal ( const SString& strQuery, CRegistr
             ulong* inLengths = mysql_fetch_lengths ( res );
 
             pResult->Data.push_back ( vector < CRegistryResultCell > ( pResult->nColumns ) );
-            vector < CRegistryResultCell > & outRow = pResult->Data.back();
+            vector < CRegistryResultCell > & outRow = *(pResult->Data.end () - 1);
             for ( int i = 0; i < pResult->nColumns; i++ )
             {
                 CRegistryResultCell& cell = outRow[i];

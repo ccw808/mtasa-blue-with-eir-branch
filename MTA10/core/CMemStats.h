@@ -24,10 +24,8 @@ struct SMemStatsInfo
     ZERO_ON_NEW
 
     CProxyDirect3DDevice9::SMemoryState d3dMemory;
-    CProxyDirect3DDevice9::SFrameStats frameStats;
     SDxStatus dxStatus;
     int iProcessMemSizeKB;
-    int iProcessTotalVirtualKB;
     int iStreamingMemoryUsed;
     int iStreamingMemoryAvailable;
     SRwResourceStats rwResourceStats;
@@ -36,7 +34,7 @@ struct SMemStatsInfo
     SModelCacheStats modelCacheStats;
 
     union {
-        uint uiArray[14];
+        uint uiArray[];
         struct
         {
             uint uiPlayerModels_0_312;

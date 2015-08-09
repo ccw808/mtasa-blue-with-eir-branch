@@ -32,15 +32,15 @@ public:
         int                 GetControllerKeyAssociatedWithAction ( eControllerAction action, eControllerType controllerType );
         int                 GetNumOfSettingsForAction ( eControllerAction action );
         void                ClearSettingsAssociatedWithAction ( eControllerAction action, eControllerType controllerType );
-        void                SetClassicControls ( bool bClassicControls );
+        unsigned char       GetInputType ( void );
+        void                SetInputType ( unsigned char ucInputType );
+        bool                IsMouseInverted ( void );
         void                SetMouseInverted ( bool bInverted );
+        bool                GetFlyWithMouse ( bool bIgnoreSuspend );
         void                SetFlyWithMouse ( bool bFlyWithMouse );
-        void                SetSteerWithMouse ( bool bSteerWithMouse );
+        bool                GetSteerWithMouse ( bool bIgnoreSuspend );
+        void                SetSteerWithMouse ( bool bFlyWithMouse );
         void                SuspendSteerAndFlyWithMouse ( bool bSuspend );
-        float               GetVerticalAimSensitivity         ( void );
-        void                SetVerticalAimSensitivity         ( float fSensitivity );
-        float               GetVerticalAimSensitivityRawValue ( void );
-        void                SetVerticalAimSensitivityRawValue ( float fRawValue );
 
         // CControllerConfigManagerSA
         void                ApplySteerAndFlyWithMouseSettings ( void );

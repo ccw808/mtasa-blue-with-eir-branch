@@ -45,15 +45,9 @@
 #define IS_CONSOLE(element)  ((element)->GetType()==CElement::CONSOLE)
 #define IS_TEAM(element)     ((element)->GetType()==CElement::TEAM)
 #define IS_WATER(element)    ((element)->GetType()==CElement::WATER)
-#define IS_WEAPON(element)    ((element)->GetType()==CElement::WEAPON)
 
 typedef CFastList < CElement* > CChildListType;
 typedef CFastList < CElement* > CElementListType;
-
-// List of elements which is auto deleted when the last user calls Release()
-class CElementListSnapshot : public std::vector < CElement* >, public CRefCountableST
-{
-};
 
 class CElement
 {
@@ -83,9 +77,9 @@ public:
         COLSHAPE,
         SCRIPTFILE,
         WATER,
-        WEAPON,
         DATABASE_CONNECTION,
         ROOT,
+        WEAPON,
         UNKNOWN,
     };
 
@@ -103,8 +97,6 @@ public:
     virtual void                                SetPosition                 ( const CVector& vecPosition );
 
     virtual void                                GetRotation                 ( CVector & vecRotation )       { vecRotation = CVector (); }
-    virtual void                                GetMatrix                   ( CMatrix& matrix );
-    virtual void                                SetMatrix                   ( const CMatrix& matrix );
 
     virtual bool                                IsPerPlayerEntity           ( void )                        { return false; };
 
@@ -155,7 +147,6 @@ public:
     CChildListType ::const_iterator             IterEnd                     ( void )                        { return m_Children.end (); };
     CChildListType ::const_reverse_iterator     IterReverseBegin            ( void )                        { return m_Children.rbegin (); };
     CChildListType ::const_reverse_iterator     IterReverseEnd              ( void )                        { return m_Children.rend (); };
-    CElementListSnapshot*                       GetChildrenListSnapshot     ( void );
 
     static uint                                 GetTypeHashFromString       ( const SString& strTypeName );
     EElementType                                GetType                     ( void )                        { return m_iType; };
@@ -228,9 +219,6 @@ public:
     virtual CSphere                             GetWorldBoundingSphere      ( void );
     virtual void                                UpdateSpatialData           ( void );
 
-    bool                                        IsCallPropagationEnabled    ( void )                        { return m_bCallPropagationEnabled; }
-    void                                        SetCallPropagationEnabled   ( bool bEnabled )               { m_bCallPropagationEnabled = bEnabled; }
-
 protected:
     CElement*                                   GetRootElement              ( void );
     virtual bool                                ReadSpecialData             ( void ) = 0;
@@ -259,8 +247,6 @@ protected:
     std::string                                 m_strTypeName;
     std::string                                 m_strName;
     CChildListType                              m_Children;
-    CElementListSnapshot*                       m_pChildrenListSnapshot;
-    uint                                        m_uiChildrenListSnapshotRevision;
 
     std::list < class CPerPlayerEntity* >       m_ElementReferenced;
     std::list < class CColShape* >              m_Collisions;
@@ -281,7 +267,6 @@ protected:
     unsigned char                               m_ucInterior;
     bool                                        m_bDoubleSided;
     bool                                        m_bUpdatingSpatialData;
-    bool                                        m_bCallPropagationEnabled;
 
     // Optimization for getElementsByType starting at root
 public:

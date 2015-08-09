@@ -26,14 +26,12 @@ CSingularFileDownload::CSingularFileDownload ( CResource* pResource, const char 
     // Store the provided checksum
     m_ProvidedChecksum = checksum;
 
-    m_bBeingDeleted = false;
-
     GenerateClientChecksum();
 
     if ( !DoesClientAndServerChecksumMatch () )
     {
         CNetHTTPDownloadManagerInterface* pHTTP = g_pCore->GetNetwork ()->GetHTTPDownloadManager ( EDownloadMode::RESOURCE_SINGULAR_FILES );
-        pHTTP->QueueFile ( strHTTPURL.c_str(), szName, 0, NULL, 0, false, this, ProgressCallBack, false, 10, 10000, true );
+        pHTTP->QueueFile ( strHTTPURL.c_str(), szName, 0, NULL, 0, false, this, ProgressCallBack, false, 10, true );
         m_bComplete = false;
         g_pClientGame->SetTransferringSingularFiles ( true );
     }
@@ -68,10 +66,7 @@ bool CSingularFileDownload::ProgressCallBack ( double sizeJustDownloaded, double
 
 void CSingularFileDownload::CallFinished ( bool bSuccess )
 {
-    // Flag file as loadable
-    g_pClientGame->GetResourceManager()->OnDownloadedResourceFile( GetName() );
-
-    if ( !m_bBeingDeleted && m_pResource )
+    if ( m_pResource )
     {
         // Call the onClientbFileDownloadComplete event
         CLuaArguments Arguments;
@@ -83,17 +78,9 @@ void CSingularFileDownload::CallFinished ( bool bSuccess )
 }
 
 
-void CSingularFileDownload::Cancel ( void )
-{
-    m_bBeingDeleted = true;
-    m_pResource = NULL;
-
-    // TODO: Cancel also in Net
-}
-
 bool CSingularFileDownload::DoesClientAndServerChecksumMatch ( void )
 {
-    return ( m_LastClientChecksum == m_ProvidedChecksum );
+    return ( m_LastClientChecksum.CompareWithLegacy ( m_ProvidedChecksum ) );
 }
 
 CChecksum CSingularFileDownload::GenerateClientChecksum ( void )

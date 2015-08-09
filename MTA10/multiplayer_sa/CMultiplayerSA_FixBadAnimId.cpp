@@ -19,10 +19,11 @@ int _cdecl OnCAnimBlendAssocGroupCopyAnimation ( CAnimBlendAssocGroupSAInterface
     // Apply offset
     int iUseAnimId = iAnimId - pGroup->iIDOffset;
 
-    if ( pGroup->pAssociationsArray )
+    CAnimBlendStaticAssociationSAInterface* pAssociation = pGroup->pAssociationsArray + iUseAnimId;
+
+    if ( pAssociation )
     {
-        CAnimBlendStaticAssociationSAInterface* pAssociation = pGroup->pAssociationsArray + iUseAnimId;
-        if ( pAssociation && pAssociation->pAnimHeirarchy == NULL )
+        if ( pAssociation->pAnimHeirarchy == NULL )
         {
             // Choose another animId
             int iNewAnimId = iUseAnimId;
@@ -68,6 +69,7 @@ void _declspec(naked) HOOK_CAnimBlendAssocGroupCopyAnimation()
         jmp     RETURN_CAnimBlendAssocGroupCopyAnimation
     }
 }
+
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //

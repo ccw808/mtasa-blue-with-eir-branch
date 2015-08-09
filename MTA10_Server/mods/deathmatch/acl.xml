@@ -87,10 +87,6 @@
       <right name="function.setPlayerMuted" access="false"/>
       <right name="function.addAccount" access="false"/>
       <right name="function.addBan" access="false"/>
-      <right name="function.setUnbanTime" access="false"/>
-      <right name="function.setBanAdmin" access="false"/>
-      <right name="function.setBanReason" access="false"/>
-      <right name="function.setBanNick" access="false"/>
       <right name="function.removeBan" access="false"/>
       <right name="function.removeAccount" access="false"/>
       <right name="function.setAccountPassword" access="false"/>
@@ -102,10 +98,10 @@
       <right name="function.unbanIP" access="false"/>
       <right name="function.unbanSerial" access="false"/>
       <right name="function.reloadBans" access="false"/>
+      <right name="function.getClientIP" access="false"/>
       <right name="function.setServerPassword" access="false"/>
       <right name="function.getServerPassword" access="false"/>
       <right name="function.callRemote" access="false"/>
-      <right name="function.fetchRemote" access="false"/>
       <right name="function.startResource" access="false"/>
       <right name="function.stopResource" access="false"/>
       <right name="function.restartResource" access="false"/>
@@ -154,6 +150,7 @@
       <right name="function.getBansXML" access="true"/>
       <right name="function.unbanIP" access="true"/>
       <right name="function.unbanSerial" access="true"/>
+      <right name="function.getClientIP" access="true"/>
       <right name="function.startResource" access="true"/>
       <right name="function.stopResource" access="true"/>
       <right name="function.restartResource" access="true"/>
@@ -191,10 +188,6 @@
       <right name="command.srun" access="true"/>
       <right name="command.run" access="true"/>
       <right name="function.addBan" access="true"/>
-      <right name="function.setUnbanTime" access="true"/>
-      <right name="function.setBanAdmin" access="true"/>
-      <right name="function.setBanReason" access="true"/>
-      <right name="function.setBanNick" access="true"/>
       <right name="function.removeBan" access="true"/>
       <right name="function.reloadBans" access="true"/>
       <right name="function.executeCommandHandler" access="true"/>
@@ -226,7 +219,6 @@
    </acl>
    <acl name="RPC">
       <right name="function.callRemote" access="true"/>
-      <right name="function.fetchRemote" access="true"/>
    </acl>
    <acl name="MapEditor">
       <right name="general.ModifyOtherObjects" access="true"/>
@@ -243,7 +235,6 @@
       <right name="function.setResourceDefaultSetting" access="true"/>
       <right name="function.removeResourceDefaultSetting" access="true"/>
       <right name="function.xmlLoadFile" access="true"/>
-      <right name="function.refreshResources" access="true" />
    </acl>
    <acl name="raceACL">
       <right name="general.ModifyOtherObjects" access="true"/>

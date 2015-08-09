@@ -53,7 +53,7 @@ CConsole::CConsole ( CGUI* pManager, CGUIElement* pParent )
     m_pHistory->SetTextChangedHandler ( GUI_CALLBACK ( &CConsole::History_OnTextChanged, this ) );
 
     // Load the console history from a file
-    m_pConsoleHistory->LoadFromFile ();
+    m_pConsoleHistory->LoadFromFile ( CalcMTASAPath ( "\\MTA\\console.log" ) );
 }
 
 CConsole::~CConsole ( void )
@@ -188,10 +188,6 @@ void CConsole::Hide ( void )
     SetVisible ( false );
 }
 
-bool CConsole::IsInputActive ( void )
-{
-    return IsVisible() && m_pInput->IsActive();
-}
 
 void CConsole::ActivateInput ( void )
 {
@@ -304,8 +300,8 @@ void CConsole::SetNextHistoryText ( void )
     if ( szItem )
     {      
         m_pInput->SetText ( szItem );
-        m_pInput->SetCaretAtStart(); // Resetting so it scrolls the input back after long text
-        m_pInput->SetCaretAtEnd ();
+        m_pInput->SetCaratAtStart(); // Resetting so it scrolls the input back after long text
+        m_pInput->SetCaratAtEnd ();
     }
     else
     {
@@ -346,8 +342,8 @@ void CConsole::SetPreviousHistoryText ( void )
     if ( szItem )
     {       
         m_pInput->SetText ( szItem );
-        m_pInput->SetCaretAtStart(); // Resetting so it scrolls the input back after long text
-        m_pInput->SetCaretAtEnd ();
+        m_pInput->SetCaratAtStart(); // Resetting so it scrolls the input back after long text
+        m_pInput->SetCaratAtEnd ();
         --m_iHistoryIndex;
     }
 }
@@ -406,8 +402,8 @@ void CConsole::SetNextAutoCompleteMatch ( void )
     if ( szItem )
     {       
         m_pInput->SetText ( szItem );
-        m_pInput->SetCaretAtStart (); // Resetting so it scrolls the input back after long text
-        m_pInput->SetCaretAtEnd ();
+        m_pInput->SetCaratAtStart (); // Resetting so it scrolls the input back after long text
+        m_pInput->SetCaratAtEnd ();
     }
 }
 
@@ -420,7 +416,7 @@ void CConsole::CreateElements ( CGUIElement* pParent )
     m_fWindowY *= ScreenSize.fY / NATIVE_RES_Y;
 
     // Create window
-    m_pWindow = reinterpret_cast < CGUIWindow* > ( m_pManager->CreateWnd ( pParent, _("CONSOLE") ) );
+    m_pWindow = reinterpret_cast < CGUIWindow* > ( m_pManager->CreateWnd ( pParent, "CONSOLE" ) );
     m_pWindow->SetAlwaysOnTop ( true );
 
     CVector2D resolution = CCore::GetSingleton().GetGUI()->GetResolution();

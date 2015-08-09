@@ -22,7 +22,9 @@ public:
                                                               float fPlayerGotWeaponRange,
                                                               bool bVehicleHasHydraulics,
                                                               bool bVehicleIsPlaneOrHeli,
-                                                              CControllerState& sharedControllerState );
+                                                              CControllerState& sharedControllerState,
+                                                              float fPlayerGotCameraRotation,
+                                                              float fPlayerGotPlayerRotation );
 
 
     ePacketID               GetPacketID                     ( void ) const                  { return PACKET_ID_PLAYER_KEYSYNC; };
@@ -41,6 +43,8 @@ public:
     const bool      m_bVehicleHasHydraulics;
     const bool      m_bVehicleIsPlaneOrHeli;
     CControllerState& m_sharedControllerState;
+    const float     m_fPlayerGotCameraRotation;
+    const float     m_fPlayerGotPlayerRotation;
 
     // Set in Read ()
     struct

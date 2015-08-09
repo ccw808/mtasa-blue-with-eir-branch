@@ -25,9 +25,8 @@
 #define PROJECTILE_COUNT                    32
 #define PROJECTILE_INFO_COUNT               32
 
-#define FUNC_RemoveAllProjectiles           0x7399B0 //##SA##
+#define FUNC_RemoveAllProjectiles           0x5C69D0
 #define FUNC_RemoveProjectile               0x7388F0 //##SA##
-#define FUNC_RemoveIfThisIsAProjectile      0x739A40 //##SA##
 #define FUNC_AddProjectile                  0x737C80 //##SA##
 
 #define ARRAY_CProjectile                   0xC89110 //##SA##
@@ -71,7 +70,7 @@ public:
 
 
     void                    RemoveAllProjectiles (  );
-    void                    RemoveProjectile ( CProjectileInfo * pProjectileInfo, CProjectile * pProjectile, bool bBlow = true );
+    void                    RemoveProjectile ( CProjectileInfo * pProjectileInfo, CProjectile * pProjectile );
     CProjectile             * GetProjectile ( DWORD ID );
     CProjectileInfo         * GetProjectileInfo ( void * projectileInfoInterface );
     CProjectileInfo         * GetProjectileInfo ( DWORD dwIndex );

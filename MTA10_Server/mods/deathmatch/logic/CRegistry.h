@@ -11,7 +11,7 @@
 *
 *****************************************************************************/
 
-typedef CAutoRefedPointer < struct CRegistryResultData > CRegistryResult;
+struct CRegistryResult;
 
 #ifndef __CREGISTRY_H
 #define __CREGISTRY_H
@@ -21,7 +21,7 @@ typedef CAutoRefedPointer < struct CRegistryResultData > CRegistryResult;
 #include <list>
 #include <vector>
 #include <string>
-#include "../../../vendor/sqlite/sqlite3.h"
+#include <sqlite3.h>
 
 class CRegistry
 {
@@ -122,29 +122,17 @@ struct CRegistryResultCell
     unsigned char*              pVal;
 };
 
-typedef std::vector < CRegistryResultCell > CRegistryResultRow;
-typedef std::list < CRegistryResultRow >::const_iterator CRegistryResultIterator;
-
-struct CRegistryResultData
+struct CRegistryResult
 {
-                                             CRegistryResultData ( void )
+                                             CRegistryResult ( void )
                                              {
                                                 nRows = 0;
                                                 nColumns = 0;
                                              }
-    std::vector < SString >                  ColNames;
-    std::list < CRegistryResultRow >         Data;
+    vector < string >                        ColNames;
+    vector < vector<CRegistryResultCell> >   Data;
     int                                      nRows;
     int                                      nColumns;
-
-    CRegistryResultIterator begin( void ) const
-    {
-        return Data.begin();
-    }
-    CRegistryResultIterator end( void ) const
-    {
-        return Data.end();
-    }
 };
 
 #endif

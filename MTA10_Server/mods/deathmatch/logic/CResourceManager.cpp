@@ -20,8 +20,6 @@
 // new resources on demand
 
 #include "StdInc.h"
-#define BLOCKED_DB_FILE_NAME    "fileblock.db"
-#define BLOCKED_DB_TABLE_NAME   "`block_reasons`"
 
 extern CServerInterface* g_pServerInterface;
 
@@ -46,7 +44,6 @@ CResourceManager::CResourceManager ( void )
     m_uiResourceFailedCount = 0;
 
     m_strResourceDirectory.Format ( "%s/resources", g_pServerInterface->GetServerModPath () );
-    LoadBlockedFileReasons();
 }
 
 CResourceManager::~CResourceManager ( void )
@@ -70,10 +67,9 @@ CResourceManager::~CResourceManager ( void )
 // Load the complete list of resources and create their objects
 // DOES NOT reload already loaded resources, we need a special function for lua for that (e.g. reloadResource)
 // Talidan: yes it did, noob.  Not as of r897 - use bRefreshAll to do already loaded resources.
-bool CResourceManager::Refresh ( bool bRefreshAll, const SString& strJustThisResource, bool bShowTiming )
+bool CResourceManager::Refresh ( bool bRefreshAll, const SString& strJustThisResource )
 {
-    CTimeUsMarker < 20 > marker;
-    marker.Set( "Start" );
+    UnloadRemovedResources();
 
     // Make list of potential active resources
     std::map < SString, SResInfo > resInfoMap;
@@ -164,12 +160,6 @@ bool CResourceManager::Refresh ( bool bRefreshAll, const SString& strJustThisRes
         }
     }
 
-    marker.Set( "SearchDir" );
-
-    UnloadRemovedResources();
-
-    marker.Set( "UnloadRemoved" );
-
     // Process potential resource list
     for ( std::map < SString, SResInfo >::const_iterator iter = resInfoMap.begin () ; iter != resInfoMap.end () ; ++iter )
     {
@@ -192,11 +182,8 @@ bool CResourceManager::Refresh ( bool bRefreshAll, const SString& strJustThisRes
         }
     }
 
-    marker.Set( "AddNew" );
 
     CheckResourceDependencies();
-
-    marker.Set( "CheckDep" );
 
     // Print important errors
     for ( std::map < SString, SResInfo >::const_iterator iter = resInfoMap.begin () ; iter != resInfoMap.end () ; ++iter )
@@ -221,7 +208,6 @@ bool CResourceManager::Refresh ( bool bRefreshAll, const SString& strJustThisRes
         }
     }
 
-    marker.Set( "CheckErrors" );
 
     if ( m_bResourceListChanged )
     {
@@ -229,18 +215,12 @@ bool CResourceManager::Refresh ( bool bRefreshAll, const SString& strJustThisRes
         CLogger::LogPrintf ( "Resources: %d loaded, %d failed\n", m_uiResourceLoadedCount, m_uiResourceFailedCount );
     }
 
-    // CResource::Start() might modify this list
-    while ( !m_resourcesToStartAfterRefresh.empty() )
+    list < CResource* > ::iterator iter = m_resourcesToStartAfterRefresh.begin ();
+    for ( ; iter != m_resourcesToStartAfterRefresh.end (); iter++ )
     {
-        CResource* pResource = m_resourcesToStartAfterRefresh.front();
-        m_resourcesToStartAfterRefresh.pop_front();
-        pResource->Start();
+        (*iter)->Start();
     }
-
-    marker.Set( "StartChanged" );
-
-    if ( bShowTiming )
-        CLogger::LogPrintf( "Timing info: %s\n", *marker.GetString() );
+    m_resourcesToStartAfterRefresh.clear();
 
     s_bNotFirstTime = true;
 
@@ -303,7 +283,7 @@ void CResourceManager::CheckResourceDependencies ( void )
     }
 }
 
-void CResourceManager::ListResourcesLoaded ( const SString& strListType )
+void CResourceManager::ListResourcesLoaded ( void )
 {
     unsigned int uiCount = 0;
     unsigned int uiFailedCount = 0;
@@ -317,24 +297,17 @@ void CResourceManager::ListResourcesLoaded ( const SString& strListType )
         {
             if ( res->IsActive() )
             {
-                if ( strListType == "running" || strListType == "all" )
-                    CLogger::LogPrintf ( "%-20.20s   RUNNING   (%d dependents)\n", res->GetName().c_str(), res->GetDependentCount() );
-                
+                CLogger::LogPrintf ( "%-20.20s   RUNNING   (%d dependents)\n", res->GetName().c_str(), res->GetDependentCount() );
                 uiRunningCount++;
             }
             else
-            {
-                if ( strListType == "stopped" || strListType == "all" )
-                    CLogger::LogPrintf ( "%-20.20s   STOPPED   (%d files)\n", res->GetName().c_str(), res->GetFileCount() );
-            }
-            uiCount++;
+                CLogger::LogPrintf ( "%-20.20s   STOPPED   (%d files)\n", res->GetName().c_str(), res->GetFileCount() );
+            uiCount ++;
         }
         else
         {
-            if ( strListType == "failed" || strListType == "all" )
-                CLogger::LogPrintf ( "%-20.20s   FAILED    (see info command for reason)\n", res->GetName().c_str () );
-
-            uiFailedCount++;
+            CLogger::LogPrintf ( "%-20.20s   FAILED    (see info command for reason)\n", res->GetName().c_str () );
+            uiFailedCount ++;
         }
     }
     CLogger::LogPrintf ( "Resources: %d loaded, %d failed, %d running\n", uiCount, uiFailedCount, uiRunningCount );
@@ -348,7 +321,7 @@ void CResourceManager::UnloadRemovedResources ( void )
     string strPath;
     for ( ; iter != m_resources.end (); iter++ )
     {
-        if ( (*iter)->HasGoneAway() )
+        if ( ! (*iter)->GetFilePath ( "meta.xml", strPath ) )
         {
             if ( (*iter)->IsActive() )
                 CLogger::ErrorPrintf ( "Resource '%s' has been removed while running! Stopping resource.\n", (*iter)->GetName().c_str () );
@@ -438,7 +411,8 @@ CResource * CResourceManager::Load ( bool bIsZipped, const char * szAbsPath, con
             m_resourcesToStartAfterRefresh.push_back ( loadedResource );
         if ( s_bNotFirstTime )
             CLogger::LogPrintf("New resource '%s' loaded\n", loadedResource->GetName().c_str () );
-        loadedResource->SetNetID ( GenerateID () );
+        unsigned short usID = GenerateID ();
+        loadedResource->SetNetID ( usID );
         AddResourceToLists ( loadedResource );
         m_bResourceListChanged = true;
     }
@@ -465,38 +439,23 @@ CResource* CResourceManager::GetResourceFromScriptID ( uint uiScriptID )
 // Get net id for resource. (0xFFFF is never used)
 unsigned short CResourceManager::GenerateID ( void )
 {
-    static bool bHasWrapped = false;
-
-    m_usNextNetId++;
-    if ( m_usNextNetId == 0xFFFF )
+    // Create a map of all used IDs
+    map < unsigned short, bool > idMap;
+    list < CResource* > ::const_iterator iter = m_resources.begin ();
+    for ( ; iter != m_resources.end (); iter++ )
     {
-        m_usNextNetId++;
-        bHasWrapped = true;
+        idMap[ ( *iter )->GetNetID () ] = true;
     }
-
-    // If id has not wrapped round yet, we don't have to check for clashes
-    if ( !bHasWrapped )
-        return m_usNextNetId;
 
     // Find an unused ID
     for ( unsigned short i = 0 ; i < 0xFFFE ; i++ )
     {
-        bool bFound = false;
-        for ( list < CResource* > ::const_iterator iter = m_resources.begin () ; iter != m_resources.end (); iter++ )
-        {
-            if ( ( *iter )->GetNetID () == m_usNextNetId )
-            {
-                bFound = true;
-                break;
-            }
-        }
-
-        if ( !bFound )
-            return m_usNextNetId;
-
         m_usNextNetId++;
         if ( m_usNextNetId == 0xFFFF )
             m_usNextNetId++;
+
+        if ( idMap.find ( m_usNextNetId ) == idMap.end () )
+            return m_usNextNetId;
     }
 
     assert ( 0 && "End of world" );
@@ -506,21 +465,11 @@ unsigned short CResourceManager::GenerateID ( void )
 
 CResource* CResourceManager::GetResourceFromNetID ( unsigned short usNetID )
 {
-    CResource* pResource = MapFindRef( m_NetIdResourceMap, usNetID );
-    if ( pResource )
-    {
-        assert( pResource->GetNetID() == usNetID );
-        return pResource;
-    }
-
     list < CResource* > ::const_iterator iter = m_resources.begin ();
     for ( ; iter != m_resources.end (); iter++ )
     {
         if ( ( *iter )->GetNetID() == usNetID )
-        {
-            assert( 0 );    // Should be in map
             return ( *iter );
-        }
     }
     return NULL;
 }
@@ -572,14 +521,12 @@ void CResourceManager::AddResourceToLists ( CResource* pResource )
     assert ( !m_resources.Contains ( pResource ) );
     assert ( !MapContains ( m_NameResourceMap, strResourceNameKey ) );
     assert ( !MapContains ( m_ResourceLuaStateMap, pResource ) );
-    assert ( !MapContains ( m_NetIdResourceMap, pResource->GetNetID() ) );
 
     m_resources.push_back ( pResource );
 
     CLuaMain* pLuaMain = pResource->GetVirtualMachine ();
     assert ( !pLuaMain );
     MapSet ( m_NameResourceMap, strResourceNameKey, pResource );
-    MapSet ( m_NetIdResourceMap, pResource->GetNetID(), pResource );
 }
 
 //
@@ -591,10 +538,8 @@ void CResourceManager::RemoveResourceFromLists ( CResource* pResource )
 
     assert ( m_resources.Contains ( pResource ) );
     assert ( MapContains ( m_NameResourceMap, strResourceNameKey ) );
-    assert ( MapContains ( m_NetIdResourceMap, pResource->GetNetID() ) );
     m_resources.remove ( pResource );
     MapRemove ( m_NameResourceMap, strResourceNameKey );
-    MapRemove ( m_NetIdResourceMap, pResource->GetNetID() );
 }
 
 
@@ -617,13 +562,6 @@ CResource* CResourceManager::GetResourceFromLuaState ( lua_State* luaVM )
     return NULL;
 }
 
-SString CResourceManager::GetResourceName ( lua_State* luaVM )
-{
-    CResource* pResource = GetResourceFromLuaState( luaVM );
-    if ( pResource )
-        return pResource->GetName();
-    return "";
-}
 
 bool CResourceManager::IsAResourceElement ( CElement* pElement )
 {
@@ -703,10 +641,7 @@ bool CResourceManager::Reload ( CResource* pResource )
         m_bResourceListChanged = true;
 
         // Generate a new ID for it
-        assert ( MapContains ( m_NetIdResourceMap, pResource->GetNetID() ) );
-        MapRemove( m_NetIdResourceMap, pResource->GetNetID() );
         pResource->SetNetID ( GenerateID () );
-        MapSet( m_NetIdResourceMap, pResource->GetNetID(), pResource );
     }
     else
     {
@@ -889,6 +824,42 @@ void CResourceManager::RemoveFromQueue ( CResource* pResource )
 }
 
 
+bool CResourceManager::Install ( char * szURL, char * szName )
+{
+    if ( IsValidFilePath(szName) )
+    {
+        CTCPImpl * pTCP = new CTCPImpl;
+        pTCP->Initialize ();
+
+        CHTTPRequest * request = new CHTTPRequest ( szURL );
+        CHTTPResponse * response = request->Send ( pTCP );
+        if ( response )
+        {
+            size_t dataLength = response->GetDataLength();
+            if ( dataLength != 0 )
+            {
+                const char* szBuffer = response->GetData ();
+
+                SString strResourceRoot = g_pServerInterface->GetModManager ()->GetAbsolutePath ( "resources" );
+                SString strResourceFileName ( "%s/%s.zip", strResourceRoot.c_str (), szName );
+
+                FILE * file = fopen ( strResourceFileName, "wb" );
+                if ( file )
+                {
+                    fwrite ( szBuffer, dataLength, 1, file );
+                    fclose ( file );
+                    delete pTCP;
+                    return true;
+                }
+            }
+        }
+        delete request;
+        delete pTCP;
+    }
+    return false;
+}
+
+
 /////////////////////////////////
 //
 // CreateResource
@@ -901,19 +872,11 @@ CResource* CResourceManager::CreateResource ( const SString& strNewResourceName,
     // Calculate destination location
     SString strDstAbsPath          = PathJoin ( g_pServerInterface->GetServerModPath (), "resources", strNewOrganizationalPath );
     SString strDstResourceLocation = PathJoin ( strDstAbsPath, strNewResourceName );
-    SString strRelResourceLocation = PathJoin ( strNewOrganizationalPath, strNewResourceName );
 
     // Does the resource name already exist?
     if ( GetResource ( strNewResourceName ) != NULL )
     {
         strOutStatus = SString ( "CreateResource - Could not create '%s' as the resource already exists\n", *strNewResourceName );
-        return NULL;
-    }
-    
-    // Is it a valid path?
-    if ( !IsValidFilePath ( strRelResourceLocation ) || !IsValidOrganizationPath ( strNewOrganizationalPath ) )
-    {
-        strOutStatus = SString ( "CreateResource - Could not create '%s' as the provided path is invalid", *strNewResourceName );
         return NULL;
     }
 
@@ -946,7 +909,6 @@ CResource* CResourceManager::CreateResource ( const SString& strNewResourceName,
 
     // Add the resource and load it
     CResource* pResource = new CResource ( this, false, strDstAbsPath, strNewResourceName );
-    pResource->SetNetID ( GenerateID () );
     AddResourceToLists ( pResource );
     return pResource;
 }
@@ -970,7 +932,6 @@ CResource* CResourceManager::CopyResource ( CResource* pSourceResource, const SS
     SString strDstOrganizationalPath = strNewOrganizationalPath.empty () ? strSrcOrganizationalPath : strNewOrganizationalPath;
     SString strDstAbsPath          = PathJoin ( g_pServerInterface->GetServerModPath (), "resources", strDstOrganizationalPath );
     SString strDstResourceLocation = PathJoin ( strDstAbsPath, strNewResourceName );
-    SString strRelResourceLocation = PathJoin ( strDstOrganizationalPath, strNewResourceName );
 
     // Is the source resource loaded
     if ( !pSourceResource->IsLoaded () )
@@ -990,13 +951,6 @@ CResource* CResourceManager::CopyResource ( CResource* pSourceResource, const SS
     if ( FileExists ( strDstResourceLocation ) || DirectoryExists ( strDstResourceLocation ) )
     {
         strOutStatus = SString ( "Could not copy '%s' as the file/directory '%s' already exists\n", *strSrcResourceName, *strNewResourceName );
-        return NULL;
-    }
-   
-    // Is it a valid path?
-    if ( !IsValidFilePath ( strRelResourceLocation ) || !IsValidOrganizationPath ( strDstOrganizationalPath ) )
-    {
-        strOutStatus = SString ( "Could not copy '%s' as the provided path is invalid", *strSrcResourceName );
         return NULL;
     }
 
@@ -1079,8 +1033,6 @@ CResource* CResourceManager::RenameResource ( CResource* pSourceResource, const 
     SString strDstOrganizationalPath = strNewOrganizationalPath.empty () ? strSrcOrganizationalPath : strNewOrganizationalPath;
     SString strDstAbsPath          = PathJoin ( g_pServerInterface->GetServerModPath (), "resources", strDstOrganizationalPath );
     SString strDstResourceLocation = PathJoin ( strDstAbsPath, strNewResourceName );
-    SString strRelResourceLocation = PathJoin ( strDstOrganizationalPath, strNewResourceName );
-
     if ( bIsZip )
         strDstResourceLocation = strDstResourceLocation.TrimEnd ( "\\" ).TrimEnd ( "/" ) + ".zip";
 
@@ -1102,13 +1054,6 @@ CResource* CResourceManager::RenameResource ( CResource* pSourceResource, const 
     if ( FileExists ( strDstResourceLocation ) || DirectoryExists ( strDstResourceLocation ) )
     {
         strOutStatus = SString ( "Could not rename to '%s' as the file/directory name already exists\n", *strNewResourceName );
-        return NULL;
-    }
-
-    // Is it a valid path?
-    if ( !IsValidFilePath ( strRelResourceLocation ) || !IsValidOrganizationPath ( strDstOrganizationalPath ) )
-    {
-        strOutStatus = SString ( "Could not rename to '%s' as the provided path is invalid", *strNewResourceName );
         return NULL;
     }
 
@@ -1308,7 +1253,7 @@ void CResourceManager::ReevaluateMinClientRequirement ( void )
 {
     // Calc highest requirement
     m_strMinClientRequirement = "";
-    for ( CFastHashMap < CResource*, SString >::iterator iter = m_MinClientRequirementMap.begin () ; iter != m_MinClientRequirementMap.end () ; ++iter )
+    for ( std::map < CResource*, SString >::iterator iter = m_MinClientRequirementMap.begin () ; iter != m_MinClientRequirementMap.end () ; ++iter )
         if ( iter->second > m_strMinClientRequirement )
             m_strMinClientRequirement = iter->second;
 
@@ -1358,7 +1303,7 @@ void CResourceManager::RemoveSyncMapElementDataOption ( CResource* pResource )
 void CResourceManager::ReevaluateSyncMapElementDataOption ( void )
 {
     bool bSyncMapElementData = true;
-    for ( CFastHashMap < CResource*, bool >::iterator iter = m_SyncMapElementDataOptionMap.begin () ; iter != m_SyncMapElementDataOptionMap.end () ; ++iter )
+    for ( std::map < CResource*, bool >::iterator iter = m_SyncMapElementDataOptionMap.begin () ; iter != m_SyncMapElementDataOptionMap.end () ; ++iter )
     {
         if ( iter->second )
         {
@@ -1377,115 +1322,4 @@ void CResourceManager::ReevaluateSyncMapElementDataOption ( void )
     // Log change
     if ( bBefore != bAfter )
         CLogger::LogPrintf ( SString ( "SyncMapElementData is now %s\n", bAfter ? "enabled" : "disabled" ) );
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// CResourceManager::LoadBlockedFileReasons
-//
-// Load blocked file hashes from database
-//
-/////////////////////////////////////////////////////////////////////////////
-void CResourceManager::LoadBlockedFileReasons( void )
-{
-    CDatabaseManager* pDatabaseManager = g_pGame->GetDatabaseManager();
-    SString strDatabaseFilename = PathJoin ( g_pGame->GetConfig()->GetSystemDatabasesPath(), BLOCKED_DB_FILE_NAME );
-    SDbConnectionId hDbConnection = pDatabaseManager->Connect( "sqlite", strDatabaseFilename );
-
-    CDbJobData* pJobData = pDatabaseManager->QueryStartf( hDbConnection, "SELECT `hash`,`reason` from " BLOCKED_DB_TABLE_NAME );
-    pDatabaseManager->QueryPoll( pJobData, -1 );
-    CRegistryResult& result = pJobData->result.registryResult;
-
-    if ( result->nRows > 0 && result->nColumns >= 2 )
-    {
-        m_BlockedFileReasonMap.clear();
-        for ( CRegistryResultIterator iter = result->begin() ; iter != result->end() ; ++iter )
-        {
-            const CRegistryResultRow& row = *iter;
-            SString strFileHash = (const char*)row[0].pVal;
-            SString strReason = (const char*)row[1].pVal;
-            MapSet( m_BlockedFileReasonMap, strFileHash, strReason );
-        }
-    }
-    pDatabaseManager->Disconnect( hDbConnection );
-
-    // Hard coded initial block item
-    AddBlockedFileReason( "5A5FD6E08D503A125C81BA26594B416A", "Malicious" );
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// CResourceManager::SaveBlockedFileReasons
-//
-// Save blocked file hashes to database
-//
-/////////////////////////////////////////////////////////////////////////////
-void CResourceManager::SaveBlockedFileReasons( void )
-{
-    CDatabaseManager* pDatabaseManager = g_pGame->GetDatabaseManager ();
-    SString strDatabaseFilename = PathJoin( g_pGame->GetConfig()->GetSystemDatabasesPath(), BLOCKED_DB_FILE_NAME );
-    SDbConnectionId hDbConnection = pDatabaseManager->Connect( "sqlite", strDatabaseFilename );
-
-    pDatabaseManager->Execf ( hDbConnection, "DROP TABLE " BLOCKED_DB_TABLE_NAME );
-    pDatabaseManager->Execf ( hDbConnection, "CREATE TABLE IF NOT EXISTS " BLOCKED_DB_TABLE_NAME " (`hash` TEXT,`reason` TEXT)" );
-
-    for ( std::map < SString, SString >::iterator iter = m_BlockedFileReasonMap.begin() ; iter != m_BlockedFileReasonMap.end() ; iter++ )
-    {
-        pDatabaseManager->Execf( hDbConnection, 
-                                            "INSERT INTO " BLOCKED_DB_TABLE_NAME " (`hash`,`reason`) VALUES (?,?)"
-                                            , SQLITE_TEXT, *iter->first
-                                            , SQLITE_TEXT, *iter->second
-                                            );
-    }
-    pDatabaseManager->Disconnect( hDbConnection );
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// CResourceManager::ClearBlockedFileReason
-//
-// Remove reason a resource file should be blocked from loading.
-// Empty input means clear all.
-//
-/////////////////////////////////////////////////////////////////////////////
-void CResourceManager::ClearBlockedFileReason( const SString& strFileHash )
-{
-    if ( strFileHash.empty() )
-        m_BlockedFileReasonMap.clear();
-    else
-        MapRemove( m_BlockedFileReasonMap, strFileHash );
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// CResourceManager::AddBlockedFileReason
-//
-// Set reason a resource file should be blocked from loading.
-//
-/////////////////////////////////////////////////////////////////////////////
-void CResourceManager::AddBlockedFileReason( const SString& strFileHash, const SString& strReason )
-{
-    MapSet( m_BlockedFileReasonMap, strFileHash, strReason );
-}
-
-
-/////////////////////////////////////////////////////////////////////////////
-//
-// CResourceManager::GetBlockedFileReason
-//
-// Return reason a resource file should be blocked from loading.
-// Empty string means no block.
-//
-/////////////////////////////////////////////////////////////////////////////
-SString CResourceManager::GetBlockedFileReason( const SString& strFileHash )
-{
-    SString* pstrReason = MapFind( m_BlockedFileReasonMap, strFileHash );
-    if ( pstrReason )
-        return *pstrReason;
-
-    return "";
 }

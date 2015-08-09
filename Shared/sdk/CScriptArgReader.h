@@ -28,11 +28,11 @@ public:
         m_iIndex = 1;
         m_iErrorIndex = 0;
         m_bError = false;
+        m_bIgnoreMismatchMatch = false;
         m_pPendingFunctionOutValue = NULL;
         m_pPendingFunctionIndex = -1;
         m_bResolvedErrorGotArgumentTypeAndValue = false;
         m_iErrorGotArgumentType = 0;
-        m_bHasCustomMessage = false;
     }
 
     ~CScriptArgReader ( void )
@@ -40,498 +40,140 @@ public:
         assert ( !IsReadFunctionPending () );
     }
 
+
     //
     // Read next number
     //
     template < class T >
-    void ReadNumber ( T& outValue )
+    bool ReadNumber ( T& outValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TNUMBER || iArgument == LUA_TSTRING )
         {
-            lua_Number number = lua_tonumber(m_luaVM, m_iIndex++);
-
-            if (isnan(number))
-            {
-                SetCustomError("Expected number, got NaN", "Bad argument");
-                return;
-            }
-
-            outValue = static_cast < T > (number);
-            return;
+            outValue = static_cast < T > ( lua_tonumber ( m_luaVM, m_iIndex++ ) );
+            return true;
         }
 
         outValue = 0;
         SetTypeError ( "number" );
         m_iIndex++;
+        return false;
     }
 
     //
     // Read next number, using default if needed
     //
     template < class T, class U >
-    void ReadNumber ( T& outValue, const U& defaultValue )
+    bool ReadNumber ( T& outValue, const U& defaultValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TNUMBER || iArgument == LUA_TSTRING )
         {
-            lua_Number number = lua_tonumber(m_luaVM, m_iIndex++);
-
-            if (isnan(number))
-            {
-                SetCustomError("Expected number, got NaN", "Bad argument");
-                return;
-            }
-
-            outValue = static_cast < T > ( number );
-
-            return;
+            outValue = static_cast < T > ( lua_tonumber ( m_luaVM, m_iIndex++ ) );
+            return true;
         }
         else
-        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL )
+        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL || m_bIgnoreMismatchMatch )
         {
             outValue = static_cast < T > ( defaultValue );
-            m_iIndex++;
-            return;
+            return false;
         }
 
         outValue = 0;
         SetTypeError ( "number" );
         m_iIndex++;
+        return false;
     }
 
-
-    //
-    // Read next Vector2d
-    //
-    void ReadVector2D ( CVector2D& outValue )
-    {
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
-        {
-            ReadNumber ( outValue.fX );
-            ReadNumber ( outValue.fY );
-            return;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            if ( NextIsUserDataOfType < CLuaVector2D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector2D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector2D();
-                return; // Error set in ReadUserData
-            }
-            else if ( NextIsUserDataOfType < CLuaVector3D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector3D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector2D();
-                return; // Error set in ReadUserData
-            }
-            else if ( NextIsUserDataOfType < CLuaVector4D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector4D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector2D();
-                return; // Error set in ReadUserData
-            }
-        }
-
-        outValue = CVector2D();
-        SetTypeError ( "vector2" );
-        m_iIndex++;
-    }
-
-    //
-    // Read next Vector2d, using default if needed
-    //
-    void ReadVector2D ( CVector2D& outValue, const CVector2D& vecDefault )
-    {
-        outValue = vecDefault;
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
-        {
-            ReadNumber ( outValue.fX, vecDefault.fX );
-            ReadNumber ( outValue.fY, vecDefault.fY );
-            return;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            if ( NextIsUserDataOfType < CLuaVector2D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector2D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector2D();
-                return; // Error set in ReadUserData
-            }
-            else if ( NextIsUserDataOfType < CLuaVector3D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector3D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector2D();
-                return; // Error set in ReadUserData
-            }
-            else if ( NextIsUserDataOfType < CLuaVector4D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector4D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector2D();
-                return; // Error set in ReadUserData
-            }
-        }
-        else if ( iArgument == LUA_TNIL || iArgument == LUA_TNONE )
-        {
-            m_iIndex++;
-            return;
-        }
-
-        SetTypeError ( "vector2" );
-        m_iIndex++;
-    }
-
-    //
-    // Read next Vector3d
-    //
-    void ReadVector3D ( CVector& outValue )
-    {
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
-        {
-            ReadNumber ( outValue.fX );
-            ReadNumber ( outValue.fY );
-            ReadNumber ( outValue.fZ );
-            return;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            if ( NextIsUserDataOfType < CLuaVector3D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector3D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector();
-                return; // Error set in ReadUserData
-            }
-            else if ( NextIsUserDataOfType < CLuaVector4D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector4D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector4D();
-                return; // Error set in ReadUserData
-            }
-        }
-
-        outValue = CVector();
-        SetTypeError ( "vector3" );
-        m_iIndex++;
-    }
-
-    //
-    // Read next Vector3d, using default if needed
-    //
-    void ReadVector3D ( CVector& outValue, const CVector& vecDefault )
-    {
-        outValue = vecDefault;
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
-        {
-            ReadNumber ( outValue.fX, vecDefault.fX );
-            ReadNumber ( outValue.fY, vecDefault.fY );
-            ReadNumber ( outValue.fZ, vecDefault.fZ );
-            return;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            if ( NextIsUserDataOfType < CLuaVector3D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector3D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector();
-                return; // Error set in ReadUserData
-            }
-            else if ( NextIsUserDataOfType < CLuaVector4D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector4D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector4D();
-                return; // Error set in ReadUserData
-            }
-        }
-        else if ( iArgument == LUA_TNIL || iArgument == LUA_TNONE )
-        {
-            m_iIndex++;
-            return;
-        }
-
-        SetTypeError ( "vector3" );
-        m_iIndex++;
-    }
-
-    //
-    // Read next Vector4d
-    //
-    void ReadVector4D ( CVector4D& outValue )
-    {
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
-        {
-            ReadNumber ( outValue.fX );
-            ReadNumber ( outValue.fY );
-            ReadNumber ( outValue.fZ );
-            ReadNumber ( outValue.fW );
-            return;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            if ( NextIsUserDataOfType < CLuaVector4D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector4D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector4D();
-                return; // Error set in ReadUserData
-            }
-        }
-
-        outValue = CVector4D();
-        SetTypeError ( "vector4" );
-        m_iIndex++;
-    }
-
-    //
-    // Read next Vector4d, using default if needed
-    //
-    void ReadVector4D ( CVector4D& outValue, const CVector4D& vecDefault )
-    {
-        outValue = vecDefault;
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
-        {
-            ReadNumber ( outValue.fX, vecDefault.fX );
-            ReadNumber ( outValue.fY, vecDefault.fY );
-            ReadNumber ( outValue.fZ, vecDefault.fZ );
-            ReadNumber ( outValue.fW, vecDefault.fW );
-            return;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            if ( NextIsUserDataOfType < CLuaVector4D > ( ) )
-            {
-                // we don't pass around the pointer as it may get destroyed any time
-                CLuaVector4D* pVector = NULL;
-                ReadUserData ( pVector );
-                if ( pVector )
-                {
-                    outValue = *pVector;
-                    return;
-                }
-                outValue = CVector4D();
-                return; // Error set in ReadUserData
-            }
-        }
-        else if ( iArgument == LUA_TNIL || iArgument == LUA_TNONE )
-        {
-            m_iIndex++;
-            return;
-        }
-
-        SetTypeError ( "vector4" );
-        m_iIndex++;
-    }
-
-    //
-    // Read next Matrix
-    //
-    void ReadMatrix ( CMatrix& outValue )
-    {
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
-        {
-            ReadNumber ( outValue.vFront.fX );
-            ReadNumber ( outValue.vFront.fY );
-            ReadNumber ( outValue.vFront.fZ );
-            ReadNumber ( outValue.vPos.fX );
-            ReadNumber ( outValue.vPos.fY );
-            ReadNumber ( outValue.vPos.fZ );
-            ReadNumber ( outValue.vRight.fX );
-            ReadNumber ( outValue.vRight.fY );
-            ReadNumber ( outValue.vRight.fZ );
-            ReadNumber ( outValue.vUp.fX );
-            ReadNumber ( outValue.vUp.fY );
-            ReadNumber ( outValue.vUp.fZ );
-            return;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            // we don't pass around the pointer as it may get destroyed any time
-            CLuaMatrix* pMatrix = NULL;
-            ReadUserData ( pMatrix );
-            if ( pMatrix )
-            {
-                outValue = *pMatrix;
-                return;
-            }
-            outValue = CMatrix();
-            return; // Error set in ReadUserData
-        }
-
-        outValue = CMatrix();
-        SetTypeError ( "matrix" );
-        m_iIndex++;
-    }
 
     //
     // Read next bool
     //
-    void ReadBool ( bool& bOutValue )
+    bool ReadBool ( bool& bOutValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TBOOLEAN )
         {
             bOutValue = lua_toboolean ( m_luaVM, m_iIndex++ ) ? true : false;
-            return;
+            return true;
         }
 
         bOutValue = false;
         SetTypeError ( "bool" );
         m_iIndex++;
+        return false;
     }
 
     //
     // Read next bool, using default if needed
     //
-    void ReadBool ( bool& bOutValue, const bool bDefaultValue )
+    bool ReadBool ( bool& bOutValue, const bool bDefaultValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TBOOLEAN )
         {
             bOutValue = lua_toboolean ( m_luaVM, m_iIndex++ ) ? true : false;
-            return;
+            return true;
         }
         else
-        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL )
+        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL || m_bIgnoreMismatchMatch )
         {
             bOutValue = bDefaultValue;
-            m_iIndex++;
-            return;
+            return false;
         }
 
         bOutValue = false;
         SetTypeError ( "bool" );
         m_iIndex++;
+        return false;
     }
 
 
     //
     // Read next string, using default if needed
     //
-    void ReadString ( SString& outValue, const char* defaultValue = NULL )
+    bool ReadString ( SString& outValue, const char* defaultValue = NULL )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
         {
-            uint uiLength = lua_strlen ( m_luaVM, m_iIndex );
-            outValue.assign( lua_tostring ( m_luaVM, m_iIndex++ ), uiLength );
-            return;
+            outValue = lua_tostring ( m_luaVM, m_iIndex++ );
+            return true;
         }
         else
-        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL )
+        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL || m_bIgnoreMismatchMatch )
         {
             if ( defaultValue )
             {
                 outValue = defaultValue;              
-                m_iIndex++;
-                return;
+                return false;
             }
         }
 
         outValue = "";
         SetTypeError ( "string" );
         m_iIndex++;
+        return false;
     }
 
 
     //
     // Read next string as a string reference
     //
-    void ReadCharStringRef ( SCharStringRef& outValue )
+    bool ReadCharStringRef ( SCharStringRef& outValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TSTRING )
         {
             outValue.pData = (char*)lua_tolstring ( m_luaVM, m_iIndex++, &outValue.uiSize );
-            return;
+            return true;
         }
 
         outValue.pData = NULL;
         outValue.uiSize = 0;
         SetTypeError ( "string" );
         m_iIndex++;
+        return false;
     }
 
 
@@ -539,7 +181,7 @@ public:
     // Read next string as an enum
     //
     template < class T >
-    void ReadEnumString ( T& outValue )
+    bool ReadEnumString ( T& outValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TSTRING )
@@ -548,13 +190,14 @@ public:
             if ( StringToEnum ( strValue, outValue ) )
             {
                 m_iIndex++;
-                return;
+                return true;
             }
         }
 
         outValue = (T)0;
         SetTypeError ( GetEnumTypeName ( outValue ) );
         m_iIndex++;
+        return false;
     }
 
 
@@ -562,7 +205,7 @@ public:
     // Read next string as an enum, using default if needed
     //
     template < class T >
-    void ReadEnumString ( T& outValue, const T& defaultValue )
+    bool ReadEnumString ( T& outValue, const T& defaultValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TSTRING )
@@ -571,20 +214,20 @@ public:
             if ( StringToEnum ( strValue, outValue ) )
             {
                 m_iIndex++;
-                return;
+                return true;
             }
         }
         else
-        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL )
+        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL || m_bIgnoreMismatchMatch )
         {
             outValue = defaultValue;
-            m_iIndex++;
-            return;
+            return false;
         }
 
         outValue = (T)0;
         SetTypeError ( GetEnumTypeName ( outValue ) );
         m_iIndex++;
+        return false;
     }
 
 
@@ -592,7 +235,7 @@ public:
     // Read next string as a comma separated list of enums, using default if needed
     //
     template < class T >
-    void ReadEnumStringList ( std::vector < T >& outValueList, const SString& strDefaultValue )
+    bool ReadEnumStringList ( std::vector < T >& outValueList, const SString& strDefaultValue )
     {
         outValueList.clear ();
         int iArgument = lua_type ( m_luaVM, m_iIndex );
@@ -602,7 +245,7 @@ public:
             strValue = lua_tostring ( m_luaVM, m_iIndex );
         }
         else
-        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL )
+        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL || m_bIgnoreMismatchMatch )
         {
             strValue = strDefaultValue;
         }
@@ -611,7 +254,7 @@ public:
             T outValue;
             SetTypeError ( GetEnumTypeName ( outValue ) );
             m_iIndex++;
-            return;
+            return false;
         }
 
         // Parse each part of the string
@@ -634,13 +277,14 @@ public:
 
                 if ( iArgument == LUA_TSTRING )
                     m_iIndex++;
-                return;
+                return false;
             }
         }
 
         // Success
         if ( iArgument == LUA_TSTRING )
             m_iIndex++;
+        return true;
     }
 
 
@@ -648,7 +292,7 @@ public:
     // Read next string or number as an enum
     //
     template < class T >
-    void ReadEnumStringOrNumber ( T& outValue )
+    bool ReadEnumStringOrNumber ( T& outValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument == LUA_TSTRING )
@@ -657,127 +301,83 @@ public:
             if ( StringToEnum ( strValue, outValue ) )
             {
                 m_iIndex++;
-                return;
+                return true;
             }
 
             // If will be coercing a string to an enum, make sure string contains only digits
-            size_t uiPos = strValue.find_first_not_of ( "0123456789" );
+            uint uiPos = strValue.find_first_not_of ( "0123456789" );
             if ( uiPos != SString::npos || strValue.empty () )
                 iArgument = LUA_TNONE;  //  Force error
         }
-
-        if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
+        if ( iArgument == LUA_TNUMBER || iArgument == LUA_TSTRING )
         {
             outValue = static_cast < T > ( (int)lua_tonumber ( m_luaVM, m_iIndex ) );
             if ( EnumValueValid ( outValue ) )
             {
                 m_iIndex++;
-                return;
+                return true;
             }
         }
 
         outValue = (T)0;
         SetTypeError ( GetEnumTypeName ( outValue ) );
         m_iIndex++;
+        return false;
     }
 
 
-protected:
     //
-    // Read next userdata, using rules and stuff
+    // Read next userdata, using default if needed
     //
     template < class T >
-    void InternalReadUserData ( bool bAllowNilResult, T*& outValue, bool bHasDefaultValue, T* defaultValue = (T*)-2 )
+    bool ReadUserData ( T*& outValue, T* defaultValue, bool bArgCanBeNil = false, bool bDefaultCanBeNil = false )
     {
-        outValue = NULL;
         int iArgument = lua_type ( m_luaVM, m_iIndex );
 
         if ( iArgument == LUA_TLIGHTUSERDATA )
         {
-            outValue = (T*)UserDataCast < T > ( (T*)0, lua_touserdata ( m_luaVM, m_iIndex ), m_luaVM );
-            if ( outValue )
-            {
-                m_iIndex++;
-                return;
-            }
+            outValue = (T*)UserDataCast < T > ( (T*)0, lua_touserdata ( m_luaVM, m_iIndex++ ), m_luaVM );
+            if ( outValue || bArgCanBeNil )
+                return true;
+
+            outValue = NULL;
+            SetTypeError ( GetClassTypeName ( (T*)0 ), m_iIndex - 1 );
+            return false;
         }
         else if ( iArgument == LUA_TUSERDATA )
         {
-            outValue = (T*)UserDataCast < T > ( (T*)0, * ( ( void** ) lua_touserdata ( m_luaVM, m_iIndex ) ), m_luaVM );
-            if ( outValue )
-            {
-                m_iIndex++;
-                return;
-            }
-        }
-        else
-        if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL )
-        {
-            if ( bHasDefaultValue )
-                outValue = defaultValue;
-            else
-                outValue = NULL;
+            outValue = (T*)UserDataCast < T > ( (T*)0, * ( ( void** ) lua_touserdata ( m_luaVM, m_iIndex++ ) ), m_luaVM );
+            if ( outValue || bArgCanBeNil )
+                return true;
 
-            if ( outValue || bAllowNilResult )
+            outValue = NULL;
+            SetTypeError ( GetClassTypeName ( (T*)0 ), m_iIndex - 1 );
+            return false;
+        }
+        else if ( iArgument == LUA_TNONE || m_bIgnoreMismatchMatch || ( iArgument == LUA_TNIL && bArgCanBeNil ) )
+        {
+            if ( defaultValue != (T*)-1 )
             {
-                m_iIndex++;
-                return;
+                outValue = defaultValue;
+                if ( outValue || bDefaultCanBeNil )
+                    return false;
             }
         }
 
         outValue = NULL;
         SetTypeError ( GetClassTypeName ( (T*)0 ) );
         m_iIndex++;
-    }
-public:
-
-    //
-    // Read next userdata
-    // Userdata always valid if no error
-    //  * value not userdata - error
-    //  * nil value          - error
-    //  * no arguments left  - error
-    //  * result is NULL     - error
-    //
-    template < class T >
-    void ReadUserData ( T*& outValue )
-    {
-        InternalReadUserData ( false, outValue, false );
+        return false;
     }
 
-    //
-    // Read next userdata, using default if needed
-    // Userdata always valid if no error
-    //  * value not userdata - error
-    //  * nil value          - use defaultValue
-    //  * no arguments left  - use defaultValue
-    //  * result is NULL     - error
-    //
-    template < class T >
-    void ReadUserData ( T*& outValue, T* defaultValue )
-    {
-        InternalReadUserData ( false, outValue, true, defaultValue );
-    }
 
     //
-    // Read next userdata, using NULL default if needed, allowing NULL result
-    // Userdata might be NULL even when no error
-    //  * false              - use NULL (For easier use of function returns as arguments)
-    //  * value not userdata - error
-    //  * nil value          - use NULL
-    //  * no arguments left  - use NULL
+    // Read next userdata, using NULL default or no default
     //
     template < class T >
-    void ReadUserData ( T*& outValue, int*** defaultValue )
+    bool ReadUserData ( T*& outValue, int defaultValue = -1 )
     {
-        assert( defaultValue == NULL );
-        if ( NextIsBool() && !lua_toboolean ( m_luaVM, m_iIndex ) )
-        {
-            outValue = NULL;
-            m_iIndex++;
-            return;
-        }
-        InternalReadUserData ( true, outValue, true, (T*)NULL );
+        return ReadUserData ( outValue, (T*)defaultValue, defaultValue == 0, true );
     }
 
 
@@ -785,46 +385,48 @@ public:
     // Read next wrapped userdata
     //
     template < class T, class U >
-    void ReadUserData ( U*& outValue )
+    bool ReadUserData ( U*& outValue )
     {
-        ReadUserData ( outValue );
-        if ( outValue )
+        if ( ReadUserData ( outValue ) )
         {
             SString strErrorExpectedType;
             if ( CheckWrappedUserDataType < T > ( outValue, strErrorExpectedType ) )
-                return;
+                return true;
             SetTypeError ( strErrorExpectedType, m_iIndex - 1 );
         }
+        return false;
     }
 
 
     //
     // Read CLuaArguments
     //
-    void ReadLuaArguments ( CLuaArguments& outValue )
+    bool ReadLuaArguments ( CLuaArguments& outValue )
     {
         outValue.ReadArguments ( m_luaVM, m_iIndex );
         for ( int i = outValue.Count () ; i > 0 ; i-- )
         {
             m_iIndex++;
         }
+        return true;
     }
 
 
     //
     // Read one CLuaArgument
     //
-    void ReadLuaArgument ( CLuaArgument& outValue )
+    bool ReadLuaArgument ( CLuaArgument& outValue )
     {
         int iArgument = lua_type ( m_luaVM, m_iIndex );
         if ( iArgument != LUA_TNONE )
         {
             outValue.Read ( m_luaVM, m_iIndex++ );
-            return;
+            return true;
         }
 
         SetTypeError ( "argument" );
         m_iIndex++;
+        return false;
     }
 
 
@@ -832,13 +434,13 @@ public:
     // Read a table of userdatas
     //
     template < class T >
-    void ReadUserDataTable ( std::vector < T* >& outList )
+    bool ReadUserDataTable ( std::vector < T* >& outList )
     {
         if ( lua_type ( m_luaVM, m_iIndex ) != LUA_TTABLE )
         {
             SetTypeError ( "table" );
             m_iIndex++;
-            return;
+            return false;
         }
 
         for ( lua_pushnil ( m_luaVM ) ; lua_next ( m_luaVM, m_iIndex ) != 0 ; lua_pop ( m_luaVM, 1 ) )
@@ -860,47 +462,14 @@ public:
                 outList.push_back ( value );
         }
         m_iIndex++;
-    }
-
-
-    //
-    // Read a table of strings
-    //
-    void ReadStringTable ( std::vector < SString >& outList, bool bDefaultEmpty = false )
-    {
-        outList.clear();
-
-        int iArgument = lua_type ( m_luaVM, m_iIndex );
-        if ( iArgument == LUA_TTABLE )
-        {
-            for ( lua_pushnil ( m_luaVM ) ; lua_next ( m_luaVM, m_iIndex ) != 0 ; lua_pop ( m_luaVM, 1 ) )
-            {
-                int iArgument = lua_type ( m_luaVM, -1 );
-                if ( iArgument == LUA_TSTRING || iArgument == LUA_TNUMBER )
-                {
-                    uint uiLength = lua_strlen ( m_luaVM, -1 );
-                    outList.push_back ( SStringX( lua_tostring ( m_luaVM, -1 ), uiLength ) );
-                }
-            }
-            m_iIndex++;
-            return;
-        }
-        else
-        if ( bDefaultEmpty && ( iArgument == LUA_TNONE || iArgument == LUA_TNIL ) )
-        {
-            m_iIndex++;
-            return;
-        }
-
-        SetTypeError ( "table" );
-        m_iIndex++;
+        return true;
     }
 
 
     //
     // Read a function, but don't do it yet due to Lua stack issues
     //
-    void ReadFunction ( CLuaFunctionRef& outValue, int defaultValue = -2 )
+    bool ReadFunction ( CLuaFunctionRef& outValue, int defaultValue = -2 )
     {
         assert ( !m_pPendingFunctionOutValue );
 
@@ -909,30 +478,27 @@ public:
         {
             m_pPendingFunctionOutValue = &outValue;
             m_pPendingFunctionIndex = m_iIndex++;
-            return;
+            return true;
         }
-        else if ( iArgument == LUA_TNONE || iArgument == LUA_TNIL )
+        else
+        if ( defaultValue == LUA_REFNIL )
         {
-            // Only valid default value for function is nil
-            if ( defaultValue == LUA_REFNIL )
-            {
-                outValue = CLuaFunctionRef ();
-                m_iIndex++;
-                return;
-            }
+            outValue = CLuaFunctionRef ();
+            return true;
         }
 
         SetTypeError ( "function", m_iIndex );
         m_iIndex++;
+        return false;
     }
 
     //
     // Call after other arguments have been read
     //
-    void ReadFunctionComplete ( void )
+    bool ReadFunctionComplete ( void )
     {
         if ( !m_pPendingFunctionOutValue )
-            return;
+            return true;
 
         // As we are going to change the stack, save any error info already gotten
         ResolveErrorGotArgumentTypeAndValue ();
@@ -942,11 +508,12 @@ public:
         if ( VERIFY_FUNCTION( *m_pPendingFunctionOutValue ) )
         {
             m_pPendingFunctionIndex = -1;
-            return;
+            return true;
         }
 
         SetTypeError ( "function", m_pPendingFunctionIndex );
         m_pPendingFunctionIndex = -1;
+        return false;
     }
 
     // Debug check
@@ -963,8 +530,7 @@ public:
     bool NextIsNone         ( int iOffset = 0 ) const  { return NextIs ( LUA_TNONE, iOffset ); }
     bool NextIsNil          ( int iOffset = 0 ) const  { return NextIs ( LUA_TNIL, iOffset ); }
     bool NextIsBool         ( int iOffset = 0 ) const  { return NextIs ( LUA_TBOOLEAN, iOffset ); }
-    bool NextIsUserData     ( int iOffset = 0 ) const  { return NextIs ( LUA_TUSERDATA, iOffset ) || NextIsLightUserData ( iOffset ); }
-    bool NextIsLightUserData( int iOffset = 0 ) const  { return NextIs ( LUA_TLIGHTUSERDATA, iOffset ); }
+    bool NextIsUserData     ( int iOffset = 0 ) const  { return NextIs ( LUA_TLIGHTUSERDATA, iOffset ); }
     bool NextIsNumber       ( int iOffset = 0 ) const  { return NextIs ( LUA_TNUMBER, iOffset ); }
     bool NextIsString       ( int iOffset = 0 ) const  { return NextIs ( LUA_TSTRING, iOffset ); }
     bool NextIsTable        ( int iOffset = 0 ) const  { return NextIs ( LUA_TTABLE, iOffset ); }
@@ -985,108 +551,59 @@ public:
         return false;
     }
 
-    template < class T >
-    bool NextIsUserDataOfType ( int iOffset = 0 ) const
-    {
-        int iArgument = lua_type ( m_luaVM, m_iIndex + iOffset );
-        if ( iArgument == LUA_TLIGHTUSERDATA )
-        {
-            if ( UserDataCast < T > ( (T*)0, lua_touserdata ( m_luaVM, m_iIndex + iOffset ), m_luaVM ) )
-                return true;
-        }
-        else if ( iArgument == LUA_TUSERDATA )
-        {
-            if ( UserDataCast < T > ( (T*)0, * ( ( void** ) lua_touserdata ( m_luaVM, m_iIndex + iOffset ) ), m_luaVM ) )
-                return true;
-        }
-        return false;
-    }
-
-    bool NextIsVector4D ( void ) const
-    {
-        return ( NextCouldBeNumber () && NextCouldBeNumber ( 1 ) && NextCouldBeNumber ( 2 )
-            && NextCouldBeNumber ( 3 ) )
-            || NextIsUserDataOfType < CLuaVector4D > ();
-    }
-
-    bool NextIsVector3D ( void ) const
-    {
-        return ( NextCouldBeNumber () && NextCouldBeNumber ( 1 ) && NextCouldBeNumber ( 2 ) )
-            || NextIsUserDataOfType < CLuaVector3D > () ||
-            NextIsUserDataOfType < CLuaVector4D > ();
-    }
-
-    bool NextIsVector2D ( void ) const
-    {
-        return ( NextCouldBeNumber () && NextCouldBeNumber ( 1 ) )
-            || NextIsUserDataOfType < CLuaVector2D > () ||
-            NextIsUserDataOfType < CLuaVector3D > () ||
-            NextIsUserDataOfType <CLuaVector4D> ();
-    }
-
-
 
     //
     // Conditional reads. Default required in case condition is not met.
     //
-    void ReadIfNextIsBool ( bool& bOutValue, const bool bDefaultValue )
+    bool ReadIfNextIsBool ( bool& bOutValue, const bool bDefaultValue )
     {
         if ( NextIsBool () )
-            ReadBool ( bOutValue, bDefaultValue );
-        else
-            bOutValue = bDefaultValue;
+            return ReadBool ( bOutValue, bDefaultValue );
+        bOutValue = bDefaultValue;
+        return false;
     }
 
     template < class T >
-    void ReadIfNextIsUserData ( T*& outValue, T* defaultValue )
+    bool ReadIfNextIsUserData ( T*& outValue, T* defaultValue  )
     {
         if ( NextIsUserData () )
-            ReadUserData ( outValue, defaultValue );
-        else
-            outValue = defaultValue;
+            return ReadUserData ( outValue, defaultValue );
+        outValue = defaultValue;
+        return false;
     }
 
     template < class T, class U >
-    void ReadIfNextIsNumber ( T& outValue, const U& defaultValue )
+    bool ReadIfNextIsNumber ( T& outValue, const U& defaultValue )
     {
         if ( NextIsNumber () )
-            ReadNumber ( outValue, defaultValue );
-        else
-            outValue = defaultValue;
+            return ReadNumber ( outValue, defaultValue );
+        outValue = defaultValue;
+        return false;
     }
 
-    void ReadIfNextIsString ( SString& outValue, const char* defaultValue )
+    bool ReadIfNextIsString ( SString& outValue, const char* defaultValue )
     {
         if ( NextIsString () )
-            ReadString ( outValue, defaultValue );
-        else
-            outValue = defaultValue;
-    }
-
-    template < class T >
-    void ReadIfNextIsEnumString ( T& outValue, const T& defaultValue )
-    {
-        if ( NextIsEnumString ( outValue ) )
-            ReadEnumString ( outValue, defaultValue );
-        else
-            outValue = defaultValue;
+            return ReadString ( outValue, defaultValue );
+        outValue = defaultValue;
+        return false;
     }
 
     template < class T, class U >
-    void ReadIfNextCouldBeNumber ( T& outValue, const U& defaultValue )
+    bool ReadIfNextCouldBeNumber ( T& outValue, const U& defaultValue )
     {
         if ( NextCouldBeNumber () )
-            ReadNumber ( outValue, defaultValue );
-        else
-            outValue = defaultValue;
+            return ReadNumber ( outValue, defaultValue );
+        outValue = defaultValue;
+        return false;
     }
 
-    void ReadIfNextCouldBeString ( SString& outValue, const char* defaultValue )
+    bool ReadIfNextCouldBeString ( SString& outValue, const char* defaultValue )
     {
         if ( NextCouldBeString () )
-            ReadString ( outValue, defaultValue );
-        else
-            outValue = defaultValue;
+            return ReadString ( outValue, defaultValue );
+        outValue = defaultValue;
+        return false;
     }
 
 
@@ -1126,8 +643,8 @@ public:
         if ( !m_bError )
             return "No error";
 
-        if ( m_bHasCustomMessage )
-            return m_strCustomMessage;
+        if ( !m_strErrorMessageOverride.empty () )
+            return m_strErrorMessageOverride;
 
         ResolveErrorGotArgumentTypeAndValue ();
         SString strGotArgumentType  = EnumToString ( (eLuaType)m_iErrorGotArgumentType );
@@ -1140,11 +657,6 @@ public:
         {
 	        // Get name of userdata type
             strGotArgumentType = GetUserDataClassName ( lua_touserdata ( m_luaVM, m_iErrorIndex ), m_luaVM );
-            strGotArgumentValue = "";
-        }
-        else if ( m_iErrorGotArgumentType == LUA_TUSERDATA )
-        {
-            strGotArgumentType = GetUserDataClassName ( * ( ( void** ) lua_touserdata ( m_luaVM, m_iErrorIndex ) ), m_luaVM );
             strGotArgumentValue = "";
         }
 
@@ -1170,11 +682,19 @@ public:
 
         m_bResolvedErrorGotArgumentTypeAndValue = true;
 
-        if ( !m_bHasCustomMessage )
+        if ( m_strErrorMessageOverride.empty () )
         {
             m_iErrorGotArgumentType = lua_type ( m_luaVM, m_iErrorIndex );
             m_strErrorGotArgumentValue = lua_tostring ( m_luaVM, m_iErrorIndex );
         }
+    }
+
+    //
+    // Strict off means mismatches are ignored if they have a default value
+    //
+    void SetStrict ( bool bStrictMode )
+    {
+        m_bIgnoreMismatchMatch = !bStrictMode;
     }
 
     //
@@ -1194,8 +714,7 @@ public:
         {
             m_bError = true;
             m_strErrorCategory = szCategory;
-            m_bHasCustomMessage = true;
-            m_strCustomMessage = szReason;
+            m_strErrorMessageOverride = szReason;
         }
     }
 
@@ -1207,14 +726,7 @@ public:
         return SString ( "%s @ '%s' [%s]", *m_strErrorCategory, lua_tostring ( m_luaVM, lua_upvalueindex ( 1 ) ), *GetErrorMessage () );
     }
 
-    //
-    // Skip n arguments
-    //
-    void Skip ( int n )
-    {
-        m_iIndex += n;
-    }
-
+    bool                    m_bIgnoreMismatchMatch;
     bool                    m_bError;
     int                     m_iErrorIndex;
     SString                 m_strErrorExpectedType;
@@ -1226,7 +738,6 @@ public:
     int                     m_iErrorGotArgumentType;
     SString                 m_strErrorGotArgumentValue;
     SString                 m_strErrorCategory;
-    bool                    m_bHasCustomMessage;
-    SString                 m_strCustomMessage;
+    SString                 m_strErrorMessageOverride;
 
 };

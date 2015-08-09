@@ -11,17 +11,14 @@
 		<Platform
 			Name="Win32"
 		/>
-		<Platform
-			Name="x64"
-		/>
 	</Platforms>
 	<ToolFiles>
 	</ToolFiles>
 	<Configurations>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Release"
+			IntermediateDirectory=".\Release"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -64,6 +61,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Release/"
+				ObjectFile=".\Release/"
+				ProgramDataBaseFileName=".\Release/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -83,123 +83,22 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthread.lib pme.lib pcre3.lib json.lib psapi.lib"
+				AdditionalDependencies="lua5.1.lib wsock32.lib sqlite3.lib zlib_2008.lib ehs_2008.lib pthreadVC2.lib pme_2008.lib pcre_2008.lib json2008.lib"
 				OutputFile="C:\Program Files\MTA San Andreas 1.4\server/mods/deathmatch/deathmatch.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/x86/$(ConfigurationName);&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="logic/lib;../../../vendor/lua/lib;&quot;../../../vendor/json-c/lib&quot;;../../../vendor/ehs/lib;../../../vendor/pme/lib;../../../vendor/pcre/lib;../../../vendor/pthreads/lib;../../../vendor/sqlite/lib;../../../vendor/zlib/lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				GenerateMapFile="true"
+				MapFileName="../../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetFileName).lib"
+				ImportLibrary=".\Release/client.lib"
 				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				ExcludedFromBuild="false"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Release|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
-			ConfigurationType="2"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="true"
-				SuppressStartupBanner="true"
-				TargetEnvironment="3"
-				TypeLibraryName=".\Release/Race.tlb"
-				HeaderFileName=""
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				InlineFunctionExpansion="2"
-				EnableIntrinsicFunctions="true"
-				FavorSizeOrSpeed="1"
-				OmitFramePointers="true"
-				AdditionalIncludeDirectories=".;./logic;../../../vendor;../../../vendor/sqlite;../../../vendor/zlib/;../../../vendor/pcre;../../../vendor/pme;../../../vendor/pthreads/include;../../../Shared/publicsdk/include;logic/common;../../../vendor/zlib;&quot;../../../vendor/json-c&quot;;../../sdk;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../vendor/zip;../../../vendor/lua/src;../../../vendor/pcre/shipped_for_mta;&quot;../../../vendor/json-c/shipped_for_mta&quot;;../../../Shared/mods/deathmatch/logic"
-				PreprocessorDefinitions="WIN32;_CRT_SECURE_NO_WARNINGS"
-				StringPooling="true"
-				RuntimeLibrary="2"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="StdInc.h"
-				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-				DebugInformationFormat="3"
-				DisableSpecificWarnings="4996;4482,4267"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="2057"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthread.lib pme.lib pcre3.lib json.lib psapi.lib"
-				OutputFile="C:\Program Files\MTA San Andreas 1.4\server/$(PlatformName)/deathmatch.dll"
-				LinkIncremental="1"
-				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../../symbols/$(ConfigurationName)_$(PlatformName)_$(SafeParentName).pdb"
-				MapFileName=""
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetFileName).lib"
-				TargetMachine="17"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -226,8 +125,8 @@
 		</Configuration>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory=".\Debug"
+			IntermediateDirectory=".\Debug"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -266,6 +165,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=".\Debug/"
+				ObjectFile=".\Debug/"
+				ProgramDataBaseFileName=".\Debug/"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="4"
@@ -286,115 +188,18 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s_d.lib wsock32.lib zlib_d.lib ehs_d.lib pthread_d.lib pme_d.lib pcre3_d.lib json_d.lib psapi.lib"
+				AdditionalDependencies="lua5.1d.lib wsock32.lib sqlite3d.lib zlibd_2008.lib ehsd_2008.lib pthreadVC2.lib pmed_2008.lib pcred_2008.lib jsonD2008.lib"
 				OutputFile="C:\Program Files\MTA San Andreas 1.4\server/mods/deathmatch/deathmatch_d.dll"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/x86/$(ConfigurationName);&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="logic/lib;../../../vendor/lua/lib;&quot;../../../vendor/json-c/lib&quot;;../../../vendor/ehs/lib;../../../vendor/pme/lib;../../../vendor/pcre/lib;../../../vendor/pthreads/lib;../../../vendor/sqlite/lib;../../../vendor/zlib/lib"
 				IgnoreDefaultLibraryNames="MSVCRT"
 				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
+				ProgramDatabaseFile=".\Debug/client_d.pdb"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetFileName).lib"
+				ImportLibrary=".\Debug/client_d.lib"
 				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Debug|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="$(PlatformName)\$(ConfigurationName)"
-			ConfigurationType="2"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="_DEBUG"
-				MkTypLibCompatible="true"
-				SuppressStartupBanner="true"
-				TargetEnvironment="3"
-				TypeLibraryName=".\Debug/Race.tlb"
-				HeaderFileName=""
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="0"
-				AdditionalIncludeDirectories=".;./logic;../../../vendor;../../../vendor/sqlite;../../../vendor/zlib/;../../../vendor/pcre;../../../vendor/pme;../../../vendor/pthreads/include;../../../Shared/publicsdk/include;logic/common;../../../vendor/zlib;&quot;../../../vendor/json-c&quot;;../../sdk;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../vendor/zip;../../../vendor/lua/src;../../../vendor/pcre/shipped_for_mta;&quot;../../../vendor/json-c/shipped_for_mta&quot;;../../../Shared/mods/deathmatch/logic"
-				PreprocessorDefinitions="WIN32;_DEBUG;MTA_DEBUG;_CRT_SECURE_NO_WARNINGS"
-				StringPooling="true"
-				BasicRuntimeChecks="3"
-				RuntimeLibrary="3"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="StdInc.h"
-				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-				DebugInformationFormat="3"
-				DisableSpecificWarnings="4996;4482,4267"
-				ShowIncludes="false"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="_DEBUG"
-				Culture="2057"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s_d.lib wsock32.lib zlib_d.lib ehs_d.lib pthread_d.lib pme_d.lib pcre3_d.lib json_d.lib psapi.lib"
-				OutputFile="C:\Program Files\MTA San Andreas 1.4\server\$(PlatformName)\deathmatch_d.dll"
-				LinkIncremental="2"
-				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
-				IgnoreDefaultLibraryNames="MSVCRT"
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetFileName).lib"
-				TargetMachine="17"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -420,8 +225,8 @@
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\..\obj\x86\$(ConfigurationName)\$(SafeRootNamespace)"
+			OutputDirectory="..\..\..\obj\server\deathmatch"
+			IntermediateDirectory="..\..\..\obj\server\deathmatch"
 			ConfigurationType="2"
 			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
 			UseOfMFC="0"
@@ -464,6 +269,9 @@
 				UsePrecompiledHeader="2"
 				PrecompiledHeaderThrough="StdInc.h"
 				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
+				AssemblerListingLocation=""
+				ObjectFile="$(IntDir)/"
+				ProgramDataBaseFileName="$(IntDir)/vc70.pdb"
 				WarningLevel="3"
 				SuppressStartupBanner="true"
 				DebugInformationFormat="3"
@@ -483,124 +291,22 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthread.lib pme.lib pcre3.lib json.lib psapi.lib"
+				AdditionalDependencies="lua5.1.lib wsock32.lib sqlite3.lib zlib_2008.lib ehs_2008.lib pthreadVC2.lib pme_2008.lib pcre_2008.lib json2008.lib"
 				OutputFile="../../../output/MTA San Andreas/server/mods/deathmatch/deathmatch.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/x86/$(ConfigurationName);&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="logic/lib;../../../vendor/lua/lib;&quot;../../../vendor/json-c/lib&quot;;../../../vendor/ehs/lib;../../../vendor/pme/lib;../../../vendor/pcre/lib;../../../vendor/pthreads/lib;../../../vendor/sqlite/lib;../../../vendor/zlib/lib"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
-				MapFileName=""
+				GenerateMapFile="true"
+				MapFileName="../../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetFileName).lib"
+				ImportLibrary=".\Release/client.lib"
 				TargetMachine="1"
-			/>
-			<Tool
-				Name="VCALinkTool"
-			/>
-			<Tool
-				Name="VCManifestTool"
-			/>
-			<Tool
-				Name="VCXDCMakeTool"
-			/>
-			<Tool
-				Name="VCBscMakeTool"
-			/>
-			<Tool
-				Name="VCFxCopTool"
-			/>
-			<Tool
-				Name="VCAppVerifierTool"
-			/>
-			<Tool
-				Name="VCPostBuildEventTool"
-				ExcludedFromBuild="false"
-			/>
-		</Configuration>
-		<Configuration
-			Name="Nightly|x64"
-			OutputDirectory="$(PlatformName)\$(ConfigurationName)"
-			IntermediateDirectory="..\..\..\obj\$(PlatformName)\$(ConfigurationName)\$(SafeRootNamespace)"
-			ConfigurationType="2"
-			InheritedPropertySheets="$(VCInstallDir)VCProjectDefaults\UpgradeFromVC71.vsprops"
-			UseOfMFC="0"
-			ATLMinimizesCRunTimeLibraryUsage="false"
-			CharacterSet="2"
-			WholeProgramOptimization="1"
-			>
-			<Tool
-				Name="VCPreBuildEventTool"
-			/>
-			<Tool
-				Name="VCCustomBuildTool"
-			/>
-			<Tool
-				Name="VCXMLDataGeneratorTool"
-			/>
-			<Tool
-				Name="VCWebServiceProxyGeneratorTool"
-			/>
-			<Tool
-				Name="VCMIDLTool"
-				PreprocessorDefinitions="NDEBUG"
-				MkTypLibCompatible="true"
-				SuppressStartupBanner="true"
-				TargetEnvironment="3"
-				TypeLibraryName=".\Release/Race.tlb"
-				HeaderFileName=""
-			/>
-			<Tool
-				Name="VCCLCompilerTool"
-				Optimization="2"
-				InlineFunctionExpansion="2"
-				EnableIntrinsicFunctions="true"
-				FavorSizeOrSpeed="1"
-				OmitFramePointers="true"
-				AdditionalIncludeDirectories=".;./logic;../../../vendor;../../../vendor/sqlite;../../../vendor/zlib/;../../../vendor/pcre;../../../vendor/pme;../../../vendor/pthreads/include;../../../Shared/publicsdk/include;logic/common;../../../vendor/zlib;&quot;../../../vendor/json-c&quot;;../../sdk;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../vendor/zip;../../../vendor/lua/src;../../../vendor/pcre/shipped_for_mta;&quot;../../../vendor/json-c/shipped_for_mta&quot;;../../../Shared/mods/deathmatch/logic"
-				PreprocessorDefinitions="WIN32;_CRT_SECURE_NO_WARNINGS"
-				StringPooling="true"
-				RuntimeLibrary="2"
-				UsePrecompiledHeader="2"
-				PrecompiledHeaderThrough="StdInc.h"
-				PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
-				AssemblerListingLocation=""
-				WarningLevel="3"
-				SuppressStartupBanner="true"
-				DebugInformationFormat="3"
-				DisableSpecificWarnings="4996;4482,4267"
-			/>
-			<Tool
-				Name="VCManagedResourceCompilerTool"
-			/>
-			<Tool
-				Name="VCResourceCompilerTool"
-				PreprocessorDefinitions="NDEBUG"
-				Culture="2057"
-			/>
-			<Tool
-				Name="VCPreLinkEventTool"
-			/>
-			<Tool
-				Name="VCLinkerTool"
-				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthread.lib pme.lib pcre3.lib json.lib psapi.lib"
-				OutputFile="../../../output/MTA San Andreas/server/$(PlatformName)/deathmatch.dll"
-				LinkIncremental="1"
-				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
-				GenerateDebugInformation="true"
-				ProgramDatabaseFile="../../../symbols/$(ConfigurationName)_$(PlatformName)_$(SafeParentName).pdb"
-				MapFileName=""
-				OptimizeReferences="2"
-				EnableCOMDATFolding="2"
-				RandomizedBaseAddress="1"
-				DataExecutionPrevention="0"
-				ImportLibrary="$(OutDir)\$(TargetFileName).lib"
-				TargetMachine="17"
 			/>
 			<Tool
 				Name="VCALinkTool"
@@ -659,16 +365,6 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Release|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"
-						PrecompiledHeaderThrough="StdInc.h"
-						PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="Debug|Win32"
 					>
 					<Tool
@@ -679,27 +375,7 @@
 					/>
 				</FileConfiguration>
 				<FileConfiguration
-					Name="Debug|x64"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"
-						PrecompiledHeaderThrough="StdInc.h"
-						PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
 					Name="Nightly|Win32"
-					>
-					<Tool
-						Name="VCCLCompilerTool"
-						UsePrecompiledHeader="1"
-						PrecompiledHeaderThrough="StdInc.h"
-						PrecompiledHeaderFile="$(IntDir)/$(TargetName).pch"
-					/>
-				</FileConfiguration>
-				<FileConfiguration
-					Name="Nightly|x64"
 					>
 					<Tool
 						Name="VCCLCompilerTool"
@@ -846,14 +522,6 @@
 				</File>
 				<File
 					RelativePath=".\logic\CCustomData.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\logic\CCustomWeapon.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\logic\CCustomWeaponManager.cpp"
 					>
 				</File>
 				<File
@@ -1017,10 +685,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\logic\CPerfStat.EventPacketUsage.cpp"
-					>
-				</File>
-				<File
 					RelativePath=".\logic\CPerfStat.FunctionTiming.cpp"
 					>
 				</File>
@@ -1038,14 +702,6 @@
 				</File>
 				<File
 					RelativePath=".\logic\CPerfStat.PacketUsage.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\logic\CPerfStat.PlayerPacketUsage.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\logic\CPerfStat.RPCPacketUsage.cpp"
 					>
 				</File>
 				<File
@@ -1304,10 +960,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\packets\CCustomWeaponBulletSyncPacket.cpp"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\packets\CDebugEchoPacket.cpp"
 						>
 					</File>
@@ -1377,10 +1029,6 @@
 					</File>
 					<File
 						RelativePath=".\logic\packets\CPedSyncPacket.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\packets\CPedTaskPacket.cpp"
 						>
 					</File>
 					<File
@@ -1560,103 +1208,7 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Account.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Ban.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Blip.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Clothing.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.ColShape.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Crypt.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Database.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Event.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Marker.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Misc.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Object.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Ped.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Player.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.PREG.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.RadarArea.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Server.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Team.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Timer.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.UTF.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Utility.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Vehicle.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Water.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Weapon.cpp"
+						RelativePath=".\logic\lua\CLuaFunctionDefinitions.cpp"
 						>
 					</File>
 					<File
@@ -1676,10 +1228,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaMatrix.cpp"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\lua\CLuaModule.cpp"
 						>
 					</File>
@@ -1696,18 +1244,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaVector2.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaVector3.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaVector4.cpp"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\lua\LuaCommon.cpp"
 						>
 					</File>
@@ -1715,52 +1251,12 @@
 						RelativePath=".\logic\lua\LuaUtils.cpp"
 						>
 					</File>
-					<Filter
-						Name="oopdefs"
-						>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.ACL.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Camera.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Element.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Ped.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Player.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Connection.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Marker.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.RadarArea.cpp"
-							>
-						</File>
-					</Filter>
 				</Filter>
 				<Filter
 					Name="luadefs"
 					>
 					<File
 						RelativePath=".\logic\luadefs\CLuaACLDefs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaBitDefs.cpp"
 						>
 					</File>
 					<File
@@ -1792,10 +1288,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\luadefs\CLuaMatrixDefs.cpp"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\luadefs\CLuaPickupDefs.cpp"
 						>
 					</File>
@@ -1805,18 +1297,6 @@
 					</File>
 					<File
 						RelativePath=".\logic\luadefs\CLuaTextDefs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector2Defs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector3Defs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector4Defs.cpp"
 						>
 					</File>
 					<File
@@ -1856,10 +1336,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\net\CSimPedTaskPacket.cpp"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\net\CSimPlayerManager.cpp"
 						>
 					</File>
@@ -1888,23 +1364,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="Release|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
 						Name="Debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -1919,17 +1379,13 @@
 							UsePrecompiledHeader="0"
 						/>
 					</FileConfiguration>
-					<FileConfiguration
-						Name="Nightly|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
 				</File>
 				<File
-					RelativePath=".\utils\CFunctionUseLogger.cpp"
+					RelativePath=".\utils\CHTTPRequest.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\utils\CHTTPResponse.cpp"
 					>
 				</File>
 				<File
@@ -1944,23 +1400,7 @@
 						/>
 					</FileConfiguration>
 					<FileConfiguration
-						Name="Release|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
 						Name="Debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|x64"
 						>
 						<Tool
 							Name="VCCLCompilerTool"
@@ -1975,70 +1415,18 @@
 							UsePrecompiledHeader="0"
 						/>
 					</FileConfiguration>
-					<FileConfiguration
-						Name="Nightly|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
+				</File>
+				<File
+					RelativePath=".\utils\CTCPClientSocketImpl.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\utils\CTCPImpl.cpp"
+					>
 				</File>
 				<File
 					RelativePath=".\utils\CZipMaker.cpp"
 					>
-				</File>
-				<File
-					RelativePath="..\..\..\vendor\sqlite\sqlite3.c"
-					>
-					<FileConfiguration
-						Name="Release|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Release|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Debug|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Nightly|Win32"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
-					<FileConfiguration
-						Name="Nightly|x64"
-						>
-						<Tool
-							Name="VCCLCompilerTool"
-							UsePrecompiledHeader="0"
-						/>
-					</FileConfiguration>
 				</File>
 				<Filter
 					Name="zip"
@@ -2055,14 +1443,6 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Release|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Debug|Win32"
 							>
 							<Tool
@@ -2071,23 +1451,7 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Debug|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|x64"
 							>
 							<Tool
 								Name="VCCLCompilerTool"
@@ -2107,14 +1471,6 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Release|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Debug|Win32"
 							>
 							<Tool
@@ -2123,23 +1479,7 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Debug|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|x64"
 							>
 							<Tool
 								Name="VCCLCompilerTool"
@@ -2159,14 +1499,6 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Release|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Debug|Win32"
 							>
 							<Tool
@@ -2175,23 +1507,7 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Debug|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|x64"
 							>
 							<Tool
 								Name="VCCLCompilerTool"
@@ -2211,14 +1527,6 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Release|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Debug|Win32"
 							>
 							<Tool
@@ -2227,23 +1535,7 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Debug|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Nightly|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|x64"
 							>
 							<Tool
 								Name="VCCLCompilerTool"
@@ -2263,23 +1555,7 @@
 							/>
 						</FileConfiguration>
 						<FileConfiguration
-							Name="Release|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
 							Name="Debug|Win32"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
-						<FileConfiguration
-							Name="Debug|x64"
 							>
 							<Tool
 								Name="VCCLCompilerTool"
@@ -2294,24 +1570,12 @@
 								UsePrecompiledHeader="0"
 							/>
 						</FileConfiguration>
-						<FileConfiguration
-							Name="Nightly|x64"
-							>
-							<Tool
-								Name="VCCLCompilerTool"
-								UsePrecompiledHeader="0"
-							/>
-						</FileConfiguration>
 					</File>
 				</Filter>
 			</Filter>
 			<Filter
 				Name="shared"
 				>
-				<File
-					RelativePath="..\..\..\Shared\mods\deathmatch\logic\CDebugHookManager.cpp"
-					>
-				</File>
 				<File
 					RelativePath="..\..\..\Shared\mods\deathmatch\logic\CIdArray.cpp"
 					>
@@ -2326,10 +1590,6 @@
 				</File>
 				<File
 					RelativePath="..\..\..\Shared\mods\deathmatch\logic\CLatentTransferManager.cpp"
-					>
-				</File>
-				<File
-					RelativePath="..\..\..\Shared\mods\deathmatch\logic\CLuaShared.cpp"
 					>
 				</File>
 				<File
@@ -2383,7 +1643,7 @@
 				>
 			</File>
 			<File
-				RelativePath=".\gccHashSupport.h"
+				RelativePath="Server.h"
 				>
 			</File>
 			<File
@@ -2543,14 +1803,6 @@
 				</File>
 				<File
 					RelativePath=".\logic\CCustomData.h"
-					>
-				</File>
-				<File
-					RelativePath=".\logic\CCustomWeapon.h"
-					>
-				</File>
-				<File
-					RelativePath=".\logic\CCustomWeaponManager.h"
 					>
 				</File>
 				<File
@@ -2778,10 +2030,6 @@
 					>
 				</File>
 				<File
-					RelativePath=".\logic\CResourceClientScriptItem.h"
-					>
-				</File>
-				<File
 					RelativePath=".\logic\CResourceConfigItem.h"
 					>
 				</File>
@@ -2953,10 +2201,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\packets\CCustomWeaponBulletSyncPacket.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\packets\CDebugEchoPacket.h"
 						>
 					</File>
@@ -3037,10 +2281,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\packets\CPedTaskPacket.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\packets\CPedWastedPacket.h"
 						>
 					</File>
@@ -3094,10 +2334,6 @@
 					</File>
 					<File
 						RelativePath=".\logic\packets\CPlayerModInfoPacket.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\packets\CPlayerNoSocketPacket.h"
 						>
 					</File>
 					<File
@@ -3257,10 +2493,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaMatrix.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\lua\CLuaModule.h"
 						>
 					</File>
@@ -3277,18 +2509,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaVector2.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaVector3.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaVector4.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\lua\LuaUtils.h"
 						>
 					</File>
@@ -3296,14 +2516,6 @@
 						RelativePath="..\..\..\Shared\sdk\net\rpc_enums.h"
 						>
 					</File>
-					<Filter
-						Name="oopdefs"
-						>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPDefs.h"
-							>
-						</File>
-					</Filter>
 				</Filter>
 				<Filter
 					Name="common"
@@ -3318,10 +2530,6 @@
 					>
 					<File
 						RelativePath=".\logic\luadefs\CLuaACLDefs.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaBitDefs.h"
 						>
 					</File>
 					<File
@@ -3353,10 +2561,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\luadefs\CLuaMatrixDefs.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\luadefs\CLuaPickupDefs.h"
 						>
 					</File>
@@ -3366,18 +2570,6 @@
 					</File>
 					<File
 						RelativePath=".\logic\luadefs\CLuaTextDefs.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector2Defs.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector3Defs.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector4Defs.h"
 						>
 					</File>
 					<File
@@ -3421,10 +2613,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\net\CSimPedTaskPacket.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\net\CSimPlayer.h"
 						>
 					</File>
@@ -3454,15 +2642,7 @@
 					>
 				</File>
 				<File
-					RelativePath=".\utils\CFunctionUseLogger.h"
-					>
-				</File>
-				<File
-					RelativePath=".\utils\CHqComms.h"
-					>
-				</File>
-				<File
-					RelativePath=".\utils\CMasterServerAnnouncer.h"
+					RelativePath=".\utils\CHTTPResponse.h"
 					>
 				</File>
 				<File
@@ -3506,19 +2686,11 @@
 				Name="shared"
 				>
 				<File
-					RelativePath="..\..\..\Shared\mods\deathmatch\logic\CDebugHookManager.h"
-					>
-				</File>
-				<File
 					RelativePath="..\..\..\Shared\mods\deathmatch\logic\CIdArray.h"
 					>
 				</File>
 				<File
 					RelativePath="..\..\..\Shared\mods\deathmatch\logic\CLatentTransferManager.h"
-					>
-				</File>
-				<File
-					RelativePath="..\..\..\Shared\mods\deathmatch\logic\CLuaShared.h"
 					>
 				</File>
 				<File

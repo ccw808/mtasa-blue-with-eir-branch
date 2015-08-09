@@ -34,7 +34,9 @@ CPed::CPed ( CPedManager* pPedManager, CElement* pParent, CXMLNode* pNode, unsig
     m_bWearingGoggles = false;
 
     m_fHealth = 0.0f;
+    m_ulHealthChangeTime = 0;
     m_fArmor = 0.0f;
+    m_ulArmorChangeTime = 0;
     
     memset ( &m_fStats[0], 0, sizeof ( m_fStats ) );
     m_fStats [ 24 ] = 569.0f;           // default max_health
@@ -47,7 +49,6 @@ CPed::CPed ( CPedManager* pPedManager, CElement* pParent, CXMLNode* pNode, unsig
     m_bOnGround = true;
     m_bIsPlayer = false;
     m_bFrozen = false;
-    m_bIsOnFire = false;
 
     m_pTasks = new CPlayerTasks;
 
@@ -56,11 +57,12 @@ CPed::CPed ( CPedManager* pPedManager, CElement* pParent, CXMLNode* pNode, unsig
     m_ucAlpha = 255;
     m_pContactElement = NULL;
     m_bIsDead = true;
+    m_ulLastDieTime = 0;
     m_bSpawned = false;
     m_fRotation = 0.0f;
     m_pTargetedEntity = NULL;
     m_ucFightingStyle = 15; // STYLE_GRAB_KICK
-    m_iMoveAnim = MOVE_DEFAULT;
+    m_iMoveAnim = 54; // MOVE_PLAYER
     m_fGravity = 0.008f;
     m_bDoingGangDriveby = false;
     m_bStealthAiming = false;
@@ -68,6 +70,7 @@ CPed::CPed ( CPedManager* pPedManager, CElement* pParent, CXMLNode* pNode, unsig
     m_pVehicle = NULL;
     m_uiVehicleSeat = INVALID_VEHICLE_SEAT;
     m_uiVehicleAction = CPed::VEHICLEACTION_NONE;
+    m_ulVehicleActionStartTime = 0;
 
     m_vecVelocity.fX = m_vecVelocity.fY = m_vecVelocity.fZ = 0.0f;
 
@@ -111,30 +114,6 @@ void CPed::Unlink ( void )
     {
         m_pPedManager->RemoveFromList ( this );
     }
-}
-
-
-void CPed::GetRotation( CVector & vecRotation )
-{
-    vecRotation = CVector( 0, 0, GetRotation() );
-}
-
-
-void CPed::GetMatrix( CMatrix& matrix )
-{
-    CVector vecRotation;
-    vecRotation.fZ = GetRotation();
-    matrix.SetRotation( vecRotation );
-    matrix.vPos = GetPosition();
-}
-
-
-void CPed::SetMatrix( const CMatrix& matrix )
-{
-    // Set position and rotation from matrix
-    SetPosition( matrix.vPos );
-    CVector vecRotation = matrix.GetRotation();
-    SetRotation( vecRotation.fZ );
 }
 
 
@@ -351,6 +330,11 @@ void CPed::SetContactElement ( CElement* pElement )
 
 void CPed::SetIsDead ( bool bDead )
 {
+    if ( !m_bIsDead && bDead )
+    {
+        m_ulLastDieTime = GetTime ();
+    }
+
     m_bIsDead = bDead;
 }
 
@@ -380,6 +364,7 @@ CVehicle* CPed::SetOccupiedVehicle ( CVehicle* pVehicle, unsigned int uiSeat )
 void CPed::SetVehicleAction ( unsigned int uiAction )
 {
     m_uiVehicleAction = uiAction;
+    m_ulVehicleActionStartTime = GetTime ();
 }
 
 

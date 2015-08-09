@@ -73,7 +73,7 @@ CAdditionalVertexStreamManager::~CAdditionalVertexStreamManager ( void )
 CAdditionalVertexStreamManager* CAdditionalVertexStreamManager::GetSingleton ( void )
 {
     if ( !ms_Singleton )
-        ms_Singleton = new CAdditionalVertexStreamManager ();
+        ms_Singleton = new CAdditionalVertexStreamManager ();;
     return ms_Singleton;
 }
 
@@ -143,8 +143,8 @@ void CAdditionalVertexStreamManager::SetAdditionalVertexStream ( SCurrentStateIn
     uint StrideN = 12;
 
     // Calc area we are going to use
-    uint viMinBased = state.args.MinVertexIndex + state.args.BaseVertexIndex;
-    uint viMaxBased = state.args.MinVertexIndex + state.args.NumVertices + state.args.BaseVertexIndex;
+    WORD viMinBased = state.args.MinVertexIndex + state.args.BaseVertexIndex;
+    WORD viMaxBased = state.args.MinVertexIndex + state.args.NumVertices + state.args.BaseVertexIndex;
 
     uint ReadOffsetStart = viMinBased * StridePT + state.stream1.OffsetInBytes;
     uint ReadOffsetSize = ( viMaxBased - viMinBased ) * StridePT;

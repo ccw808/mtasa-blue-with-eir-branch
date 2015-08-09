@@ -10,6 +10,8 @@
 #include "StdInc.h"
 #include "SimHeaders.h"
 
+CActionHistorySet g_HistorySet;
+
 volatile bool CNetBufferWatchDog::ms_bBlockOutgoingSyncPackets = false;
 volatile bool CNetBufferWatchDog::ms_bBlockIncomingSyncPackets = false;
 volatile bool CNetBufferWatchDog::ms_bCriticalStopThreadNet = false;
@@ -110,6 +112,7 @@ void CNetBufferWatchDog::StopThread ( void )
 ///////////////////////////////////////////////////////////////
 void* CNetBufferWatchDog::StaticThreadProc ( void* pContext )
 {
+    SetCurrentThreadType ( EActionWho::WATCHDOG );
     CThreadHandle::AllowASyncCancel ();
     return ((CNetBufferWatchDog*)pContext)->ThreadProc ();
 }
@@ -148,6 +151,10 @@ void* CNetBufferWatchDog::ThreadProc ( void )
 ///////////////////////////////////////////////////////////////
 void CNetBufferWatchDog::DoChecks ( void )
 {
+    // Check when main thread last updated anything
+    CheckActionHistory ( g_HistorySet.main, "Main", m_uiMainAgeHigh );
+    CheckActionHistory ( g_HistorySet.sync, "Sync", m_uiSyncAgeHigh );
+
     // Get queue sizes now
     uint uiFinishedList;
     uint uiOutCommandQueue;
@@ -156,10 +163,10 @@ void CNetBufferWatchDog::DoChecks ( void )
     m_pNetBuffer->GetQueueSizes ( uiFinishedList, uiOutCommandQueue, uiOutResultQueue, uiInResultQueue, m_uiGamePlayerCount );
 
     // Update queue status
-    UpdateQueueInfo ( m_FinishedListQueueInfo, uiFinishedList, "[Network] FinishedList" );
-    UpdateQueueInfo ( m_OutCommandQueueInfo, uiOutCommandQueue, "[Network] OutCommandQueue" );
-    UpdateQueueInfo ( m_OutResultQueueInfo, uiOutResultQueue, "[Network] OutResultQueue" );
-    UpdateQueueInfo ( m_InResultQueueInfo, uiInResultQueue, "[Network] InResultQueue" );
+    UpdateQueueInfo ( m_FinishedListQueueInfo, uiFinishedList, "FinishedList" );
+    UpdateQueueInfo ( m_OutCommandQueueInfo, uiOutCommandQueue, "OutCommandQueue" );
+    UpdateQueueInfo ( m_OutResultQueueInfo, uiOutResultQueue, "OutResultQueue" );
+    UpdateQueueInfo ( m_InResultQueueInfo, uiInResultQueue, "InResultQueue" );
 
     // Apply queue status
     if ( m_OutCommandQueueInfo.status == EQueueStatus::STATUS_OK )
@@ -171,7 +178,7 @@ void CNetBufferWatchDog::DoChecks ( void )
     if ( m_InResultQueueInfo.status == EQueueStatus::STATUS_OK )
         AllowIncomingSyncPackets ();
     else
-    if ( m_InResultQueueInfo.status == EQueueStatus::SUSPEND_SYNC )
+    if ( m_OutCommandQueueInfo.status == EQueueStatus::SUSPEND_SYNC )
         BlockIncomingSyncPackets ();
 
     // Copy sizes for stats only (Unsafe)
@@ -179,6 +186,47 @@ void CNetBufferWatchDog::DoChecks ( void )
     ms_uiOutCommandQueueSize = uiOutCommandQueue;
     ms_uiOutResultQueueSize = uiOutResultQueue;
     ms_uiInResultQueueSize = uiInResultQueue;
+}
+
+
+///////////////////////////////////////////////////////////////
+//
+// CNetBufferWatchDog::CheckActionHistory
+//
+// Thread:                  check
+// Mutex should be locked:  yes
+//
+///////////////////////////////////////////////////////////////
+void CNetBufferWatchDog::CheckActionHistory ( CActionHistory& history, const char* szTag, uint& uiHigh )
+{
+    if ( history.bChanged )
+    {
+        history.bChanged = false;
+        history.uiLastChangedTime = GetTickCount32 ();
+    }
+
+    if ( !history.uiLastChangedTime )
+        return;
+
+    uint uiAge = GetTickCount32 () - history.uiLastChangedTime;
+    if ( uiAge < 1000 * 5 )
+        uiHigh = 10;
+
+    bool bShowMessage = false;
+    if ( uiAge > 1000 * uiHigh )
+    {
+        uiHigh = uiHigh + 10;
+        bShowMessage = true;
+    }
+
+    if ( bShowMessage )
+    {
+        if ( ms_bVerboseDebug )
+            CLogger::LogPrintf ( "INFO: %s thread last action age: %d ticks.\n"
+                                        , szTag
+                                        , uiAge
+                                    );
+    }
 }
 
 
@@ -209,7 +257,7 @@ void CNetBufferWatchDog::UpdateQueueInfo ( CQueueInfo& queueInfo, int iQueueSize
         //      stop related queue until it is below 100,000
         if ( queueInfo.m_SizeHistory.GetLowestPointSince( 5 ) > iThreshLevel2 )
         {
-            CLogger::LogPrintf ( "%s > %d msgs. This is due to server overload or script freeze\n", szTag, iThreshLevel2 );
+            CLogger::LogPrintf ( "%s > %d pkts. This is due to server overload or another problem\n", szTag, iThreshLevel2 );
             queueInfo.status = EQueueStatus::SUSPEND_SYNC;
         }
     }
@@ -227,7 +275,7 @@ void CNetBufferWatchDog::UpdateQueueInfo ( CQueueInfo& queueInfo, int iQueueSize
         //      terminate threadnet
         if ( queueInfo.m_SizeHistory.GetLowestPointSince( 30 ) > iThreshLevel3 )
         {
-            CLogger::ErrorPrintf ( "%s > %d msgs for 30 seconds\n", szTag, iThreshLevel3 );
+            CLogger::ErrorPrintf ( "%s > %d pkts for 30 seconds\n", szTag, iThreshLevel3 );
             CLogger::ErrorPrintf ( "Something is wrong - Switching from threaded sync mode\n" );
             queueInfo.status = EQueueStatus::STOP_THREAD_NET;
             ms_bCriticalStopThreadNet = true;
@@ -240,7 +288,7 @@ void CNetBufferWatchDog::UpdateQueueInfo ( CQueueInfo& queueInfo, int iQueueSize
         //      shutdown
         if ( queueInfo.m_SizeHistory.GetLowestPointSince( 60 ) > iThreshLevel4 )
         {
-            CLogger::ErrorPrintf ( "%s > %d msgs for 60 seconds\n", szTag, iThreshLevel4 );
+            CLogger::ErrorPrintf ( "%s > %d pkts for 60 seconds\n", szTag, iThreshLevel4 );
             CLogger::ErrorPrintf ( "Something is very wrong - Shutting down server\n" );
             queueInfo.status = EQueueStatus::SHUTDOWN;
             g_pGame->SetIsFinished ( true );
@@ -253,7 +301,7 @@ void CNetBufferWatchDog::UpdateQueueInfo ( CQueueInfo& queueInfo, int iQueueSize
         //      terminate server
         if ( queueInfo.m_SizeHistory.GetLowestPointSince( 90 ) > iThreshLevel5 )
         {
-            CLogger::ErrorPrintf ( "%s > %d msgs for 90 seconds\n", szTag, iThreshLevel5 );
+            CLogger::ErrorPrintf ( "%s > %d pkts for 90 seconds\n", szTag, iThreshLevel5 );
             CLogger::ErrorPrintf ( "Something is badly wrong right here - Terminating server\n" );
             queueInfo.status = EQueueStatus::TERMINATE;
 #ifdef WIN32
@@ -412,4 +460,50 @@ bool CNetBufferWatchDog::CanReceivePacket ( uchar ucPacketID )
         if ( CNetBufferWatchDog::ms_bBlockIncomingSyncPackets )
             return !IsUnreliableSyncPacket ( ucPacketID );
     return true;
+}
+
+
+///////////////////////////////////////////////////////////////
+//
+// SetCurrentThreadType
+//
+// Thread id for debugging
+//
+///////////////////////////////////////////////////////////////
+#ifdef MTA_DEBUG
+static SFixedArray < DWORD, 3 > dwThreadIds = { -1, -1, -1 };
+#endif
+void SetCurrentThreadType ( EActionWhoType type )
+{
+#ifdef MTA_DEBUG
+#ifdef WIN32
+    dassert ( type < NUMELMS( dwThreadIds ) );
+    dwThreadIds[ type ] = GetCurrentThreadId ();
+#endif
+#endif
+}
+
+///////////////////////////////////////////////////////////////
+//
+// IsCurrentThreadType
+//
+// Thread id for debugging
+//
+///////////////////////////////////////////////////////////////
+bool IsCurrentThreadType ( EActionWhoType type )
+{
+#ifdef MTA_DEBUG
+#ifdef WIN32
+    dassert ( type < NUMELMS( dwThreadIds ) );
+    if ( dwThreadIds[ type ] == -1 )
+    {
+        if ( type == EActionWho::MAIN )
+            return true;
+        SetCurrentThreadType ( type );
+    }
+    return dwThreadIds[ type ] == GetCurrentThreadId ();
+#endif
+#else
+    return true;
+#endif
 }

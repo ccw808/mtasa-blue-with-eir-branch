@@ -40,7 +40,6 @@ public:
     static int      getElementByIndex                   ( lua_State* luaVM );
     static int      getAllElementData                   ( lua_State* luaVM );
     static int      getElementParent                    ( lua_State* luaVM );
-    static int      getElementMatrix                    ( lua_State* luaVM );
     static int      getElementPosition                  ( lua_State* luaVM );
     static int      getElementRotation                  ( lua_State* luaVM );
     static int      getElementVelocity                  ( lua_State* luaVM );
@@ -61,7 +60,6 @@ public:
     static int      isElementFrozen                     ( lua_State* luaVM );
     static int      getLowLODElement                    ( lua_State* luaVM );
     static int      isElementLowLOD                     ( lua_State* luaVM );
-    static int      isElementCallPropagationEnabled     ( lua_State* luaVM );
 
     // Visible to
     static int      clearElementVisibleTo               ( lua_State* luaVM );
@@ -85,7 +83,6 @@ public:
     // Set
     static int      setElementID                        ( lua_State* luaVM );
     static int      setElementParent                    ( lua_State* luaVM );
-    static int      setElementMatrix                    ( lua_State* luaVM );
     static int      setElementPosition                  ( lua_State* luaVM );
     static int      setElementRotation                  ( lua_State* luaVM );
     static int      setElementVelocity                  ( lua_State* luaVM );
@@ -99,7 +96,6 @@ public:
     static int      setElementCollisionsEnabled         ( lua_State* luaVM );
     static int      setElementFrozen                    ( lua_State* luaVM );
     static int      setLowLODElement                    ( lua_State* luaVM );
-    static int      setElementCallPropagationEnabled    ( lua_State* luaVM );
 };
 
 #endif

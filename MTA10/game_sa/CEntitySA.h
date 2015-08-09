@@ -336,14 +336,16 @@ private:
 //
 // Check for various number problems
 //
+inline bool IsValidPositionFloat ( const float f )
+{
+    if ( f < -100000 || f > 100000 || _isnan ( f ) )
+        return false;          
+    return true;
+}
 
 inline bool IsValidPosition ( const CVector& vec )
 {
-    if ( vec.fX < -16000 || vec.fX > 16000 || _isnan ( vec.fX )
-        || vec.fY < -16000 || vec.fY > 16000 || _isnan ( vec.fY )
-        || vec.fZ < -5000 || vec.fZ > 100000 || _isnan ( vec.fZ ) )
-        return false;          
-    return true;
+    return IsValidPositionFloat ( vec.fX ) && IsValidPositionFloat ( vec.fY ) && IsValidPositionFloat ( vec.fZ );
 }
 
 inline bool IsValidMatrix ( const CMatrix& mat )

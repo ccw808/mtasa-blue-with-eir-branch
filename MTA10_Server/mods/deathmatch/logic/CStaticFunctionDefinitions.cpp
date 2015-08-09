@@ -44,20 +44,11 @@ static CAccountManager*                             m_pAccountManager;
 static CBanManager*                                 m_pBanManager;
 static CPedManager*                                 m_pPedManager;
 static CWaterManager*                               m_pWaterManager;
-static CCustomWeaponManager *                       m_pCustomWeaponManager;
 
 // Used to run a function on all the children of the elements too
-#define RUN_CHILDREN( func ) \
-    if ( pElement->CountChildren () && pElement->IsCallPropagationEnabled() ) \
-    { \
-        CElementListSnapshot* pList = pElement->GetChildrenListSnapshot(); \
-        pList->AddRef();    /* Keep list alive during use */ \
-        for ( CElementListSnapshot::const_iterator iter = pList->begin() ; iter != pList->end() ; iter++ ) \
-            if ( !(*iter)->IsBeingDeleted() ) \
-                func; \
-        pList->Release(); \
-    }
-
+#define RUN_CHILDREN \
+    if ( pElement->CountChildren () ) \
+        for ( CChildListType::const_iterator iter = pElement->IterBegin () ; iter != pElement->IterEnd () ; iter++ )
 
 CStaticFunctionDefinitions::CStaticFunctionDefinitions ( CGame * pGame )
 {
@@ -81,7 +72,6 @@ CStaticFunctionDefinitions::CStaticFunctionDefinitions ( CGame * pGame )
     m_pBanManager = pGame->GetBanManager ();
     m_pPedManager = pGame->GetPedManager ();
     m_pWaterManager = pGame->GetWaterManager ();
-    m_pCustomWeaponManager = pGame->GetCustomWeaponManager ();
 }
 
 
@@ -170,8 +160,6 @@ bool CStaticFunctionDefinitions::TriggerClientEvent ( const std::vector < CPlaye
     // Send packet to players
     CPlayerManager::Broadcast ( Packet, sendList );
 
-    CPerfStatEventPacketUsage::GetSingleton ()->UpdateEventUsageOut ( szName, sendList.size() );
-
     return true;
 }
 
@@ -191,7 +179,6 @@ bool CStaticFunctionDefinitions::TriggerLatentClientEvent ( const std::vector < 
     CPlayerManager::Broadcast ( Packet, sendList );
     g_pGame->EnableLatentSends ( false );
 
-    CPerfStatEventPacketUsage::GetSingleton ()->UpdateEventUsageOut ( szName, sendList.size() );
     return true;
 }
 
@@ -739,14 +726,8 @@ bool CStaticFunctionDefinitions::GetElementAlpha ( CElement* pElement, unsigned 
         }
         case CElement::OBJECT:
         {
-            CObject* pObject = static_cast < CObject* > ( pElement );
+            CObject * pObject = static_cast < CObject* > ( pElement );
             ucAlpha = pObject->GetAlpha ();
-            break;
-        }
-        case CElement::MARKER:
-        {
-            CMarker* pMarker = static_cast < CMarker* > ( pElement );
-            ucAlpha = pMarker->GetColor ().A;
             break;
         }
         default: return false;
@@ -936,7 +917,7 @@ bool CStaticFunctionDefinitions::IsElementFrozen ( CElement* pElement, bool &bFr
 
 bool CStaticFunctionDefinitions::SetLowLodElement ( CElement* pElement, CElement* pLowLodElement )
 {
-    RUN_CHILDREN( SetLowLodElement ( *iter, pLowLodElement ) )
+    RUN_CHILDREN SetLowLodElement ( *iter, pLowLodElement );
 
     switch ( pElement->GetType () )
     {
@@ -1035,31 +1016,6 @@ bool CStaticFunctionDefinitions::IsElementInWater ( CElement* pElement, bool & b
 }
 
 
-bool CStaticFunctionDefinitions::IsElementCallPropagationEnabled ( CElement* pElement, bool& bOutEnabled )
-{
-    bOutEnabled = pElement->IsCallPropagationEnabled();
-    return true;
-}
-
-
-bool CStaticFunctionDefinitions::SetElementCallPropagationEnabled ( CElement* pElement, bool bEnable )
-{
-    if ( bEnable != pElement->IsCallPropagationEnabled() )
-    {
-        // Disallow being set on root
-        if ( pElement != GetRootElement() )
-        {
-            pElement->SetCallPropagationEnabled( bEnable );
-            CBitStream BitStream;
-            BitStream.pBitStream->Write ( bEnable );
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pElement, SET_PROPAGATE_CALLS_ENABLED, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
-
-
 bool CStaticFunctionDefinitions::SetElementID ( CElement* pElement, const char* szID )
 {
     assert ( pElement );
@@ -1089,6 +1045,9 @@ bool CStaticFunctionDefinitions::SetElementData ( CElement* pElement, const char
     CLuaArgument * pCurrentVariable = pElement->GetCustomData ( szName, false, &bIsSynced );
     if ( !pCurrentVariable || *pCurrentVariable != Variable || bIsSynced != bSynchronize )
     {
+        // Set its custom data
+        pElement->SetCustomData ( szName, Variable, pLuaMain, bSynchronize );
+
         if ( bSynchronize )
         {
             // Tell our clients to update their data
@@ -1098,12 +1057,7 @@ bool CStaticFunctionDefinitions::SetElementData ( CElement* pElement, const char
             BitStream.pBitStream->Write ( szName, usNameLength );
             Variable.WriteToBitStream ( *BitStream.pBitStream );
             m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pElement, SET_ELEMENT_DATA, *BitStream.pBitStream ) );
-
-            CPerfStatEventPacketUsage::GetSingleton ()->UpdateElementDataUsageOut ( szName, m_pPlayerManager->Count(), BitStream.pBitStream->GetNumberOfBytesUsed() );
         }
-
-        // Set its custom data
-        pElement->SetCustomData ( szName, Variable, pLuaMain, bSynchronize );
         return true;
     }
     return false;
@@ -1142,7 +1096,7 @@ bool CStaticFunctionDefinitions::SetElementParent ( CElement* pElement, CElement
     CElement * pTemp = pParent;
     CElement * pRoot = m_pMapManager->GetRootElement();
     bool bValidParent = false;
-    while ( pTemp != pRoot && pTemp != NULL)
+    while ( pTemp != pRoot )
     {
         const char * szTypeName = pTemp->GetTypeName ().c_str ();
         if ( szTypeName && strcmp(szTypeName, "map") == 0 )
@@ -1153,13 +1107,6 @@ bool CStaticFunctionDefinitions::SetElementParent ( CElement* pElement, CElement
 
         pTemp = pTemp->GetParentEntity();
     }
-
-    // Issue #8766: Player's parent element can't be resetted
-    const char * szElementTypeName = pElement->GetTypeName().c_str();
-    const char * szParentTypeName = pParent->GetTypeName().c_str();
-
-    if ( !bValidParent && !strcmp(szElementTypeName, "player") && !strcmp(szParentTypeName, "root") )
-        bValidParent = true;
 
     // Make sure the new parent isn't the element and isn't a child of the entity
     if ( bValidParent && pElement != pParent && !pElement->IsMyChild ( pParent, true ) )
@@ -1177,13 +1124,6 @@ bool CStaticFunctionDefinitions::SetElementParent ( CElement* pElement, CElement
 }
 
 
-bool CStaticFunctionDefinitions::GetElementMatrix ( CElement* pElement, CMatrix& matrix )
-{
-    pElement->GetMatrix ( matrix );
-    return true;
-}
-
-
 bool CStaticFunctionDefinitions::GetElementPosition ( CElement* pElement, CVector& vecPosition )
 {
     assert ( pElement );
@@ -1193,9 +1133,15 @@ bool CStaticFunctionDefinitions::GetElementPosition ( CElement* pElement, CVecto
 }
 
 
-bool CStaticFunctionDefinitions::GetElementRotation ( CElement* pElement, CVector& vecRotation, eEulerRotationOrder desiredRotOrder )
+bool CStaticFunctionDefinitions::GetElementRotation ( CElement* pElement, CVector& vecRotation, const char* szRotationOrder )
 {
     assert ( pElement );
+
+    eEulerRotationOrder desiredRotOrder = EulerRotationOrderFromString(szRotationOrder);
+    if (desiredRotOrder == EULER_INVALID)
+    {
+        return false;
+    }
 
     int iType = pElement->GetType ();
     switch ( iType )
@@ -1267,36 +1213,10 @@ bool CStaticFunctionDefinitions::GetElementVelocity ( CElement* pElement, CVecto
 }
 
 
-bool CStaticFunctionDefinitions::SetElementMatrix ( CElement* pElement, const CMatrix& matrix )
-{
-    RUN_CHILDREN( SetElementMatrix ( *iter, matrix ) )
-
-    pElement->SetMatrix ( matrix );
-
-    // Send new position to clients
-    CStaticFunctionDefinitions::SetElementPosition ( pElement, pElement->GetPosition(), true );
-
-    // Send new rotation to clients
-    CVector vecRotation;
-    pElement->GetRotation( vecRotation );
-
-    // convert radians to degrees
-    ConvertRadiansToDegrees ( vecRotation );
-
-    eEulerRotationOrder rotationOrder = EULER_DEFAULT;
-    if ( pElement->GetType() == CElement::OBJECT )
-        rotationOrder = EULER_ZYX;
-
-    CStaticFunctionDefinitions::SetElementRotation ( pElement, vecRotation, rotationOrder, true );
-
-    return true;
-}
-
-
 bool CStaticFunctionDefinitions::SetElementPosition ( CElement* pElement, const CVector& vecPosition, bool bWarp )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementPosition ( *iter, vecPosition, bWarp ) )
+    RUN_CHILDREN SetElementPosition ( *iter, vecPosition, bWarp );
 
     // Update our position for that entity.
     pElement->SetPosition ( vecPosition );
@@ -1331,9 +1251,15 @@ bool CStaticFunctionDefinitions::SetElementPosition ( CElement* pElement, const 
 }
 
 
-bool CStaticFunctionDefinitions::SetElementRotation ( CElement* pElement, const CVector& vecRotation, eEulerRotationOrder argumentRotOrder, bool bNewWay )
+bool CStaticFunctionDefinitions::SetElementRotation ( CElement* pElement, const CVector& vecRotation, const char* szRotationOrder, bool bNewWay )
 {
     assert ( pElement );
+
+    eEulerRotationOrder argumentRotOrder = EulerRotationOrderFromString(szRotationOrder);
+    if (argumentRotOrder == EULER_INVALID)
+    {
+        return false;
+    }
 
     int iType = pElement->GetType ();
     switch ( iType )
@@ -1373,7 +1299,6 @@ bool CStaticFunctionDefinitions::SetElementRotation ( CElement* pElement, const 
                 CVector vZXY = ConvertEulerRotationOrder(vecRotation, argumentRotOrder, EULER_ZXY );
                 SetObjectRotation( pObject, vZXY );
             }
-            break;
         }
         default: return false;
     }
@@ -1385,7 +1310,7 @@ bool CStaticFunctionDefinitions::SetElementRotation ( CElement* pElement, const 
 bool CStaticFunctionDefinitions::SetElementVelocity ( CElement* pElement, const CVector& vecVelocity )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementVelocity ( *iter, vecVelocity ) )
+    RUN_CHILDREN SetElementVelocity ( *iter, vecVelocity );
 
     int iType = pElement->GetType ();
     switch ( iType )
@@ -1405,12 +1330,6 @@ bool CStaticFunctionDefinitions::SetElementVelocity ( CElement* pElement, const 
 
             break;
         }
-        case CElement::OBJECT:
-        case CElement::WEAPON:
-        {
-            // Don't store velocity serverside (requires potentially needless additional sizeof(CVector) bytes per object)
-            break;
-        }
         default: return false;
     }
 
@@ -1426,7 +1345,7 @@ bool CStaticFunctionDefinitions::SetElementVelocity ( CElement* pElement, const 
 
 bool CStaticFunctionDefinitions::SetElementVisibleTo ( CElement* pElement, CElement* pReference, bool bVisible )
 {
-    RUN_CHILDREN( SetElementVisibleTo ( *iter, pReference, bVisible ) )
+    RUN_CHILDREN SetElementVisibleTo ( *iter, pReference, bVisible );
 
     if ( IS_PERPLAYER_ENTITY ( pElement ) )
     {
@@ -1444,7 +1363,7 @@ bool CStaticFunctionDefinitions::SetElementVisibleTo ( CElement* pElement, CElem
 bool CStaticFunctionDefinitions::SetElementInterior ( CElement* pElement, unsigned char ucInterior, bool bSetPosition, CVector& vecPosition )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementInterior ( *iter, ucInterior, bSetPosition, vecPosition ) )
+    RUN_CHILDREN SetElementInterior ( *iter, ucInterior, bSetPosition, vecPosition );
 
     if ( ucInterior != pElement->GetInterior () )
     {
@@ -1472,7 +1391,7 @@ bool CStaticFunctionDefinitions::SetElementInterior ( CElement* pElement, unsign
 bool CStaticFunctionDefinitions::SetElementDimension ( CElement* pElement, unsigned short usDimension )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementDimension ( *iter, usDimension ) )
+    RUN_CHILDREN SetElementDimension ( *iter, usDimension );
 
     if ( pElement->GetType () == CElement::TEAM )
     {
@@ -1609,7 +1528,7 @@ bool CStaticFunctionDefinitions::DetachElements ( CElement* pElement, CElement* 
 bool CStaticFunctionDefinitions::SetElementAlpha ( CElement* pElement, unsigned char ucAlpha )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementAlpha ( *iter, ucAlpha ) )
+    RUN_CHILDREN SetElementAlpha ( *iter, ucAlpha );
 
     switch ( pElement->GetType () )
     {
@@ -1654,7 +1573,7 @@ bool CStaticFunctionDefinitions::SetElementAlpha ( CElement* pElement, unsigned 
 bool CStaticFunctionDefinitions::SetElementDoubleSided ( CElement* pElement, bool bDoubleSided )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementDoubleSided ( *iter, bDoubleSided ) )
+    RUN_CHILDREN SetElementDoubleSided ( *iter, bDoubleSided );
 
     pElement->SetDoubleSided ( bDoubleSided );
 
@@ -1669,7 +1588,7 @@ bool CStaticFunctionDefinitions::SetElementDoubleSided ( CElement* pElement, boo
 bool CStaticFunctionDefinitions::SetElementHealth ( CElement* pElement, float fHealth )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementHealth ( *iter, fHealth ) )
+    RUN_CHILDREN SetElementHealth ( *iter, fHealth );
 
     switch ( pElement->GetType () )
     {
@@ -1684,14 +1603,11 @@ bool CStaticFunctionDefinitions::SetElementHealth ( CElement* pElement, float fH
                 if ( fHealth > fMaxHealth )
                     fHealth = fMaxHealth;
 
-                // Do not set the health below zero
-                if ( fHealth < 0.0f )
-                    fHealth = 0.0f;
-
                 // This makes sure the health is set to what will get reported
                 unsigned char ucHealth = static_cast < unsigned char > ( fHealth * 1.25f );
                 fHealth = static_cast < float > ( ucHealth ) / 1.25f;
                 pPed->SetHealth ( fHealth );
+                pPed->SetHealthChangeTime ( GetTickCount32 () );
             }
             else
                 return false;
@@ -1701,6 +1617,7 @@ bool CStaticFunctionDefinitions::SetElementHealth ( CElement* pElement, float fH
         {
             CVehicle* pVehicle = static_cast < CVehicle* > ( pElement );
             pVehicle->SetHealth ( fHealth );
+            pVehicle->SetHealthChangeTime ( GetTickCount32 () );
             break;
         }
         case CElement::OBJECT:
@@ -1724,7 +1641,7 @@ bool CStaticFunctionDefinitions::SetElementHealth ( CElement* pElement, float fH
 bool CStaticFunctionDefinitions::SetElementModel ( CElement* pElement, unsigned short usModel )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementModel ( *iter, usModel ) )
+    RUN_CHILDREN SetElementModel ( *iter, usModel );
 
     switch ( pElement->GetType () )
     {
@@ -1801,7 +1718,7 @@ bool CStaticFunctionDefinitions::SetElementModel ( CElement* pElement, unsigned 
 
 bool CStaticFunctionDefinitions::SetElementAttachedOffsets ( CElement* pElement, CVector & vecPosition, CVector & vecRotation )
 {
-    RUN_CHILDREN( SetElementAttachedOffsets ( *iter, vecPosition, vecRotation ) )
+    RUN_CHILDREN SetElementAttachedOffsets ( *iter, vecPosition, vecRotation );
 
     CVector vecCurrentPos, vecCurrentRot;
     pElement->GetAttachedOffsets ( vecCurrentPos, vecCurrentRot );
@@ -1827,16 +1744,15 @@ bool CStaticFunctionDefinitions::SetElementAttachedOffsets ( CElement* pElement,
 
 bool CStaticFunctionDefinitions::ClearElementVisibleTo ( CElement* pElement )
 {
-    RUN_CHILDREN( ClearElementVisibleTo ( *iter ) )
+    RUN_CHILDREN ClearElementVisibleTo ( *iter );
 
     if ( IS_PERPLAYER_ENTITY ( pElement ) )
     {
         CPerPlayerEntity* pEntity = static_cast < CPerPlayerEntity* > ( pElement );
         pEntity->ClearVisibleToReferences ();
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 bool CStaticFunctionDefinitions::SetElementSyncer ( CElement* pElement, CPlayer* pPlayer, bool bEnable )
@@ -1914,7 +1830,7 @@ bool CStaticFunctionDefinitions::SetElementCollisionsEnabled ( CElement* pElemen
 bool CStaticFunctionDefinitions::SetElementFrozen ( CElement* pElement, bool bFrozen )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetElementFrozen ( *iter, bFrozen ) )
+    RUN_CHILDREN SetElementFrozen ( *iter, bFrozen );
 
     switch ( pElement->GetType () )
     {
@@ -2070,19 +1986,16 @@ bool CStaticFunctionDefinitions::SetPlayerName ( CElement* pElement, const char*
 
 bool CStaticFunctionDefinitions::DetonateSatchels ( CElement* pElement )
 {
-    RUN_CHILDREN( DetonateSatchels ( *iter ) )
+    RUN_CHILDREN DetonateSatchels ( *iter );
 
     // Tell everyone
-    if ( IS_PLAYER( pElement ) )
+    CPlayer* pPlayer = static_cast<CPlayer *>( pElement );
+    CDetonateSatchelsPacket Packet;
+    if ( pPlayer && pPlayer->IsJoined () )
     {
-        CPlayer* pPlayer = static_cast<CPlayer *>( pElement );
-        if ( pPlayer->IsJoined () )
-        {
-            CDetonateSatchelsPacket Packet;
-            Packet.SetSourceElement ( pPlayer );
-            m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-            return true;
-        }
+        Packet.SetSourceElement ( pPlayer );
+        m_pPlayerManager->BroadcastOnlyJoined ( Packet );
+        return true;
     }
     return false;
 }
@@ -2121,13 +2034,9 @@ CPed* CStaticFunctionDefinitions::CreatePed ( CResource* pResource, unsigned sho
 
             pPed->SetRotation ( fRotationRadians );
 
-            // Only sync if the resource has fully started
-            if ( pResource->HasStarted() )
-            {
-                CEntityAddPacket Packet;
-                Packet.Add ( pPed );
-                m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-            }
+            CEntityAddPacket Packet;
+            Packet.Add ( pPed );
+            m_pPlayerManager->BroadcastOnlyJoined ( Packet );
             return pPed;
         }
     }
@@ -2324,12 +2233,13 @@ bool CStaticFunctionDefinitions::SetWeaponProperty ( eWeaponProperty eProperty, 
     return true;
 }
 
-bool CStaticFunctionDefinitions::SetWeaponProperty ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, int sData )
+bool CStaticFunctionDefinitions::SetWeaponProperty ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, short sData )
 {
     if ( eProperty == WEAPON_INVALID_PROPERTY )
         return false;
 
     CWeaponStat* pWeaponInfo = g_pGame->GetWeaponStatManager()->GetWeaponStats( eWeapon, eSkillLevel );
+    CWeaponStat* pOriginalWeaponInfo = g_pGame->GetWeaponStatManager()->GetOriginalWeaponStats( eWeapon, eSkillLevel );
         
     if ( pWeaponInfo )
     {
@@ -2353,7 +2263,32 @@ bool CStaticFunctionDefinitions::SetWeaponProperty ( eWeaponProperty eProperty, 
             }
         case WEAPON_FLAGS:
             {
-                pWeaponInfo->ToggleFlagBits ( sData );
+                if ( pWeaponInfo->IsFlagSet ( sData ) )
+                {
+                    if ( sData == 0x800 )
+                    {
+                        // if it can support this anim group
+                        if ( ( eWeapon >= WEAPONTYPE_PISTOL && eWeapon <= WEAPONTYPE_SNIPERRIFLE ) || eWeapon == WEAPONTYPE_MINIGUN )
+                        {
+                            // Revert anim group to default
+                            pWeaponInfo->SetAnimGroup ( pOriginalWeaponInfo->GetAnimGroup ( ) );
+                        }
+                    }
+                    pWeaponInfo->ClearFlag ( sData );
+                }
+                else
+                {
+                    if ( sData == 0x800 )
+                    {
+                        // if it can support this anim group
+                        if ( ( eWeapon >= WEAPONTYPE_PISTOL && eWeapon <= WEAPONTYPE_SNIPERRIFLE ) || eWeapon == WEAPONTYPE_MINIGUN )
+                        {
+                            // sawn off shotgun anim group
+                            pWeaponInfo->SetAnimGroup ( 17 );
+                        }
+                    }
+                    pWeaponInfo->SetFlag ( sData );
+                }
                 break;
             }
         default:
@@ -2369,43 +2304,7 @@ bool CStaticFunctionDefinitions::SetWeaponProperty ( eWeaponProperty eProperty, 
     BitStream.pBitStream->Write ( static_cast < unsigned  char > ( eWeapon ) );
     BitStream.pBitStream->Write ( static_cast < unsigned  char > ( eProperty ) );
     BitStream.pBitStream->Write ( static_cast < unsigned  char > ( eSkillLevel ) );
-    if ( eProperty == WEAPON_FLAGS )
-        BitStream.pBitStream->Write ( sData );  // Backward compat because sent little end first
-    else
-        BitStream.pBitStream->Write ( (short)sData );
-    m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( SET_WEAPON_PROPERTY, *BitStream.pBitStream ) );
-
-    return true;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponPropertyFlag ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, bool bEnable )
-{
-    CWeaponStat* pWeaponInfo = g_pGame->GetWeaponStatManager()->GetWeaponStats( eWeapon, eSkillLevel );        
-    if ( !pWeaponInfo )
-        return false;
-
-    if ( !IsWeaponPropertyFlag( eProperty ) )
-        return false;
-
-    // Get bit
-    uint uiFlagBit = GetWeaponPropertyFlagBit( eProperty );
-
-    // Check if already set/cleared
-    if ( bEnable == pWeaponInfo->IsFlagSet ( uiFlagBit ) )
-        return false;
-
-    if ( bEnable )
-        pWeaponInfo->SetFlagBits ( uiFlagBit );
-    else
-        pWeaponInfo->ClearFlagBits ( uiFlagBit );
-
-    pWeaponInfo->SetChanged( true );
-
-    CBitStream BitStream;
-    BitStream.pBitStream->Write ( static_cast < unsigned  char > ( eWeapon ) );
-    BitStream.pBitStream->Write ( static_cast < unsigned  char > ( eProperty ) );
-    BitStream.pBitStream->Write ( static_cast < unsigned  char > ( eSkillLevel ) );
-    BitStream.pBitStream->WriteBit ( bEnable );
+    BitStream.pBitStream->Write ( sData );
     m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( SET_WEAPON_PROPERTY, *BitStream.pBitStream ) );
 
     return true;
@@ -2517,7 +2416,7 @@ bool CStaticFunctionDefinitions::GetWeaponProperty ( eWeaponProperty eProperty, 
     return true;
 }
 
-bool CStaticFunctionDefinitions::GetWeaponProperty ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, int & sData )
+bool CStaticFunctionDefinitions::GetWeaponProperty ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, short & sData )
 {
     if ( eProperty == WEAPON_INVALID_PROPERTY )
         return false;
@@ -2620,23 +2519,6 @@ bool CStaticFunctionDefinitions::GetWeaponProperty ( eWeaponProperty eProperty, 
     }
     else
         return false;
-
-    return true;
-}
-
-
-bool CStaticFunctionDefinitions::GetWeaponPropertyFlag ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, bool& bEnable )
-{
-    CWeaponStat* pWeaponInfo = g_pGame->GetWeaponStatManager()->GetWeaponStats( eWeapon, eSkillLevel );        
-    if ( !pWeaponInfo )
-        return false;
-
-    if ( !IsWeaponPropertyFlag( eProperty ) )
-        return false;
-
-    // Get bit
-    uint uiFlagBit = GetWeaponPropertyFlagBit( eProperty );
-    bEnable = pWeaponInfo->IsFlagSet ( uiFlagBit );
 
     return true;
 }
@@ -2748,7 +2630,7 @@ bool CStaticFunctionDefinitions::GetOriginalWeaponProperty ( eWeaponProperty ePr
     return true;
 }
 
-bool CStaticFunctionDefinitions::GetOriginalWeaponProperty ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, int & sData )
+bool CStaticFunctionDefinitions::GetOriginalWeaponProperty ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, short & sData )
 {
     if ( eProperty == WEAPON_INVALID_PROPERTY )
         return false;
@@ -2855,24 +2737,6 @@ bool CStaticFunctionDefinitions::GetOriginalWeaponProperty ( eWeaponProperty ePr
     return true;
 }
 
-
-bool CStaticFunctionDefinitions::GetOriginalWeaponPropertyFlag ( eWeaponProperty eProperty, eWeaponType eWeapon, eWeaponSkill eSkillLevel, bool& bEnable )
-{
-    CWeaponStat* pWeaponInfo = g_pGame->GetWeaponStatManager()->GetOriginalWeaponStats( eWeapon, eSkillLevel );        
-    if ( !pWeaponInfo )
-        return false;
-
-    if ( !IsWeaponPropertyFlag( eProperty ) )
-        return false;
-
-    // Get bit
-    uint uiFlagBit = GetWeaponPropertyFlagBit( eProperty );
-    bEnable = pWeaponInfo->IsFlagSet ( uiFlagBit );
-
-    return true;
-}
-
-
 bool CStaticFunctionDefinitions::GetPlayerPing ( CPlayer* pPlayer, unsigned int& uiPing )
 {
     assert ( pPlayer );
@@ -2905,7 +2769,7 @@ CPlayer* CStaticFunctionDefinitions::GetRandomPlayer ( void )
         for ( ; iter != m_pPlayerManager->IterEnd (); iter++ )
         {
             // Check status
-            if ( (*iter)->IsJoined () && !(*iter)->IsBeingDeleted() )
+            if ( (*iter)->IsJoined () )
             {
                 // This is the given index?
                 if ( i++ == uiRandom )
@@ -3025,11 +2889,11 @@ bool CStaticFunctionDefinitions::IsPlayerNametagShowing ( CPlayer* pPlayer, bool
 }
 
 
-const std::string& CStaticFunctionDefinitions::GetPlayerSerial ( CPlayer* pPlayer, uint uiIndex )
+const std::string& CStaticFunctionDefinitions::GetPlayerSerial ( CPlayer* pPlayer )
 {
     assert ( pPlayer );
 
-    return pPlayer->GetSerial ( uiIndex );
+    return pPlayer->GetSerial ();
 }
 
 
@@ -3068,10 +2932,10 @@ bool CStaticFunctionDefinitions::GetPlayerMoney ( CPlayer* pPlayer, long& lMoney
 
 
 // ***************** PLAYER SET FUNCS **************** //
-bool CStaticFunctionDefinitions::SetPlayerMoney ( CElement* pElement, long lMoney, bool bInstant )
+bool CStaticFunctionDefinitions::SetPlayerMoney ( CElement* pElement, long lMoney )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPlayerMoney ( *iter, lMoney, bInstant ) )
+    RUN_CHILDREN SetPlayerMoney ( *iter, lMoney );
 
     // Exists?
     if ( IS_PLAYER ( pElement ) )
@@ -3086,22 +2950,20 @@ bool CStaticFunctionDefinitions::SetPlayerMoney ( CElement* pElement, long lMone
         // Tell him his new money
         CBitStream BitStream;
         BitStream.pBitStream->Write ( lMoney );
-        BitStream.pBitStream->WriteBit ( bInstant );
         pPlayer->Send ( CLuaPacket ( SET_PLAYER_MONEY, *BitStream.pBitStream ) );
 
         // Set the money and return true
         pPlayer->SetMoney ( lMoney );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::GivePlayerMoney ( CElement* pElement, long lMoney )
 {
     assert ( pElement );
-    RUN_CHILDREN( GivePlayerMoney ( *iter, lMoney ) )
+    RUN_CHILDREN GivePlayerMoney ( *iter, lMoney );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3124,17 +2986,16 @@ bool CStaticFunctionDefinitions::GivePlayerMoney ( CElement* pElement, long lMon
 
         // Set the money and return true
         pPlayer->SetMoney ( lNewMoney );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::TakePlayerMoney ( CElement* pElement, long lMoney )
 {
     assert ( pElement );
-    RUN_CHILDREN( TakePlayerMoney ( *iter, lMoney ) )
+    RUN_CHILDREN TakePlayerMoney ( *iter, lMoney );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3150,10 +3011,9 @@ bool CStaticFunctionDefinitions::TakePlayerMoney ( CElement* pElement, long lMon
 
         // Set the money and return true
         pPlayer->SetMoney ( lNewMoney );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
@@ -3176,7 +3036,7 @@ bool CStaticFunctionDefinitions::ShowPlayerHudComponent ( CElement* pElement, eH
 {
     assert ( pElement );
 
-    RUN_CHILDREN( ShowPlayerHudComponent ( *iter, component, bShow ) )
+    RUN_CHILDREN ShowPlayerHudComponent ( *iter, component, bShow );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3194,27 +3054,24 @@ bool CStaticFunctionDefinitions::ShowPlayerHudComponent ( CElement* pElement, eH
 }
 
 
-bool CStaticFunctionDefinitions::TakePlayerScreenShot ( CElement* pElement, uint uiSizeX, uint uiSizeY, const SString& strTag, uint uiQuality, uint uiMaxBandwidth, uint uiMaxPacketSize, CResource* pResource )
+bool CStaticFunctionDefinitions::TakePlayerScreenShot ( CElement* pElement, uint uiSizeX, uint uiSizeY, const SString& strTag, uint uiQuality, uint uiMaxBandwidth, uint uiMaxPacketSize, const SString& strResourceName )
 {
     assert ( pElement );
 
-    RUN_CHILDREN( TakePlayerScreenShot ( *iter, uiSizeX, uiSizeY, strTag, uiQuality, uiMaxBandwidth, uiMaxPacketSize, pResource ) )
+    RUN_CHILDREN TakePlayerScreenShot ( *iter, uiSizeX, uiSizeY, strTag, uiQuality, uiMaxBandwidth, uiMaxPacketSize, strResourceName );
 
     if ( IS_PLAYER ( pElement ) )
     {
         CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );
 
-        CPlayerBitStream BitStream( pPlayer );
+        CBitStream BitStream;
         BitStream.pBitStream->Write ( static_cast < ushort > ( uiSizeX ) );
         BitStream.pBitStream->Write ( static_cast < ushort > ( uiSizeY ) );
         BitStream.pBitStream->WriteString ( strTag );
         BitStream.pBitStream->Write ( static_cast < uchar > ( uiQuality ) );
         BitStream.pBitStream->Write ( uiMaxBandwidth );
         BitStream.pBitStream->Write ( static_cast < ushort > ( uiMaxPacketSize ) );
-        if ( BitStream.pBitStream->Version() >= 0x53 )
-            BitStream.pBitStream->Write ( pResource->GetNetID() );
-        else
-            BitStream.pBitStream->WriteString ( pResource->GetName() );
+        BitStream.pBitStream->WriteString ( strResourceName );
         BitStream.pBitStream->Write ( GetTickCount32 () );
         pPlayer->Send ( CLuaPacket ( TAKE_PLAYER_SCREEN_SHOT, *BitStream.pBitStream ) );
 
@@ -3230,7 +3087,7 @@ bool CStaticFunctionDefinitions::SetPlayerDebuggerVisible ( CElement* pElement, 
     // * Not used by scripts
 
     assert ( pElement );
-    RUN_CHILDREN( SetPlayerDebuggerVisible ( *iter, bVisible ) )
+    RUN_CHILDREN SetPlayerDebuggerVisible ( *iter, bVisible );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3253,7 +3110,7 @@ bool CStaticFunctionDefinitions::SetPlayerWantedLevel ( CElement* pElement, unsi
     // Make sure the health is above 0
     if ( iLevel >= 0 && iLevel <= 6 )
     {
-        RUN_CHILDREN( SetPlayerWantedLevel ( *iter, iLevel ) )
+        RUN_CHILDREN SetPlayerWantedLevel ( *iter, iLevel );
 
         if ( IS_PLAYER ( pElement ) )
         {
@@ -3275,7 +3132,7 @@ bool CStaticFunctionDefinitions::SetPlayerWantedLevel ( CElement* pElement, unsi
 bool CStaticFunctionDefinitions::ForcePlayerMap ( CElement* pElement, bool bVisible )
 {
     assert ( pElement );
-    RUN_CHILDREN( ForcePlayerMap ( *iter, bVisible ) )
+    RUN_CHILDREN ForcePlayerMap ( *iter, bVisible );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3299,7 +3156,7 @@ bool CStaticFunctionDefinitions::ForcePlayerMap ( CElement* pElement, bool bVisi
 bool CStaticFunctionDefinitions::SetPlayerNametagText ( CElement* pElement, const char* szText )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPlayerNametagText ( *iter, szText ) )
+    RUN_CHILDREN SetPlayerNametagText ( *iter, szText );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3334,7 +3191,7 @@ bool CStaticFunctionDefinitions::SetPlayerNametagText ( CElement* pElement, cons
 bool CStaticFunctionDefinitions::SetPlayerNametagColor ( CElement* pElement, bool bRemoveOverride, unsigned char ucR, unsigned char ucG, unsigned char ucB )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPlayerNametagColor ( *iter, bRemoveOverride, ucR, ucG, ucB ) )
+    RUN_CHILDREN SetPlayerNametagColor ( *iter, bRemoveOverride, ucR, ucG, ucB );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3387,7 +3244,7 @@ bool CStaticFunctionDefinitions::SetPlayerNametagColor ( CElement* pElement, boo
 bool CStaticFunctionDefinitions::SetPlayerNametagShowing ( CElement* pElement, bool bShowing )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPlayerNametagShowing ( *iter, bShowing ) )
+    RUN_CHILDREN SetPlayerNametagShowing ( *iter, bShowing );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3411,7 +3268,7 @@ bool CStaticFunctionDefinitions::SetPlayerNametagShowing ( CElement* pElement, b
 bool CStaticFunctionDefinitions::SetPlayerMuted ( CElement* pElement, bool bMuted )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPlayerMuted ( *iter, bMuted ) )
+    RUN_CHILDREN SetPlayerMuted ( *iter, bMuted );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3443,7 +3300,7 @@ bool CStaticFunctionDefinitions::SetPlayerMuted ( CElement* pElement, bool bMute
 bool CStaticFunctionDefinitions::SetPlayerBlurLevel ( CElement* pElement, unsigned char ucLevel )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPlayerBlurLevel ( *iter, ucLevel ) )
+    RUN_CHILDREN SetPlayerBlurLevel ( *iter, ucLevel );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -3676,7 +3533,7 @@ bool CStaticFunctionDefinitions::SetPedArmor ( CElement* pElement, float fArmor 
     // Make sure it's above 0
     if ( fArmor >= 0.0f )
     {
-        RUN_CHILDREN( SetPedArmor ( *iter, fArmor ) )
+        RUN_CHILDREN SetPedArmor ( *iter, fArmor );
 
         if ( IS_PED ( pElement ) )
         {
@@ -3688,6 +3545,7 @@ bool CStaticFunctionDefinitions::SetPedArmor ( CElement* pElement, float fArmor 
                     fArmor = 100.0f;
 
                 pPed->SetArmor ( fArmor );
+                pPed->SetArmorChangeTime ( GetTickCount32 () );
 
                 unsigned char ucArmor = static_cast < unsigned char > ( fArmor * 1.25 );
 
@@ -3696,19 +3554,20 @@ bool CStaticFunctionDefinitions::SetPedArmor ( CElement* pElement, float fArmor 
                 BitStream.pBitStream->Write ( ucArmor );
                 BitStream.pBitStream->Write ( pPed->GenerateSyncTimeContext () );
                 m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pPed, SET_PED_ARMOR, *BitStream.pBitStream ) );
-                return true;
             }
         }
 
+        return true;
     }
 
     return false;
 }
 
+
 bool CStaticFunctionDefinitions::KillPed ( CElement* pElement, CElement* pKiller, unsigned char ucKillerWeapon, unsigned char ucBodyPart, bool bStealth )
 {
     assert ( pElement );
-    RUN_CHILDREN( KillPed ( *iter, pKiller, ucKillerWeapon, ucBodyPart ) )
+    RUN_CHILDREN KillPed ( *iter, pKiller, ucKillerWeapon, ucBodyPart );
 
     if ( IS_PED ( pElement ) )
     {
@@ -3781,7 +3640,7 @@ bool CStaticFunctionDefinitions::KillPed ( CElement* pElement, CElement* pKiller
 bool CStaticFunctionDefinitions::SetPedRotation ( CElement* pElement, float fRotation, bool bNewWay )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedRotation ( *iter, fRotation, bNewWay ) )
+    RUN_CHILDREN SetPedRotation ( *iter, fRotation, bNewWay );
 
     if ( IS_PED ( pElement ) )
     {
@@ -3819,11 +3678,10 @@ bool CStaticFunctionDefinitions::SetPedRotation ( CElement* pElement, float fRot
             BitStream.pBitStream->Write ( ucNewWay );
 
             m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pPed, SET_PED_ROTATION, *BitStream.pBitStream ) );
-            return true;
         }
     }
 
-    return false;
+    return true;
 }
 
 
@@ -3834,7 +3692,7 @@ bool CStaticFunctionDefinitions::SetPedStat ( CElement* pElement, unsigned short
     // Check the stat
     if ( usStat < NUM_PLAYER_STATS && fValue >= 0.0f && fValue <= 1000.0f )
     {
-        RUN_CHILDREN( SetPedStat ( *iter, usStat, fValue ) )
+        RUN_CHILDREN SetPedStat ( *iter, usStat, fValue );
 
         if ( IS_PLAYER ( pElement ) )
         {
@@ -3854,8 +3712,8 @@ bool CStaticFunctionDefinitions::SetPedStat ( CElement* pElement, unsigned short
 
                 return true;
             }
+            return false;
         }
-        else
         if ( IS_PED ( pElement ) )
         {
             CPed* pPed = static_cast < CPed* > ( pElement );
@@ -3889,7 +3747,7 @@ bool CStaticFunctionDefinitions::AddPedClothes ( CElement* pElement, const char*
 
     if ( CPlayerClothes::IsValidClothing ( szTexture, szModel, ucType ) )
     {
-        RUN_CHILDREN( AddPedClothes ( *iter, szTexture, szModel, ucType ) )
+        RUN_CHILDREN AddPedClothes ( *iter, szTexture, szModel, ucType );
 
         if ( IS_PED ( pElement ) )
         {
@@ -3919,7 +3777,7 @@ bool CStaticFunctionDefinitions::RemovePedClothes ( CElement* pElement, unsigned
 
     if ( ucType < PLAYER_CLOTHING_SLOTS )
     {
-        RUN_CHILDREN( RemovePedClothes ( *iter, ucType, szTexture, szModel ) )
+        RUN_CHILDREN RemovePedClothes ( *iter, ucType, szTexture, szModel );
 
         if ( IS_PED ( pElement ) )
         {
@@ -3951,7 +3809,7 @@ bool CStaticFunctionDefinitions::GivePedJetPack ( CElement* pElement )
 {
     assert ( pElement );
 
-    RUN_CHILDREN( GivePedJetPack ( *iter ) )
+    RUN_CHILDREN GivePedJetPack ( *iter );
 
     if ( IS_PED ( pElement ) )
     {
@@ -3975,7 +3833,7 @@ bool CStaticFunctionDefinitions::RemovePedJetPack ( CElement* pElement )
 {
     assert ( pElement );
 
-    RUN_CHILDREN( RemovePedJetPack ( *iter ) )
+    RUN_CHILDREN RemovePedJetPack ( *iter );
 
     if ( IS_PED ( pElement ) )
     {
@@ -3998,7 +3856,7 @@ bool CStaticFunctionDefinitions::RemovePedJetPack ( CElement* pElement )
 bool CStaticFunctionDefinitions::SetPedFightingStyle ( CElement* pElement, unsigned char ucStyle )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedFightingStyle ( *iter, ucStyle ) )
+    RUN_CHILDREN SetPedFightingStyle ( *iter, ucStyle );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4025,11 +3883,12 @@ bool CStaticFunctionDefinitions::SetPedFightingStyle ( CElement* pElement, unsig
 bool CStaticFunctionDefinitions::SetPedMoveAnim ( CElement* pElement, unsigned int iMoveAnim )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedMoveAnim ( *iter, iMoveAnim ) )
+    RUN_CHILDREN SetPedMoveAnim ( *iter, iMoveAnim );
 
     if ( IS_PED ( pElement ) )
     {
-        if ( IsValidMoveAnim( iMoveAnim ) )
+        if ( ( iMoveAnim >= 54 && iMoveAnim <= 70 ) ||
+             ( iMoveAnim >= 118 && iMoveAnim <= 138 ) )
         {
             CPed* pPed = static_cast < CPed* > ( pElement );
             if ( pPed->GetMoveAnim () != iMoveAnim )
@@ -4054,7 +3913,7 @@ bool CStaticFunctionDefinitions::SetPedMoveAnim ( CElement* pElement, unsigned i
 bool CStaticFunctionDefinitions::SetPedGravity ( CElement* pElement, float fGravity )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedGravity ( *iter, fGravity ) )
+    RUN_CHILDREN SetPedGravity ( *iter, fGravity );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4068,8 +3927,9 @@ bool CStaticFunctionDefinitions::SetPedGravity ( CElement* pElement, float fGrav
                 CBitStream BitStream;
                 BitStream.pBitStream->Write ( fGravity );
                 m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pPed, SET_PED_GRAVITY, *BitStream.pBitStream ) );
-                return true;
             }
+
+            return true;
         }
     }
     return false;
@@ -4079,7 +3939,7 @@ bool CStaticFunctionDefinitions::SetPedGravity ( CElement* pElement, float fGrav
 bool CStaticFunctionDefinitions::SetPedChoking ( CElement* pElement, bool bChoking )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedChoking ( *iter, bChoking ) )
+    RUN_CHILDREN SetPedChoking ( *iter, bChoking );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4111,7 +3971,7 @@ bool CStaticFunctionDefinitions::SetPedChoking ( CElement* pElement, bool bChoki
 bool CStaticFunctionDefinitions::SetPedWeaponSlot ( CElement * pElement, unsigned char ucWeaponSlot )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedWeaponSlot ( *iter, ucWeaponSlot ) )
+    RUN_CHILDREN SetPedWeaponSlot ( *iter, ucWeaponSlot );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4139,76 +3999,64 @@ bool CStaticFunctionDefinitions::WarpPedIntoVehicle ( CPed* pPed, CVehicle* pVeh
     assert ( pVehicle );
 
     // Valid seat id for that vehicle?
-    // Temp fix: Disable driver seat for train carriages since the whole vehicle sync logic is based on the the player on the first seat being the vehicle syncer (Todo)
-    if ( uiSeat <= pVehicle->GetMaxPassengers () && ( pVehicle->GetVehicleType () != VEHICLE_TRAIN || !pVehicle->GetTowedByVehicle () ) )
+    if ( uiSeat <= pVehicle->GetMaxPassengers () )
     {
         if ( !pPed->IsDead () )
         {
             if ( pVehicle->GetHealth () > 0.0f )
             {
+                // Toss the previous player out of it if neccessary
                 CPed* pPreviousOccupant = pVehicle->GetOccupant ( uiSeat );
-                // Make sure no one is entering or he will get stuck in the entry packet handshaking and network trouble
-                if ( pPreviousOccupant == NULL || ( pPreviousOccupant && pPreviousOccupant->GetVehicleAction ( ) == CPlayer::VEHICLEACTION_NONE ) )
+                if ( pPreviousOccupant )
                 {
-                    // Toss the previous player out of it if neccessary
-                    if ( pPreviousOccupant )
-                    {
-                        // Remove him from the vehicle
-                        RemovePedFromVehicle ( pPreviousOccupant );
-                    }
-
-                    // Jax: ::RemovePedFromVehicle caused a short delay between removing and entering,
-                    // which creates a buggy effect if we're just warping into a different seat
-
-                    // Is he already in a vehicle? Remove him from it
-                    CVehicle* pPreviousVehicle = pPed->GetOccupiedVehicle ();
-                    if ( pPreviousVehicle )
-                    {
-                        // Remove him from the vehicle
-                        pPreviousVehicle->SetOccupant ( NULL, pPed->GetOccupiedVehicleSeat () );
-                    }
-
-                    // Put him in the new vehicle
-                    pPed->SetOccupiedVehicle ( pVehicle, uiSeat );
-                    pPed->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
-
-                    // If he's the driver, switch on the engine
-                    if ( uiSeat == 0 )
-                        pVehicle->SetEngineOn( true );
-
-                    // Tell all the players
-                    CBitStream BitStream;
-                    BitStream.pBitStream->Write ( pVehicle->GetID () );
-                    BitStream.pBitStream->Write ( static_cast < unsigned char > ( uiSeat ) );
-                    BitStream.pBitStream->Write ( pPed->GenerateSyncTimeContext () );
-                    m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pPed, WARP_PED_INTO_VEHICLE, *BitStream.pBitStream ) );
-
-                    // Call the player->vehicle event
-                    CLuaArguments PlayerVehicleArguments;
-                    PlayerVehicleArguments.PushElement ( pVehicle );        // vehicle
-                    PlayerVehicleArguments.PushNumber ( uiSeat );            // seat
-                    if ( pPreviousOccupant )                    // jacked
-                        PlayerVehicleArguments.PushElement ( pPreviousOccupant );
-                    else
-                        PlayerVehicleArguments.PushBoolean ( false );
-                    // Leave onPlayerVehicleEnter for backwards compatibility
-                    pPed->CallEvent ( "onPlayerVehicleEnter", PlayerVehicleArguments );
-
-                    // Call the vehicle->player event
-                    CLuaArguments VehiclePlayerArguments;
-                    VehiclePlayerArguments.PushElement ( pPed );            // player
-                    VehiclePlayerArguments.PushNumber ( uiSeat );           // seat
-                    if ( pPreviousOccupant )                                // jacked
-                        VehiclePlayerArguments.PushElement ( pPreviousOccupant );
-                    else
-                        VehiclePlayerArguments.PushBoolean ( false );
-                    pVehicle->CallEvent ( "onVehicleEnter", VehiclePlayerArguments );
-
-                    // Used to check if f.e. lua changed the player's vehicle (fix for #7570)
-                    pVehicle->m_bOccupantChanged = true;
-
-                    return true;
+                    // Remove him from the vehicle
+                    RemovePedFromVehicle ( pPreviousOccupant );
                 }
+
+                // Jax: ::RemovePedFromVehicle caused a short delay between removing and entering,
+                // which creates a buggy effect if we're just warping into a different seat
+
+                // Is he already in a vehicle? Remove him from it
+                CVehicle* pPreviousVehicle = pPed->GetOccupiedVehicle ();
+                if ( pPreviousVehicle )
+                {
+                    // Remove him from the vehicle
+                    pPreviousVehicle->SetOccupant ( NULL, pPed->GetOccupiedVehicleSeat () );
+                }
+
+                // Put him in the new vehicle
+                pPed->SetOccupiedVehicle ( pVehicle, uiSeat );
+                pPed->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
+
+                // Tell all the players
+                CBitStream BitStream;
+                BitStream.pBitStream->Write ( pVehicle->GetID () );
+                BitStream.pBitStream->Write ( static_cast < unsigned char > ( uiSeat ) );
+                BitStream.pBitStream->Write ( pPed->GenerateSyncTimeContext () );
+                m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pPed, WARP_PED_INTO_VEHICLE, *BitStream.pBitStream ) );
+
+                // Call the player->vehicle event
+                CLuaArguments PlayerVehicleArguments;
+                PlayerVehicleArguments.PushElement ( pVehicle );        // vehicle
+                PlayerVehicleArguments.PushNumber ( uiSeat );            // seat
+                if ( pPreviousOccupant )                    // jacked
+                    PlayerVehicleArguments.PushElement ( pPreviousOccupant );
+                else
+                    PlayerVehicleArguments.PushBoolean ( false );
+                // Leave onPlayerVehicleEnter for backwards compatibility
+                pPed->CallEvent ( "onPlayerVehicleEnter", PlayerVehicleArguments );
+
+                // Call the vehicle->player event
+                CLuaArguments VehiclePlayerArguments;
+                VehiclePlayerArguments.PushElement ( pPed );            // player
+                VehiclePlayerArguments.PushNumber ( uiSeat );           // seat
+                if ( pPreviousOccupant )                                // jacked
+                    VehiclePlayerArguments.PushElement ( pPreviousOccupant );
+                else
+                    VehiclePlayerArguments.PushBoolean ( false );
+                pVehicle->CallEvent ( "onVehicleEnter", VehiclePlayerArguments );
+
+                return true;
             }
         }
     }
@@ -4220,7 +4068,7 @@ bool CStaticFunctionDefinitions::WarpPedIntoVehicle ( CPed* pPed, CVehicle* pVeh
 bool CStaticFunctionDefinitions::RemovePedFromVehicle ( CElement* pElement )
 {
     assert ( pElement );
-    RUN_CHILDREN( RemovePedFromVehicle ( *iter ) )
+    RUN_CHILDREN RemovePedFromVehicle ( *iter );
 
     // Verify the player and the vehicle pointer
     if ( IS_PED ( pElement ) )
@@ -4256,18 +4104,17 @@ bool CStaticFunctionDefinitions::RemovePedFromVehicle ( CElement* pElement )
             CBitStream BitStream;
             BitStream.pBitStream->Write ( pPed->GenerateSyncTimeContext () );
             m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pPed, REMOVE_PED_FROM_VEHICLE, *BitStream.pBitStream ) );
-            return true;
         }
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetPedDoingGangDriveby ( CElement * pElement, bool bGangDriveby )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedDoingGangDriveby ( *iter, bGangDriveby ) )
+    RUN_CHILDREN SetPedDoingGangDriveby ( *iter, bGangDriveby );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4296,7 +4143,7 @@ bool CStaticFunctionDefinitions::SetPedDoingGangDriveby ( CElement * pElement, b
 bool CStaticFunctionDefinitions::SetPedAnimation ( CElement * pElement, const char * szBlockName, const char * szAnimName, int iTime, bool bLoop, bool bUpdatePosition, bool bInterruptable, bool bFreezeLastFrame )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedAnimation ( *iter, szBlockName, szAnimName, iTime, bLoop, bUpdatePosition, bInterruptable, bFreezeLastFrame ) )
+    RUN_CHILDREN SetPedAnimation ( *iter, szBlockName, szAnimName, iTime, bLoop, bUpdatePosition, bInterruptable, bFreezeLastFrame );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4339,7 +4186,7 @@ bool CStaticFunctionDefinitions::SetPedAnimation ( CElement * pElement, const ch
 bool CStaticFunctionDefinitions::SetPedAnimationProgress ( CElement * pElement, const char * szAnimName, float fProgress )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedAnimationProgress ( *iter, szAnimName, fProgress ) )
+    RUN_CHILDREN SetPedAnimationProgress ( *iter, szAnimName, fProgress );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4372,7 +4219,7 @@ bool CStaticFunctionDefinitions::SetPedAnimationProgress ( CElement * pElement, 
 bool CStaticFunctionDefinitions::SetPedOnFire ( CElement * pElement, bool bIsOnFire )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedOnFire ( *iter, bIsOnFire ) )
+    RUN_CHILDREN SetPedOnFire ( *iter, bIsOnFire );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4393,7 +4240,7 @@ bool CStaticFunctionDefinitions::SetPedOnFire ( CElement * pElement, bool bIsOnF
 bool CStaticFunctionDefinitions::SetPedHeadless ( CElement * pElement, bool bIsHeadless )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedHeadless ( *iter, bIsHeadless ) )
+    RUN_CHILDREN SetPedHeadless ( *iter, bIsHeadless );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4414,7 +4261,7 @@ bool CStaticFunctionDefinitions::SetPedHeadless ( CElement * pElement, bool bIsH
 bool CStaticFunctionDefinitions::SetPedFrozen ( CElement * pElement, bool bIsFrozen )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPedFrozen ( *iter, bIsFrozen ) )
+    RUN_CHILDREN SetPedFrozen ( *iter, bIsFrozen );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4433,7 +4280,7 @@ bool CStaticFunctionDefinitions::SetPedFrozen ( CElement * pElement, bool bIsFro
 bool CStaticFunctionDefinitions::reloadPedWeapon ( CElement* pElement )
 {
     assert ( pElement );
-    RUN_CHILDREN( reloadPedWeapon ( *iter ) )
+    RUN_CHILDREN reloadPedWeapon ( *iter );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4489,7 +4336,7 @@ bool CStaticFunctionDefinitions::GetCameraInterior ( CPlayer * pPlayer, unsigned
 bool CStaticFunctionDefinitions::SetCameraMatrix ( CElement* pElement, const CVector& vecPosition, CVector* pvecLookAt, float fRoll, float fFOV )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetCameraMatrix ( *iter, vecPosition, pvecLookAt, fRoll, fFOV ) )
+    RUN_CHILDREN SetCameraMatrix ( *iter, vecPosition, pvecLookAt, fRoll, fFOV );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -4513,8 +4360,6 @@ bool CStaticFunctionDefinitions::SetCameraMatrix ( CElement* pElement, const CVe
         
         // Tell the player
         CBitStream BitStream;
-        if ( pPlayer->GetBitStreamVersion() >= 0x5E )
-            BitStream.pBitStream->Write ( pCamera->GenerateSyncTimeContext() );
         BitStream.pBitStream->Write ( vecPosition.fX );
         BitStream.pBitStream->Write ( vecPosition.fY );
         BitStream.pBitStream->Write ( vecPosition.fZ );
@@ -4538,7 +4383,7 @@ bool CStaticFunctionDefinitions::SetCameraMatrix ( CElement* pElement, const CVe
 bool CStaticFunctionDefinitions::SetCameraTarget ( CElement* pElement, CElement* pTarget )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetCameraTarget ( *iter, pTarget ) )
+    RUN_CHILDREN SetCameraTarget ( *iter, pTarget );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -4558,8 +4403,6 @@ bool CStaticFunctionDefinitions::SetCameraTarget ( CElement* pElement, CElement*
             pCamera->SetFOV ( 70.0f );
 
             CBitStream BitStream;
-            if ( pPlayer->GetBitStreamVersion() >= 0x5E )
-                BitStream.pBitStream->Write ( pCamera->GenerateSyncTimeContext() );
             BitStream.pBitStream->Write ( pTarget->GetID () );
             pPlayer->Send ( CLuaPacket ( SET_CAMERA_TARGET, *BitStream.pBitStream ) );
             return true;
@@ -4573,7 +4416,7 @@ bool CStaticFunctionDefinitions::SetCameraTarget ( CElement* pElement, CElement*
 bool CStaticFunctionDefinitions::SetCameraInterior ( CElement * pElement, unsigned char ucInterior )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetCameraInterior ( *iter, ucInterior ) )
+    RUN_CHILDREN SetCameraInterior ( *iter, ucInterior );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -4598,7 +4441,7 @@ bool CStaticFunctionDefinitions::SetCameraInterior ( CElement * pElement, unsign
 bool CStaticFunctionDefinitions::FadeCamera ( CElement * pElement, bool bFadeIn, float fFadeTime, unsigned char ucRed, unsigned char ucGreen, unsigned char ucBlue )
 {
     assert ( pElement );
-    RUN_CHILDREN( FadeCamera ( *iter, bFadeIn, fFadeTime, ucRed, ucGreen, ucBlue ) )
+    RUN_CHILDREN FadeCamera ( *iter, bFadeIn, fFadeTime, ucRed, ucGreen, ucBlue );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -4627,7 +4470,7 @@ bool CStaticFunctionDefinitions::FadeCamera ( CElement * pElement, bool bFadeIn,
 bool CStaticFunctionDefinitions::GiveWeapon ( CElement* pElement, unsigned char ucWeaponID, unsigned short usAmmo, bool bSetAsCurrent )
 {
     assert ( pElement );
-    RUN_CHILDREN( GiveWeapon ( *iter, ucWeaponID, usAmmo, bSetAsCurrent ) )
+    RUN_CHILDREN GiveWeapon ( *iter, ucWeaponID, usAmmo, bSetAsCurrent );
 
     if ( ucWeaponID == 0 || CPickupManager::IsValidWeaponID ( ucWeaponID ) )
     {
@@ -4656,24 +4499,16 @@ bool CStaticFunctionDefinitions::GiveWeapon ( CElement* pElement, unsigned char 
                 }
 
                 unsigned char ucWeaponSlot = CWeaponNames::GetSlotFromWeapon ( ucWeaponID );
-                unsigned char ucPreviousWeaponID = pPed->GetWeaponType ( ucWeaponSlot );
                 pPed->SetWeaponType ( ucWeaponID, ucWeaponSlot );
                 if ( bSetAsCurrent )
                     pPed->SetWeaponSlot ( ucWeaponSlot );
 
-                unsigned int uiTotalAmmo = pPed->GetWeaponTotalAmmo ( ucWeaponSlot );
-
-                // Client ammo emulation mode - Try to ensure that the ammo we set on the server will be the same as the client)
-                if ( ucWeaponSlot <= 1 || ucWeaponSlot >= 10 )
-                    uiTotalAmmo = Min( 1U, uiTotalAmmo + usAmmo );  // If slot 0,1,10,11,12 - Ammo is max 1
+                unsigned short usTotalAmmo = pPed->GetWeaponTotalAmmo ( ucWeaponSlot );
+                if ( (unsigned int)usTotalAmmo + usAmmo > 0xFFFF )
+                    usTotalAmmo = 0xFFFF;
                 else
-                if ( ( ucWeaponSlot >= 3 && ucWeaponSlot <= 5 ) || ucPreviousWeaponID == ucWeaponID )
-                    uiTotalAmmo += usAmmo;                          // If slot 3,4,5 or slot weapon the same, ammo is shared, so add
-                else
-                    uiTotalAmmo = usAmmo;                           // Otherwise ammo is not shared, so replace
-
-                uiTotalAmmo = Min( 0xFFFFU, uiTotalAmmo );
-                pPed->SetWeaponTotalAmmo ( uiTotalAmmo, ucWeaponSlot );
+                    usTotalAmmo += usAmmo;
+                pPed->SetWeaponTotalAmmo ( usTotalAmmo, ucWeaponSlot );
 
                 CBitStream BitStream;
 
@@ -4701,7 +4536,7 @@ bool CStaticFunctionDefinitions::GiveWeapon ( CElement* pElement, unsigned char 
 bool CStaticFunctionDefinitions::TakeWeapon ( CElement* pElement, unsigned char ucWeaponID, unsigned short usAmmo )
 {
     assert ( pElement );
-    RUN_CHILDREN( TakeWeapon ( *iter, ucWeaponID, usAmmo ) )
+    RUN_CHILDREN TakeWeapon ( *iter, ucWeaponID, usAmmo );
 
     if ( CPickupManager::IsValidWeaponID ( ucWeaponID ) )
     {
@@ -4758,7 +4593,7 @@ bool CStaticFunctionDefinitions::TakeWeapon ( CElement* pElement, unsigned char 
 bool CStaticFunctionDefinitions::TakeAllWeapons ( CElement* pElement )
 {
     assert ( pElement );
-    RUN_CHILDREN( TakeAllWeapons ( *iter ) )
+    RUN_CHILDREN TakeAllWeapons ( *iter );
 
     if ( IS_PED ( pElement ) )
     {
@@ -4786,7 +4621,7 @@ bool CStaticFunctionDefinitions::TakeAllWeapons ( CElement* pElement )
 bool CStaticFunctionDefinitions::SetWeaponAmmo ( CElement* pElement, unsigned char ucWeaponID, unsigned short usAmmo, unsigned short usAmmoInClip )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetWeaponAmmo ( *iter, ucWeaponID, usAmmo, usAmmoInClip ) )
+    RUN_CHILDREN SetWeaponAmmo ( *iter, ucWeaponID, usAmmo, usAmmoInClip );
 
     if ( IS_PED ( pElement ) )
     {
@@ -5190,29 +5025,8 @@ bool CStaticFunctionDefinitions::GetVehiclePlateText ( CVehicle* pVehicle, char*
     assert ( pVehicle );
 
     const char* szRegPlate = pVehicle->GetRegPlate ();
-    STRNCPY( szPlateText, szRegPlate, 9 );
+    strcpy ( szPlateText, szRegPlate );
     return true;
-}
-
-
-bool CStaticFunctionDefinitions::SetVehiclePlateText ( CElement* pElement, const SString& strPlateText )
-{
-    assert ( pElement );
-    RUN_CHILDREN( SetVehiclePlateText ( *iter, strPlateText ) )
-
-    if ( IS_VEHICLE ( pElement ) )
-    {
-        CVehicle* pVehicle = static_cast < CVehicle* > ( pElement );
-        pVehicle->SetRegPlate( strPlateText );
-
-        // Tell everybarry
-        CBitStream BitStream;
-        BitStream.pBitStream->WriteString ( strPlateText.Left( 8 ) );
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pVehicle, SET_VEHICLE_PLATE_TEXT, *BitStream.pBitStream ) );
-        return true;
-    }
-
-    return false;
 }
 
 
@@ -5301,7 +5115,7 @@ bool CStaticFunctionDefinitions::GetTrainSpeed ( CVehicle* pVehicle, float& fSpe
 bool CStaticFunctionDefinitions::FixVehicle ( CElement* pElement )
 {
     assert ( pElement );
-    RUN_CHILDREN( FixVehicle ( *iter ) )
+    RUN_CHILDREN FixVehicle ( *iter );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -5331,7 +5145,7 @@ bool CStaticFunctionDefinitions::FixVehicle ( CElement* pElement )
 bool CStaticFunctionDefinitions::BlowVehicle ( CElement* pElement, bool bExplode )
 {
     assert ( pElement );
-    RUN_CHILDREN( BlowVehicle ( *iter, bExplode ) )
+    RUN_CHILDREN BlowVehicle ( *iter, bExplode );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -5906,12 +5720,10 @@ bool CStaticFunctionDefinitions::SetEntryHandling ( CHandlingEntry* pEntry, eHan
             }
             case HANDLING_ANIMGROUP:
             {
-                if ( ucValue >= 0 && ucValue <= 29 )
+                if ( ucValue >= 0 && ucValue <= 29 
+                    && ucValue != 3 && ucValue != 8 
+                    && ucValue != 17 && ucValue != 23 ) 
                 {
-                    if ( ucValue != 3 && ucValue != 8 
-                        && ucValue != 17 && ucValue != 23 ) 
-                        return true;    // Pretend it worked to avoid script warnings
-
                     pEntry->SetAnimGroup ( ucValue );
                     return true;
                 }
@@ -6069,25 +5881,19 @@ bool CStaticFunctionDefinitions::SetEntryHandling ( CHandlingEntry* pEntry, eHan
             }
             case HANDLING_SUSPENSION_UPPER_LIMIT:
             {
-                if ( fValue >= -50 && fValue <= 50 && fValue > pEntry->GetSuspensionLowerLimit ( ) + 0.01  )
+                if ( fValue >= -50.0 && fValue <= 50 && ( fValue <= pEntry->GetSuspensionLowerLimit() - 0.1 || fValue >= pEntry->GetSuspensionLowerLimit() + 0.1 ) ) // Lower and Upper limits cannot match or LSOD
                 {
-                    if ( fValue >= 0.0001 || fValue <= -0.0001 )
-                    {
-                         pEntry->SetSuspensionUpperLimit ( fValue );
-                         return true;
-                     }
-                 }
+                    pEntry->SetSuspensionUpperLimit ( fValue );
+                    return true;
+                }
                 break;
             }
             case HANDLING_SUSPENSION_LOWER_LIMIT:
             {
-                if ( fValue >= -50 && fValue <= 50 && fValue < pEntry->GetSuspensionUpperLimit ( ) - 0.01  )
+                if ( fValue >= -50.0 && fValue <= 50 && ( fValue <= pEntry->GetSuspensionUpperLimit() - 0.1 || fValue >= pEntry->GetSuspensionUpperLimit() ) ) // Lower and Upper limits cannot match or LSOD
                 {
-                    if ( fValue >= 0.0001 || fValue <= -0.0001 )
-                    {
-                        pEntry->SetSuspensionLowerLimit ( fValue );
-                        return true;
-                    }
+                    pEntry->SetSuspensionLowerLimit ( fValue );
+                    return true;
                 }
                 break;
             }
@@ -6283,7 +6089,7 @@ bool CStaticFunctionDefinitions::SetEntryHandling ( CHandlingEntry* pEntry, eHan
 bool CStaticFunctionDefinitions::SetVehicleColor ( CElement* pElement, const CVehicleColor& color )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleColor ( *iter, color ) )
+    RUN_CHILDREN SetVehicleColor ( *iter, color );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6303,17 +6109,16 @@ bool CStaticFunctionDefinitions::SetVehicleColor ( CElement* pElement, const CVe
             BitStream.pBitStream->Write ( RGBColor.B );
         }
         m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pVehicle, SET_VEHICLE_COLOR, *BitStream.pBitStream ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetVehicleLandingGearDown ( CElement* pElement, bool bLandingGearDown )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleLandingGearDown ( *iter, bLandingGearDown ) )
+    RUN_CHILDREN SetVehicleLandingGearDown ( *iter, bLandingGearDown );
 
     // Is this a vehicle?
     if ( IS_VEHICLE ( pElement ) )
@@ -6334,24 +6139,23 @@ bool CStaticFunctionDefinitions::SetVehicleLandingGearDown ( CElement* pElement,
             CBitStream BitStream;
             BitStream.pBitStream->Write ( ucLandingGearDown );
             m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pVehicle, SET_VEHICLE_LANDING_GEAR_DOWN, *BitStream.pBitStream ) );
-            return true;
         }
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetVehicleLocked ( CElement* pElement, bool bLocked )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleLocked ( *iter, bLocked ) )
+    RUN_CHILDREN SetVehicleLocked ( *iter, bLocked );
 
     if ( IS_VEHICLE ( pElement ) )
     {
         CVehicle* pVehicle = static_cast < CVehicle* > ( pElement );
 
-        if ( bLocked != pVehicle->IsLocked () )
+        //if ( bLocked != pVehicle->IsLocked () )   // this lock check is redundant
         {
             // Set the new locked state
             pVehicle->SetLocked ( bLocked );
@@ -6372,7 +6176,7 @@ bool CStaticFunctionDefinitions::SetVehicleLocked ( CElement* pElement, bool bLo
 bool CStaticFunctionDefinitions::SetVehicleDoorsUndamageable ( CElement* pElement, bool bDoorsUndamageable )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleDoorsUndamageable ( *iter, bDoorsUndamageable ) )
+    RUN_CHILDREN SetVehicleDoorsUndamageable ( *iter, bDoorsUndamageable );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6398,7 +6202,7 @@ bool CStaticFunctionDefinitions::SetVehicleDoorsUndamageable ( CElement* pElemen
 bool CStaticFunctionDefinitions::SetVehicleRotation ( CElement* pElement, const CVector& vecRotation )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleRotation ( *iter, vecRotation ) )
+    RUN_CHILDREN SetVehicleRotation ( *iter, vecRotation );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6414,17 +6218,16 @@ bool CStaticFunctionDefinitions::SetVehicleRotation ( CElement* pElement, const 
         BitStream.pBitStream->Write ( vecRotation.fZ );
         BitStream.pBitStream->Write ( pVehicle->GenerateSyncTimeContext () );
         m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pVehicle, SET_VEHICLE_ROTATION, *BitStream.pBitStream ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetVehicleSirensOn ( CElement* pElement, bool bSirensOn )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleSirensOn ( *iter, bSirensOn ) )
+    RUN_CHILDREN SetVehicleSirensOn ( *iter, bSirensOn );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6453,7 +6256,7 @@ bool CStaticFunctionDefinitions::SetVehicleSirensOn ( CElement* pElement, bool b
 bool CStaticFunctionDefinitions::SetVehicleTaxiLightOn ( CElement* pElement, bool bTaxiLightState )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleTaxiLightOn ( *iter, bTaxiLightState ) )
+    RUN_CHILDREN SetVehicleTaxiLightOn ( *iter, bTaxiLightState );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6476,7 +6279,7 @@ bool CStaticFunctionDefinitions::SetVehicleTaxiLightOn ( CElement* pElement, boo
 bool CStaticFunctionDefinitions::SetVehicleTurnVelocity ( CElement* pElement, const CVector& vecTurnVelocity )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleTurnVelocity ( *iter, vecTurnVelocity ) )
+    RUN_CHILDREN SetVehicleTurnVelocity ( *iter, vecTurnVelocity );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6488,17 +6291,16 @@ bool CStaticFunctionDefinitions::SetVehicleTurnVelocity ( CElement* pElement, co
         BitStream.pBitStream->Write ( vecTurnVelocity.fY );
         BitStream.pBitStream->Write ( vecTurnVelocity.fZ );
         m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pVehicle, SET_VEHICLE_TURNSPEED, *BitStream.pBitStream ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::AddVehicleUpgrade ( CElement* pElement, unsigned short usUpgrade )
 {
     assert ( pElement );
-    RUN_CHILDREN( AddVehicleUpgrade ( *iter, usUpgrade ) )
+    RUN_CHILDREN AddVehicleUpgrade ( *iter, usUpgrade );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6526,7 +6328,7 @@ bool CStaticFunctionDefinitions::AddVehicleUpgrade ( CElement* pElement, unsigne
 bool CStaticFunctionDefinitions::AddAllVehicleUpgrades ( CElement* pElement )
 {
     assert ( pElement );
-    RUN_CHILDREN( AddAllVehicleUpgrades ( *iter ) )
+    RUN_CHILDREN AddAllVehicleUpgrades ( *iter );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6551,7 +6353,7 @@ bool CStaticFunctionDefinitions::AddAllVehicleUpgrades ( CElement* pElement )
 bool CStaticFunctionDefinitions::RemoveVehicleUpgrade ( CElement* pElement, unsigned short usUpgrade )
 {
     assert ( pElement );
-    RUN_CHILDREN( RemoveVehicleUpgrade ( *iter, usUpgrade ) )
+    RUN_CHILDREN RemoveVehicleUpgrade ( *iter, usUpgrade );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6586,7 +6388,7 @@ bool CStaticFunctionDefinitions::RemoveVehicleUpgrade ( CElement* pElement, unsi
 bool CStaticFunctionDefinitions::SetVehicleDoorState ( CElement* pElement, unsigned char ucDoor, unsigned char ucState )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleDoorState ( *iter, ucDoor, ucState ) )
+    RUN_CHILDREN SetVehicleDoorState ( *iter, ucDoor, ucState );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6638,7 +6440,7 @@ bool CStaticFunctionDefinitions::SetVehicleDoorState ( CElement* pElement, unsig
 bool CStaticFunctionDefinitions::SetVehicleWheelStates ( CElement* pElement, int iFrontLeft, int iRearLeft, int iFrontRight, int iRearRight )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleWheelStates ( *iter, iFrontLeft, iRearLeft, iFrontRight, iRearRight ) )
+    RUN_CHILDREN SetVehicleWheelStates ( *iter, iFrontLeft, iRearLeft, iFrontRight, iRearRight );
 
     unsigned char a = -1;
     if ( a == (unsigned char)-1 )
@@ -6678,7 +6480,7 @@ bool CStaticFunctionDefinitions::SetVehicleWheelStates ( CElement* pElement, int
 bool CStaticFunctionDefinitions::SetVehicleLightState ( CElement* pElement, unsigned char ucLight, unsigned char ucState )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleLightState ( *iter, ucLight, ucState ) )
+    RUN_CHILDREN SetVehicleLightState ( *iter, ucLight, ucState );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6709,7 +6511,7 @@ bool CStaticFunctionDefinitions::SetVehicleLightState ( CElement* pElement, unsi
 bool CStaticFunctionDefinitions::SetVehiclePanelState ( CElement* pElement, unsigned char ucPanel, unsigned char ucState )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehiclePanelState ( *iter, ucPanel, ucState ) )
+    RUN_CHILDREN SetVehiclePanelState ( *iter, ucPanel, ucState );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6739,7 +6541,7 @@ bool CStaticFunctionDefinitions::SetVehiclePanelState ( CElement* pElement, unsi
 bool CStaticFunctionDefinitions::ToggleVehicleRespawn ( CElement* pElement, bool bRespawn )
 {
     assert ( pElement );
-    RUN_CHILDREN( ToggleVehicleRespawn ( *iter, bRespawn ) )
+    RUN_CHILDREN ToggleVehicleRespawn ( *iter, bRespawn );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6756,7 +6558,7 @@ bool CStaticFunctionDefinitions::ToggleVehicleRespawn ( CElement* pElement, bool
 bool CStaticFunctionDefinitions::SetVehicleRespawnDelay ( CElement* pElement, unsigned long ulTime )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleRespawnDelay ( *iter, ulTime ) )
+    RUN_CHILDREN SetVehicleRespawnDelay ( *iter, ulTime );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6773,7 +6575,7 @@ bool CStaticFunctionDefinitions::SetVehicleRespawnDelay ( CElement* pElement, un
 bool CStaticFunctionDefinitions::SetVehicleIdleRespawnDelay ( CElement* pElement, unsigned long ulTime )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleIdleRespawnDelay ( *iter, ulTime ) )
+    RUN_CHILDREN SetVehicleIdleRespawnDelay ( *iter, ulTime );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6790,7 +6592,7 @@ bool CStaticFunctionDefinitions::SetVehicleIdleRespawnDelay ( CElement* pElement
 bool CStaticFunctionDefinitions::SetVehicleRespawnPosition ( CElement* pElement, const CVector& vecPosition, const CVector& vecRotation )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleRespawnPosition ( *iter, vecPosition, vecRotation ) )
+    RUN_CHILDREN SetVehicleRespawnPosition ( *iter, vecPosition, vecRotation );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6809,7 +6611,7 @@ bool CStaticFunctionDefinitions::SetVehicleRespawnPosition ( CElement* pElement,
 bool CStaticFunctionDefinitions::ResetVehicleExplosionTime ( CElement* pElement )
 {
     assert ( pElement );
-    RUN_CHILDREN( ResetVehicleExplosionTime ( *iter ) )
+    RUN_CHILDREN ResetVehicleExplosionTime ( *iter );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6826,7 +6628,7 @@ bool CStaticFunctionDefinitions::ResetVehicleExplosionTime ( CElement* pElement 
 bool CStaticFunctionDefinitions::ResetVehicleIdleTime ( CElement* pElement )
 {
     assert ( pElement );
-    RUN_CHILDREN( ResetVehicleIdleTime ( *iter ) )
+    RUN_CHILDREN ResetVehicleIdleTime ( *iter );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6843,7 +6645,7 @@ bool CStaticFunctionDefinitions::ResetVehicleIdleTime ( CElement* pElement )
 bool CStaticFunctionDefinitions::SpawnVehicle ( CElement* pElement, const CVector& vecPosition, const CVector& vecRotation )
 {
     assert ( pElement );
-    RUN_CHILDREN( SpawnVehicle ( *iter, vecPosition, vecRotation ) )
+    RUN_CHILDREN SpawnVehicle ( *iter, vecPosition, vecRotation );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6865,7 +6667,7 @@ bool CStaticFunctionDefinitions::SpawnVehicle ( CElement* pElement, const CVecto
 bool CStaticFunctionDefinitions::RespawnVehicle ( CElement* pElement )
 {
     assert ( pElement );
-    RUN_CHILDREN( RespawnVehicle ( *iter ) )
+    RUN_CHILDREN RespawnVehicle ( *iter );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6892,7 +6694,7 @@ bool CStaticFunctionDefinitions::RespawnVehicle ( CElement* pElement )
 bool CStaticFunctionDefinitions::SetVehicleOverrideLights ( CElement* pElement, unsigned char ucLights )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleOverrideLights ( *iter, ucLights ) )
+    RUN_CHILDREN SetVehicleOverrideLights ( *iter, ucLights );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -6931,19 +6733,6 @@ bool CStaticFunctionDefinitions::AttachTrailerToVehicle ( CVehicle* pVehicle, CV
                 pVehicle->SetTowedVehicle ( NULL );
                 pTrailer->SetTowedByVehicle ( NULL );
                 return false;
-            }
-
-            if ( pTrailer->GetVehicleType() == VEHICLE_TRAIN )
-            {
-                // Set the position near the chain engine (doesn't influence visual appearance, but will allow entering)
-                pTrailer->SetPosition ( pVehicle->GetPosition () );
-
-                // Find a syncer to get a more correct position
-                CPlayer* pPlayer = g_pGame->GetUnoccupiedVehicleSync ()->FindPlayerCloseToVehicle ( pTrailer, 250.0f );
-                if ( pPlayer )
-                {
-                    g_pGame->GetUnoccupiedVehicleSync ()->OverrideSyncer ( pTrailer, pPlayer );
-                }
             }
 
             // Tell everyone to attach them
@@ -7006,7 +6795,7 @@ bool CStaticFunctionDefinitions::DetachTrailerFromVehicle ( CVehicle* pVehicle, 
 bool CStaticFunctionDefinitions::SetVehicleEngineState ( CElement* pElement, bool bState )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleEngineState ( *iter, bState ) )
+    RUN_CHILDREN SetVehicleEngineState ( *iter, bState );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -7027,7 +6816,7 @@ bool CStaticFunctionDefinitions::SetVehicleEngineState ( CElement* pElement, boo
 bool CStaticFunctionDefinitions::SetVehicleDirtLevel ( CElement* pElement, float fDirtLevel )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleDirtLevel ( *iter, fDirtLevel ) )
+    RUN_CHILDREN SetVehicleDirtLevel ( *iter, fDirtLevel );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -7047,7 +6836,7 @@ bool CStaticFunctionDefinitions::SetVehicleDirtLevel ( CElement* pElement, float
 bool CStaticFunctionDefinitions::SetVehicleDamageProof ( CElement* pElement, bool bDamageProof )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleDamageProof ( *iter, bDamageProof ) )
+    RUN_CHILDREN SetVehicleDamageProof ( *iter, bDamageProof );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -7072,7 +6861,7 @@ bool CStaticFunctionDefinitions::SetVehicleDamageProof ( CElement* pElement, boo
 bool CStaticFunctionDefinitions::SetVehiclePaintjob ( CElement* pElement, unsigned char ucPaintjob )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehiclePaintjob ( *iter, ucPaintjob ) )
+    RUN_CHILDREN SetVehiclePaintjob ( *iter, ucPaintjob );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -7097,7 +6886,7 @@ bool CStaticFunctionDefinitions::SetVehiclePaintjob ( CElement* pElement, unsign
 bool CStaticFunctionDefinitions::SetVehicleFuelTankExplodable ( CElement* pElement, bool bExplodable )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetVehicleFuelTankExplodable ( *iter, bExplodable ) )
+    RUN_CHILDREN SetVehicleFuelTankExplodable ( *iter, bExplodable );
 
     if ( IS_VEHICLE ( pElement ) )
     {
@@ -7400,19 +7189,6 @@ bool CStaticFunctionDefinitions::ResetVehicleHandling ( CVehicle* pVehicle, bool
         //handling.data.ucTailLight                 = pNewEntry->GetTailLight ();
         handling.data.ucAnimGroup                   = pNewEntry->GetAnimGroup ();
 
-        // Lower and Upper limits cannot match or LSOD (unless boat)
-        //if ( eModel != VEHICLE_BOAT )     // Commented until fully tested
-        {
-            float fSuspensionLimitSize = handling.data.fSuspensionUpperLimit - handling.data.fSuspensionLowerLimit;
-            if ( fSuspensionLimitSize > -0.1f && fSuspensionLimitSize < 0.1f )
-            {
-                if ( fSuspensionLimitSize >= 0.f )
-                    handling.data.fSuspensionUpperLimit = handling.data.fSuspensionLowerLimit + 0.1f;
-                else
-                    handling.data.fSuspensionUpperLimit = handling.data.fSuspensionLowerLimit - 0.1f;
-            }
-        }
-
         BitStream.pBitStream->Write ( &handling );
         m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pVehicle, SET_VEHICLE_HANDLING, *BitStream.pBitStream ) );
     }
@@ -7466,7 +7242,7 @@ bool CStaticFunctionDefinitions::ResetVehicleHandlingProperty ( CVehicle* pVehic
             BitStream.pBitStream->Write ( static_cast < unsigned char > ( eProperty ) );
 
             SetEntryHandling ( pEntry, eProperty, strValue );
-            GetEntryHandling( pEntry, eProperty, ucValue );
+            ucValue = GetEntryHandling( pEntry, eProperty, strValue );
 
             BitStream.pBitStream->Write ( ucValue );
         }
@@ -7565,7 +7341,7 @@ bool CStaticFunctionDefinitions::SetVehicleDoorOpenRatio ( CElement* pElement, u
 {
     if ( ucDoor <= 5 )
     {
-        RUN_CHILDREN( SetVehicleDoorOpenRatio ( *iter, ucDoor, fRatio, ulTime ) )
+        RUN_CHILDREN SetVehicleDoorOpenRatio ( *iter, ucDoor, fRatio, ulTime );
 
         if ( IS_VEHICLE(pElement) )
         {
@@ -7685,7 +7461,7 @@ bool CStaticFunctionDefinitions::SetMarkerType ( CElement* pElement, const char*
 {
     assert ( pElement );
     assert ( szType );
-    RUN_CHILDREN( SetMarkerType ( *iter, szType ) )
+    RUN_CHILDREN SetMarkerType ( *iter, szType );
 
     // Is this a marker?
     if ( IS_MARKER ( pElement ) )
@@ -7710,7 +7486,7 @@ bool CStaticFunctionDefinitions::SetMarkerType ( CElement* pElement, const char*
 bool CStaticFunctionDefinitions::SetMarkerSize ( CElement* pElement, float fSize )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetMarkerSize ( *iter, fSize ) )
+    RUN_CHILDREN SetMarkerSize ( *iter, fSize );
 
     // Is this a marker?
     if ( IS_MARKER ( pElement ) )
@@ -7718,17 +7494,16 @@ bool CStaticFunctionDefinitions::SetMarkerSize ( CElement* pElement, float fSize
         // Set the new size
         CMarker* pMarker = static_cast < CMarker* > ( pElement );
         pMarker->SetSize ( fSize );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetMarkerColor ( CElement* pElement, const SColor color )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetMarkerColor ( *iter, color ) )
+    RUN_CHILDREN SetMarkerColor ( *iter, color );
 
     // Is this a marker?
     if ( IS_MARKER ( pElement ) )
@@ -7736,17 +7511,16 @@ bool CStaticFunctionDefinitions::SetMarkerColor ( CElement* pElement, const SCol
         // Set the new color
         CMarker* pMarker = static_cast < CMarker* > ( pElement );
         pMarker->SetColor ( color );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetMarkerTarget ( CElement* pElement, const CVector* pTarget )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetMarkerTarget ( *iter, pTarget ) )
+    RUN_CHILDREN SetMarkerTarget ( *iter, pTarget );
 
     // Is this a marker?
     if ( IS_MARKER ( pElement ) )
@@ -7766,7 +7540,7 @@ bool CStaticFunctionDefinitions::SetMarkerIcon ( CElement* pElement, const char*
 {
     assert ( pElement );
     assert ( szIcon );
-    RUN_CHILDREN( SetMarkerIcon ( *iter, szIcon ) )
+    RUN_CHILDREN SetMarkerIcon ( *iter, szIcon );
 
     // Is this a marker?
     if ( IS_MARKER ( pElement ) )
@@ -7911,7 +7685,7 @@ bool CStaticFunctionDefinitions::SetBlipIcon ( CElement* pElement, unsigned char
 
     if ( CBlipManager::IsValidIcon ( ucIcon ) )
     {
-        RUN_CHILDREN( SetBlipIcon ( *iter, ucIcon ) )
+        RUN_CHILDREN SetBlipIcon ( *iter, ucIcon );
 
         if ( IS_BLIP ( pElement ) )
         {
@@ -7941,7 +7715,7 @@ bool CStaticFunctionDefinitions::SetBlipSize ( CElement* pElement, unsigned char
 {
     if ( ucSize <= 25 )
     {
-        RUN_CHILDREN( SetBlipSize ( *iter, ucSize ) )
+        RUN_CHILDREN SetBlipSize ( *iter, ucSize );
 
         if ( IS_BLIP ( pElement ) )
         {
@@ -7961,6 +7735,8 @@ bool CStaticFunctionDefinitions::SetBlipSize ( CElement* pElement, unsigned char
                 return true;
             }
         }
+
+        return true;
     }
 
     return false;
@@ -7969,7 +7745,7 @@ bool CStaticFunctionDefinitions::SetBlipSize ( CElement* pElement, unsigned char
 
 bool CStaticFunctionDefinitions::SetBlipColor ( CElement* pElement, const SColor color )
 {
-    RUN_CHILDREN( SetBlipColor ( *iter, color ) )
+    RUN_CHILDREN SetBlipColor ( *iter, color );
 
     if ( IS_BLIP ( pElement ) )
     {
@@ -7996,7 +7772,7 @@ bool CStaticFunctionDefinitions::SetBlipColor ( CElement* pElement, const SColor
 
 bool CStaticFunctionDefinitions::SetBlipOrdering ( CElement* pElement, short sOrdering )
 {
-    RUN_CHILDREN( SetBlipOrdering ( *iter, sOrdering ) )
+    RUN_CHILDREN SetBlipOrdering ( *iter, sOrdering );
 
     if ( IS_BLIP ( pElement ) )
     {
@@ -8020,7 +7796,7 @@ bool CStaticFunctionDefinitions::SetBlipOrdering ( CElement* pElement, short sOr
 
 bool CStaticFunctionDefinitions::SetBlipVisibleDistance ( CElement* pElement, unsigned short usVisibleDistance )
 {
-    RUN_CHILDREN( SetBlipVisibleDistance ( *iter, usVisibleDistance ) )
+    RUN_CHILDREN SetBlipVisibleDistance ( *iter, usVisibleDistance );
 
     if ( IS_BLIP ( pElement ) )
     {
@@ -8083,7 +7859,7 @@ bool CStaticFunctionDefinitions::GetObjectRotation ( CObject* pObject, CVector& 
 
 bool CStaticFunctionDefinitions::SetObjectRotation ( CElement* pElement, const CVector& vecRotation )
 {
-    RUN_CHILDREN( SetObjectRotation ( *iter, vecRotation ) )
+    RUN_CHILDREN SetObjectRotation ( *iter, vecRotation );
 
     if ( IS_OBJECT ( pElement ) )
     {
@@ -8099,38 +7875,34 @@ bool CStaticFunctionDefinitions::SetObjectRotation ( CElement* pElement, const C
         BitStream.pBitStream->Write ( vecRadians.fY );
         BitStream.pBitStream->Write ( vecRadians.fZ );
         m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pObject, SET_OBJECT_ROTATION, *BitStream.pBitStream ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
-bool CStaticFunctionDefinitions::SetObjectScale ( CElement* pElement, const CVector& vecScale )
+bool CStaticFunctionDefinitions::SetObjectScale ( CElement* pElement, float fScale )
 {
-    RUN_CHILDREN( SetObjectScale ( *iter, vecScale ) )
+    RUN_CHILDREN SetObjectScale ( *iter, fScale );
 
     if ( IS_OBJECT ( pElement ) )
     {
         CObject* pObject = static_cast < CObject* > ( pElement );
 
-        pObject->SetScale ( vecScale );
+        pObject->SetScale ( fScale );
 
         CBitStream BitStream;
-        BitStream.pBitStream->Write ( vecScale.fX );
-        BitStream.pBitStream->Write ( vecScale.fY );    // Ignored by clients with bitstream version < 0x41
-        BitStream.pBitStream->Write ( vecScale.fZ );    // Ignored by clients with bitstream version < 0x41
+        BitStream.pBitStream->Write ( fScale );
         m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pObject, SET_OBJECT_SCALE, *BitStream.pBitStream ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::MoveObject ( CResource * pResource, CElement* pElement, unsigned long ulTime, const CVector& vecPosition, const CVector& vecRotation, CEasingCurve::eType a_easingType, double a_fEasingPeriod, double a_fEasingAmplitude, double a_fEasingOvershoot )
 {
-    RUN_CHILDREN( MoveObject ( pResource, *iter, ulTime, vecPosition, vecRotation, a_easingType, a_fEasingPeriod, a_fEasingAmplitude, a_fEasingOvershoot ) )
+    RUN_CHILDREN MoveObject ( pResource, *iter, ulTime, vecPosition, vecRotation, a_easingType, a_fEasingPeriod, a_fEasingAmplitude, a_fEasingOvershoot );
 
     if ( IS_OBJECT ( pElement ) )
     {
@@ -8169,16 +7941,15 @@ bool CStaticFunctionDefinitions::MoveObject ( CResource * pResource, CElement* p
 
             m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pObject, MOVE_OBJECT, *BitStream.pBitStream ) );
         }        
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::StopObject ( CElement* pElement )
 {
-    RUN_CHILDREN( StopObject ( *iter ) )
+    RUN_CHILDREN StopObject ( *iter );
 
     if ( IS_OBJECT ( pElement ) )
     {
@@ -8285,7 +8056,7 @@ bool CStaticFunctionDefinitions::IsInsideRadarArea ( CRadarArea* pRadarArea, con
 bool CStaticFunctionDefinitions::SetRadarAreaSize ( CElement* pElement, const CVector2D& vecSize )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetRadarAreaSize ( *iter, vecSize ) )
+    RUN_CHILDREN SetRadarAreaSize ( *iter, vecSize );
 
     if ( IS_RADAR_AREA ( pElement ) )
     {
@@ -8300,32 +8071,30 @@ bool CStaticFunctionDefinitions::SetRadarAreaSize ( CElement* pElement, const CV
 bool CStaticFunctionDefinitions::SetRadarAreaColor ( CElement* pElement, const SColor color )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetRadarAreaColor ( *iter, color ) )
+    RUN_CHILDREN SetRadarAreaColor ( *iter, color );
 
     if ( IS_RADAR_AREA ( pElement ) )
     {
         CRadarArea* pRadarArea = static_cast < CRadarArea* > ( pElement );
         pRadarArea->SetColor ( color );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetRadarAreaFlashing ( CElement* pElement, bool bFlashing )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetRadarAreaFlashing ( *iter, bFlashing ) )
+    RUN_CHILDREN SetRadarAreaFlashing ( *iter, bFlashing );
 
     if ( IS_RADAR_AREA ( pElement ) )
     {
         CRadarArea* pRadarArea = static_cast < CRadarArea* > ( pElement );
         pRadarArea->SetFlashing ( bFlashing );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
@@ -8462,7 +8231,7 @@ bool CStaticFunctionDefinitions::IsPickupSpawned ( CPickup* pPickup, bool & bSpa
 bool CStaticFunctionDefinitions::SetPickupType ( CElement* pElement, unsigned char ucType, double dThree, double dFour )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPickupType ( *iter, ucType, dThree, dFour ) )
+    RUN_CHILDREN SetPickupType ( *iter, ucType, dThree, dFour );
 
     if ( IS_PICKUP ( pElement ) )
     {
@@ -8533,16 +8302,18 @@ bool CStaticFunctionDefinitions::SetPickupType ( CElement* pElement, unsigned ch
                 return true;
             }
         }
+
+        return false;
     }
 
-    return false;
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::SetPickupRespawnInterval ( CElement * pElement, unsigned long ulInterval )
 {
     assert ( pElement );
-    RUN_CHILDREN( SetPickupRespawnInterval ( *iter, ulInterval ) )
+    RUN_CHILDREN SetPickupRespawnInterval ( *iter, ulInterval );
 
     if ( pElement->GetType () == CElement::PICKUP )
     {
@@ -8558,7 +8329,7 @@ bool CStaticFunctionDefinitions::UsePickup ( CElement * pElement, CPlayer * pPla
 {
     assert ( pElement );
     assert ( pPlayer );
-    RUN_CHILDREN( UsePickup ( *iter, pPlayer ) )
+    RUN_CHILDREN UsePickup ( *iter, pPlayer );
 
     if ( pElement->GetType () == CElement::PICKUP )
     {
@@ -8577,59 +8348,43 @@ bool CStaticFunctionDefinitions::CreateExplosion ( const CVector& vecPosition, u
 {
     if ( pElement )
     {
-        RUN_CHILDREN( CreateExplosion ( vecPosition, ucType, *iter ) )
-
-        // Tell everyone
-        if ( IS_PLAYER ( pElement ) )
-        {
-            CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );
-            CExplosionSyncPacket Packet ( vecPosition, ucType );
-            Packet.SetSourceElement ( pPlayer );
-            m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-            return true;
-        }
+        RUN_CHILDREN CreateExplosion ( vecPosition, ucType, *iter );
     }
-    else
+
+    // Tell everyone
+    CExplosionSyncPacket Packet ( vecPosition, ucType );
+    if ( pElement && IS_PLAYER ( pElement ) )
     {
-        CExplosionSyncPacket Packet ( vecPosition, ucType );
-        m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-        return true;
+        CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );
+        Packet.SetSourceElement ( pPlayer );
     }
-
-    return false;
+    m_pPlayerManager->BroadcastOnlyJoined ( Packet );
+    return true;
 }
 
 bool CStaticFunctionDefinitions::CreateFire ( const CVector& vecPosition, float fSize, CElement* pElement )
 {
     if ( pElement )
     {
-        RUN_CHILDREN( CreateFire ( vecPosition, fSize, *iter ) )
-
-        // Tell everyone
-        if ( IS_PLAYER ( pElement ) )
-        {
-            CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );
-            CFireSyncPacket Packet ( vecPosition, fSize );
-            Packet.SetSourceElement ( pPlayer );
-            m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-            return true;
-        }
+        RUN_CHILDREN CreateFire ( vecPosition, fSize, *iter );
     }
-    else
+
+    // Tell everyone
+    CFireSyncPacket Packet ( vecPosition, fSize );
+    if ( pElement && IS_PLAYER ( pElement ) )
     {
-        CFireSyncPacket Packet ( vecPosition, fSize );
-        m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-        return true;
+        CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );
+        Packet.SetSourceElement ( pPlayer );
     }
-
-    return false;
+    m_pPlayerManager->BroadcastOnlyJoined ( Packet );
+    return true;
 }
 
 
 bool CStaticFunctionDefinitions::PlaySoundFrontEnd ( CElement* pElement, unsigned char ucSound )
 {
     assert ( pElement );
-    RUN_CHILDREN( PlaySoundFrontEnd ( *iter, ucSound ) )
+    RUN_CHILDREN PlaySoundFrontEnd ( *iter, ucSound );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -8643,10 +8398,9 @@ bool CStaticFunctionDefinitions::PlaySoundFrontEnd ( CElement* pElement, unsigne
         BitStream.pBitStream->Write ( &sound );
 
         pPlayer->Send ( CLuaPacket ( PLAY_SOUND, *BitStream.pBitStream ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
@@ -8654,7 +8408,7 @@ bool CStaticFunctionDefinitions::PlayMissionAudio ( CElement* pElement, CVector*
 {
     assert ( pElement );
 
-    RUN_CHILDREN( PlayMissionAudio ( *iter, vecPosition, usSlot ) )
+    RUN_CHILDREN PlayMissionAudio ( *iter, vecPosition, usSlot );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -8666,10 +8420,9 @@ bool CStaticFunctionDefinitions::PlayMissionAudio ( CElement* pElement, CVector*
         BitStream.pBitStream->Write ( usSlot );
 
         pPlayer->Send ( CLuaPacket ( PLAY_SOUND, *BitStream.pBitStream ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
@@ -8677,7 +8430,7 @@ bool CStaticFunctionDefinitions::PreloadMissionAudio ( CElement* pElement, unsig
 {
     assert ( pElement );
 
-    RUN_CHILDREN( PreloadMissionAudio ( *iter, usSound, usSlot ) )
+    RUN_CHILDREN PreloadMissionAudio ( *iter, usSound, usSlot );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -8690,10 +8443,9 @@ bool CStaticFunctionDefinitions::PreloadMissionAudio ( CElement* pElement, unsig
         BitStream.pBitStream->Write ( usSlot );
 
         pPlayer->Send ( CLuaPacket ( PLAY_SOUND, *BitStream.pBitStream ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
@@ -8991,10 +8743,9 @@ bool CStaticFunctionDefinitions::ToggleAllControls ( CPlayer* pPlayer, bool bGTA
     assert ( pPlayer );
 
     if ( bGTAControls )
-        pPlayer->GetPad ()->SetAllGTAControlsEnabled ( bEnabled );
+        pPlayer->GetPad ()->SetAllControlsEnabled ( bEnabled );
 
-    if ( bMTAControls )
-        pPlayer->GetPad ()->SetAllMTAControlsEnabled ( bEnabled );
+    // TODO: Add mta controls to CPad
 
     CBitStream BitStream;
     BitStream.pBitStream->Write ( static_cast < unsigned char > ( ( bGTAControls ) ? 1 : 0 ) );
@@ -9086,7 +8837,6 @@ bool CStaticFunctionDefinitions::SetTeamName ( CTeam* pTeam, const char* szTeamN
     {
         // Change it
         pTeam->SetTeamName ( szTeamName );
-        szTeamName = pTeam->GetTeamName ();
 
         // Tell everyone the new team name
         CBitStream BitStream;
@@ -9325,7 +9075,7 @@ bool CStaticFunctionDefinitions::ResetWaterColor ( )
 }
 
 
-CColCircle* CStaticFunctionDefinitions::CreateColCircle ( CResource* pResource, const CVector2D& vecPosition, float fRadius )
+CColCircle* CStaticFunctionDefinitions::CreateColCircle ( CResource* pResource, const CVector& vecPosition, float fRadius )
 {
     //CColCircle * pColShape = new CColCircle ( m_pColManager, m_pMapManager->GetRootElement (), vecPosition, fRadius );
     CColCircle * pColShape = new CColCircle ( m_pColManager, pResource->GetDynamicElementRoot(), vecPosition, fRadius );
@@ -9385,7 +9135,7 @@ CColSphere* CStaticFunctionDefinitions::CreateColSphere ( CResource* pResource, 
 }
 
 
-CColRectangle* CStaticFunctionDefinitions::CreateColRectangle ( CResource* pResource, const CVector2D& vecPosition, const CVector2D& vecSize )
+CColRectangle* CStaticFunctionDefinitions::CreateColRectangle ( CResource* pResource, const CVector& vecPosition, const CVector2D& vecSize )
 {
     //CColRectangle * pColShape = new CColRectangle ( m_pColManager, m_pMapManager->GetRootElement(), vecPosition, vecSize );
     CColRectangle * pColShape = new CColRectangle ( m_pColManager, pResource->GetDynamicElementRoot(), vecPosition, vecSize );
@@ -9405,18 +9155,9 @@ CColRectangle* CStaticFunctionDefinitions::CreateColRectangle ( CResource* pReso
 }
 
 
-CColPolygon* CStaticFunctionDefinitions::CreateColPolygon ( CResource* pResource, const std::vector < CVector2D >& vecPointList )
+CColPolygon* CStaticFunctionDefinitions::CreateColPolygon ( CResource* pResource, const CVector& vecPosition )
 {
-    if ( vecPointList.size() < 4 )
-        return NULL;
-
-    CVector vecPosition( vecPointList[0].fX, vecPointList[0].fY, 0 );
     CColPolygon * pColShape = new CColPolygon ( m_pColManager, pResource->GetDynamicElementRoot(), vecPosition );
-
-    for( uint i = 1 ; i < vecPointList.size() ; i++ )
-    {
-        pColShape->AddPoint( vecPointList[i] );
-    }
 
     // Run collision detection
     CElement* pRoot = m_pMapManager->GetRootElement ();
@@ -9485,361 +9226,6 @@ bool CStaticFunctionDefinitions::GetWeaponIDFromName ( const char* szName, unsig
     return ucID != 0xFF;
 }
 
-CCustomWeapon* CStaticFunctionDefinitions::CreateWeapon ( CResource* pResource, eWeaponType weaponType, CVector vecPosition )
-{
-    CCustomWeapon * pWeapon = new CCustomWeapon ( pResource->GetDynamicElementRoot(), NULL, m_pObjectManager, m_pCustomWeaponManager, weaponType );
-    pWeapon->SetPosition ( vecPosition );
-    
-    if ( pResource->HasStarted() )
-    {
-        CEntityAddPacket Packet;
-        Packet.Add ( pWeapon );
-        m_pPlayerManager->BroadcastOnlyJoined ( Packet );
-    }
-    return pWeapon;
-}
-
-bool CStaticFunctionDefinitions::FireWeapon ( CCustomWeapon * pWeapon )
-{
-    if ( pWeapon )
-    {
-        // Tell our scripts the server has fired
-        CLuaArguments Arguments;
-        Arguments.PushElement ( NULL );
-
-        if ( pWeapon->CallEvent ( "onWeaponFire", Arguments ) )
-        {
-            CBitStream BitStream;
-
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, FIRE_CUSTOM_WEAPON, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
-
-
-bool CStaticFunctionDefinitions::GetWeaponProperty ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, short &sData )
-{
-    if ( pWeapon )
-    {
-        if ( eProperty == WEAPON_DAMAGE )
-        {
-            sData = pWeapon->GetWeaponStat ( )->GetDamagePerHit ( );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponProperty ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, float &fData )
-{
-    if ( pWeapon )
-    {
-        if ( eProperty == WEAPON_ACCURACY )
-        {
-            fData = pWeapon->GetWeaponStat ( )->GetAccuracy ( );
-            return true;
-        }
-        if ( eProperty == WEAPON_TARGET_RANGE )
-        {
-            fData = pWeapon->GetWeaponStat ( )->GetTargetRange ( );
-            return true;
-        }
-        if ( eProperty == WEAPON_WEAPON_RANGE )
-        {
-            fData = pWeapon->GetWeaponStat ( )->GetWeaponRange ( );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponProperty ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, short sData )
-{
-    if ( pWeapon )
-    {
-        if ( eProperty == WEAPON_DAMAGE )
-        {
-            pWeapon->GetWeaponStat ( )->SetDamagePerHit ( sData );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponProperty ( CCustomWeapon * pWeapon, eWeaponProperty eProperty, float fData )
-{
-    if ( pWeapon )
-    {
-        if ( eProperty == WEAPON_ACCURACY )
-        {
-            pWeapon->GetWeaponStat ( )->SetAccuracy ( fData );
-            return true;
-        }
-        if ( eProperty == WEAPON_TARGET_RANGE )
-        {
-            pWeapon->GetWeaponStat ( )->SetTargetRange ( fData );
-            return true;
-        }
-        if ( eProperty == WEAPON_WEAPON_RANGE )
-        {
-            pWeapon->GetWeaponStat ( )->SetWeaponRange ( fData );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponState ( CCustomWeapon * pWeapon, eWeaponState weaponState )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetWeaponState ( weaponState );
-
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( (char) weaponState );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_STATE, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponTarget ( CCustomWeapon * pWeapon, CElement * pTarget, int targetBone )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetWeaponTarget ( pTarget, targetBone );
-        CBitStream BitStream;
-
-        BitStream.pBitStream->WriteBit ( false );
-        BitStream.pBitStream->Write ( pTarget->GetID ( ) );
-        BitStream.pBitStream->Write ( (char) targetBone );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_TARGET, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponTarget ( CCustomWeapon * pWeapon, CVector vecTarget )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetWeaponTarget ( vecTarget );
-        CBitStream BitStream;
-
-        BitStream.pBitStream->WriteBit ( true );
-        BitStream.pBitStream->WriteVector ( vecTarget.fX, vecTarget.fY, vecTarget.fZ );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_TARGET, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::ClearWeaponTarget ( CCustomWeapon * pWeapon )
-{
-    if ( pWeapon )
-    {
-        pWeapon->ResetWeaponTarget ( );
-        CBitStream BitStream;
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, RESET_CUSTOM_WEAPON_TARGET, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponFlags ( CCustomWeapon * pWeapon, eWeaponFlags flags, bool bData )
-{
-    if ( pWeapon )
-    {
-        if ( pWeapon->SetFlags ( flags, bData ) )
-        {
-            CBitStream BitStream;
-            SWeaponConfiguration weaponConfig = pWeapon->GetFlags ( );
-
-            BitStream.pBitStream->WriteBit ( weaponConfig.bDisableWeaponModel );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bInstantReload );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bShootIfTargetBlocked );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bShootIfTargetOutOfRange );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckBuildings );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckCarTires );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckDummies );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckObjects );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckPeds );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckVehicles );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bIgnoreSomeObjectsForCamera );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bSeeThroughStuff );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bShootThroughStuff );
-
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_FLAGS, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponFlags ( CCustomWeapon * pWeapon, const SLineOfSightFlags& flags )
-{
-    if ( pWeapon )
-    {
-        if ( pWeapon->SetFlags ( flags ) )
-        {
-            CBitStream BitStream;
-            SWeaponConfiguration weaponConfig = pWeapon->GetFlags ( );
-
-            BitStream.pBitStream->WriteBit ( weaponConfig.bDisableWeaponModel );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bInstantReload );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bShootIfTargetBlocked );
-            BitStream.pBitStream->WriteBit ( weaponConfig.bShootIfTargetOutOfRange );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckBuildings );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckCarTires );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckDummies );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckObjects );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckPeds );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bCheckVehicles );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bIgnoreSomeObjectsForCamera );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bSeeThroughStuff );
-            BitStream.pBitStream->WriteBit ( weaponConfig.flags.bShootThroughStuff );
-
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_FIRING_RATE, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponFlags ( CCustomWeapon * pWeapon, eWeaponFlags flags, bool &bData )
-{
-    if ( pWeapon )
-    {
-        return pWeapon->GetFlags ( flags, bData );
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponFlags ( CCustomWeapon * pWeapon, SLineOfSightFlags& flags )
-{
-    if ( pWeapon )
-    {
-        return pWeapon->GetFlags ( flags );
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponFiringRate ( CCustomWeapon * pWeapon, int iFiringRate )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetWeaponFireTime( iFiringRate );
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( iFiringRate );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_FIRING_RATE, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::ResetWeaponFiringRate ( CCustomWeapon * pWeapon )
-{
-    if ( pWeapon )
-    {
-        pWeapon->ResetWeaponFireTime( );
-        CBitStream BitStream;
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, RESET_CUSTOM_WEAPON_FIRING_RATE, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponFiringRate ( CCustomWeapon * pWeapon, int &iFiringRate )
-{
-    if ( pWeapon )
-    {
-        iFiringRate = pWeapon->GetWeaponFireTime( );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponAmmo ( CCustomWeapon * pWeapon, int &iAmmo )
-{
-    if ( pWeapon )
-    {
-        iAmmo = pWeapon->GetAmmo( );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::GetWeaponClipAmmo ( CCustomWeapon * pWeapon, int &iAmmo )
-{
-    if ( pWeapon )
-    {
-        iAmmo = pWeapon->GetClipAmmo( );
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( iAmmo );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_CLIP_AMMO, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponAmmo ( CCustomWeapon * pWeapon, int iAmmo )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetAmmo( iAmmo );
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( iAmmo );
-
-        m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_CUSTOM_WEAPON_AMMO, *BitStream.pBitStream ) );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponClipAmmo ( CCustomWeapon * pWeapon, int iAmmo )
-{
-    if ( pWeapon )
-    {
-        pWeapon->SetClipAmmo( iAmmo );
-        return true;
-    }
-    return false;
-}
-
-bool CStaticFunctionDefinitions::SetWeaponOwner ( CCustomWeapon * pWeapon, CPlayer * pPlayer )
-{
-    if ( pWeapon )
-    {
-        
-        pWeapon->SetOwner ( pPlayer );
-        if ( pPlayer )
-        {
-            CBitStream BitStream;
-
-            BitStream.pBitStream->Write ( pPlayer->GetID ( ) );
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_WEAPON_OWNER, *BitStream.pBitStream ) );
-            return true;
-        }
-        else
-        {
-            CBitStream BitStream;
-
-            BitStream.pBitStream->Write ( INVALID_ELEMENT_ID );
-            m_pPlayerManager->BroadcastOnlyJoined ( CElementRPCPacket ( pWeapon, SET_WEAPON_OWNER, *BitStream.pBitStream ) );
-            return true;
-        }
-    }
-    return false;
-}
 
 bool CStaticFunctionDefinitions::GetBodyPartName ( unsigned char ucID, char* szName )
 {
@@ -9942,13 +9328,12 @@ bool CStaticFunctionDefinitions::OutputChatBox ( const char* szText, CElement* p
     assert ( pElement );
     assert ( szText );
 
-    RUN_CHILDREN( OutputChatBox ( szText, *iter, ucRed, ucGreen, ucBlue, bColorCoded, pLuaMain ) )
+    RUN_CHILDREN OutputChatBox ( szText, *iter, ucRed, ucGreen, ucBlue, bColorCoded, pLuaMain );
 
     if ( IS_PLAYER ( pElement ) )
     {
         CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );
         pPlayer->Send ( CChatEchoPacket ( szText, ucRed, ucGreen, ucBlue, bColorCoded ) );
-        return true;
     }
     
     if ( pElement == m_pMapManager->GetRootElement() )
@@ -9961,7 +9346,7 @@ bool CStaticFunctionDefinitions::OutputChatBox ( const char* szText, CElement* p
         m_pMapManager->GetRootElement()->CallEvent ( "onChatMessage", Arguments );
     }
     
-    return false;
+    return true;
 }
 
 
@@ -9970,16 +9355,15 @@ bool CStaticFunctionDefinitions::OutputConsole ( const char* szText, CElement* p
 {
     assert ( pElement );
     assert ( szText );
-    RUN_CHILDREN( OutputConsole ( szText, *iter ) )
+    RUN_CHILDREN OutputConsole ( szText, *iter );
 
     if ( IS_PLAYER ( pElement ) )
     {
         CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );
         pPlayer->Send ( CConsoleEchoPacket ( szText ) );
-        return true;
     }
 
-    return false;
+    return true;
 }
 
 
@@ -10127,17 +9511,6 @@ bool CStaticFunctionDefinitions::GetSunSize ( float& fSunSize )
     return false;
 }
 
-bool CStaticFunctionDefinitions::GetMoonSize ( int& iSize )
-{
-    if ( g_pGame->HasMoonSize ( ) )
-    {
-        iSize = g_pGame->GetMoonSize ( );
-        return true;
-    }
-
-    return false;
-}
-
 bool CStaticFunctionDefinitions::GetSunColor ( unsigned char& ucCoreR, unsigned char& ucCoreG, unsigned char& ucCoreB, unsigned char& ucCoronaR, unsigned char& ucCoronaG, unsigned char& ucCoronaB )
 {
     if ( g_pGame->HasSunColor ( ) )
@@ -10185,12 +9558,6 @@ bool CStaticFunctionDefinitions::GetFogDistance ( float& fFogDist )
 bool CStaticFunctionDefinitions::GetAircraftMaxHeight ( float& fMaxHeight )
 {
     fMaxHeight = g_pGame->GetAircraftMaxHeight ( );
-    return true;
-}
-
-bool CStaticFunctionDefinitions::GetAircraftMaxVelocity ( float& fVelocity )
-{
-    fVelocity = g_pGame->GetAircraftMaxVelocity ( );
     return true;
 }
 
@@ -10295,22 +9662,6 @@ bool CStaticFunctionDefinitions::SetSunSize ( float fSunSize )
     return true;
 }
 
-bool CStaticFunctionDefinitions::SetMoonSize ( int iMoonSize )
-{    
-    if ( iMoonSize >= 0 )
-    {
-        g_pGame->SetMoonSize ( iMoonSize );
-        g_pGame->SetHasMoonSize ( true );
-        
-        CBitStream BitStream;
-        BitStream.pBitStream->Write ( iMoonSize );
-        m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( SET_MOON_SIZE, *BitStream.pBitStream ) );
-        return true;
-    }
-    
-    return false;
-}
-
 bool CStaticFunctionDefinitions::SetSunColor ( unsigned char ucCoreR, unsigned char ucCoreG, unsigned char ucCoreB, unsigned char ucCoronaR, unsigned char ucCoronaG, unsigned char ucCoronaB )
 {
     g_pGame->SetSunColor ( ucCoreR, ucCoreG, ucCoreB, ucCoronaR, ucCoronaG, ucCoronaB );
@@ -10374,16 +9725,6 @@ bool CStaticFunctionDefinitions::SetAircraftMaxHeight ( float fMaxHeight )
     BitStream.pBitStream->Write ( fMaxHeight );
     m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( SET_AIRCRAFT_MAXHEIGHT, *BitStream.pBitStream ) );
 
-    return true;
-}
-
-bool CStaticFunctionDefinitions::SetAircraftMaxVelocity ( float fVelocity )
-{
-    CBitStream BitStream;
-    g_pGame->SetAircraftMaxVelocity ( fVelocity );
-
-    BitStream.pBitStream->Write ( fVelocity );
-    m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( SET_AIRCRAFT_MAXVELOCITY, *BitStream.pBitStream ) );
     return true;
 }
 
@@ -10458,33 +9799,39 @@ bool CStaticFunctionDefinitions::ResetFogDistance ( )
     return true;
 }
 
-bool CStaticFunctionDefinitions::RemoveWorldModel ( unsigned short usModel, float fRadius, const CVector& vecPosition, char cInterior )
+bool CStaticFunctionDefinitions::RemoveWorldModel ( unsigned short usModel, float fRadius, float fX, float fY, float fZ, char cInterior )
 {
-    g_pGame->GetBuildingRemovalManager ( )->CreateBuildingRemoval( usModel, fRadius, vecPosition, cInterior );
+    g_pGame->GetBuildingRemovalManager ( )->CreateBuildingRemoval( usModel, fRadius, CVector ( fX, fY, fZ ), cInterior );
 
     CBitStream BitStream;
     BitStream.pBitStream->Write ( usModel );
     BitStream.pBitStream->Write ( fRadius );
-    BitStream.pBitStream->Write ( vecPosition.fX );
-    BitStream.pBitStream->Write ( vecPosition.fY );
-    BitStream.pBitStream->Write ( vecPosition.fZ );
-    BitStream.pBitStream->Write ( cInterior );      // Only used by clients with bitstream version >= 0x039
+    BitStream.pBitStream->Write ( fX );
+    BitStream.pBitStream->Write ( fY );
+    BitStream.pBitStream->Write ( fZ );
+    if ( BitStream.pBitStream->Version() >= 0x039 )
+    {
+        BitStream.pBitStream->Write ( cInterior );
+    }
     m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( REMOVE_WORLD_MODEL, *BitStream.pBitStream ) );
 
     return true;
 }
 
-bool CStaticFunctionDefinitions::RestoreWorldModel ( unsigned short usModel, float fRadius, const CVector& vecPosition, char cInterior )
+bool CStaticFunctionDefinitions::RestoreWorldModel ( unsigned short usModel, float fRadius, float fX, float fY, float fZ, char cInterior )
 {
-    g_pGame->GetBuildingRemovalManager ( )->RestoreWorldModel( usModel, fRadius, vecPosition, cInterior );
+    g_pGame->GetBuildingRemovalManager ( )->RestoreWorldModel( usModel, fRadius, CVector ( fX, fY, fZ ), cInterior );
 
     CBitStream BitStream;
     BitStream.pBitStream->Write ( usModel );
     BitStream.pBitStream->Write ( fRadius );
-    BitStream.pBitStream->Write ( vecPosition.fX );
-    BitStream.pBitStream->Write ( vecPosition.fY );
-    BitStream.pBitStream->Write ( vecPosition.fZ );
-    BitStream.pBitStream->Write ( cInterior );      // Only used by clients with bitstream version >= 0x039
+    BitStream.pBitStream->Write ( fX );
+    BitStream.pBitStream->Write ( fY );
+    BitStream.pBitStream->Write ( fZ );
+    if ( BitStream.pBitStream->Version() >= 0x039 )
+    {
+        BitStream.pBitStream->Write ( cInterior );
+    }
 
     m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( RESTORE_WORLD_MODEL, *BitStream.pBitStream ) );
 
@@ -10497,15 +9844,6 @@ bool CStaticFunctionDefinitions::RestoreAllWorldModels ( void )
     CBitStream BitStream;
     m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( RESTORE_ALL_WORLD_MODELS, *BitStream.pBitStream ) );
 
-    return true;
-}
-
-bool CStaticFunctionDefinitions::ResetMoonSize ( void )
-{    
-    CBitStream BitStream;
-    g_pGame->SetHasMoonSize ( false );
-
-    m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( RESET_MOON_SIZE, *BitStream.pBitStream ) );
     return true;
 }
 
@@ -10794,8 +10132,6 @@ bool CStaticFunctionDefinitions::SetJetpackWeaponEnabled ( eWeaponType weaponTyp
         BitStream.pBitStream->Write ( static_cast < unsigned char > ( weaponType ) );
         BitStream.pBitStream->WriteBit ( bEnabled );
         m_pPlayerManager->BroadcastOnlyJoined ( CLuaPacket ( SET_JETPACK_WEAPON_ENABLED, *BitStream.pBitStream ) );
-
-        g_pGame->SetJetpackWeaponEnabled ( weaponType, bEnabled );
         return true;
     }
     return false;
@@ -11062,30 +10398,13 @@ bool CStaticFunctionDefinitions::GetAllAccountData ( lua_State* pLua, CAccount* 
 }
 
 
-bool CStaticFunctionDefinitions::GetAccountSerial ( CAccount* pAccount, SString& strSerial )
-{
-    bool bRegistered = pAccount->IsRegistered ();
-    if ( bRegistered )
-        strSerial = pAccount->GetSerial ();
-
-    return bRegistered;
-}
-
-
-bool CStaticFunctionDefinitions::GetAccountsBySerial ( const SString& strSerial, std::vector<CAccount*>& outAccounts )
-{
-    m_pAccountManager->GetAccountsBySerial ( strSerial, outAccounts );
-    return true;
-}
-
-
 CAccount* CStaticFunctionDefinitions::AddAccount ( const char* szName, const char* szPassword )
 {
     assert ( szName );
     assert ( szPassword );
 
     CAccount* pCurrentAccount = m_pAccountManager->Get ( szName );
-    if ( pCurrentAccount == NULL && CAccountManager::IsValidNewAccountName( szName ) && CAccountManager::IsValidNewPassword( szPassword ) )
+    if ( pCurrentAccount == NULL && strlen ( szPassword ) > MIN_PASSWORD_LENGTH && strlen ( szPassword ) <= MAX_PASSWORD_LENGTH )
     {
         CAccount* pAccount = new CAccount ( m_pAccountManager, true, szName );
         pAccount->SetPassword ( szPassword );
@@ -11161,7 +10480,7 @@ bool CStaticFunctionDefinitions::SetAccountPassword ( CAccount* pAccount, const 
 
     if ( pAccount->IsRegistered () )
     {
-        if ( CAccountManager::IsValidNewPassword( szPassword ) )
+        if ( strlen ( szPassword ) > MIN_PASSWORD_LENGTH && strlen ( szPassword ) <= MAX_PASSWORD_LENGTH )
         {
             pAccount->SetPassword ( szPassword );
             return true;
@@ -11185,7 +10504,7 @@ bool CStaticFunctionDefinitions::SetAccountData ( CAccount* pAccount, const char
     Arguments.PushString ( szKey );
     Arguments.PushString ( strArgumentAsString );
     if ( m_pMapManager->GetRootElement()->CallEvent ( "onAccountDataChange", Arguments ) )
-        return m_pAccountManager->SetAccountData ( pAccount, szKey, strArgumentAsString, pArgument->GetType() );
+        return m_pAccountManager->SetAccountData ( pAccount, szKey, strArgumentAsString.substr ( 0, 128 ), pArgument->GetType() );
     return false;
 }
 
@@ -11236,18 +10555,18 @@ bool CStaticFunctionDefinitions::KickPlayer ( CPlayer* pPlayer, SString strRespo
             strReason = strReason.substr ( 0, MAX_KICK_REASON_LENGTH - 3 ) + "...";
 
         // Now create the messages which will be displayed to both the kicked player and the console
-        strMessage.Format ( "%s (%s)", strResponsible.c_str( ), strReason.c_str( ) );
+        strMessage.Format ( "You were kicked by %s (%s)", strResponsible.c_str( ), strReason.c_str( ) );
         strInfoMessage.Format ( "%s was kicked from the game by %s (%s)", pPlayer->GetNick( ), strResponsible.c_str( ), strReason.c_str( ) );
     }
     else
     {
         // Now create the messages which will be displayed to both the kicked player and the console
-        strMessage.Format ( "%s", strResponsible.c_str( ) );
+        strMessage.Format ( "You were kicked by %s", strResponsible.c_str( ) );
         strInfoMessage.Format ( "%s was kicked from the game by %s", pPlayer->GetNick( ), strResponsible.c_str( ) );
     }
 
     // Tell the player that was kicked why. QuitPlayer will delete the player.
-    pPlayer->Send ( CPlayerDisconnectedPacket ( CPlayerDisconnectedPacket::KICK, strMessage.c_str ( ) ) );
+    pPlayer->Send ( CPlayerDisconnectedPacket ( strMessage.c_str ( ) ) );
     g_pGame->QuitPlayer ( *pPlayer, CClient::QUIT_KICK, false, strReason.c_str( ), strResponsible.c_str( ) );
 
     // Tell everyone else that he was kicked from the game including console
@@ -11282,13 +10601,13 @@ CBan* CStaticFunctionDefinitions::BanPlayer ( CPlayer* pPlayer, bool bIP, bool b
             strReason = strReason.substr ( 0, MAX_BAN_REASON_LENGTH - 3 ) + "...";
 
         // Format the messages for both the banned player and the console
-        strMessage.Format     ( "%s (%s)", strResponsible.c_str(), strReason.c_str() );
+        strMessage.Format     ( "You were banned by %s (%s)", strResponsible.c_str(), strReason.c_str() );
         strInfoMessage.Format ( "%s was banned from the game by %s (%s)", pPlayer->GetNick(), strResponsible.c_str(), strReason.c_str() );
     }
     else
     {
         // Format the messages for both the banned player and the console
-        strMessage.Format     ( "%s", strResponsible.c_str() );
+        strMessage.Format     ( "You were banned by %s", strResponsible.c_str() );
         strInfoMessage.Format ( "%s was banned from the game by %s", pPlayer->GetNick(), strResponsible.c_str() );
     }
 
@@ -11304,7 +10623,6 @@ CBan* CStaticFunctionDefinitions::BanPlayer ( CPlayer* pPlayer, bool bIP, bool b
         // Set the data if banned by either username or serial
         if ( bUsername ) pBan->SetAccount ( pPlayer->GetSerialUser () );
         if ( bSerial ) pBan->SetSerial ( pPlayer->GetSerial () );
-        if ( bUsername || bSerial ) pBan->SetNick ( pPlayer->GetNick () );
 
         // Check if we passed a responsible player
         if ( pResponsible )
@@ -11333,9 +10651,7 @@ CBan* CStaticFunctionDefinitions::BanPlayer ( CPlayer* pPlayer, bool bIP, bool b
         pPlayer->CallEvent ( "onPlayerBan", Arguments );
 
         // Tell the player that was banned why. QuitPlayer will delete the player.
-        time_t Duration = pBan->GetBanTimeRemaining();
-        CPlayerDisconnectedPacket Packet ( CPlayerDisconnectedPacket::BAN, Duration, strMessage.c_str ( ) );
-        pPlayer->Send ( Packet );
+        pPlayer->Send ( CPlayerDisconnectedPacket ( strMessage.c_str() ) );
         g_pGame->QuitPlayer ( *pPlayer, CClient::QUIT_BAN, false, strReason.c_str(), strResponsible.c_str() );
 
         // Tell everyone else that he was banned from the game including console
@@ -11404,7 +10720,7 @@ CBan* CStaticFunctionDefinitions::AddBan ( SString strIP, SString strUsername, S
 
 
         // Format the responsible element and the reason/duration into the message string
-        SString strMessage ( "%s%s", strResponsible.c_str(), strDetails.c_str () );
+        SString strMessage ( "You were banned by %s%s", strResponsible.c_str(), strDetails.c_str () );
 
         // Limit overall length of message
         if ( strMessage.length () > 255 )
@@ -11487,9 +10803,7 @@ CBan* CStaticFunctionDefinitions::AddBan ( SString strIP, SString strUsername, S
                 (*iter)->CallEvent ( "onPlayerBan", Arguments );
 
                 // Tell the player that was banned why. QuitPlayer will delete the player.
-                time_t Duration = pBan->GetBanTimeRemaining();
-                CPlayerDisconnectedPacket Packet ( CPlayerDisconnectedPacket::BAN, Duration, strMessage.c_str ( ) );
-                (*iter)->Send ( Packet );
+                (*iter)->Send ( CPlayerDisconnectedPacket ( strMessage.c_str() ) );
                 g_pGame->QuitPlayer ( **iter, CClient::QUIT_BAN, false, strReason.c_str (), strResponsible.c_str () );
             }
         }
@@ -11620,41 +10934,6 @@ bool CStaticFunctionDefinitions::GetBanAdmin ( CBan* pBan, SString& strOutAdmin 
     return false;
 }
 
-bool CStaticFunctionDefinitions::SetUnbanTime ( CBan* pBan, time_t time)
-{
-    pBan->SetTimeOfUnban ( time );
-    return true;
-}
-
-bool CStaticFunctionDefinitions::SetBanReason ( CBan* pBan, const SString& strReason )
-{
-    if ( strReason.length () > MAX_BAN_REASON_LENGTH )
-        pBan->SetReason ( strReason.substr( 0, MAX_BAN_REASON_LENGTH - 3 ) + "..." );
-    else
-        pBan->SetReason ( strReason );
-
-    return true;
-}
-
-bool CStaticFunctionDefinitions::SetBanAdmin ( CBan* pBan, const SString& strAdminName )
-{
-    if ( strAdminName.length () > MAX_BAN_RESPONSIBLE_LENGTH )
-        pBan->SetBanner ( strAdminName.substr( 0, MAX_BAN_RESPONSIBLE_LENGTH - 3 ) + "..." );
-    else
-        pBan->SetBanner ( strAdminName );
-
-    return true;
-}
-
-bool CStaticFunctionDefinitions::SetBanNick ( CBan* pBan, const SString& strNick )
-{
-    if ( strNick.length () > MAX_PLAYER_NICK_LENGTH )
-        pBan->SetNick ( strNick.substr( 0, MAX_PLAYER_NICK_LENGTH - 3 ) + "..." );
-    else
-        pBan->SetNick ( strNick );
-
-    return true;
-}
 
 bool CStaticFunctionDefinitions::IsCursorShowing ( CPlayer* pPlayer, bool& bShowing )
 {
@@ -11668,7 +10947,7 @@ bool CStaticFunctionDefinitions::IsCursorShowing ( CPlayer* pPlayer, bool& bShow
 bool CStaticFunctionDefinitions::ShowCursor ( CElement* pElement, CLuaMain* pLuaMain, bool bShow, bool bToggleControls )
 {
     assert ( pElement );
-    RUN_CHILDREN( ShowCursor ( *iter, pLuaMain, bShow, bToggleControls ) )
+    RUN_CHILDREN ShowCursor ( *iter, pLuaMain, bShow, bToggleControls );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -11699,7 +10978,7 @@ bool CStaticFunctionDefinitions::ShowCursor ( CElement* pElement, CLuaMain* pLua
 bool CStaticFunctionDefinitions::ShowChat ( CElement* pElement, bool bShow )
 {
     assert ( pElement );
-    RUN_CHILDREN( ShowChat ( *iter, bShow ) )
+    RUN_CHILDREN ShowChat ( *iter, bShow );
 
     if ( IS_PLAYER ( pElement ) )
     {
@@ -11721,7 +11000,7 @@ bool CStaticFunctionDefinitions::ResetMapInfo ( CElement* pElement )
 {
     if ( pElement )
     {
-        RUN_CHILDREN( ResetMapInfo ( *iter ) )
+        RUN_CHILDREN ResetMapInfo ( *iter );
         if ( IS_PLAYER ( pElement ) )
         {
             CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );

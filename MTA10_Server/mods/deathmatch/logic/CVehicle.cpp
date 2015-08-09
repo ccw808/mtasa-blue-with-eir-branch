@@ -18,8 +18,6 @@ extern CGame * g_pGame;
 
 CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNode* pNode, unsigned short usModel, unsigned char ucVariant, unsigned char ucVariant2 ) : CElement ( pParent, pNode )
 {
-    CElementRefManager::AddElementRefs ( ELEMENT_REF_DEBUG ( this, "CVehicle" ), &m_pTowedVehicle, &m_pTowedByVehicle, &m_pSyncer, &m_pJackingPlayer, NULL );
-
     // Init
     m_pVehicleManager = pVehicleManager;
     m_usModel = usModel;
@@ -30,6 +28,7 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
     m_eVehicleType = CVehicleManager::GetVehicleType ( m_usModel );
     m_fHealth = DEFAULT_VEHICLE_HEALTH;
     m_fLastSyncedHealthHealth = DEFAULT_VEHICLE_HEALTH;
+    m_ulHealthChangeTime = 0;
     m_llIdleTime = CTickCount::Now ();
     m_fTurretPositionX = 0;
     m_fTurretPositionY = 0;
@@ -48,7 +47,6 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
     m_pTowedByVehicle = NULL;
     m_ucPaintjob = 3;
     m_ucMaxPassengersOverride = VEHICLE_PASSENGERS_UNDEFINED;
-    m_pHandlingEntry = NULL;
 
     m_fRespawnHealth = DEFAULT_VEHICLE_HEALTH;
     m_bRespawnEnabled = false;
@@ -70,11 +68,8 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
     m_bInWater = false;
     m_bDerailed = false;
     m_bIsDerailable = true;
-    m_fTrainSpeed = 0.0f;
-    m_fTrainPosition = 0.0f;
-    m_ucTrackID = 0;
     m_bTaxiLightState = false;
-    m_bTrainDirection = false;
+    m_bTrainDirection = true;
     m_HeadLightColor = SColorRGBA ( 255, 255, 255, 255 );
     m_bHeliSearchLightVisible = false;
     m_bCollisionsEnabled = true;
@@ -99,9 +94,6 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
 
     // Generate the handling data
     GenerateHandlingData ();
-
-    // Prepare the sirens
-    RemoveVehicleSirens();
     m_tSirenBeaconInfo.m_bOverrideSirens = false;
 }
 
@@ -115,35 +107,6 @@ CVehicle::~CVehicle ( void )
             m_pJackingPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
         }
         m_pJackingPlayer->SetJackingVehicle ( NULL );
-    }
-
-    // loop through players and fix their in out state
-    
-    for ( int i = 0; i < MAX_VEHICLE_SEATS; i++ )
-    {
-        CPed * pPed = m_pOccupants [i];
-        if ( pPed && pPed->IsPlayer ( ) )
-        {
-            CPlayer * pPlayer = static_cast < CPlayer * > ( pPed );
-            // Is he already getting out?
-            if ( pPlayer->GetVehicleAction () == CPlayer::VEHICLEACTION_EXITING )
-            {
-                // Does it have an occupant and is the occupant the requesting player?
-                unsigned char ucOccupiedSeat = pPlayer->GetOccupiedVehicleSeat ();
-                if ( pPlayer == GetOccupant ( ucOccupiedSeat ) )
-                {
-                    // Mark the player/vehicle as empty
-                    SetOccupant ( NULL, ucOccupiedSeat );
-                    pPlayer->SetOccupiedVehicle ( NULL, 0 );
-                    pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
-
-                    // Tell everyone he can start exiting the vehicle
-                    CVehicleInOutPacket Reply ( GetID ( ), ucOccupiedSeat, 4 );
-                    Reply.SetSourceElement ( pPlayer );
-                    g_pGame->GetPlayerManager ( )->BroadcastOnlyJoined ( Reply );
-                }
-            }
-        }
     }
 
     // Unset any tow links
@@ -167,12 +130,6 @@ CVehicle::~CVehicle ( void )
     }
     delete m_pUpgrades;
     delete m_pHandlingEntry;
-
-    CElementRefManager::RemoveElementRefs ( ELEMENT_REF_DEBUG ( this, "CVehicle" ), &m_pTowedVehicle, &m_pTowedByVehicle, &m_pSyncer, &m_pJackingPlayer, NULL );
-
-    // Notify the vehicle manager that we are not to be respawned anymore if neccessary
-    if ( m_bRespawnEnabled )
-        m_pVehicleManager->GetRespawnEnabledVehicles ( ).remove ( this );
 
     // Remove us from the vehicle manager
     Unlink ();
@@ -383,25 +340,6 @@ bool CVehicle::ReadSpecialData ( void )
         m_bIsFrozen = bFrozen;
 
     return true;
-}
-
-
-void CVehicle::GetMatrix( CMatrix& matrix )
-{
-    CVector vecRotation;
-    GetRotation( vecRotation );
-    matrix.SetRotation( vecRotation );
-    matrix.vPos = GetPosition();
-}
-
-
-void CVehicle::SetMatrix( const CMatrix& matrix )
-{
-    // Set position and rotation from matrix
-    SetPosition( matrix.vPos );
-    CVector vecRotation = matrix.GetRotation();
-    ConvertRadiansToDegreesNoWrap( vecRotation );
-    SetRotationDegrees( vecRotation );
 }
 
 
@@ -747,7 +685,7 @@ void CVehicle::SetRegPlate ( const char* szRegPlate )
 {
     // Copy the text and make sure non-used chars are nulled.
     memset ( m_szRegPlate, 0, 9 );
-    STRNCPY ( m_szRegPlate, szRegPlate, 9 );
+    strncpy ( m_szRegPlate, szRegPlate, 9 );
 }
 
 
@@ -817,8 +755,7 @@ void CVehicle::GetInitialDoorStates ( SFixedArray < unsigned char, MAX_DOORS >& 
 void CVehicle::GenerateHandlingData ( void )
 {
     // Make a new CHandlingEntry
-    if( m_pHandlingEntry == NULL )
-        m_pHandlingEntry = g_pGame->GetHandlingManager()->CreateHandlingData ( );
+    m_pHandlingEntry = g_pGame->GetHandlingManager()->CreateHandlingData ( );
     // Apply the model handling info
     m_pHandlingEntry->ApplyHandlingData( g_pGame->GetHandlingManager ()->GetModelHandlingData ( static_cast < eVehicleTypes > ( m_usModel ) ) );
 
@@ -856,8 +793,6 @@ void CVehicle::RemoveVehicleSirens ( void )
         SetVehicleSirenMinimumAlpha( i, 0 );
         SetVehicleSirenColour( i, SColor ( ) );
     }
-
-    m_tSirenBeaconInfo.m_ucSirenCount = 0;
 }
 
 
@@ -953,37 +888,4 @@ void CVehicle::SetJackingPlayer ( CPlayer* pPlayer )
 
     if ( m_pJackingPlayer )
         m_pJackingPlayer->SetJackingVehicle ( this );
-}
-
-
-void CVehicle::OnRelayUnoccupiedSync ( void )
-{
-    // Detect dimension change
-    m_bNeedsDimensionResync |= ( GetDimension() != m_usLastUnoccupiedSyncDimension );
-    m_usLastUnoccupiedSyncDimension = GetDimension();
-}
-
-
-void CVehicle::HandleDimensionResync ( void )
-{
-    if ( m_bNeedsDimensionResync )
-    {
-        // Unoccupied vehicle might be desynced because of dimension optimizations, so resync to players in new dimension
-        g_pGame->GetPlayerManager()->BroadcastDimensionOnlyJoined( CVehicleResyncPacket( this ), GetDimension() );
-        m_bNeedsDimensionResync = false;
-    }
-}
-
-void CVehicle::SetRespawnEnabled ( bool bEnabled )
-{ 
-    // If we changed the state, update the internal var and notify the vehicle manager
-    if ( bEnabled != m_bRespawnEnabled )
-    {
-        if ( bEnabled ) 
-            m_pVehicleManager->GetRespawnEnabledVehicles ( ).push_back ( this );
-        else 
-            m_pVehicleManager->GetRespawnEnabledVehicles ( ).remove ( this );
-
-        m_bRespawnEnabled = bEnabled;
-    }
 }

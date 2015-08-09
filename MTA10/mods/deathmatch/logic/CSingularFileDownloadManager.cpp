@@ -31,20 +31,10 @@ CSingularFileDownload* CSingularFileDownloadManager::AddFile ( CResource* pResou
     return NULL;
 }
 
-void CSingularFileDownloadManager::CancelResourceDownloads ( CResource* pResource )
-{
-    list < CSingularFileDownload* > ::const_iterator iter = m_Downloads.begin ();
-    for ( ; iter != m_Downloads.end (); ++iter )
-    {
-        if ( (*iter)->GetResource () == pResource )
-            (*iter)->Cancel ();
-    }
-}
-
 void CSingularFileDownloadManager::ClearList ( void )
 {
     list < CSingularFileDownload* > ::const_iterator iter = m_Downloads.begin();
-    for ( ; iter != m_Downloads.end(); ++iter )
+    for ( ; iter != m_Downloads.end(); iter++ )
     {
         delete *iter;
     }
@@ -55,7 +45,7 @@ void CSingularFileDownloadManager::ClearList ( void )
 bool CSingularFileDownloadManager::AllComplete ( void )
 {
     list < CSingularFileDownload* > ::const_iterator iter = m_Downloads.begin();
-    for ( ; iter != m_Downloads.end(); ++iter )
+    for ( ; iter != m_Downloads.end(); iter++ )
     {
         if ( !(*iter)->GetComplete() )
             return false;

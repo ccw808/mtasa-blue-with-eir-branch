@@ -247,13 +247,13 @@ bool CLatentSendQueue::GetSendStatus ( SSendHandle handle, SSendStatus* pOutSend
 // Get all queued send handles
 //
 ///////////////////////////////////////////////////////////////
-void CLatentSendQueue::GetSendHandles ( std::vector < SSendHandle >& outResultList )
+bool CLatentSendQueue::GetSendHandles ( std::vector < SSendHandle >& outResultList )
 {
-    outResultList.clear();
     for ( std::list < SSendItem >::iterator iter = m_TxQueue.begin () ; iter != m_TxQueue.end () ; ++iter )
     {
         outResultList.push_back ( iter->uiId );
     }
+    return true;
 }
 
 

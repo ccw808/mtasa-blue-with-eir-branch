@@ -20,7 +20,7 @@ enum EStateGroup
     STATE_GROUP_TRANSFORM,
     STATE_GROUP_TEXTURE,
     STATE_GROUP_LIGHT,
-    STATE_GROUP_LIGHT_ENABLE,
+    STATE_GROUP_LIGHT_ENABLED,
     STATE_GROUP_DEVICE_CAPS,
     STATE_GROUP_VERTEX_DECL,
 };
@@ -34,7 +34,7 @@ IMPLEMENT_ENUM_BEGIN( EStateGroup )
     ADD_ENUM( STATE_GROUP_TRANSFORM,    "transformState" )
     ADD_ENUM( STATE_GROUP_TEXTURE,      "textureState" )
     ADD_ENUM( STATE_GROUP_LIGHT,        "lightState" )
-    ADD_ENUM( STATE_GROUP_LIGHT_ENABLE, "lightEnableState" )
+    ADD_ENUM( STATE_GROUP_LIGHT_ENABLED,"lightEnabledState" )
     ADD_ENUM( STATE_GROUP_DEVICE_CAPS,  "deviceCaps" )
     ADD_ENUM( STATE_GROUP_VERTEX_DECL,  "vertexDeclState" )
 IMPLEMENT_ENUM_END( "state-group" )
@@ -455,8 +455,8 @@ public:
     virtual void    OnResetDevice           ( void );
     void            CreateUnderlyingData    ( const SString& strFilename, const SString& strRootPath, SString& strOutStatus, bool bDebug );
     void            ReleaseUnderlyingData   ( void );
-    bool            ApplyCommonHandles      ( void );
-    bool            ApplyMappedHandles      ( void );
+    void            ApplyCommonHandles      ( void );
+    void            ApplyMappedHandles      ( void );
     void            ReadParameterHandles    ( void );
 
     static void             InitMaps                        ( void );
@@ -472,7 +472,6 @@ public:
     SString                 m_strWarnings;
     bool                    m_bVerboseWarnings;
     bool                    m_bSkipUnusedParameters;
-    bool                    m_bUsesMappedHandles;
     std::set < D3DXHANDLE >  m_ReferencedParameterMap;
 
     std::vector < SStateVar > renderStateVarList;
@@ -482,7 +481,7 @@ public:
     std::vector < SStateVar > transformStateVarList;
     std::vector < SStateVar > textureStateVarList;
     std::vector < SStateVar > lightStateVarList;
-    std::vector < SStateVar > lightEnableStateVarList;
+    std::vector < SStateVar > lightEnabledStateVarList;
     std::vector < SStateVar > deviceCapsVarList;
     std::vector < SStateVar > vertexDeclStateVarList;
 };
@@ -661,11 +660,8 @@ void CEffectWrapImpl::InitMaps ( void )
 // Called before render
 //
 ////////////////////////////////////////////////////////////////
-bool CEffectWrapImpl::ApplyCommonHandles ( void )
+void CEffectWrapImpl::ApplyCommonHandles ( void )
 {
-    if ( !m_bUsesCommonHandles )
-        return false;
-
     CEffectWrap& m_CommonHandles = *this;
 
     LPDIRECT3DDEVICE9 pDevice;
@@ -815,8 +811,6 @@ bool CEffectWrapImpl::ApplyCommonHandles ( void )
 
     if ( m_CommonHandles.hProjectionMainScene )
         m_pD3DEffect->SetMatrix ( m_CommonHandles.hProjectionMainScene, (D3DXMATRIX*)&g_pDeviceState->MainSceneState.TransformState.PROJECTION );
-
-    return true;
 };
 
 
@@ -836,11 +830,8 @@ void BOUNDS_CHECK ( const void* ptr, int ptrsize, const void* bufstart, int bufs
 // Called before render
 //
 ////////////////////////////////////////////////////////////////
-bool CEffectWrapImpl::ApplyMappedHandles ( void )
+void CEffectWrapImpl::ApplyMappedHandles ( void )
 {
-    if ( !m_bUsesMappedHandles )
-        return false;
-
 	//////////////////////////////////////////
     //
     // RenderState
@@ -1018,9 +1009,9 @@ bool CEffectWrapImpl::ApplyMappedHandles ( void )
     //
     // LightEnableState
     //
-    for ( uint i = 0 ; i < lightEnableStateVarList.size () ; i++ )
+    for ( uint i = 0 ; i < lightEnabledStateVarList.size () ; i++ )
     {
-        const SStateVar& var = lightEnableStateVarList[i];
+        const SStateVar& var = lightEnabledStateVarList[i];
         assert ( var.iRegister == 0 );
         const DWORD* pdwValue = &g_pDeviceState->LightEnableState[ var.iStage ].Enable;
         if ( var.iType == RegMap::Int2Int )
@@ -1076,8 +1067,6 @@ bool CEffectWrapImpl::ApplyMappedHandles ( void )
 
         BOUNDS_CHECK( pdwValue, sizeof ( *pdwValue ), &g_pDeviceState->VertexDeclState, sizeof ( g_pDeviceState->VertexDeclState ) );
     }
-
-    return true;
 }
 
 
@@ -1279,7 +1268,6 @@ bool CEffectWrapImpl::TryMappingParameterToRegister ( D3DXHANDLE hParameter, con
         var.iType = pTypeMapping->OutType;
         var.iSize = pTypeMapping->OutSize;
         AddStateMappedParameter ( stateGroup, var );
-        m_bUsesMappedHandles = true;
         return true;      // We have a weiner
     }
 
@@ -1348,7 +1336,7 @@ void CEffectWrapImpl::AddStateMappedParameter ( EStateGroup stateGroup, const SS
         case STATE_GROUP_TRANSFORM:     transformStateVarList.push_back ( var ); break;
         case STATE_GROUP_TEXTURE:       textureStateVarList.push_back ( var ); break;
         case STATE_GROUP_LIGHT:         lightStateVarList.push_back ( var ); break;
-        case STATE_GROUP_LIGHT_ENABLE:  lightEnableStateVarList.push_back ( var ); break;
+        case STATE_GROUP_LIGHT_ENABLED: lightEnabledStateVarList.push_back ( var ); break;
         case STATE_GROUP_DEVICE_CAPS:   deviceCapsVarList.push_back ( var ); break;
         case STATE_GROUP_VERTEX_DECL:   vertexDeclStateVarList.push_back ( var ); break;
     }

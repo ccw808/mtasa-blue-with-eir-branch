@@ -23,7 +23,7 @@ class CClientSoundManager;
 class CClientSoundManager
 {
 public:
-    ZERO_ON_NEW
+
                             CClientSoundManager         ( CClientManager* pClientManager );
                             ~CClientSoundManager        ( void );
 
@@ -32,14 +32,7 @@ public:
     void                    SetDimension                ( unsigned short usDimension );
 
     CClientSound*           PlaySound2D                 ( const SString& strSound, bool bIsURL, bool bLoop );
-    CClientSound*           PlaySound2D                 ( void* pMemory, unsigned int uiLength, bool bLoop );
     CClientSound*           PlaySound3D                 ( const SString& strSound, bool bIsURL, const CVector& vecPosition, bool bLoop );
-    CClientSound*           PlaySound3D                 ( void* pMemory, unsigned int uiLength, const CVector& vecPosition, bool bLoop );
-
-    CClientSound*           PlayGTASFX                  ( eAudioLookupIndex containerIndex, int iBankIndex, int iAudioIndex, bool bLoop = false );
-    CClientSound*           PlayGTASFX3D                ( eAudioLookupIndex containerIndex, int iBankIndex, int iAudioIndex, const CVector& vecPosition, bool bLoop = false );
-
-    bool                    GetSFXStatus                ( eAudioLookupIndex containerIndex );
 
     void                    AddToList                   ( CClientSound* pSound );
     void                    RemoveFromList              ( CClientSound* pSound );
@@ -55,13 +48,6 @@ public:
     void                    OnDistanceStreamIn          ( CClientSound* pSound );
     void                    OnDistanceStreamOut         ( CClientSound* pSound );
 
-    bool                    IsMinimizeMuted             ( void )                    { return m_bMinimizeMuted; };
-    void                    SetMinimizeMuted            ( bool bMute )              { m_bMinimizeMuted = bMute; };
-
-    void                    QueueChannelStop            ( DWORD pSound );
-    void                    QueueAudioStop              ( CBassAudio* pAudio );
-    void                    ProcessStopQueues           ( bool bFlush = false );
-
 private:
 
     CClientManager*                 m_pClientManager;
@@ -72,15 +58,6 @@ private:
     std::set < CClientSound* >      m_DistanceStreamedInMap;
 
     std::map < std::string, int >   m_FxEffectNames;
-    SString                         m_strUserAgent;
-
-    bool                            m_bMinimizeMuted;
-
-    bool                            m_aValidatedSFX[9];
-
-    std::vector < DWORD >                   m_ChannelStopQueue;
-    std::map < CBassAudio*, CElapsedTime >  m_AudioStopQueue;
-    CCriticalSection                        m_CS;
 };
 
 #endif

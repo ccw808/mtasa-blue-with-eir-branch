@@ -98,7 +98,7 @@ namespace
             {
                 SString strMsg ( "[CIncludeManager: Illegal path %s]", *strPathFilename );
                 m_strReport += strMsg;
-                OutputDebugLine ( SStringX ( "[Shader] " ) + strMsg );
+                OutputDebugLine ( SString ( "[Shader] %s", strMsg.c_str() ) );
                 return E_FAIL;
             }
 
@@ -108,7 +108,7 @@ namespace
             {
                 SString strMsg ( "[CIncludeManager: Can't find %s]", *strPathFilename );
                 m_strReport += strMsg;
-                OutputDebugLine ( SStringX ( "[Shader] " ) + strMsg );
+                OutputDebugLine ( SString ( "[Shader] %s", strMsg.c_str() ) );
                 return E_FAIL;
             }
 
@@ -271,8 +271,9 @@ void CEffectTemplateImpl::CreateUnderlyingData ( const SString& strFilename, con
         strOutStatus = SStringX ( (CHAR*)pBufferErrors->GetBufferPointer() ).TrimEnd ( "\n" );
 
         // Error messages sometimes contain the current directory. Remove that here.
-        SString strCurrentDirectory = GetSystemCurrentDirectory();
-        strOutStatus = strOutStatus.ReplaceI ( strCurrentDirectory + "\\", "" );
+        SString strCurrentDirectory = SharedUtil::GetCurrentDirectory ();
+        strCurrentDirectory += "\\";
+        strOutStatus = strOutStatus.ReplaceI ( strCurrentDirectory, "" );
         strOutStatus = strOutStatus.ReplaceI ( strCurrentDirectory, "" );
     }
     SAFE_RELEASE( pBufferErrors );

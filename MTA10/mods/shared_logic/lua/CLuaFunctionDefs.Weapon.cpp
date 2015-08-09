@@ -93,7 +93,9 @@ int CLuaFunctionDefs::CreateWeapon ( lua_State* luaVM )
     eWeaponType weaponType;
     CScriptArgReader argStream ( luaVM );
     argStream.ReadEnumStringOrNumber ( weaponType );
-    argStream.ReadVector3D ( vecPos );
+    argStream.ReadNumber ( vecPos.fX );
+    argStream.ReadNumber ( vecPos.fY );
+    argStream.ReadNumber ( vecPos.fZ );
 
     if ( !argStream.HasErrors () )
     {
@@ -162,20 +164,6 @@ int CLuaFunctionDefs::SetWeaponProperty ( lua_State* luaVM )
             if ( !argStream.HasErrors( ) )
             {
                 if ( CStaticFunctionDefinitions::SetWeaponProperty ( pWeapon, weaponProperty, sData ) )
-                {
-                    lua_pushboolean ( luaVM, true );
-                    return 1;
-                }
-            }
-        }
-        else
-        if ( weaponProperty == WEAPON_FIRE_ROTATION )
-        {
-            CVector vecRotation;
-            argStream.ReadVector3D ( vecRotation );
-            if ( !argStream.HasErrors () )
-            {
-                if ( CStaticFunctionDefinitions::SetWeaponProperty ( pWeapon, weaponProperty, vecRotation ) )
                 {
                     lua_pushboolean ( luaVM, true );
                     return 1;
@@ -267,10 +255,12 @@ int CLuaFunctionDefs::SetWeaponTarget ( lua_State* luaVM )
             }
         }
     }
-    else if ( argStream.NextIsNumber() || argStream.NextIsUserDataOfType < CLuaVector3D > () )
+    else if ( argStream.NextIsNumber() )
     {
         CVector vecTarget;
-        argStream.ReadVector3D ( vecTarget );
+        argStream.ReadNumber( vecTarget.fX );
+        argStream.ReadNumber( vecTarget.fY );
+        argStream.ReadNumber( vecTarget.fZ );
         if ( !argStream.HasErrors () )
         {
             if ( CStaticFunctionDefinitions::SetWeaponTarget ( pWeapon, vecTarget ) )
@@ -405,7 +395,7 @@ int CLuaFunctionDefs::SetWeaponFlags ( lua_State* luaVM )
             argStream.ReadBool ( bData );
             if ( CStaticFunctionDefinitions::SetWeaponFlags( pWeapon, flag, bData ) )
             {
-                lua_pushboolean( luaVM, true );
+                lua_pushboolean( luaVM, bData );
                 return 1;
             }
         }
@@ -424,7 +414,6 @@ int CLuaFunctionDefs::SetWeaponFlags ( lua_State* luaVM )
                 if ( CStaticFunctionDefinitions::SetWeaponFlags( pWeapon, flags ) )
                 {
                     lua_pushboolean( luaVM, true );
-                    return 1;
                 }
             }
         }

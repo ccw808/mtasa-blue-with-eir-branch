@@ -13,46 +13,10 @@
 //
 // System wide defines
 //
-#define DEFINED_SHARED_UTIL 1
 
 // Enable WITH_ALLOC_TRACKING to monitor server module memory usage. *Has a negative performance impact*
-#ifndef WITH_ALLOC_TRACKING
-    #ifndef MTA_CLIENT
-        #define WITH_ALLOC_TRACKING 0       // Alloc track server - (Can also be defined in individual modules, just above #include "SharedUtil.h")
-    #else
-        #define WITH_ALLOC_TRACKING 0       // Alloc track client - (Can also be defined in individual modules, just above #include "SharedUtil.h")
-    #endif
-#endif
-
-//
-// Architecture
-//
-#if defined( _M_X64 ) || defined( __x86_64__ ) || defined( _M_AMD64 )
-    #define ANY_x64
-    #ifdef _WIN64
-        #define WIN_x64
-    #else
-        #define LINUX_x64
-    #endif
-#else
-    #define ANY_x86
-    #ifdef WIN32
-        #define WIN_x86
-    #else
-        #define LINUX_x86
-    #endif
-#endif
-
-//
-// Location of server binaries
-//
-#ifdef ANY_x86
-    #define SERVER_BIN_PATH     ""
-    #define SERVER_BIN_PATH_MOD "mods/deathmatch/"
-#else
-    #define SERVER_BIN_PATH     "x64/"
-    #define SERVER_BIN_PATH_MOD "x64/"
-#endif
+// (Also only works for the server. Will give compile errors in the client projects.)
+#define WITH_ALLOC_TRACKING 0
 
 //
 // vsnprintf with buffer full check
@@ -91,19 +55,9 @@
 #ifdef _MSC_VER
     #define atoi64 _atoi64
     #define PRId64  "I64d"
-    #define PRIx64  "I64x"
 #else
     #define atoi64 std::atoll
     #define PRId64  "lld"
-    #define PRIx64  "llx"
-#endif
-
-#if defined(WIN32)
-    #if _MSC_VER <= 1500
-        // VS08 does not have isnan, but _isnan
-        #include <float.h>
-        #define isnan _isnan
-    #endif
 #endif
 
 //
@@ -184,20 +138,4 @@
     #define PRSinW  L"%S"       // i.e. WString ( L"name:" PRSinW,  "dave" );
 #else
     #define PRSinW  L"%s"       // i.e. WString ( L"name:" PRSinW,  "dave" );
-#endif
-
-// Generic way of showing a uchar index is not set
-#define UCHAR_INVALID_INDEX 0xFF
-
-// Tick count conversions
-#define TICKS_FROM_SECONDS(m)   ((m)*1000)
-#define TICKS_FROM_MINUTES(m)   (TICKS_FROM_SECONDS(m)*60)
-#define TICKS_FROM_HOURS(m)     (TICKS_FROM_MINUTES(m)*60)
-#define TICKS_FROM_DAYS(m)      (TICKS_FROM_HOURS(m)*24)
-
-// Export function
-#if defined _WIN32
-    #define MTAEXPORT extern "C" __declspec(dllexport)
-#else
-    #define MTAEXPORT extern "C" __attribute__ ((visibility ("default")))
 #endif

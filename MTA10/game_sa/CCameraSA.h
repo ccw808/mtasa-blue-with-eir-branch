@@ -355,7 +355,8 @@ public:
     CMatrix_Padded m_viewMatrix;
     int unk3[2];
     CMatrix_Padded m_matInverse;
-    int unk4[26];
+    CMatrix_Padded m_matMirrorInverse;
+    CMatrix_Padded m_matMirror;
 #endif
 
     CVector m_vecFrustumNormals[4];
@@ -443,12 +444,9 @@ public:
     RwMatrix *                  GetLTM ( void );
     CEntity *                   GetTargetEntity ( void );
     void                        SetCameraClip ( bool bObjects, bool bVehicles );
-    void                        GetCameraClip ( bool &bObjects, bool &bVehicles );
     BYTE                        GetCameraViewMode ( void );
     VOID                        SetCameraViewMode ( BYTE dwCamMode );
     void                        RestoreLastGoodState ( void );
-    void                        SetShakeForce ( float fShakeForce );
-    float                       GetShakeForce ( void );
 private:
     static unsigned long        FUNC_RwFrameGetLTM;
 };

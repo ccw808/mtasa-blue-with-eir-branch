@@ -34,6 +34,7 @@ class CCore;
 #include "CGraphics.h"
 #include "CSetCursorPosHook.h"
 #include "CMessageLoopHook.h"
+#include "CLogger.h"
 #include "CConsoleLogger.h"
 #include "CModManager.h"
 #include <core/CClientBase.h>
@@ -49,13 +50,12 @@ class CCore;
 #include <xml/CXML.h>
 #include <ijsify.h>
 #include "CXfireQuery.h"
-#include "CWebCore.h"
 
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
 
-#define BLUE_VERSION_STRING     "Multi Theft Auto v" MTA_DM_BUILDTAG_LONG
-#define BLUE_COPYRIGHT_STRING    _td("Copyright (C) 2003 - 2014 Multi Theft Auto")
+#define BLUE_VERSION_STRING     "Multi Theft Auto v" MTA_DM_BUILDTAG_LONG "\n" \
+                                "Copyright (C) 2003 - 2012 Multi Theft Auto" \
 
 // Configuration file path (relative to Grand Theft Auto directory)
 #define MTA_CONFIG_PATH             "mta/coreconfig.xml"
@@ -75,12 +75,9 @@ class CCore;
 #define CONFIG_FAVOURITE_LIST_TAG   "favourite_server"
 #define CONFIG_RECENT_LIST_TAG      "recently_played_server"
 #define CONFIG_HISTORY_LIST_TAG     "connected_server"
-#define IDT_TIMER1 1234
 
 extern class CCore* g_pCore;
 extern class CGraphics* g_pGraphics;
-extern class CLocalization* g_pLocalization;
-bool UsingAltD3DSetup();
 
 class CCore : public CCoreInterface, public CSingleton < CCore >
 {
@@ -107,8 +104,6 @@ public:
     CMouseControl*          GetMouseControl                 ( void )                { return m_pMouseControl; };
     CLocalGUI*              GetLocalGUI                     ( void );
     CCommunityInterface*    GetCommunity                    ( void )                { return &m_Community; };
-    CLocalizationInterface* GetLocalization                 ( void )                { return g_pLocalization; };
-    CWebCoreInterface*      GetWebCore                      ( void )                { return m_pWebCore; };
 
     void                    SaveConfig                      ( void );
 
@@ -154,8 +149,7 @@ public:
     // Net
     void                    SetConnected                    ( bool bConnected );
     bool                    IsConnected                     ( void );
-    bool                    Reconnect                       ( const char* szHost, unsigned short usPort, const char* szPassword, bool bSave = true, bool bForceInternalHTTPServer = false );
-    bool                    ShouldUseInternalHTTPServer     ( void );
+    bool                    Reconnect                       ( const char* szHost, unsigned short usPort, const char* szPassword, bool bSave = true );
 
     // Mod
     void                    SetOfflineMod                   ( bool bOffline );
@@ -163,12 +157,8 @@ public:
     void                    SetMessageProcessor             ( pfnProcessMessage pfnMessageProcessor );
     void                    ShowMessageBox                  ( const char* szTitle, const char* szText, unsigned int uiFlags, GUI_CALLBACK * ResponseHandler = NULL );
     void                    RemoveMessageBox                ( bool bNextFrame = false );
-    void                    ShowErrorMessageBox             ( const SString& strTitle, SString strMessage, const SString& strTroubleLink = "" );
-    void                    ShowNetErrorMessageBox          ( const SString& strTitle, SString strMessage, SString strTroubleLink = "", bool bLinkRequiresErrorCode = false );
-    static void             ErrorMessageBoxCallBack         ( void* pData, uint uiButton );
     bool                    IsOfflineMod                    ( void ) { return m_bIsOfflineMod; }
     const char *            GetModInstallRoot               ( const char * szModName );
-    bool                    CheckDiskSpace                  ( uint uiResourcesPathMinMB = 10, uint uiDataPathMinMB = 10 );
 
 
     // Subsystems
@@ -176,7 +166,7 @@ public:
     void                    CreateMultiplayer               ( void );
     void                    CreateNetwork                   ( void );
     void                    CreateXML                       ( void );
-    void                    InitGUI                         ( IDirect3DDevice9* pDevice );
+    void                    InitGUI                         ( IUnknown* pDevice );
     void                    CreateGUI                       ( void );
     void                    DestroyGame                     ( void );
     void                    DestroyMultiplayer              ( void );
@@ -185,16 +175,12 @@ public:
     void                    DeinitGUI                       ( void );
     void                    DestroyGUI                      ( void );
 
-    // Web
-    void                    InitialiseWeb                   ( void );
-
     // Hooks
     void                    ApplyHooks                      ( void );
     void                    ApplyHooks2                     ( void );
-    void                    ApplyHooks3                     ( bool bEnable );
     HWND                    GetHookedWindow                 ( void );
     void                    SwitchRenderWindow              ( HWND hWnd, HWND hWndInput );
-    void                    CallSetCursorPos                ( int X, int Y );
+    void                    CallSetCursorPos                ( int X, int Y ) { m_pSetCursorPosHook->CallSetCursorPos(X,Y); }
     void                    SetClientMessageProcessor       ( pfnProcessMessage pfnMessageProcessor ) { m_pfnMessageProcessor = pfnMessageProcessor; };
     pfnProcessMessage       GetClientMessageProcessor       ( void ) { return m_pfnMessageProcessor; }
     void                    ChangeResolution                ( long width, long height, long depth );
@@ -208,6 +194,8 @@ public:
     void                    DoPostFramePulse                ( void );
 
     // Events
+    bool                    OnMouseClick                    ( CGUIMouseEventArgs Args );
+    bool                    OnMouseDoubleClick              ( CGUIMouseEventArgs Args );
     void                    OnModUnload                     ( void );
 
     // Misc
@@ -219,10 +207,9 @@ public:
     void                    InitiateDataFilesFix            ( void )                                        { m_pLocalGUI->InitiateDataFilesFix (); }
 
     uint                    GetFrameRateLimit               ( void )                                        { return m_uiFrameRateLimit; }
-    void                    RecalculateFrameRateLimit       ( uint uiServerFrameRateLimit = -1, bool bLogToConsole = true );
+    void                    RecalculateFrameRateLimit       ( uint uiServerFrameRateLimit = -1 );
     void                    ApplyFrameRateLimit             ( uint uiOverrideRate = -1 );
     void                    EnsureFrameRateLimitApplied     ( void );
-    void                    SetClientScriptFrameRateLimit   ( uint uiClientScriptFrameRateLimit );
     void                    DoReliablePulse                 ( void );
 
     bool                    IsTimingCheckpoints             ( void );
@@ -242,7 +229,6 @@ public:
     void                    RequestNewNickOnStart           ( void ) { m_bWaitToSetNick = true; };
     bool                    WillRequestNewNickOnStart       ( void ) { return m_bWaitToSetNick; };
     bool                    WasLaunchedWithConnectURI       ( void );
-    void                    HandleCrashDumpEncryption       ( void );
 
     //XFire
     SString                 UpdateXfire                     ( void );
@@ -253,30 +239,12 @@ public:
     void                    OnPreHUDRender                  ( void );
     void                    OnDeviceRestore                 ( void );
     void                    OnCrashAverted                  ( uint uiId );
-    void                    OnEnterCrashZone                ( uint uiId );
-    void                    LogEvent                        ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody, uint uiAddReportLogId = 0 );
+    void                    LogEvent                        ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody );
     bool                    GetDebugIdEnabled               ( uint uiDebugId );
     EDiagnosticDebugType    GetDiagnosticDebug              ( void );
     void                    SetDiagnosticDebug              ( EDiagnosticDebugType value );
     CModelCacheManager*     GetModelCacheManager            ( void );
     void                    AddModelToPersistentCache       ( ushort usModelId );
-
-    static void             StaticIdleHandler               ( void );
-    void                    IdleHandler                     ( void );
-    void                    WindowsTimerHandler             ( void );
-    void                    HandleIdlePulse                 ( void );
-    void                    SetModulesLoaded                ( bool bLoaded );
-    bool                    AreModulesLoaded                ( void );
-    void                    UpdateDummyProgress             ( int iValue = -1, const char* szType = "" );
-    void                    SetDummyProgressUpdateAlways    ( bool bAlways )        { m_bDummyProgressUpdateAlways = bAlways; }
-    bool                    GetDummyProgressUpdateAlways    ( void )                { return m_bDummyProgressUpdateAlways; }
-
-    void                    OnPreCreateDevice               ( IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD& BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters );
-    HRESULT                 OnPostCreateDevice              ( HRESULT hResult, IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface );
-    bool                    GetDeviceSelectionEnabled       ( void );
-    bool                    GetRequiredDisplayResolution    ( int& iOutWidth, int& iOutHeight, int& iOutColorBits, int& iOutAdapterIndex, bool& bOutAllowUnsafeResolutions );
-    void                    NotifyRenderingGrass            ( bool bIsRenderingGrass );
-    bool                    IsRenderingGrass                ( void )                { return m_bIsRenderingGrass; }
 
 private:
     // Core devices.
@@ -292,7 +260,6 @@ private:
     CXMLFile*                   m_pConfigFile;
     CClientVariables            m_ClientVariables;
     CCommunity                  m_Community;
-    CWebCore*                   m_pWebCore;
 
     // Hook interfaces.
     CMessageLoopHook *          m_pMessageLoopHook;
@@ -324,9 +291,8 @@ private:
     CGUI*                       m_pGUI;
 
     // Logger utility interface.
+    CLogger *                   m_pLogger;
     CConsoleLogger *            m_pConsoleLogger;
-
-    CLocalization*              m_pLocalization;
 
     CKeyBinds*                  m_pKeyBinds;
     CMouseControl*              m_pMouseControl;
@@ -352,7 +318,6 @@ private:
 
     bool                        m_bDoneFrameRateLimit;
     uint                        m_uiServerFrameRateLimit;
-    uint                        m_uiClientScriptFrameRateLimit;
     uint                        m_uiFrameRateLimit;
     double                      m_dLastTimeMs;
     double                      m_dPrevOverrun;
@@ -361,14 +326,6 @@ private:
     EDiagnosticDebugType        m_DiagnosticDebug;
     float                       m_fMinStreamingMemory;
     float                       m_fMaxStreamingMemory;
-    bool                        m_bGettingIdleCallsFromMultiplayer;
-    bool                        m_bWindowsTimerEnabled;
-    bool                        m_bModulesLoaded;
-    int                         m_iDummyProgressValue;
-    HANDLE                      m_DummyProgressTimerHandle;
-    SString                     m_strDummyProgressType;
-    bool                        m_bDummyProgressUpdateAlways;
-    bool                        m_bIsRenderingGrass;
 
     // Command line
     static void                 ParseCommandLine                ( std::map < std::string, std::string > & options, const char*& szArgs, const char** pszNoValOptions = NULL );

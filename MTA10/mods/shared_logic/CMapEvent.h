@@ -24,12 +24,10 @@ class CMapEvent
 
 public:
     inline class CLuaMain*  GetVM               ( void )                                { return m_pMain; };
-    inline const SString&   GetName             ( void )                                { return m_strName; };
+    inline const char*      GetName             ( void )                                { return m_strName; };
     inline CLuaFunctionRef  GetLuaFunction      ( void )                                { return m_iLuaFunction; };
     inline bool             IsBeingDestroyed    ( void )                                { return m_bBeingDestroyed; }
     inline bool             IsPropagated        ( void )                                { return m_bPropagated; }
-    bool                    ShouldAllowAspectRatioAdjustment    ( void )                { return m_bAllowAspectRatioAdjustment; }
-    bool                    ShouldForceAspectRatioAdjustment    ( void )                { return m_bForceAspectRatioAdjustment; }
 
     void                    Call                ( const class CLuaArguments& Arguments );
     bool                    IsHigherPriorityThan ( const CMapEvent* pOther );
@@ -48,8 +46,7 @@ private:
     bool                    m_bBeingDestroyed;
     EEventPriorityType      m_eventPriority;
     float                   m_fPriorityMod;
-    bool                    m_bAllowAspectRatioAdjustment;
-    bool                    m_bForceAspectRatioAdjustment;
+
 };
 
 #endif

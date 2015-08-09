@@ -263,27 +263,6 @@ IMPLEMENT_ENUM_BEGIN( eWeaponProperty )
 
     ADD_ENUM ( WEAPON_DEFAULT_COMBO,                    "default_combo" ) 
     ADD_ENUM ( WEAPON_COMBOS_AVAILABLE,                 "combos_available" ) 
-
-    ADD_ENUM ( WEAPON_FLAG_AIM_NO_AUTO,                 "flag_aim_no_auto" ) 
-    ADD_ENUM ( WEAPON_FLAG_AIM_ARM,                     "flag_aim_arm" ) 
-    ADD_ENUM ( WEAPON_FLAG_AIM_1ST_PERSON,              "flag_aim_1st_person" ) 
-    ADD_ENUM ( WEAPON_FLAG_AIM_FREE,                    "flag_aim_free" ) 
-    ADD_ENUM ( WEAPON_FLAG_MOVE_AND_AIM,                "flag_move_and_aim" ) 
-    ADD_ENUM ( WEAPON_FLAG_MOVE_AND_SHOOT,              "flag_move_and_shoot" ) 
-    ADD_ENUM ( WEAPON_FLAG_TYPE_THROW,                  "flag_type_throw" ) 
-    ADD_ENUM ( WEAPON_FLAG_TYPE_HEAVY,                  "flag_type_heavy" ) 
-    ADD_ENUM ( WEAPON_FLAG_TYPE_CONSTANT,               "flag_type_constant" ) 
-    ADD_ENUM ( WEAPON_FLAG_TYPE_DUAL,                   "flag_type_dual" ) 
-    ADD_ENUM ( WEAPON_FLAG_ANIM_RELOAD,                 "flag_anim_reload" ) 
-    ADD_ENUM ( WEAPON_FLAG_ANIM_CROUCH,                 "flag_anim_crouch" ) 
-    ADD_ENUM ( WEAPON_FLAG_ANIM_RELOAD_LOOP,            "flag_anim_reload_loop" ) 
-    ADD_ENUM ( WEAPON_FLAG_ANIM_RELOAD_LONG,            "flag_anim_reload_long" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_SLOWS,                  "flag_shot_slows" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_RAND_SPEED,             "flag_shot_rand_speed" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_ANIM_ABRUPT,            "flag_shot_anim_abrupt" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_EXPANDS,                "flag_shot_expands" )
-
-    ADD_ENUM ( WEAPON_FIRE_ROTATION,                    "fire_rotation" ) 
 IMPLEMENT_ENUM_END( "weapon-property" )
 
 IMPLEMENT_ENUM_BEGIN( eWeaponSkill )
@@ -381,69 +360,6 @@ IMPLEMENT_ENUM_BEGIN( eVehicleComponent )
     ADD_ENUM ( VEHICLE_COMPONENT_EXTRA_2,                       "extra_2" )
 IMPLEMENT_ENUM_END( "vehicle-component" )
 
-IMPLEMENT_ENUM_BEGIN( eFontType )
-    ADD_ENUM( FONT_DEFAULT,         "default" )
-    ADD_ENUM( FONT_DEFAULT_BOLD,    "default-bold" )
-    ADD_ENUM( FONT_CLEAR,           "clear" )
-    ADD_ENUM( FONT_ARIAL,           "arial" )
-    ADD_ENUM( FONT_SANS,            "sans" )
-    ADD_ENUM( FONT_PRICEDOWN,       "pricedown" )
-    ADD_ENUM( FONT_BANKGOTHIC,      "bankgothic" )
-    ADD_ENUM( FONT_DIPLOMA,         "diploma" )
-    ADD_ENUM( FONT_BECKETT,         "beckett" )
-IMPLEMENT_ENUM_END_DEFAULTS( "font-type", FONT_DEFAULT, "" )
-
-IMPLEMENT_ENUM_BEGIN ( eAudioLookupIndex )
-    ADD_ENUM ( AUDIO_LOOKUP_FEET, "feet" )
-    ADD_ENUM ( AUDIO_LOOKUP_GENRL, "genrl" )
-    ADD_ENUM ( AUDIO_LOOKUP_PAIN_A, "pain_a" )
-    ADD_ENUM ( AUDIO_LOOKUP_SCRIPT, "script" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_EA, "spc_ea" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_FA, "spc_fa" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_GA, "spc_ga" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_NA, "spc_na" )
-    ADD_ENUM ( AUDIO_LOOKUP_SPC_PA, "spc_pa" )
-    ADD_ENUM ( AUDIO_LOOKUP_RADIO, "radio" )
-IMPLEMENT_ENUM_END ( "audio-lookup-index" )
-
-IMPLEMENT_ENUM_BEGIN ( eAspectRatio )
-    ADD_ENUM ( ASPECT_RATIO_AUTO, "auto" )
-    ADD_ENUM ( ASPECT_RATIO_4_3, "4:3" )
-    ADD_ENUM ( ASPECT_RATIO_16_10, "16:10" )
-    ADD_ENUM ( ASPECT_RATIO_16_9, "16:9" )
-IMPLEMENT_ENUM_END ( "aspectratio" )
-
-IMPLEMENT_ENUM_BEGIN(eRadioStreamIndex)
-    ADD_ENUM(RADIO_STREAM_ADVERTS, "Adverts")
-    ADD_ENUM(RADIO_STREAM_AMBIENCE, "Ambience")
-    ADD_ENUM(RADIO_STREAM_POLICE, "Police")
-    ADD_ENUM(RADIO_STREAM_PLAYBACK, "Playback FM")
-    ADD_ENUM(RADIO_STREAM_KROSE, "K-Rose")
-    ADD_ENUM(RADIO_STREAM_KDST, "K-DST")
-    ADD_ENUM(RADIO_STREAM_CUTSCENE, "Cutscene")
-    ADD_ENUM(RADIO_STREAM_BEATS, "Beats")
-    ADD_ENUM(RADIO_STREAM_BOUNCE, "Bounce FM")
-    ADD_ENUM(RADIO_STREAM_SFUR, "SF-UR")
-    ADD_ENUM(RADIO_STREAM_RADIO_LOS_SANTOS, "Radio Los Santos")
-    ADD_ENUM(RADIO_STREAM_RADIO_X, "Radio X")
-    ADD_ENUM(RADIO_STREAM_CSR, "CSR 103.9")
-    ADD_ENUM(RADIO_STREAM_KJAH, "K-Jah West")
-    ADD_ENUM(RADIO_STREAM_MASTER_SOUNDS, "Master Sounds 98.3")
-    ADD_ENUM(RADIO_STREAM_WCTR, "WCTR")
-IMPLEMENT_ENUM_END("radio-stream-index")
-
-IMPLEMENT_ENUM_BEGIN( EComponentBase::EComponentBaseType )
-    ADD_ENUM( EComponentBaseType::WORLD,    "world" )
-    ADD_ENUM( EComponentBaseType::ROOT,     "root" )
-    ADD_ENUM( EComponentBaseType::PARENT,   "parent" )
-IMPLEMENT_ENUM_END( "component-base" )
-
-IMPLEMENT_ENUM_BEGIN(eWebBrowserMouseButton)
-    ADD_ENUM(BROWSER_MOUSEBUTTON_LEFT, "left")
-    ADD_ENUM(BROWSER_MOUSEBUTTON_MIDDLE, "middle")
-    ADD_ENUM(BROWSER_MOUSEBUTTON_RIGHT, "right")
-IMPLEMENT_ENUM_END("webbrowser-mouse-button")
-
 //
 // Get best guess at name of userdata type
 //
@@ -489,46 +405,37 @@ SString GetUserDataClassName ( void* ptr, lua_State* luaVM )
 //
 // DxFont/string
 //
-void MixedReadDxFontString ( CScriptArgReader& argStream, eFontType& outFontType, eFontType defaultFontType, CClientDxFont*& poutDxFontElement )
+bool MixedReadDxFontString ( CScriptArgReader& argStream, SString& strFontName, const char* szDefaultFontName, CClientDxFont*& pDxFontElement )
 {
-    outFontType = FONT_DEFAULT;
-    poutDxFontElement = NULL;
-    if ( argStream.NextIsNone () )
-        return;
+    pDxFontElement = NULL;
+    if ( argStream.NextIsString () || argStream.NextIsNone () )
+        return argStream.ReadString ( strFontName, szDefaultFontName );
     else
-    if ( argStream.NextIsString () )
-    {
-        SString strFontName;
-        argStream.ReadString ( strFontName );
-        StringToEnum( strFontName, outFontType );
-        return;
-    }
-    else
-        argStream.ReadUserData ( poutDxFontElement );
+        return argStream.ReadUserData ( pDxFontElement );
 }
 
 
 //
 // GuiFont/string
 //
-void MixedReadGuiFontString ( CScriptArgReader& argStream, SString& strOutFontName, const char* szDefaultFontName, CClientGuiFont*& poutGuiFontElement )
+bool MixedReadGuiFontString ( CScriptArgReader& argStream, SString& strFontName, const char* szDefaultFontName, CClientGuiFont*& pGuiFontElement )
 {
-    poutGuiFontElement = NULL;
+    pGuiFontElement = NULL;
     if ( argStream.NextIsString () || argStream.NextIsNone () )
-        argStream.ReadString ( strOutFontName, szDefaultFontName );
+        return argStream.ReadString ( strFontName, szDefaultFontName );
     else
-        argStream.ReadUserData ( poutGuiFontElement );
+        return argStream.ReadUserData ( pGuiFontElement );
 }
 
 
 //
 // Material/string
 //
-void MixedReadMaterialString ( CScriptArgReader& argStream, CClientMaterial*& pMaterialElement )
+bool MixedReadMaterialString ( CScriptArgReader& argStream, CClientMaterial*& pMaterialElement )
 {
     pMaterialElement = NULL;
     if ( !argStream.NextIsString () )
-        argStream.ReadUserData ( pMaterialElement );
+        return argStream.ReadUserData ( pMaterialElement );
     else
     {
         SString strFilePath;
@@ -546,19 +453,15 @@ void MixedReadMaterialString ( CScriptArgReader& argStream, CClientMaterial*& pM
                 SString strUniqueName = SString ( "%s*%s*%s", pParentResource->GetName (), pFileResource->GetName (), strMetaPath.c_str () ).Replace ( "\\", "/" );
                 pMaterialElement = g_pClientGame->GetManager ()->GetRenderElementManager ()->FindAutoTexture ( strPath, strUniqueName );
 
-                if ( pMaterialElement )
+                // Check if brand new
+                if ( pMaterialElement && !pMaterialElement->GetParent () )
                 {
-                    // Check if brand new
-                    if ( !pMaterialElement->GetParent () )
-                        // Make it a child of the resource's file root ** CHECK  Should parent be pFileResource, and element added to pParentResource's ElementGroup? **
-                        pMaterialElement->SetParent ( pParentResource->GetResourceDynamicEntity() );
+                    // Make it a child of the resource's file root ** CHECK  Should parent be pFileResource, and element added to pParentResource's ElementGroup? **
+                    pMaterialElement->SetParent ( pParentResource->GetResourceDynamicEntity() );
                 }
-                else
-                    argStream.SetCustomError( strFilePath, "Error loading image" );
             }
-            else
-                argStream.SetCustomError( strFilePath, "Bad file path" );
         }
+        return pMaterialElement != NULL;
     }
 }
 
@@ -588,7 +491,7 @@ bool ReadMatrix ( lua_State* luaVM, uint uiArgIndex, CMatrix& outMatrix )
                     if ( iArgumentType == LUA_TNUMBER || iArgumentType == LUA_TSTRING )
                     {
                         if ( uiRow < 4 && uiCol < 4 )
-                            m[uiRow][uiCol] = static_cast < float > ( lua_tonumber ( luaVM, -1 ) );
+                            m[uiRow][uiCol] = static_cast < float > ( lua_tonumber ( luaVM, -1 ) );;
                     }
                 }
 
@@ -633,73 +536,4 @@ void MinClientReqCheck ( CScriptArgReader& argStream, const char* szVersionReq, 
             }
         }
     }
-}
-
-//
-// Read next as preg option flags
-//
-void ReadPregFlags( CScriptArgReader& argStream, pcrecpp::RE_Options& pOptions )
-{
-    if ( argStream.NextIsNumber() )
-    {
-        uint uiFlags = 0;
-        argStream.ReadNumber ( uiFlags );
-        pOptions.set_caseless ( ( uiFlags & 1 ) != 0 );
-        pOptions.set_multiline ( ( uiFlags & 2 ) != 0 );
-        pOptions.set_dotall ( ( uiFlags & 4 ) != 0 );
-        pOptions.set_extended ( ( uiFlags & 8 ) != 0 );
-    }
-    else
-    if ( argStream.NextIsString() )
-    {
-        SString strFlags;
-        argStream.ReadString ( strFlags );
-        for( uint i = 0 ; i < strFlags.length() ; i++ )
-        {
-            switch ( strFlags[i] )
-            {
-                case 'i':
-                    pOptions.set_caseless ( true );
-                    break;
-                case 'm':
-                    pOptions.set_multiline ( true );
-                    break;
-                case 'd':
-                    pOptions.set_dotall ( true );
-                    break;
-                case 'e':
-                    pOptions.set_extended ( true );
-                    break;
-                default:
-                    argStream.SetCustomError( "Flags all wrong" );
-                    return;       
-            }
-        }
-    }
-}
-
-
-//
-// Return true if weapon property is a flag type
-//
-bool IsWeaponPropertyFlag( eWeaponProperty weaponProperty )
-{
-    return ( weaponProperty >= WEAPON_FLAG_FIRST && weaponProperty <= WEAPON_FLAG_LAST );
-}
-
-
-//
-// Get bit pattern for a weapon property flag enum
-//
-uint GetWeaponPropertyFlagBit( eWeaponProperty weaponProperty )
-{
-    if ( !IsWeaponPropertyFlag( weaponProperty ) )
-        return 0;
-
-    // Check 20 bits from first to last
-    dassert( WEAPON_FLAG_LAST + 1 - WEAPON_FLAG_FIRST == 20 );
-
-    uint uiFlagIndex = ( weaponProperty - WEAPON_FLAG_FIRST );
-    uint uiFlagBit = 1 << uiFlagIndex;
-    return uiFlagBit;
 }

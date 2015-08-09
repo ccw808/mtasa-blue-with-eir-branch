@@ -22,7 +22,7 @@
 #include "CVertexStreamBoundingBoxManager.h"
 #include "CProxyDirect3DVertexDeclaration.h"
 
-bool g_bInMTAScene = false;
+#include <stdexcept>
 
 // Variables used for screen shot saving
 static CBuffer             ms_ScreenShotBuffer;
@@ -30,9 +30,6 @@ static long long           ms_LastSaveTime      = 0;
 // Other variables
 static uint                ms_RequiredAnisotropicLevel = 1;
 static EDiagnosticDebugType ms_DiagnosticDebug = EDiagnosticDebug::NONE;
-
-// To reuse shader setups between calls to DrawIndexedPrimitive
-CShaderItem* g_pActiveShader = NULL;
 
 void CDirect3DEvents9::OnDirect3DDeviceCreate  ( IDirect3DDevice9 *pDevice )
 {
@@ -48,10 +45,7 @@ void CDirect3DEvents9::OnDirect3DDeviceCreate  ( IDirect3DDevice9 *pDevice )
     CGraphics::GetSingleton ().OnDeviceCreate ( pDevice );
 
     // Create the GUI elements
-    CLocalGUI::GetSingleton().CreateObjects ( pDevice );
-
-    // Init webbrowser
-    CCore::GetSingleton ().InitialiseWeb ();
+    CLocalGUI::GetSingleton().CreateObjects ( pDevice );    
 }
 
 void CDirect3DEvents9::OnDirect3DDeviceDestroy ( IDirect3DDevice9 *pDevice )
@@ -114,8 +108,7 @@ void CDirect3DEvents9::OnPresent ( IDirect3DDevice9 *pDevice )
     // Start a new scene. This isn't ideal and is not really recommended by MSDN.
     // I tried disabling EndScene from GTA and just end it after this code ourselves
     // before present, but that caused graphical issues randomly with the sky.
-    if ( pDevice->BeginScene() == D3D_OK )
-        g_bInMTAScene = true;
+    pDevice->BeginScene ();
 
     // Reset samplers on first call
     static bool bDoneReset = false;
@@ -130,7 +123,17 @@ void CDirect3DEvents9::OnPresent ( IDirect3DDevice9 *pDevice )
         }
     }
 
-    CGraphics::GetSingleton ().EnteringMTARenderZone();
+    // Create a state block.
+    IDirect3DStateBlock9 * pDeviceState = NULL;
+    pDevice->CreateStateBlock ( D3DSBT_ALL, &pDeviceState );
+
+    // Make sure linear sampling is enabled
+    pDevice->SetSamplerState ( 0, D3DSAMP_MAGFILTER, D3DTEXF_LINEAR );
+    pDevice->SetSamplerState ( 0, D3DSAMP_MINFILTER, D3DTEXF_LINEAR );
+    pDevice->SetSamplerState ( 0, D3DSAMP_MIPFILTER, D3DTEXF_LINEAR );
+
+    // Make sure stencil is off to avoid problems with flame effects
+    pDevice->SetRenderState ( D3DRS_STENCILENABLE, FALSE );
 
     // Tell everyone that the zbuffer will need clearing before use
     CGraphics::GetSingleton ().OnZBufferModified ();
@@ -143,21 +146,11 @@ void CDirect3DEvents9::OnPresent ( IDirect3DDevice9 *pDevice )
     // Restore in case script forgets
     CGraphics::GetSingleton ().GetRenderItemManager ()->RestoreDefaultRenderTarget ();
 
-    bool bTookScreenShot = false;
-    if ( !CGraphics::GetSingleton ().GetScreenGrabber ()->IsQueueEmpty () )
-    {
-        g_pCore->GetWebCore ()->OnPreScreenshot ();
-        bTookScreenShot = true;
-    }
-
     // Draw pre-GUI primitives
     CGraphics::GetSingleton ().DrawPreGUIQueue ();
 
     // Maybe grab screen for upload
     CGraphics::GetSingleton ().GetScreenGrabber ()->DoPulse ();
-
-    if ( bTookScreenShot )
-        g_pCore->GetWebCore ()->OnPostScreenshot ();
 
     // Draw the GUI
     CLocalGUI::GetSingleton().Draw ();
@@ -168,13 +161,15 @@ void CDirect3DEvents9::OnPresent ( IDirect3DDevice9 *pDevice )
     // Redraw the mouse cursor so it will always be over other elements
     CLocalGUI::GetSingleton().DrawMouseCursor();
 
-    CGraphics::GetSingleton().DidRenderScene();
-
-    CGraphics::GetSingleton ().LeavingMTARenderZone();
-
+    // Restore the render states
+    if ( pDeviceState )
+    {
+        pDeviceState->Apply ( );
+        pDeviceState->Release ( );
+    }
+    
     // End the scene that we started.
     pDevice->EndScene ();
-    g_bInMTAScene = false;
 
     // Update incase settings changed
     int iAnisotropic;
@@ -216,8 +211,7 @@ void CDirect3DEvents9::CheckForScreenShot ( void )
         SString strFileName = CScreenShot::PreScreenShot ();
 
         // Try to get the screen data
-        SString strError;
-        if ( CGraphics::GetSingleton ().GetScreenGrabber ()->GetBackBufferPixels ( uiWidth, uiHeight, ms_ScreenShotBuffer, strError ) )
+        if ( CGraphics::GetSingleton ().GetScreenGrabber ()->GetBackBufferPixels ( uiWidth, uiHeight, ms_ScreenShotBuffer ) )
         {
             // Validate data size
             uint uiDataSize = ms_ScreenShotBuffer.GetSize ();
@@ -230,13 +224,13 @@ void CDirect3DEvents9::CheckForScreenShot ( void )
             }
             else
             {
-                g_pCore->GetConsole()->Printf ( _("Screenshot got %d bytes, but expected %d"), uiDataSize, uiReqDataSize );
+                g_pCore->GetConsole()->Printf ( "Screenshot got %d bytes, but expected %d", uiDataSize, uiReqDataSize );
                 strFileName = "";
             }
         }
         else
         {
-            g_pCore->GetConsole()->Print ( _("Screenshot failed") + SString( " (%s)", *strError ) );
+            g_pCore->GetConsole()->Print ( "Screenshot failed" );
             strFileName = "";
         }
 
@@ -270,14 +264,8 @@ HRESULT CDirect3DEvents9::OnDrawPrimitive ( IDirect3DDevice9 *pDevice, D3DPRIMIT
     if ( ms_DiagnosticDebug == EDiagnosticDebug::GRAPHICS_6734 )
         return pDevice->DrawPrimitive ( PrimitiveType, StartVertex, PrimitiveCount );
 
-    CloseActiveShader();
-
     // Any shader for this texture ?
     SShaderItemLayers* pLayers = CGraphics::GetSingleton ().GetRenderItemManager ()->GetAppliedShaderForD3DData ( (CD3DDUMMY*)g_pDeviceState->TextureState[0].Texture );
-
-    // Skip draw if there is a vertex shader conflict
-    if ( pLayers && pLayers->bUsesVertexShader && g_pDeviceState->VertexShader )
-        return D3D_OK;
 
     if ( !pLayers )
     {
@@ -293,7 +281,7 @@ HRESULT CDirect3DEvents9::OnDrawPrimitive ( IDirect3DDevice9 *pDevice, D3DPRIMIT
         if ( !pLayers->layerList.empty () )
         {
             float fSlopeDepthBias = -0.02f;
-            float fDepthBias = -0.00002f;
+            float fDepthBias = -0.00001f;
             SAVE_RENDERSTATE_AND_SET( SLOPESCALEDEPTHBIAS,  *(DWORD*)&fSlopeDepthBias );
             SAVE_RENDERSTATE_AND_SET( DEPTHBIAS,            *(DWORD*)&fDepthBias );
             SAVE_RENDERSTATE_AND_SET( ALPHABLENDENABLE, TRUE );
@@ -336,6 +324,10 @@ HRESULT CDirect3DEvents9::OnDrawPrimitive ( IDirect3DDevice9 *pDevice, D3DPRIMIT
 /////////////////////////////////////////////////////////////
 HRESULT CDirect3DEvents9::DrawPrimitiveShader ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount, CShaderItem* pShaderItem, bool bIsLayer )
 {
+    // Don't apply if both the shader and render state both use a vertex shader
+    if ( pShaderItem && g_pDeviceState->VertexShader && pShaderItem->GetUsesVertexShader () )
+        pShaderItem = NULL;
+
     if ( !pShaderItem )
     {
         // No shader for this texture
@@ -417,18 +409,8 @@ HRESULT CDirect3DEvents9::OnDrawIndexedPrimitive ( IDirect3DDevice9 *pDevice, D3
             pDevice->SetSamplerState ( 0, D3DSAMP_MAXANISOTROPY, ms_RequiredAnisotropicLevel );
     }
 
-    // See if we can continue using the active shader
-    if ( g_pActiveShader )
-    {
-        return DrawIndexedPrimitiveShader ( pDevice, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount, g_pActiveShader, false, false );
-    }
-
     // Any shader for this texture ?
     SShaderItemLayers* pLayers = CGraphics::GetSingleton ().GetRenderItemManager ()->GetAppliedShaderForD3DData ( (CD3DDUMMY*)g_pDeviceState->TextureState[0].Texture );
-
-    // Skip draw if there is a vertex shader conflict
-    if ( pLayers && pLayers->bUsesVertexShader && g_pDeviceState->VertexShader )
-        return D3D_OK;
 
     if ( !pLayers )
     {
@@ -438,13 +420,13 @@ HRESULT CDirect3DEvents9::OnDrawIndexedPrimitive ( IDirect3DDevice9 *pDevice, D3
     else
     {
         // Draw base shader
-        DrawIndexedPrimitiveShader ( pDevice, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount, pLayers->pBase, false, pLayers->layerList.empty() );
+        DrawIndexedPrimitiveShader ( pDevice, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount, pLayers->pBase, false );
 
         // Draw each layer
         if ( !pLayers->layerList.empty () )
         {
             float fSlopeDepthBias = -0.02f;
-            float fDepthBias = -0.00002f;
+            float fDepthBias = -0.00001f;
             SAVE_RENDERSTATE_AND_SET( SLOPESCALEDEPTHBIAS,  *(DWORD*)&fSlopeDepthBias );
             SAVE_RENDERSTATE_AND_SET( DEPTHBIAS,            *(DWORD*)&fDepthBias );
             SAVE_RENDERSTATE_AND_SET( ALPHABLENDENABLE, TRUE );
@@ -458,7 +440,7 @@ HRESULT CDirect3DEvents9::OnDrawIndexedPrimitive ( IDirect3DDevice9 *pDevice, D3
 
             for ( uint i = 0 ; i < pLayers->layerList.size () ; i++ )
             {
-                DrawIndexedPrimitiveShader ( pDevice, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount, pLayers->layerList[i], true, false );
+                DrawIndexedPrimitiveShader ( pDevice, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount, pLayers->layerList[i], true );
             }
 
             RESTORE_RENDERSTATE( SLOPESCALEDEPTHBIAS );
@@ -485,8 +467,12 @@ HRESULT CDirect3DEvents9::OnDrawIndexedPrimitive ( IDirect3DDevice9 *pDevice, D3
 //
 //
 /////////////////////////////////////////////////////////////
-HRESULT CDirect3DEvents9::DrawIndexedPrimitiveShader ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount, CShaderItem* pShaderItem, bool bIsLayer, bool bCanBecomeActiveShader )
+HRESULT CDirect3DEvents9::DrawIndexedPrimitiveShader ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount, CShaderItem* pShaderItem, bool bIsLayer )
 {
+    // Don't apply if both the shader and render state both use a vertex shader
+    if ( pShaderItem && g_pDeviceState->VertexShader && pShaderItem->GetUsesVertexShader () )
+        pShaderItem = NULL;
+
     if ( pShaderItem && pShaderItem->m_fMaxDistanceSq > 0 )
     {
         // If shader has a max distance, check this vertex range bounding box
@@ -499,31 +485,12 @@ HRESULT CDirect3DEvents9::DrawIndexedPrimitiveShader ( IDirect3DDevice9 *pDevice
 
     if ( !pShaderItem )
     {
-        CloseActiveShader();
-
         // No shader for this texture
         if ( !bIsLayer )
             return DrawIndexedPrimitiveGuarded ( pDevice, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount );
     }
     else
     {
-        // See if we should use the previously setup shader
-        if ( g_pActiveShader )
-        {
-            dassert( pShaderItem == g_pActiveShader );
-            g_pDeviceState->FrameStats.iNumShadersReuseSetup++;
-
-            // Transfer any state changes to the active shader
-            CShaderInstance* pShaderInstance = g_pActiveShader->m_pShaderInstance;
-            bool bChanged = pShaderInstance->m_pEffectWrap->ApplyCommonHandles ();
-            bChanged |= pShaderInstance->m_pEffectWrap->ApplyMappedHandles ();
-            if ( bChanged )
-                pShaderInstance->m_pEffectWrap->m_pD3DEffect->CommitChanges();
-
-            return DrawIndexedPrimitiveGuarded ( pDevice, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount );
-        }
-        g_pDeviceState->FrameStats.iNumShadersFullSetup++;
-
         // Yes shader for this texture
         CShaderInstance* pShaderInstance = pShaderItem->m_pShaderInstance;
 
@@ -565,15 +532,6 @@ HRESULT CDirect3DEvents9::DrawIndexedPrimitiveShader ( IDirect3DDevice9 *pDevice
                 pDevice->SetVertexShader( pOriginalVertexShader );
 
             DrawIndexedPrimitiveGuarded ( pDevice, PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount );
-
-            if ( uiNumPasses == 1 && bCanBecomeActiveShader && pOriginalVertexShader == NULL && g_pCore->IsRenderingGrass() )
-            {
-                // Make this the active shader for possible reuse
-                dassert( dwFlags == D3DXFX_DONOTSAVESHADERSTATE );
-                g_pActiveShader = pShaderItem;
-                return D3D_OK;
-            }
-
             pD3DEffect->EndPass ();
         }
         pD3DEffect->End ();
@@ -597,37 +555,6 @@ HRESULT CDirect3DEvents9::DrawIndexedPrimitiveShader ( IDirect3DDevice9 *pDevice
 
 /////////////////////////////////////////////////////////////
 //
-// CDirect3DEvents9::CloseActiveShader
-//
-// Finish the active shader if there is one
-//
-/////////////////////////////////////////////////////////////
-void CDirect3DEvents9::CloseActiveShader( void )
-{
-    if ( !g_pActiveShader )
-        return;
-
-    ID3DXEffect* pD3DEffect = g_pActiveShader->m_pShaderInstance->m_pEffectWrap->m_pD3DEffect;
-    g_pActiveShader = NULL;
-
-    pD3DEffect->EndPass ();
-
-    pD3DEffect->End ();
-
-    // We didn't get the effect to save the shader state, clear some things here
-    IDirect3DDevice9* pDevice = g_pGraphics->GetDevice();
-    pDevice->SetVertexShader( NULL );
-    pDevice->SetPixelShader( NULL );
-
-    // Unset additional vertex stream
-    CAdditionalVertexStreamManager::GetSingleton ()->MaybeUnsetAdditionalVertexStream ();
-
-    g_pDeviceState->CallState.strShaderName = "";
-}
-
-
-/////////////////////////////////////////////////////////////
-//
 // AreVertexStreamsAreBigEnough
 //
 // Occasionally, GTA tries to draw water/clouds/something with a vertex buffer that is
@@ -636,7 +563,7 @@ void CDirect3DEvents9::CloseActiveShader( void )
 // This function checks the sizes are valid
 //
 /////////////////////////////////////////////////////////////
-bool AreVertexStreamsAreBigEnough ( IDirect3DDevice9* pDevice, uint viMinBased, uint viMaxBased )
+bool AreVertexStreamsAreBigEnough ( IDirect3DDevice9* pDevice, WORD viMinBased, WORD viMaxBased )
 {
     // Check each stream used
     for ( uint i = 0 ; i < NUMELMS( g_pDeviceState->VertexDeclState.bUsesStreamAtIndex ) ; i++ )
@@ -671,25 +598,6 @@ bool AreVertexStreamsAreBigEnough ( IDirect3DDevice9* pDevice, uint viMinBased, 
 
 /////////////////////////////////////////////////////////////
 //
-// FilerException
-//
-// Check if exception should be handled by us
-//
-/////////////////////////////////////////////////////////////
-uint uiLastExceptionCode = 0;
-int FilerException( uint ExceptionCode )
-{
-    uiLastExceptionCode = ExceptionCode;
-    if ( ExceptionCode == EXCEPTION_ACCESS_VIOLATION )
-        return EXCEPTION_EXECUTE_HANDLER;
-    if ( ExceptionCode == 0xE06D7363 )
-        return EXCEPTION_EXECUTE_HANDLER;
-    return EXCEPTION_CONTINUE_SEARCH;
-}
-
-
-/////////////////////////////////////////////////////////////
-//
 // DrawPrimitiveGuarded
 //
 // Catch access violations
@@ -709,8 +617,8 @@ HRESULT CDirect3DEvents9::DrawPrimitiveGuarded ( IDirect3DDevice9 *pDevice, D3DP
         if ( PrimitiveType == D3DPT_TRIANGLELIST )
             NumVertices = PrimitiveCount * 3;
 
-        uint viMinBased = StartVertex;
-        uint viMaxBased = NumVertices + StartVertex;
+        WORD viMinBased = StartVertex;
+        WORD viMaxBased = NumVertices + StartVertex;
 
         if ( !AreVertexStreamsAreBigEnough ( pDevice, viMinBased, viMaxBased ) )
             return hr;
@@ -720,9 +628,9 @@ HRESULT CDirect3DEvents9::DrawPrimitiveGuarded ( IDirect3DDevice9 *pDevice, D3DP
     {
         hr = pDevice->DrawPrimitive ( PrimitiveType, StartVertex, PrimitiveCount );
     }
-    __except( FilerException( GetExceptionCode() ) )
+    __except( GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION )
     {
-        CCore::GetSingleton ().OnCrashAverted ( ( uiLastExceptionCode & 0xFFFF ) + 1 * 1000000 );
+        CCore::GetSingleton ().OnCrashAverted ( 100 );
     }
     return hr;
 }
@@ -743,8 +651,8 @@ HRESULT CDirect3DEvents9::DrawIndexedPrimitiveGuarded ( IDirect3DDevice9 *pDevic
     HRESULT hr = D3D_OK;
 
     // Check vertices used will be within the supplied vertex buffer bounds
-    uint viMinBased = MinVertexIndex + BaseVertexIndex;
-    uint viMaxBased = MinVertexIndex + NumVertices + BaseVertexIndex;
+    WORD viMinBased = MinVertexIndex + BaseVertexIndex;
+    WORD viMaxBased = MinVertexIndex + NumVertices + BaseVertexIndex;
 
     if ( !AreVertexStreamsAreBigEnough ( pDevice, viMinBased, viMaxBased ) )
         return hr;
@@ -753,9 +661,9 @@ HRESULT CDirect3DEvents9::DrawIndexedPrimitiveGuarded ( IDirect3DDevice9 *pDevic
     {
         hr = pDevice->DrawIndexedPrimitive ( PrimitiveType, BaseVertexIndex, MinVertexIndex, NumVertices, startIndex, primCount );
     }
-    __except( FilerException( GetExceptionCode() ) )
+    __except( GetExceptionCode() == EXCEPTION_ACCESS_VIOLATION )
     {
-        CCore::GetSingleton ().OnCrashAverted ( ( uiLastExceptionCode & 0xFFFF ) + 2 * 1000000 );
+        CCore::GetSingleton ().OnCrashAverted ( 101 );
     }
     return hr;
 }
@@ -784,10 +692,7 @@ HRESULT CDirect3DEvents9::CreateVertexBuffer ( IDirect3DDevice9 *pDevice, UINT L
 
         if ( hr != D3DERR_OUTOFVIDEOMEMORY || i > 0 )
         {
-            SString strMessage( "CreateVertexBuffer fail: hr:%x Length:%x Usage:%x FVF:%x Pool:%x", hr, Length, Usage, FVF, Pool );
-            WriteDebugEvent( strMessage );
-            AddReportLog( 8610, strMessage );
-            CCore::GetSingleton ().LogEvent ( 610, "CreateVertexBuffer", "", strMessage );
+            CCore::GetSingleton ().LogEvent ( 610, "CreateVertexBuffer", "", SString ( "hr:%x Length:%x Usage:%x FVF:%x Pool:%x", hr, Length, Usage, FVF, Pool ) );
             return hr;
         }
 
@@ -819,10 +724,7 @@ HRESULT CDirect3DEvents9::CreateIndexBuffer ( IDirect3DDevice9 *pDevice, UINT Le
 
         if ( hr != D3DERR_OUTOFVIDEOMEMORY || i > 0 )
         {
-            SString strMessage( "CreateIndexBuffer fail: hr:%x Length:%x Usage:%x Format:%x Pool:%x", hr, Length, Usage, Format, Pool );
-            WriteDebugEvent( strMessage );
-            AddReportLog( 8611, strMessage );
-            CCore::GetSingleton ().LogEvent ( 611, "CreateIndexBuffer", "", strMessage );
+            CCore::GetSingleton ().LogEvent ( 611, "CreateIndexBuffer", "", SString ( "hr:%x Length:%x Usage:%x Format:%x Pool:%x", hr, Length, Usage, Format, Pool ) );
             return hr;
         }
 
@@ -854,10 +756,7 @@ HRESULT CDirect3DEvents9::CreateTexture ( IDirect3DDevice9 *pDevice, UINT Width,
 
         if ( hr != D3DERR_OUTOFVIDEOMEMORY || i > 0 )
         {
-            SString strMessage( "CreateTexture fail: hr:%x W:%x H:%x L:%x Usage:%x Format:%x Pool:%x", hr, Width, Height, Levels, Usage, Format, Pool );
-            WriteDebugEvent( strMessage );
-            AddReportLog( 8612, strMessage );
-            CCore::GetSingleton ().LogEvent ( 612, "CreateTexture", "", strMessage );
+            CCore::GetSingleton ().LogEvent ( 612, "CreateTexture", "", SString ( "hr:%x W:%x H:%x L:%x Usage:%x Format:%x Pool:%x", hr, Width, Height, Levels, Usage, Format, Pool ) );
             return hr;
         }
 
@@ -953,31 +852,7 @@ HRESULT CDirect3DEvents9::CreateVertexDeclaration ( IDirect3DDevice9 *pDevice, C
 
     hr = pDevice->CreateVertexDeclaration ( pVertexElements, ppDecl );
     if ( FAILED(hr) )
-    {
-        SString strStatus;
-        // Make a string with decl info
-        for ( uint i = 0 ; i < MAXD3DDECLLENGTH ; i++ )
-        {
-            const D3DVERTEXELEMENT9& element = pVertexElements[ i ];
-            if ( element.Stream == 0xFF )
-                break;
-
-            strStatus += SString( "[%d,%d,%d,%d,%d,%d]"
-                                    ,element.Stream
-                                    ,element.Offset
-                                    ,element.Type
-                                    ,element.Method
-                                    ,element.Usage
-                                    ,element.UsageIndex
-                                    );
-        }
-
-        SString strMessage( "CreateVertexDecl fail: hr:%x %s", hr, *strStatus );
-        WriteDebugEvent( strMessage );
-        AddReportLog( 8613, strMessage );
-        CCore::GetSingleton ().LogEvent ( 613, "CreateVertexDecl", "", strMessage );
         return hr;
-    }
 
     // Create proxy
 	*ppDecl = new CProxyDirect3DVertexDeclaration ( pDevice, *ppDecl, pVertexElements );
@@ -1041,7 +916,10 @@ ERenderFormat CDirect3DEvents9::DiscoverReadableDepthFormat ( IDirect3DDevice9 *
             if ( D3D_OK != pD3D->CheckDeviceFormat ( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, displayMode.Format, D3DUSAGE_DEPTHSTENCIL, D3DRTYPE_SURFACE, DepthFormat ) )
                 continue;
 
-            // Don't check for compatibility with multisampling, as we turn AA off when using readable depth buffer
+            // Also check if multisampled
+            if ( multisampleType != D3DMULTISAMPLE_NONE )
+                if ( D3D_OK != pD3D->CheckDeviceMultiSampleType ( D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, DepthFormat, bWindowed, multisampleType, NULL ) )
+                    continue;
 
             // Found a working format
             return checkList[i];

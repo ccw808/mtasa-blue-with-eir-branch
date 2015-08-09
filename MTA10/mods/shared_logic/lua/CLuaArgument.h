@@ -50,7 +50,6 @@ public:
     void                    ReadElement         ( CClientEntity* pElement );
     void                    ReadScriptID        ( uint uiScriptID );
     void                    ReadElementID       ( ElementID ID );
-    void                    ReadTable           ( class CLuaArguments * table );
 
     void                    Push                ( lua_State* luaVM, CFastHashMap < CLuaArguments*, int > * pKnownTables = NULL ) const;
 
@@ -58,8 +57,8 @@ public:
 
     inline bool             GetBoolean          ( void ) const      { return m_bBoolean; };
     inline lua_Number       GetNumber           ( void ) const      { return m_Number; };
-    const SString&          GetString           ( void )            { return m_strString; };
-    inline void*            GetUserData         ( void ) const      { return m_pUserData; };
+    const char*             GetString           ( void )            { return m_strString.c_str (); };
+    inline void*            GetLightUserData    ( void ) const      { return m_pLightUserData; };
     CClientEntity*          GetElement          ( void ) const;
 
     bool                    ReadFromBitStream   ( NetBitStreamInterface& bitStream, std::vector < CLuaArguments* > * pKnownTables = NULL );
@@ -74,15 +73,13 @@ private:
     int                     m_iType;
     bool                    m_bBoolean;
     lua_Number              m_Number;
-    SString                 m_strString;
-    void*                   m_pUserData;
+    std::string             m_strString;
+    void*                   m_pLightUserData;
     CLuaArguments*          m_pTableData;
     bool                    m_bWeakTableRef;
 
-#ifdef MTA_DEBUG
     std::string             m_strFilename;
     int                     m_iLine;
-#endif
 
     void                    CopyRecursive       ( const CLuaArgument& Argument, CFastHashMap < CLuaArguments*, CLuaArguments* > * pKnownTables = NULL );
     bool                    CompareRecursive    ( const CLuaArgument& Argument, std::set < CLuaArguments* > * pKnownTables = NULL );

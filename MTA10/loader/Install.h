@@ -1,4 +1,4 @@
 
 
-bool InstallFiles ( bool bHideProgress );
+bool InstallFiles ( bool bSilent );
 bool ExtractFiles ( const SString& strFile );

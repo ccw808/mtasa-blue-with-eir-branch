@@ -66,10 +66,7 @@ CMapInfoPacket::CMapInfoPacket ( unsigned char ucWeather,
                                  float fFarClip,
                                  bool bOverrideFogDistance,
                                  float fFogDistance,
-                                 float fAircraftMaxHeight,
-                                 float fAircraftMaxVelocity,
-                                 bool bOverrideMoonSize,
-                                 int iMoonSize )
+                                 float fAircraftMaxHeight )
 {
     m_ucWeather = ucWeather;
     m_ucWeatherBlendingTo = ucWeatherBlendingTo;
@@ -122,9 +119,6 @@ CMapInfoPacket::CMapInfoPacket ( unsigned char ucWeather,
     m_bOverrideFogDistance = bOverrideFogDistance;
     m_fFogDistance = fFogDistance;
     m_fAircraftMaxHeight = fAircraftMaxHeight;
-    m_fAircraftMaxVelocity = fAircraftMaxVelocity;
-    m_bOverrideMoonSize = bOverrideMoonSize;
-    m_iMoonSize = iMoonSize;
 }
 
 
@@ -199,9 +193,6 @@ bool CMapInfoPacket::Write ( NetBitStreamInterface& BitStream ) const
     funBugs.data.bFastMove    = g_pGame->IsGlitchEnabled ( CGame::GLITCH_FASTMOVE );
     funBugs.data.bCrouchBug   = g_pGame->IsGlitchEnabled ( CGame::GLITCH_CROUCHBUG );
     funBugs.data.bCloseRangeDamage = g_pGame->IsGlitchEnabled ( CGame::GLITCH_CLOSEDAMAGE );
-    funBugs.data2.bHitAnim    = g_pGame->IsGlitchEnabled ( CGame::GLITCH_HITANIM );
-    funBugs.data3.bFastSprint = g_pGame->IsGlitchEnabled ( CGame::GLITCH_FASTSPRINT );
-    funBugs.data4.bBadDrivebyHitboxes = g_pGame->IsGlitchEnabled( CGame::GLITCH_BADDRIVEBYHITBOX );
     BitStream.Write ( &funBugs );
 
     BitStream.Write ( m_fJetpackMaxHeight );
@@ -223,16 +214,6 @@ bool CMapInfoPacket::Write ( NetBitStreamInterface& BitStream ) const
     if ( m_bOverrideRainLevel )
     {
         BitStream.Write ( m_fRainLevel );
-    }
-
-    // Moon size
-    if ( BitStream.Version () >= 0x40 )
-    {
-        BitStream.WriteBit ( m_bOverrideMoonSize );
-        if ( m_bOverrideMoonSize )
-        {
-            BitStream.Write ( m_iMoonSize );
-        }
     }
 
     // Sun size
@@ -279,9 +260,6 @@ bool CMapInfoPacket::Write ( NetBitStreamInterface& BitStream ) const
 
     BitStream.Write ( m_fAircraftMaxHeight );
 
-    if ( BitStream.Version () >= 0x3E ) 
-        BitStream.Write ( m_fAircraftMaxVelocity );
-    
     if ( BitStream.Version () >= 0x30 )
     {
         for (int i = WEAPONTYPE_BRASSKNUCKLE; i < WEAPONTYPE_PISTOL; i++)

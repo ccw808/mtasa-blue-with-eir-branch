@@ -203,8 +203,7 @@ CDatabaseConnection* CDatabaseTypeMySql::CallNewDatabaseConnectionMySql ( CDatab
 {
     if ( !m_DbconmyLib.IsLoaded () )
     {
-        SString strServerPath = g_pServerInterface->GetModManager ()->GetServerPath ();
-        m_DbconmyLib.Load ( PathJoin ( strServerPath, SERVER_BIN_PATH_MOD, LIB_DBCONMY ) );
+        m_DbconmyLib.Load ( PathJoin ( g_pServerInterface->GetModManager ()->GetModPath (), LIB_DBCONMY ) );
         m_pfnNewDatabaseConnection = reinterpret_cast < NewDatabaseConnectionMySql_t* > ( (long long)(m_DbconmyLib.GetProcedureAddress ( "NewDatabaseConnectionMySql" )) );      
     }
 
@@ -341,12 +340,6 @@ SString InsertQueryArgumentsMySql ( const SString& strQuery, CLuaArguments* pArg
                 if ( !bUnquotedStrings ) strParsedQuery += '\'';
             }
             else
-            if ( type == LUA_TNIL )
-            {
-                // Nil becomes NULL
-                strParsedQuery += "NULL";
-            }
-            else
             {
                 // If we don't have any content, put just output 2 quotes to indicate an empty variable
                 strParsedQuery += "\'\'";
@@ -368,7 +361,7 @@ SString InsertQueryArgumentsMySql ( const SString& strQuery, CLuaArguments* pArg
 SString InsertQueryArgumentsMySql ( const char* szQuery, va_list vl )
 {
     SString strParsedQuery;
-    for ( unsigned int i = 0; szQuery[i] != '\0'; i++ )
+    for ( unsigned int i = 0 ; i < strlen ( szQuery ) ; i++ )
     {
         if ( szQuery[i] != SQL_VARIABLE_PLACEHOLDER )
         {

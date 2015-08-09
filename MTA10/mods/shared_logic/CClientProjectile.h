@@ -73,8 +73,8 @@ public:
 
 
     void                                DoPulse                 ( void );
-    void                                Initiate                ( CVector& vecPosition, CVector& vecRotation, CVector& vecVelocity, unsigned short usModel );
-    void                                Destroy                 ( bool bBlow = true );
+    void                                Initiate                ( CVector * pvecPosition, CVector * pvecRotation, CVector * pvecVelocity, unsigned short usModel );
+    void                                Destroy                 ( void );
 
     bool                                IsActive                ( void );
     bool                                GetMatrix               ( CMatrix & matrix ) const;
@@ -87,7 +87,6 @@ public:
     void                                SetRotationDegrees      ( const CVector & vecRotation );
     void                                GetVelocity             ( CVector & vecVelocity );
     void                                SetVelocity             ( CVector & vecVelocity );
-    unsigned short                      GetModel                ( void );
     void                                SetModel                ( unsigned short usModel );
     void                                SetCounter              ( DWORD dwCounter );
     DWORD                               GetCounter              ( void );
@@ -98,7 +97,6 @@ public:
     inline CVector *                    GetTarget               ( void )        { return m_pvecTarget; }
     inline float                        GetForce                ( void )        { return m_fForce; }
     inline bool                         IsLocal                 ( void )        { return m_bLocal; }
-    CClientEntity*                      GetSatchelAttachedTo    ( void );
     
 protected:
     CClientProjectileManager*           m_pProjectileManager;
@@ -107,8 +105,8 @@ protected:
     CProjectile *                       m_pProjectile;
     CProjectileInfo *                   m_pProjectileInfo;
 
-    CClientEntityPtr                    m_pCreator;
-    CClientEntityPtr                    m_pTarget;
+    CClientEntity *                     m_pCreator;
+    CClientEntity *                     m_pTarget;
     eWeaponType                         m_weaponType;
     CVector *                           m_pvecOrigin;
     CVector *                           m_pvecTarget;
@@ -118,7 +116,6 @@ protected:
 
     bool                                m_bInitiate;
     CProjectileInitiateData *           m_pInitiateData;
-    bool                                m_bCorrected;
 };
 
 #endif

@@ -19,15 +19,15 @@
 
 #include "StdInc.h"
 
-#define MIN_CLIENT_REQ_FETCHREMOTE_CONNECT_TIMEOUT          "1.3.5"
-
 int CLuaFunctionDefs::CreateExplosion ( lua_State* luaVM )
 {
 //  bool createExplosion ( float x, float y, float z, int type [, bool makeSound = true, float camShake = -1.0, bool damaging = true ] )
     CVector vecPosition; int iType; bool bMakeSound; float fCamShake = -1.0; bool bDamaging;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadNumber ( iType );
     argStream.ReadBool ( bMakeSound, true );
     argStream.ReadNumber ( fCamShake, -1.0f );
@@ -54,7 +54,9 @@ int CLuaFunctionDefs::CreateFire ( lua_State* luaVM )
     CVector vecPosition; float fSize;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadNumber ( fSize, 1.8f );
 
     if ( !argStream.HasErrors () )
@@ -98,7 +100,9 @@ int CLuaFunctionDefs::GetGroundPosition ( lua_State* luaVM )
     CVector vecStart;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecStart );
+    argStream.ReadNumber ( vecStart.fX );
+    argStream.ReadNumber ( vecStart.fY );
+    argStream.ReadNumber ( vecStart.fZ );
 
     if ( !argStream.HasErrors () )
     {
@@ -115,7 +119,6 @@ int CLuaFunctionDefs::GetGroundPosition ( lua_State* luaVM )
     return 1;
 }
 
-
 int CLuaFunctionDefs::ProcessLineOfSight ( lua_State * luaVM )
 {
 //  bool float float float element float float float int int int processLineOfSight ( float startX, float startY, float startZ, float endX, float endY, float endZ,
@@ -123,11 +126,15 @@ int CLuaFunctionDefs::ProcessLineOfSight ( lua_State * luaVM )
 //        bool seeThroughStuff = false, bool ignoreSomeObjectsForCamera = false, bool shootThroughStuff = false, element ignoredElement = nil, bool returnBuildingInfo = false,
 //        bCheckCarTires = false ] )
     CVector vecStart; CVector vecEnd;
-    SLineOfSightFlags flags; CClientEntity* pIgnoredElement; bool bIncludeBuildingInfo;
+    SLineOfSightFlags flags; CEntity* pIgnoredEntity; bool bIncludeBuildingInfo;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecStart );
-    argStream.ReadVector3D ( vecEnd );
+    argStream.ReadNumber ( vecStart.fX );
+    argStream.ReadNumber ( vecStart.fY );
+    argStream.ReadNumber ( vecStart.fZ );
+    argStream.ReadNumber ( vecEnd.fX );
+    argStream.ReadNumber ( vecEnd.fY );
+    argStream.ReadNumber ( vecEnd.fZ );
     argStream.ReadBool ( flags.bCheckBuildings, true );
     argStream.ReadBool ( flags.bCheckVehicles, true );
     argStream.ReadBool ( flags.bCheckPeds, true );
@@ -136,13 +143,12 @@ int CLuaFunctionDefs::ProcessLineOfSight ( lua_State * luaVM )
     argStream.ReadBool ( flags.bSeeThroughStuff, false );
     argStream.ReadBool ( flags.bIgnoreSomeObjectsForCamera, false );
     argStream.ReadBool ( flags.bShootThroughStuff, false );
-    argStream.ReadUserData ( pIgnoredElement, NULL );
+    argStream.ReadUserData ( pIgnoredEntity, NULL );
     argStream.ReadBool ( bIncludeBuildingInfo, false );
     argStream.ReadBool ( flags.bCheckCarTires, false );
 
     if ( !argStream.HasErrors () )
     {
-        CEntity* pIgnoredEntity = pIgnoredElement ? pIgnoredElement->GetGameEntity() : NULL;
         CColPoint* pColPoint = NULL;
         CClientEntity* pColEntity = NULL;
         bool bCollision;
@@ -235,11 +241,15 @@ int CLuaFunctionDefs::IsLineOfSightClear ( lua_State * luaVM )
     //    bool ignoreSomeObjectsForCamera = false, 
     //    element ignoredElement = nil ] )
     CVector vecStart; CVector vecEnd;
-    SLineOfSightFlags flags; CClientEntity* pIgnoredElement;
+    SLineOfSightFlags flags; CEntity* pIgnoredEntity;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecStart );
-    argStream.ReadVector3D ( vecEnd );
+    argStream.ReadNumber ( vecStart.fX );
+    argStream.ReadNumber ( vecStart.fY );
+    argStream.ReadNumber ( vecStart.fZ );
+    argStream.ReadNumber ( vecEnd.fX );
+    argStream.ReadNumber ( vecEnd.fY );
+    argStream.ReadNumber ( vecEnd.fZ );
     argStream.ReadBool ( flags.bCheckBuildings, true );
     argStream.ReadBool ( flags.bCheckVehicles, true );
     argStream.ReadBool ( flags.bCheckPeds, true );
@@ -247,11 +257,10 @@ int CLuaFunctionDefs::IsLineOfSightClear ( lua_State * luaVM )
     argStream.ReadBool ( flags.bCheckDummies, true );
     argStream.ReadBool ( flags.bSeeThroughStuff, false );
     argStream.ReadBool ( flags.bIgnoreSomeObjectsForCamera, false );
-    argStream.ReadUserData ( pIgnoredElement, NULL );
+    argStream.ReadUserData ( pIgnoredEntity, NULL );
 
     if ( !argStream.HasErrors () )
     {
-        CEntity* pIgnoredEntity = pIgnoredElement ? pIgnoredElement->GetGameEntity() : NULL;
         bool bIsClear;
         if ( CStaticFunctionDefinitions::IsLineOfSightClear ( vecStart, vecEnd, bIsClear, flags, pIgnoredEntity ) )
         {        
@@ -273,8 +282,12 @@ int CLuaFunctionDefs::TestLineAgainstWater ( lua_State* luaVM )
     CVector vecStart; CVector vecEnd;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecStart );
-    argStream.ReadVector3D ( vecEnd );
+    argStream.ReadNumber ( vecStart.fX );
+    argStream.ReadNumber ( vecStart.fY );
+    argStream.ReadNumber ( vecStart.fZ );
+    argStream.ReadNumber ( vecEnd.fX );
+    argStream.ReadNumber ( vecEnd.fY );
+    argStream.ReadNumber ( vecEnd.fZ );
 
     if ( !argStream.HasErrors () )
     {
@@ -301,13 +314,21 @@ int CLuaFunctionDefs::CreateWater ( lua_State* luaVM )
     CVector v1; CVector v2; CVector v3; CVector v4; bool bShallow;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( v1 );
-    argStream.ReadVector3D ( v2 );
-    argStream.ReadVector3D ( v3 );
+    argStream.ReadNumber ( v1.fX );
+    argStream.ReadNumber ( v1.fY );
+    argStream.ReadNumber ( v1.fZ );
+    argStream.ReadNumber ( v2.fX );
+    argStream.ReadNumber ( v2.fY );
+    argStream.ReadNumber ( v2.fZ );
+    argStream.ReadNumber ( v3.fX );
+    argStream.ReadNumber ( v3.fY );
+    argStream.ReadNumber ( v3.fZ );
     bool bIsQuad = argStream.NextCouldBeNumber ( 2 );   // Check for existence of v4.fZ
     if ( bIsQuad )
     {
-        argStream.ReadVector3D ( v4 );
+        argStream.ReadNumber ( v4.fX );
+        argStream.ReadNumber ( v4.fY );
+        argStream.ReadNumber ( v4.fZ );
     }
     argStream.ReadBool ( bShallow, false );
 
@@ -344,7 +365,9 @@ int CLuaFunctionDefs::GetWaterLevel ( lua_State* luaVM )
         //  float getWaterLevel ( float posX, float posY, float posZ [ , bool bCheckWaves = false ] )
         CVector vecPosition; bool bCheckWaves;
 
-        argStream.ReadVector3D ( vecPosition );
+        argStream.ReadNumber ( vecPosition.fX );
+        argStream.ReadNumber ( vecPosition.fY );
+        argStream.ReadNumber ( vecPosition.fZ );
         argStream.ReadBool ( bCheckWaves, false );
 
         if ( !argStream.HasErrors () )
@@ -447,7 +470,9 @@ int CLuaFunctionDefs::SetWaterLevel ( lua_State* luaVM )
         //  bool setWaterLevel ( [float x, float y, float z,] float level )
         CVector vecPosition; float fLevel;
 
-        argStream.ReadVector3D ( vecPosition );
+        argStream.ReadNumber ( vecPosition.fX );
+        argStream.ReadNumber ( vecPosition.fY );
+        argStream.ReadNumber ( vecPosition.fZ );
         argStream.ReadNumber ( fLevel );
 
         if ( !argStream.HasErrors () )
@@ -543,7 +568,9 @@ int CLuaFunctionDefs::SetWaterVertexPosition ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pWater );
     argStream.ReadNumber ( iVertexIndex);
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
 
     if ( !argStream.HasErrors () )
     {
@@ -566,7 +593,9 @@ int CLuaFunctionDefs::GetWorldFromScreenPosition ( lua_State * luaVM )
     CVector vecScreen;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecScreen );
+    argStream.ReadNumber ( vecScreen.fX );
+    argStream.ReadNumber ( vecScreen.fY );
+    argStream.ReadNumber ( vecScreen.fZ );
 
     if ( !argStream.HasErrors () )
     {
@@ -593,7 +622,9 @@ int CLuaFunctionDefs::GetScreenFromWorldPosition ( lua_State * luaVM )
     CVector vecWorld; float fEdgeTolerance; bool bRelative;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecWorld );
+    argStream.ReadNumber ( vecWorld.fX );
+    argStream.ReadNumber ( vecWorld.fY );
+    argStream.ReadNumber ( vecWorld.fZ );
     argStream.ReadNumber ( fEdgeTolerance, 0 );
     argStream.ReadBool ( bRelative, true );
 
@@ -643,7 +674,9 @@ int CLuaFunctionDefs::GetZoneName ( lua_State* luaVM )
     CVector vecPosition; bool bCitiesOnly;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadBool ( bCitiesOnly, false );
 
     if ( !argStream.HasErrors () )
@@ -1278,7 +1311,9 @@ int CLuaFunctionDefs::RemoveWorldBuilding ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
     argStream.ReadNumber ( iModelToRemove );
     argStream.ReadNumber ( fRadius );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadNumber ( cInterior, -1 );
 
     if ( !argStream.HasErrors () )
@@ -1289,12 +1324,10 @@ int CLuaFunctionDefs::RemoveWorldBuilding ( lua_State* luaVM )
             CResource* pResource = pLuaMain->GetResource ();
             if ( pResource )
             {
-                uint uiAmount;
-                CStaticFunctionDefinitions::RemoveWorldBuilding ( iModelToRemove, fRadius, vecPosition.fX, vecPosition.fY, vecPosition.fZ, cInterior, uiAmount );
+                CStaticFunctionDefinitions::RemoveWorldBuilding ( iModelToRemove, fRadius, vecPosition.fX, vecPosition.fY, vecPosition.fZ, cInterior );
 
                 lua_pushboolean ( luaVM, true );
-                lua_pushnumber ( luaVM, uiAmount );
-                return 2;
+                return 1;
             }
         }
     }
@@ -1313,12 +1346,10 @@ int CLuaFunctionDefs::RestoreWorldBuildings ( lua_State* luaVM )
         CResource* pResource = pLuaMain->GetResource ();
         if ( pResource )
         {
-            uint uiAmount;
-            CStaticFunctionDefinitions::RestoreWorldBuildings ( uiAmount );
+            CStaticFunctionDefinitions::RestoreWorldBuildings ( );
 
             lua_pushboolean ( luaVM, true );
-            lua_pushnumber ( luaVM, uiAmount );
-            return 2;
+            return 1;
         }
     }
     lua_pushboolean ( luaVM, false );
@@ -1334,7 +1365,9 @@ int CLuaFunctionDefs::RestoreWorldBuilding ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
     argStream.ReadNumber ( iModelToRestore );
     argStream.ReadNumber ( fRadius );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadNumber ( cInterior, -1 );
 
     if ( !argStream.HasErrors () )
@@ -1345,12 +1378,10 @@ int CLuaFunctionDefs::RestoreWorldBuilding ( lua_State* luaVM )
             CResource* pResource = pLuaMain->GetResource ();
             if ( pResource )
             {
-                uint uiAmount;
-                CStaticFunctionDefinitions::RestoreWorldBuilding ( iModelToRestore, fRadius, vecPosition.fX, vecPosition.fY, vecPosition.fZ, cInterior, uiAmount );
+                CStaticFunctionDefinitions::RestoreWorldBuilding ( iModelToRestore, fRadius, vecPosition.fX, vecPosition.fY, vecPosition.fZ, cInterior );
 
                 lua_pushboolean ( luaVM, true );
-                lua_pushnumber ( luaVM, uiAmount );
-                return 2;
+                return 1;
             }
         }
     }
@@ -1372,29 +1403,6 @@ int CLuaFunctionDefs::SetAircraftMaxHeight ( lua_State* luaVM )
     if ( !argStream.HasErrors () )
     {
         if ( CStaticFunctionDefinitions::SetAircraftMaxHeight ( fHeight ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::SetAircraftMaxVelocity ( lua_State* luaVM )
-{
-//  bool setAircraftMaxVelocity ( float fVelocity )
-    float fVelocity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( fVelocity );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetAircraftMaxVelocity ( fVelocity ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
@@ -1508,12 +1516,6 @@ int CLuaFunctionDefs::GetJetpackMaxHeight ( lua_State* luaVM )
 int CLuaFunctionDefs::GetAircraftMaxHeight ( lua_State* luaVM )
 {
     lua_pushnumber ( luaVM, g_pGame->GetWorld ()->GetAircraftMaxHeight ( ) );
-    return 1;
-}
-
-int CLuaFunctionDefs::GetAircraftMaxVelocity ( lua_State* luaVM )
-{
-    lua_pushnumber ( luaVM, g_pGame->GetWorld ()->GetAircraftMaxVelocity ( ) );
     return 1;
 }
 
@@ -1648,14 +1650,16 @@ int CLuaFunctionDefs::GetWindVelocity ( lua_State *luaVM )
 int CLuaFunctionDefs::SetWindVelocity ( lua_State *luaVM )
 {
 //  bool setWindVelocity ( float velocityX, float velocityY, float velocityZ )
-    CVector vecVelocity;
+    float fX; float fY; float fZ;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecVelocity );
+    argStream.ReadNumber ( fX );
+    argStream.ReadNumber ( fY );
+    argStream.ReadNumber ( fZ );
 
     if ( !argStream.HasErrors () )
     {
-        if ( CStaticFunctionDefinitions::SetWindVelocity ( vecVelocity.fX, vecVelocity.fY, vecVelocity.fZ ) )
+        if ( CStaticFunctionDefinitions::SetWindVelocity ( fX, fY, fZ ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
@@ -1703,54 +1707,6 @@ int CLuaFunctionDefs::SetInteriorSoundsEnabled ( lua_State* luaVM )
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::GetInteriorFurnitureEnabled ( lua_State* luaVM )
-{
-//  bool getInteriorFurnitureEnabled ( int roomId )
-    char cRoomId;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( cRoomId );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( cRoomId >= 0 && cRoomId <= 4 )
-        {
-            lua_pushboolean ( luaVM, g_pMultiplayer->GetInteriorFurnitureEnabled ( cRoomId ) );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushnil ( luaVM );
-    return 1;
-}
-
-int CLuaFunctionDefs::SetInteriorFurnitureEnabled ( lua_State* luaVM )
-{
-//  bool setInteriorFurnitureEnabled ( int roomId, bool enabled )
-    char cRoomId; bool bEnabled;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( cRoomId );
-    argStream.ReadBool ( bEnabled );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( cRoomId >= 0 && cRoomId <= 4 )
-        {
-            g_pMultiplayer->SetInteriorFurnitureEnabled ( cRoomId, bEnabled );
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1852,42 +1808,6 @@ int CLuaFunctionDefs::IsPedTargetingMarkerEnabled ( lua_State* luaVM )
 int CLuaFunctionDefs::ResetFarClipDistance ( lua_State* luaVM )
 {
     g_pMultiplayer->RestoreFarClipDistance ();
-
-    lua_pushboolean ( luaVM, true );
-    return 1;
-}
-
-int CLuaFunctionDefs::GetNearClipDistance ( lua_State* luaVM )
-{
-    lua_pushnumber ( luaVM, g_pMultiplayer->GetNearClipDistance ( ) );
-    return 1;
-}
-
-int CLuaFunctionDefs::SetNearClipDistance ( lua_State* luaVM )
-{
-//  bool setNearClipDistance ( float distance )
-    float fDistance;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( fDistance );
-
-    if ( !argStream.HasErrors () )
-    {
-        g_pMultiplayer->SetNearClipDistance ( fDistance );
-
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::ResetNearClipDistance ( lua_State* luaVM )
-{
-    g_pMultiplayer->RestoreNearClipDistance ();
 
     lua_pushboolean ( luaVM, true );
     return 1;
@@ -2018,7 +1938,9 @@ int CLuaFunctionDefs::CreateSWATRope ( lua_State* luaVM )
     CVector vecPosition;
     DWORD dwDuration = 0;
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadNumber ( dwDuration, 4000 );
 
     if ( !argStream.HasErrors () )
@@ -2070,111 +1992,3 @@ int CLuaFunctionDefs::GetBirdsEnabled ( lua_State* luaVM )
     lua_pushboolean ( luaVM, false );
     return 1;
 }
-
-int CLuaFunctionDefs::SetMoonSize ( lua_State* luaVM )
-{
-    int iSize;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber( iSize );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetMoonSize ( iSize ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::GetMoonSize ( lua_State* luaVM )
-{
-    lua_pushnumber ( luaVM, g_pMultiplayer->GetMoonSize () );
-    return 1;
-}
-
-int CLuaFunctionDefs::ResetMoonSize ( lua_State* luaVM )
-{
-    g_pMultiplayer->ResetMoonSize ();
-    lua_pushboolean ( luaVM, true );
-    return 1;
-}
-
-int CLuaFunctionDefs::SetFPSLimit ( lua_State* luaVM )
-{
-// bool setFPSLimit ( int fpsLimit )
-    int iLimit;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber( iLimit );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetFPSLimit ( iLimit ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::GetFPSLimit ( lua_State* luaVM )
-{
-    int iLimit;
-    if ( CStaticFunctionDefinitions::GetFPSLimit ( iLimit ) )
-    {
-        lua_pushnumber ( luaVM, iLimit );
-        return 1;
-    }
-    
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-// Call a function on a remote server
-int CLuaFunctionDefs::FetchRemote ( lua_State* luaVM )
-{
-//  bool fetchRemote ( string URL [, int connectionAttempts = 10, int connectTimeout = 10000 ], callback callbackFunction, [ string postData, bool bPostBinary, arguments... ] )
-    CScriptArgReader argStream ( luaVM );
-    SString strURL; CLuaFunctionRef iLuaFunction; SString strPostData; bool bPostBinary; CLuaArguments args; uint uiConnectionAttempts; uint uiConnectTimeoutMs;
-
-    argStream.ReadString ( strURL );
-    argStream.ReadIfNextIsNumber ( uiConnectionAttempts, 10 );
-    if ( argStream.NextIsNumber () )
-        MinClientReqCheck ( argStream, MIN_CLIENT_REQ_FETCHREMOTE_CONNECT_TIMEOUT, "'connect timeout' is being used" );
-    argStream.ReadIfNextIsNumber ( uiConnectTimeoutMs, 10000 );
-    argStream.ReadFunction ( iLuaFunction );
-    argStream.ReadString ( strPostData, "" );
-    argStream.ReadBool ( bPostBinary, false );
-    argStream.ReadLuaArguments ( args );
-    argStream.ReadFunctionComplete ();
-
-    if ( !argStream.HasErrors () )
-    {
-        CLuaMain * luaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( luaMain )
-        {
-            g_pClientGame->GetRemoteCalls()->Call ( strURL, &args, strPostData, bPostBinary, luaMain, iLuaFunction, uiConnectionAttempts, uiConnectTimeoutMs );
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-

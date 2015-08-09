@@ -83,8 +83,6 @@ void CMaterialLine3DBatcher::Flush ( void )
     m_pDevice->SetTransform ( D3DTS_PROJECTION, &matProjection );
 
     // Set render states
-    if ( g_pDeviceState->AdapterState.bRequiresClipping )
-        m_pDevice->SetRenderState ( D3DRS_CLIPPING, TRUE );
     m_pDevice->SetRenderState ( D3DRS_ZENABLE,          D3DZB_TRUE );
     m_pDevice->SetRenderState ( D3DRS_ZFUNC,            D3DCMP_LESSEQUAL );
     m_pDevice->SetRenderState ( D3DRS_ZWRITEENABLE,     FALSE );
@@ -114,7 +112,7 @@ void CMaterialLine3DBatcher::Flush ( void )
     // Sort by distance
     //
 
-    const float fMaxDrawDistance = CCore::GetSingleton().GetMultiplayer()->GetFarClipDistance();
+    const float fMaxDrawDistance = 400;     // TODO - Calculate current far clip value
     const float fSmallLineTolerance = 20;
     const float fMaxDrawDistanceIncTol = fMaxDrawDistance + fSmallLineTolerance;
 
@@ -184,9 +182,6 @@ void CMaterialLine3DBatcher::Flush ( void )
         m_LineList [ i ].pMaterial->Release ();
 
     ListClearAndReserve ( m_LineList );
-
-    if ( g_pDeviceState->AdapterState.bRequiresClipping )
-        m_pDevice->SetRenderState ( D3DRS_CLIPPING, FALSE );
 }
 
 
@@ -260,9 +255,6 @@ void CMaterialLine3DBatcher::DrawBatch ( const CVector& vecCameraPos, uint* pBat
         m_pDevice->SetSamplerState( 0, D3DSAMP_ADDRESSU, m_CurrentTextureAddress );
         m_pDevice->SetSamplerState( 0, D3DSAMP_ADDRESSV, m_CurrentTextureAddress );
     }
-
-    if ( m_CurrentTextureAddress == TADDRESS_BORDER )
-        m_pDevice->SetSamplerState ( 0, D3DSAMP_BORDERCOLOR, pMaterial->m_uiBorderColor );
 
     // Draw
     if ( CTextureItem* pTextureItem = DynamicCast < CTextureItem > ( pMaterial ) )

@@ -77,12 +77,8 @@ public:
     void                SetNewsHeadline                 ( int iIndex, const SString& strHeadline, const SString& strDate, bool bIsNew );
     void                OnEscapePressedOffLine          ( void );
 
-    static void         StaticWantsToDisconnectCallBack ( void* pData, uint uiButton );
-    void                WantsToDisconnectCallBack       ( void* pData, uint uiButton );
-    void                AskUserIfHeWantsToDisconnect    ( uchar menuType );
-
 private:
-    sMenuItem*          CreateItem                      ( unsigned char menuType, const char* szFilename, CVector2D vecRelPosition );
+    sMenuItem*          CreateItem                      ( unsigned char menuType, const char* szFilePath, CVector2D vecRelPosition, CVector2D vecNativeSize );
     bool                SetItemHoverProgress            ( sMenuItem* pItem, float fProgress, bool bHovering );
 
     bool                OnMenuEnter                     ( CGUIElement* pElement );
@@ -91,9 +87,9 @@ private:
     bool                OnQuickConnectButtonClick       ( CGUIElement* pElement );
     bool                OnResumeButtonClick             ( CGUIElement* pElement );
     bool                OnBrowseServersButtonClick      ( CGUIElement* pElement );
-    bool                OnHostGameButtonClick           ( void );
+    bool                OnHostGameButtonClick           ( CGUIElement* pElement );
     bool                OnDisconnectButtonClick         ( CGUIElement* pElement );
-    bool                OnEditorButtonClick             ( void );
+    bool                OnEditorButtonClick             ( CGUIElement* pElement );
     bool                OnSettingsButtonClick           ( CGUIElement* pElement );
     bool                OnAboutButtonClick              ( CGUIElement* pElement );
     bool                OnQuitButtonClick               ( CGUIElement* pElement );

@@ -27,9 +27,7 @@ public:
                                                               uchar ucPlayerGotOccupiedVehicleSeat,
                                                               uchar ucPlayerGotWeaponType,
                                                               float fPlayerGotWeaponRange,
-                                                              CControllerState& sharedControllerState,
-                                                              uint m_uiDamageInfoSendPhase,
-                                                              const SSimVehicleDamageInfo& damageInfo );
+                                                              CControllerState& sharedControllerState );
 
     inline ePacketID            GetPacketID                 ( void ) const                  { return PACKET_ID_PLAYER_VEHICLE_PURESYNC; };
     inline unsigned long        GetFlags                    ( void ) const                  { return PACKET_MEDIUM_PRIORITY | PACKET_SEQUENCED; };
@@ -61,8 +59,6 @@ private:
     const uchar     m_ucPlayerGotWeaponType;
     const float     m_fPlayerGotWeaponRange;
     CControllerState& m_sharedControllerState;
-    const uint      m_uiDamageInfoSendPhase;
-    const SSimVehicleDamageInfo& m_DamageInfo;
 
     // Set in Read()
     struct
@@ -80,7 +76,7 @@ private:
 
         float           fVehHealth;
 
-        std::vector < STrailerInfo > TrailerList;
+        std::vector < STrailerInfo > TrailerList;     // Unused
 
         float           fPlrHealth;
         float           fArmor;
@@ -89,7 +85,6 @@ private:
         uchar           ucWeaponSlot;
 
         ushort          usAmmoInClip;
-        ushort          usTotalAmmo;
 
         float           fAimDirection;
         CVector         vecSniperSource;
@@ -100,11 +95,6 @@ private:
         float           fTurretX;
         float           fTurretY;
         ushort          usAdjustableProperty;
-
-        float           fRailPosition;
-        uchar           ucRailTrack;
-        bool            bRailDirection;
-        float           fRailSpeed;
 
         SFixedArray < float, 4 >    fDoorOpenRatio;
     } m_Cache;

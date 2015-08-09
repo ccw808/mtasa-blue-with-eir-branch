@@ -35,7 +35,6 @@ CClientEntity::CClientEntity ( ElementID ID )
     m_ucInterior = 0;
     m_bDoubleSided = false;
     m_bDoubleSidedInit = false;
-    m_bCallPropagationEnabled = true;
 
     // Need to generate a clientside ID?
     if ( ID == INVALID_ELEMENT_ID )
@@ -65,7 +64,7 @@ CClientEntity::CClientEntity ( ElementID ID )
     g_pClientGame->GetGameEntityXRefManager ()->OnClientEntityCreate ( this );
 
     m_bWorldIgnored = false;
-    g_pCore->UpdateDummyProgress();
+
 }
 
 
@@ -99,15 +98,19 @@ CClientEntity::~CClientEntity ( void )
         delete m_pCustomData;
     }
 
-    // Detach from everything
-    AttachTo( NULL );
-    while( m_AttachedEntities.size() )
+    if ( m_pAttachedToEntity )
     {
-        CClientEntity* pAttachedEntity = m_AttachedEntities.back();
-        pAttachedEntity->AttachTo( NULL );
+        m_pAttachedToEntity->RemoveAttachedEntity ( this );
     }
-    m_bDisallowAttaching = true;
-    assert( !m_pAttachedToEntity && m_AttachedEntities.empty() );
+
+    for ( list < CClientEntity* >::iterator iter = m_AttachedEntities.begin () ; iter != m_AttachedEntities.end () ; ++iter )
+    {
+        CClientEntity* pAttachedEntity = *iter;
+        if ( pAttachedEntity )
+        {
+            pAttachedEntity->m_pAttachedToEntity = NULL;
+        }
+    }
 
     RemoveAllCollisions ( true );
 
@@ -170,9 +173,7 @@ CClientEntity::~CClientEntity ( void )
         CClientEntityRefManager::OnEntityDelete ( this );
 
     g_pClientGame->GetGameEntityXRefManager ()->OnClientEntityDelete ( this );
-    SAFE_RELEASE( m_pChildrenListSnapshot );
     g_pCore->GetGraphics ()->GetRenderItemManager ()->RemoveClientEntityRefs ( this );
-    g_pCore->UpdateDummyProgress();
 }
 
 
@@ -564,13 +565,6 @@ bool CClientEntity::GetMatrix ( CMatrix& matrix ) const
     // When streamed out
     CVector vecRotation;
     GetRotationRadians ( vecRotation );
-
-    // Change rotation order so it works correctly for CClientObjects
-    // Any maybe other types that don't have a GetMatrix() override - Needs checking.
-    ConvertRadiansToDegreesNoWrap( vecRotation );
-    vecRotation = ConvertEulerRotationOrder( vecRotation, EULER_ZXY, EULER_MINUS_ZYX );
-    ConvertDegreesToRadiansNoWrap( vecRotation );
-
     g_pMultiplayer->ConvertEulerAnglesToMatrix ( matrix, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
     GetPosition ( matrix.vPos );
     return true;
@@ -590,13 +584,6 @@ bool CClientEntity::SetMatrix ( const CMatrix& matrix )
     SetPosition ( matrix.vPos );
     CVector vecRotation;
     g_pMultiplayer->ConvertMatrixToEulerAngles ( matrix, vecRotation.fX, vecRotation.fY, vecRotation.fZ );
-
-    // Change rotation order so it works correctly for CClientObjects
-    // Any maybe other types that don't have a SetMatrix() override - Needs checking.
-    ConvertRadiansToDegreesNoWrap( vecRotation );
-    vecRotation = ConvertEulerRotationOrder( vecRotation, EULER_MINUS_ZYX, EULER_ZXY );
-    ConvertDegreesToRadiansNoWrap( vecRotation );
-
     SetRotationRadians ( vecRotation );
     return true;
 }
@@ -653,35 +640,13 @@ bool CClientEntity::IsOutOfBounds ( void )
 
 void CClientEntity::AttachTo ( CClientEntity* pEntity )
 {
-    // Handle attach attempt during entity destructor
-    if ( pEntity )
-    {
-        if ( m_bDisallowAttaching )
-        {
-            assert( !m_pAttachedToEntity && m_AttachedEntities.empty() );
-            return;
-        }
-
-        if ( pEntity->m_bDisallowAttaching )
-        {
-            assert( !pEntity->m_pAttachedToEntity && pEntity->m_AttachedEntities.empty() );
-            return;
-        }
-    }
-
     if ( m_pAttachedToEntity )
-    {
-        assert( ListContains( m_pAttachedToEntity->m_AttachedEntities, this ) );
-        ListRemove( m_pAttachedToEntity->m_AttachedEntities, this );
-    }    
+        m_pAttachedToEntity->RemoveAttachedEntity ( this );
 
     m_pAttachedToEntity = pEntity;
 
     if ( m_pAttachedToEntity )
-    {
-        assert( !ListContains( m_pAttachedToEntity->m_AttachedEntities, this ) );
-        m_pAttachedToEntity->m_AttachedEntities.push_back( this );
-    }
+        m_pAttachedToEntity->AddAttachedEntity ( this );
 
     InternalAttachTo ( pEntity );
 }
@@ -716,7 +681,6 @@ void CClientEntity::InternalAttachTo ( CClientEntity* pEntity )
                     break;
                 }
                 case CCLIENTOBJECT:
-                case CCLIENTWEAPON:
                 {
                     CObject * pGameObject = static_cast < CClientObject* > ( pEntity )->GetGameObject ();
                     if ( pGameObject )
@@ -771,8 +735,6 @@ bool CClientEntity::AddEvent ( CLuaMain* pLuaMain, const char* szName, const CLu
 
 bool CClientEntity::CallEvent ( const char* szName, const CLuaArguments& Arguments, bool bCallOnChildren )
 {
-    g_pClientGame->GetDebugHookManager()->OnPreEvent( szName, Arguments, this, NULL );
-
     TIMEUS startTime = GetTimeUs ();
 
     CEvents* pEvents = g_pClientGame->GetEvents();
@@ -798,8 +760,6 @@ bool CClientEntity::CallEvent ( const char* szName, const CLuaArguments& Argumen
         if ( deltaTimeUs > 10000 )
             TIMING_DETAIL( SString ( "Event: %s [%d ms]", szName, deltaTimeUs / 1000 ) );
     }
-
-    g_pClientGame->GetDebugHookManager()->OnPostEvent( szName, Arguments, this, NULL );
 
     // Return whether it got cancelled or not
     return ( !pEvents->WasEventCancelled () );
@@ -1042,10 +1002,6 @@ void CClientEntity::FindAllChildrenByTypeIndex ( unsigned int uiTypeHash, lua_St
 {
     assert ( luaVM );
 
-    // If we're being deleted, skip this
-    if ( IsBeingDeleted ( ) )
-        return;
-
     // Our type matches?
     if ( m_uiTypeHash == uiTypeHash )
     {
@@ -1078,13 +1034,10 @@ void CClientEntity::GetChildren ( lua_State* luaVM )
     CChildListType ::const_iterator iter = m_Children.begin ();
     for ( ; iter != m_Children.end (); iter++ )
     {
-        if ( !( *iter )->IsBeingDeleted ( ) )
-        {
-            // Add it to the table
-            lua_pushnumber ( luaVM, ++uiIndex );
-            lua_pushelement ( luaVM, *iter );
-            lua_settable ( luaVM, -3 );
-        }
+        // Add it to the table
+        lua_pushnumber ( luaVM, ++uiIndex );
+        lua_pushelement ( luaVM, *iter );
+        lua_settable ( luaVM, -3 );
     }
 }
 
@@ -1101,7 +1054,7 @@ void CClientEntity::GetChildrenByType ( const char* szType, lua_State* luaVM )
     for ( ; iter != m_Children.end (); iter++ )
     {
         // Name matches?
-        if ( (*iter)->GetTypeHash() == uiTypeHash && !(*iter)->IsBeingDeleted())
+        if ( (*iter)->GetTypeHash() == uiTypeHash )
         {
             // Add it to the table
             lua_pushnumber ( luaVM, ++uiIndex );
@@ -1146,7 +1099,7 @@ void CClientEntity::RemoveAllCollisions ( bool bNotify )
 
 bool CClientEntity::IsEntityAttached ( CClientEntity* pEntity )
 {
-    std::vector < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
+    list < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
     for ( ; iter != m_AttachedEntities.end (); iter++ )
     {
         if ( *iter == pEntity )
@@ -1167,9 +1120,10 @@ void CClientEntity::ReattachEntities ( void )
     }
 
     // Reattach any entities attached to us
-    for ( uint i = 0 ; i < m_AttachedEntities.size () ; ++i )
+    list < CClientEntity* > ::iterator iter = m_AttachedEntities.begin ();
+    for ( ; iter != m_AttachedEntities.end (); iter++ )
     {
-        m_AttachedEntities[i]->InternalAttachTo ( this );
+        (*iter)->InternalAttachTo ( this );
     }  
 }
 
@@ -1188,7 +1142,6 @@ bool CClientEntity::IsAttachable ( void )
         case CCLIENTSOUND:
         case CCLIENTCOLSHAPE:
         case CCLIENTWEAPON:
-        case CCLIENTPOINTLIGHTS:
         {
             return true;
             break;
@@ -1213,8 +1166,6 @@ bool CClientEntity::IsAttachToable ( void )
         case CCLIENTPICKUP:
         case CCLIENTSOUND:
         case CCLIENTCOLSHAPE:
-        case CCLIENTCAMERA:
-        case CCLIENTPOINTLIGHTS:
         {
             return true;
             break;
@@ -1264,8 +1215,6 @@ unsigned int CClientEntity::GetTypeID ( const char* szTypeName )
         return CCLIENTRADARAREA;
     else if ( strcmp ( szTypeName, "sound" ) == 0 )
         return CCLIENTSOUND;
-    else if ( strcmp ( szTypeName, "light" ) == 0 )
-        return CCLIENTPOINTLIGHTS;
     else
         return CCLIENTUNKNOWN;
 }
@@ -1407,18 +1356,16 @@ void CClientEntity::WorldIgnore ( bool bIgnore )
 
 // Entities from root optimization for getElementsByType
 typedef CFastList < CClientEntity* > CFromRootListType;
-typedef CFastHashMap < unsigned int, CFromRootListType > t_mapEntitiesFromRoot;
+typedef google::dense_hash_map < unsigned int, CFromRootListType > t_mapEntitiesFromRoot;
 static t_mapEntitiesFromRoot    ms_mapEntitiesFromRoot;
 static bool                     ms_bEntitiesFromRootInitialized = false;
-
-// CFastHashMap helpers
-static unsigned int GetEmptyMapKey ( unsigned int* )   { return (unsigned int)0xFFFFFFFF; }
-static unsigned int GetDeletedMapKey ( unsigned int* ) { return (unsigned int)0x00000000 ; }
 
 void CClientEntity::StartupEntitiesFromRoot ()
 {
     if ( !ms_bEntitiesFromRootInitialized )
     {
+        ms_mapEntitiesFromRoot.set_deleted_key ( (unsigned int)0x00000000 );
+        ms_mapEntitiesFromRoot.set_empty_key ( (unsigned int)0xFFFFFFFF );
         ms_bEntitiesFromRootInitialized = true;
     }
 }
@@ -1495,13 +1442,10 @@ void CClientEntity::GetEntitiesFromRoot ( unsigned int uiTypeHash, lua_State* lu
             if ( !bStreamedIn || !pEntity->IsStreamingCompatibleClass() || 
                  reinterpret_cast < CClientStreamElement* > ( pEntity )->IsStreamedIn() )
             {
-                if ( !pEntity->IsBeingDeleted ( ) )
-                {
-                    // Add it to the table
-                    lua_pushnumber ( luaVM, ++uiIndex );
-                    lua_pushelement ( luaVM, pEntity );
-                    lua_settable ( luaVM, -3 );
-                }
+                // Add it to the table
+                lua_pushnumber ( luaVM, ++uiIndex );
+                lua_pushelement ( luaVM, pEntity );
+                lua_settable ( luaVM, -3 );
             }
         }
     }    
@@ -1654,31 +1598,4 @@ float CClientEntity::GetDistanceBetweenBoundingSpheres ( CClientEntity* pOther )
     CSphere sphere = GetWorldBoundingSphere ();
     CSphere otherSphere = pOther->GetWorldBoundingSphere ();
     return ( sphere.vecPosition - otherSphere.vecPosition ).Length () - sphere.fRadius - otherSphere.fRadius;
-}
-
-//
-// Ensure children list snapshot is up to date and return it
-//
-CElementListSnapshot* CClientEntity::GetChildrenListSnapshot( void )
-{
-    // See if list needs updating
-    if ( m_Children.GetRevision() != m_uiChildrenListSnapshotRevision || m_pChildrenListSnapshot == NULL )
-    {
-        m_uiChildrenListSnapshotRevision = m_Children.GetRevision();
-
-        // Detach old
-        SAFE_RELEASE( m_pChildrenListSnapshot );
-
-        // Make new
-        m_pChildrenListSnapshot = new CElementListSnapshot();
-
-        // Fill it up
-        m_pChildrenListSnapshot->reserve( m_Children.size() );
-        for ( CChildListType::const_iterator iter = m_Children.begin() ; iter != m_Children.end() ; iter++ )
-        {
-            m_pChildrenListSnapshot->push_back( *iter );
-        }
-    }
-
-    return m_pChildrenListSnapshot;
 }

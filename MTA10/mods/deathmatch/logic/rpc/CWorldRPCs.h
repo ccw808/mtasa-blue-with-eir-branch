@@ -53,7 +53,6 @@ public:
     DECLARE_RPC ( SetFarClipDistance );
     DECLARE_RPC ( SetFogDistance );
     DECLARE_RPC ( SetAircraftMaxHeight );
-    DECLARE_RPC ( SetAircraftMaxVelocity );
     DECLARE_RPC ( SetOcclusionsEnabled );
     DECLARE_RPC ( ResetRainLevel );
     DECLARE_RPC ( ResetSunSize );
@@ -65,8 +64,6 @@ public:
     DECLARE_RPC ( RemoveWorldModel );
     DECLARE_RPC ( RestoreWorldModel );
     DECLARE_RPC ( RestoreAllWorldModels );
-    DECLARE_RPC ( SetMoonSize );
-    DECLARE_RPC ( ResetMoonSize );
     DECLARE_RPC ( SetSyncIntervals );
 };
 

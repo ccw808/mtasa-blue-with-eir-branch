@@ -36,16 +36,14 @@ public:
 
     eClientEntityType               GetType                 ( void ) const              { return CCLIENTDFF; }
 
-    bool                            LoadDFF                 ( const SString& strFile, bool bIsRawData );
+    bool                            LoadDFF                 ( const char* szFile );
 
-    bool                            ReplaceModel            ( unsigned short usModel, bool bAlphaTransparency );
+    bool                            ReplaceModel            ( unsigned short usModel );
 
     bool                            HasReplaced             ( unsigned short usModel );
 
     void                            RestoreModel            ( unsigned short usModel );
     void                            RestoreModels           ( void );
-
-    static bool                     IsDFFData               ( const SString& strData );
 
     // Sorta a hack that these are required by CClientEntity...
     void                            Unlink                  ( void ) {};
@@ -56,18 +54,16 @@ protected:
     void                            UnloadDFF               ( void );
     void                            InternalRestoreModel    ( unsigned short usModel );
 
-    bool                            ReplaceObjectModel      ( RpClump* pClump, ushort usModel, bool bAlphaTransparency );
-    bool                            ReplaceVehicleModel     ( RpClump* pClump, ushort usModel, bool bAlphaTransparency );
-    bool                            ReplaceWeaponModel      ( RpClump* pClump, ushort usModel, bool bAlphaTransparency );
-    bool                            ReplacePedModel         ( RpClump* pClump, ushort usModel, bool bAlphaTransparency );
+    bool                            ReplaceObjectModel      ( RpClump* pClump, ushort usModel );
+    bool                            ReplaceVehicleModel     ( RpClump* pClump, ushort usModel );
+    bool                            ReplaceWeaponModel      ( RpClump* pClump, ushort usModel );
+    bool                            ReplacePedModel         ( RpClump* pClump, ushort usModel );
 
     RpClump*                        GetLoadedClump          ( ushort usModelId );
 
     class CClientDFFManager*        m_pDFFManager;
 
     SString                         m_strDffFilename;
-    CBuffer                         m_RawDataBuffer;
-    bool                            m_bIsRawData;
     std::map < ushort, SLoadedClumpInfo > m_LoadedClumpInfoMap;
 
     std::list < unsigned short >    m_Replaced;

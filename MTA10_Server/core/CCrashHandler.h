@@ -16,15 +16,14 @@
 #include "CCrashHandlerAPI.h"
 
 #ifdef WIN32
-    #include <windows.h>
-#else
-    #include <signal.h>
+
+#include <windows.h>
 #endif
 
 class CCrashHandler
 {
 public:
-    static void                 Init                    ( const SString& strServerPath );
+    static void                 Init                    ( void );
 
 private:
     #ifdef WIN32
@@ -33,10 +32,6 @@ private:
     static void                 DumpMiniDump            ( _EXCEPTION_POINTERS* pException, CExceptionInformation* pExceptionInformation );
 
     static void                 RunErrorTool            ( void );
-
-    #else
-
-    static void                 HandleExceptionGlobal   ( int iSig );
 
     #endif
 };

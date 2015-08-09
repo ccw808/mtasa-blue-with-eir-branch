@@ -22,7 +22,6 @@
 //#define RESOURCE_DEBUG_MESSAGES // show info about where the actual files are coming from
 
 #include "StdInc.h"
-#include "net/SimHeaders.h"
 #ifndef WIN32
 #include <utime.h>
 #endif
@@ -91,9 +90,6 @@ CResource::CResource ( CResourceManager * resourceManager, bool bIsZipped, const
     pthread_mutex_init(&m_mutex, NULL);
 
     m_bDoneUpgradeWarnings = false;
-    m_uiFunctionRightCacheRevision = 0;
-
-    m_bOOPEnabledInMetaXml = false;
 
     Load ();
 }
@@ -125,8 +121,6 @@ bool CResource::Load ( void )
         m_bClientScripts = true;
         m_bClientFiles = true;
         m_bHasStarted = false;
-
-        m_bOOPEnabledInMetaXml = false;
 
         m_pVM = NULL;
         // @@@@@ Set some type of HTTP access here
@@ -247,13 +241,6 @@ bool CResource::Load ( void )
                 {
                     m_bSyncMapElementData = StringToBool ( pNodeSyncMapElementData->GetTagContent ().c_str () );
                     m_bSyncMapElementDataDefined = true;
-                }
-
-                m_bOOPEnabledInMetaXml = false;
-                CXMLNode * pNodeClientOOP = root->FindSubNode ( "oop", 0 );
-                if ( pNodeClientOOP )
-                {
-                    m_bOOPEnabledInMetaXml = StringToBool ( pNodeClientOOP->GetTagContent ().c_str () );
                 }
 
                 // disabled for now
@@ -385,9 +372,9 @@ void ReplaceSlashes ( char* szPath )
 
 bool CResource::Unload ( void )
 {
-    Stop ( true );
+    Stop(true);
 
-    TidyUp ( );
+    TidyUp();
     m_bLoaded = false;
     m_bHasStarted = false;
 
@@ -395,12 +382,6 @@ bool CResource::Unload ( void )
     {
         delete m_pNodeStorage;
         m_pNodeStorage = NULL;
-    }
-
-    if ( m_pNodeSettings )
-    {
-        delete m_pNodeSettings;
-        m_pNodeSettings = NULL;
     }
 
     m_strResourceZip = "";
@@ -422,15 +403,6 @@ CResource::~CResource ( )
 {
     CIdArray::PushUniqueId ( this, EIdClass::RESOURCE, m_uiScriptID );
     Unload ();
-
-    // Overkill, but easiest way to stop crashes:
-    // Go through all other resources and make sure we are not in m_includedResources, m_dependents and m_temporaryIncludes
-    std::list < CResource* > ::const_iterator iter = m_resourceManager->IterBegin ();
-    for ( ; iter != m_resourceManager->IterEnd (); iter++ )
-    {
-        if ( *iter != this )
-            (*iter)->InvalidateIncludedResourceReference ( this );
-    }
 
     m_strResourceName = "";
 
@@ -471,6 +443,15 @@ void CResource::TidyUp ( void )
         (*iterc)->InvalidateIncludedResourceReference ( this );
     }
 
+    // Overkill, but easiest way to stop crashes:
+    // Go through all other resources and make sure we are not in m_includedResources, m_dependents and m_temporaryIncludes
+    std::list < CResource* > ::const_iterator iter = m_resourceManager->IterBegin ();
+    for ( ; iter != m_resourceManager->IterEnd (); iter++ )
+    {
+        if ( *iter != this )
+            (*iter)->InvalidateIncludedResourceReference ( this );
+    }
+    
     this->UnregisterEHS("call");
     g_pGame->GetHTTPD()->UnregisterEHS ( m_strResourceName.c_str () );
 
@@ -590,18 +571,6 @@ bool CResource::GenerateChecksums ( void )
             pResourceFile->SetLastChecksum ( checksum );
             pResourceFile->SetLastFileSize ( uiFileSize );
 
-            // Check if file is blocked
-            char szHashResult[33];
-            CMD5Hasher::ConvertToHex( checksum.md5, szHashResult );
-            SString strBlockReason = m_resourceManager->GetBlockedFileReason( szHashResult );
-            if ( !strBlockReason.empty() )
-            {
-                m_strFailureReason = SString( "file '%s' is blocked (%s)", pResourceFile->GetName(), *strBlockReason );
-                CLogger::LogPrintf( SString ( "ERROR: Resource '%s' %s\n", GetName().c_str(), *m_strFailureReason ) );
-                bOk = false;
-                continue;
-            }
-
             // Copy file to http holding directory
             switch ( pResourceFile->GetType () )
             {
@@ -610,14 +579,6 @@ bool CResource::GenerateChecksums ( void )
                 case CResourceFile::RESOURCE_FILE_TYPE_CLIENT_FILE:
                 {
                     SString strCachedFilePath = pResourceFile->GetCachedPathFilename ();
-                    if ( !g_pRealNetServer->ValidateHttpCacheFileName( strCachedFilePath ) )
-                    {
-                        FileDelete( strCachedFilePath );
-                        CLogger::LogPrintf( SString ( "ERROR: Resource '%s' client filename '%s' not allowed\n", GetName().c_str(), *ExtractFilename(strCachedFilePath) ) );
-                        bOk = false;
-                        continue;
-                    }
-                    
                     CChecksum cachedChecksum = CChecksum::GenerateChecksumFromFile ( strCachedFilePath );
                     if ( checksum != cachedChecksum )
                     {
@@ -627,8 +588,8 @@ bool CResource::GenerateChecksums ( void )
                             bOk = false;
                         }
 
-                        // If script is 'no client cache', make sure there is no trace of it in the output dir
-                        if ( pResourceFile->IsNoClientCache () )
+                        // If script is protected, make sure there is no trace of it in the unprotected cache
+                        if ( pResourceFile->IsProtected () )
                             FileDelete ( pResourceFile->GetCachedPathFilename ( true ) );
                     }
                 }
@@ -790,14 +751,11 @@ bool CResource::Start ( list<CResource *> * dependents, bool bStartedManually, b
 {
     if ( m_bLoaded && !m_bActive )
     {
-        m_bStarting = true;
-
         CLuaArguments PreStartArguments;
         PreStartArguments.PushResource ( this );
         if ( !g_pGame->GetMapManager()->GetRootElement()->CallEvent ( "onResourcePreStart", PreStartArguments ) )
         {
             // Start cancelled by another resource
-            m_bStarting = false;
             return false;
         }
 
@@ -814,7 +772,6 @@ bool CResource::Start ( list<CResource *> * dependents, bool bStartedManually, b
         {
             m_strFailureReason = SString ( "Not starting resource %s as %s\n", m_strResourceName.c_str (), *strStatus );
             CLogger::LogPrint ( m_strFailureReason );
-            m_bStarting = false;
             return false;
         }
         else
@@ -824,6 +781,9 @@ bool CResource::Start ( list<CResource *> * dependents, bool bStartedManually, b
             CLogger::LogPrint ( strReason );
             CLogger::LogPrintf ( "Use the 'upgrade' command to perform a basic upgrade of resources.\n" );
         }
+
+
+        m_bStarting = true;
 
         // Check the included resources are linked
         if ( !m_bLinked )
@@ -858,7 +818,7 @@ bool CResource::Start ( list<CResource *> * dependents, bool bStartedManually, b
         m_pResourceElement->SetName ( m_strResourceName.c_str () );
 
         // Create the virtual machine for this resource
-        CreateVM ( m_bOOPEnabledInMetaXml );
+        CreateVM();
 
         // We're now active
         m_bActive = true;
@@ -874,20 +834,6 @@ bool CResource::Start ( list<CResource *> * dependents, bool bStartedManually, b
         list < CResourceFile* > ::iterator iterf = m_resourceFiles.begin ();
         for ( ; iterf != m_resourceFiles.end (); iterf++ )
         {
-            bool bAbortStart = false;
-
-            // Check if file is blocked
-            char szHashResult[33];
-            CMD5Hasher::ConvertToHex( (*iterf)->GetLastChecksum().md5, szHashResult );
-            SString strBlockReason = m_resourceManager->GetBlockedFileReason( szHashResult );
-            if ( !strBlockReason.empty() )
-            {
-                m_strFailureReason = SString( "File '%s' is blocked (%s)", (*iterf)->GetName(), *strBlockReason );
-                CLogger::LogPrintf( "Failed to start resource '%s' - %s\n", GetName().c_str (), *m_strFailureReason );
-                bAbortStart = true;
-            }
-
-            // Start if applicable
             if ( ( (*iterf)->GetType() == CResourceFile::RESOURCE_FILE_TYPE_MAP && bMaps ) ||
                  ( (*iterf)->GetType() == CResourceFile::RESOURCE_FILE_TYPE_CONFIG && bConfigs ) ||
                  ( (*iterf)->GetType() == CResourceFile::RESOURCE_FILE_TYPE_SCRIPT && bScripts ) ||
@@ -898,51 +844,48 @@ bool CResource::Start ( list<CResource *> * dependents, bool bStartedManually, b
                 if ( !(*iterf)->Start() )
                 {
                     // Log it
-                    m_strFailureReason = SString( "Failed to start resource item %s which is required\n", (*iterf)->GetName() );
+                    char szBuffer[255] = {0};
                     CLogger::LogPrintf ( "Failed to start resource item %s in %s\n", (*iterf)->GetName(), m_strResourceName.c_str () );
-                    bAbortStart = true;
+                    snprintf ( szBuffer, 254, "Failed to start resource item %s which is required\n", (*iterf)->GetName() );
+                    m_strFailureReason = szBuffer;
+
+                    // Stop all the resource items without any warnings
+                    StopAllResourceItems();
+                    DestroyVM ();
+
+                    // Remove the temporary XML storage node
+                    if ( m_pNodeStorage )
+                    {
+                        delete m_pNodeStorage;
+                        m_pNodeStorage = NULL;
+                    }
+
+                    // Destroy the element group attached directly to this resource
+                    if ( m_pDefaultElementGroup )
+                        delete m_pDefaultElementGroup;
+                    m_pDefaultElementGroup = NULL;
+
+                    // Make sure we remove the resource elements from the players that have joined
+                    CEntityRemovePacket removePacket;
+                    if ( m_pResourceElement )
+                    {
+                        removePacket.Add ( m_pResourceElement );
+                        g_pGame->GetElementDeleter()->Delete ( m_pResourceElement );
+                        m_pResourceElement = NULL;
+                    }
+
+                    if ( m_pResourceDynamicElementRoot )
+                    {
+                        removePacket.Add ( m_pResourceDynamicElementRoot );
+                        g_pGame->GetElementDeleter()->Delete ( m_pResourceDynamicElementRoot );
+                        m_pResourceDynamicElementRoot = NULL;
+                    }
+                    g_pGame->GetPlayerManager()->BroadcastOnlyJoined ( removePacket );
+
+                    m_bActive = false;
+                    m_bStarting = false;
+                    return false;
                 }
-            }
-
-            // Handle abort
-            if ( bAbortStart )
-            {
-                // Stop all the resource items without any warnings
-                StopAllResourceItems();
-                DestroyVM ();
-
-                // Remove the temporary XML storage node
-                if ( m_pNodeStorage )
-                {
-                    delete m_pNodeStorage;
-                    m_pNodeStorage = NULL;
-                }
-
-                // Destroy the element group attached directly to this resource
-                if ( m_pDefaultElementGroup )
-                    delete m_pDefaultElementGroup;
-                m_pDefaultElementGroup = NULL;
-
-                // Make sure we remove the resource elements from the players that have joined
-                CEntityRemovePacket removePacket;
-                if ( m_pResourceElement )
-                {
-                    removePacket.Add ( m_pResourceElement );
-                    g_pGame->GetElementDeleter()->Delete ( m_pResourceElement );
-                    m_pResourceElement = NULL;
-                }
-
-                if ( m_pResourceDynamicElementRoot )
-                {
-                    removePacket.Add ( m_pResourceDynamicElementRoot );
-                    g_pGame->GetElementDeleter()->Delete ( m_pResourceDynamicElementRoot );
-                    m_pResourceDynamicElementRoot = NULL;
-                }
-                g_pGame->GetPlayerManager()->BroadcastOnlyJoined ( removePacket );
-
-                m_bActive = false;
-                m_bStarting = false;
-                return false;
             }
         }
 
@@ -1019,7 +962,7 @@ bool CResource::Start ( list<CResource *> * dependents, bool bStartedManually, b
         // Broadcast new resourceelement that is loaded and tell the players that a new resource was started
         g_pGame->GetMapManager()->BroadcastResourceElements ( m_pResourceElement, m_pDefaultElementGroup );
         g_pGame->GetPlayerManager ()->BroadcastOnlyJoined ( CResourceStartPacket ( m_strResourceName.c_str (), this ) );
-        SendNoClientCacheScripts ();
+        SendProtectedScripts ();
 
         // HACK?: stops resources getting loaded twice when you change them then manually restart
         GenerateChecksums ();
@@ -1151,12 +1094,12 @@ bool CResource::Stop ( bool bStopManually )
 }
 
 // Create a virtual machine for everything in this resource
-bool CResource::CreateVM ( bool bEnableOOP )
+bool CResource::CreateVM ( void )
 {
     // Create the virtual machine
     if ( m_pVM == NULL )
     {
-        m_pVM = g_pGame->GetLuaManager ()->CreateVirtualMachine ( this, bEnableOOP );
+        m_pVM = g_pGame->GetLuaManager ()->CreateVirtualMachine ( this );
         m_resourceManager->NotifyResourceVMOpen ( this, m_pVM );
     }
 
@@ -1267,6 +1210,141 @@ void CResource::DisplayInfo ( void ) // duplicated for HTML
     CLogger::LogPrintf ( "== End ==\n" );
 }
 
+char * CResource::DisplayInfoHTML ( char * info, size_t length )
+{
+    #define LAZYNESS counter += snprintf ( info + counter, length - counter,
+
+    size_t counter = 0;
+    counter = snprintf ( info, length, "<font face='tahoma,arial' size=-1><h2>Details for resource '%s'</h2><br>\n", m_strResourceName.c_str () );
+    if ( m_bActive )
+    {
+        // count the number of elements
+        unsigned int uiMapElementCount = 0;
+        unsigned int uiScriptElementCount = 0;
+        if ( m_pDefaultElementGroup )
+            uiScriptElementCount += m_pDefaultElementGroup->GetCount();
+
+        list < CResourceFile* > ::iterator iterf = m_resourceFiles.begin ();
+        for ( ; iterf != m_resourceFiles.end (); iterf++ )
+        {
+            if ( (*iterf)->GetType() == CResourceFile::RESOURCE_FILE_TYPE_MAP )
+            {
+                CResourceMapItem * map = (CResourceMapItem *)(*iterf);
+                CElementGroup * group = map->GetElementGroup();
+                if ( group )
+                    uiMapElementCount += group->GetCount();
+            }
+        }
+
+        //LAZYNESS "Author: %s<BR>Version: %d<BR>Map elements: %d<BR>Script elements: %d<BR>", m_szAuthor, m_uiVersion, uiMapElementCount, uiScriptElementCount );
+        LAZYNESS "Loaded: %s<BR>", asctime(localtime((const time_t *)&m_timeLoaded)) );
+        LAZYNESS "Started: %s<BR>", asctime(localtime((const time_t *)&m_timeStarted)) );
+    }
+    else
+    {
+        //LAZYNESS "Author: %s<BR>Version: %d<BR>Loaded %s<BR>", m_szAuthor, m_uiVersion, asctime(localtime((const time_t *)&m_timeLoaded)) );
+        if ( m_timeStarted != 0 )
+            LAZYNESS "Last ran: %s<BR>", asctime(localtime((const time_t *)&m_timeStarted)) );
+        LAZYNESS "Last ran: never<BR>" );
+    }
+
+    if ( m_bActive )
+    {
+        LAZYNESS "Status: Running<BR>" );
+        LAZYNESS "Dependents: %d<br>", m_dependents.size() );
+        if ( m_dependents.size() != 0 )
+        {
+            list < CResource* > ::iterator iterr = m_dependents.begin ();
+            for ( ; iterr != m_dependents.end (); iterr++ )
+            {
+                LAZYNESS " <li><a href='/resources/%s/' style='color:black;'>%s</a> <sup><font size=-2><a href='/resource-info/%s/' style='color:black;'>Info</a></font></sup>", (*iterr)->GetName().c_str (), (*iterr)->GetName().c_str (), (*iterr)->GetName().c_str () );
+            }
+            LAZYNESS "<BR>" );
+        }
+    }
+    else if ( m_bLoaded )
+        LAZYNESS "Status: Stopped<BR>" );
+    else if ( !m_strCircularInclude.empty () )
+    {
+        LAZYNESS "Status: Circular include error: %s<BR>", m_strCircularInclude.c_str () );
+    }
+    else
+        LAZYNESS "Status: Failed to load<BR>" );
+
+    LAZYNESS "Included resources: %d<BR>", m_includedResources.size() );
+
+    list < CIncludedResources* > ::iterator iterr = m_includedResources.begin ();
+    for ( ; iterr != m_includedResources.end (); iterr++ )
+    {
+        CIncludedResources * includedResource = (*iterr);
+        LAZYNESS " <li><a href='/resources/%s/' style='color:black;'>%s</a> <sup><font size=-2><a href='/resource-info/%s/' style='color:black;'>Info</a></font></sup>", (*iterr)->GetName().c_str (), (*iterr)->GetName().c_str (), (*iterr)->GetName().c_str () );
+        if ( includedResource->DoesExist() )
+        {
+            if ( includedResource->GetResource()->IsLoaded() )
+
+                LAZYNESS " .. OK<BR>" );
+            else
+                LAZYNESS " .. FAILED TO LOAD<BR>" );
+        }
+        else
+        {
+            if ( includedResource->IsBadVersion() )
+            {
+                LAZYNESS " .. BAD VERSION (not between %d and %d)<BR>", includedResource->GetMinimumVersion(), includedResource->GetMaximumVersion() );
+            }
+            else
+            {
+                LAZYNESS " .. NOT FOUND<BR>");
+            }
+        }
+    }
+
+    LAZYNESS "Exported functions: %d<br>", m_exportedFunctions.size() );
+    if ( m_exportedFunctions.size() != 0 )
+    {
+        list < CExportedFunction> ::iterator iterf = m_exportedFunctions.begin ();
+        for ( ; iterf != m_exportedFunctions.end (); iterf++ )
+        {
+            if ( iterf->IsHTTPAccessible() )
+            {
+                LAZYNESS "<li> <a href='/call/%s/%s?' style='color: black;'>%s</a>", m_strResourceName.c_str (), iterf->GetFunctionName ().c_str (), iterf->GetFunctionName ().c_str () );
+            }
+            else
+            {
+                LAZYNESS "<li> %s", iterf->GetFunctionName ().c_str () );
+            }
+
+        }
+        LAZYNESS "<BR>" );
+    }
+
+
+    LAZYNESS "Files: %d<br>", m_resourceFiles.size() );
+    if ( m_exportedFunctions.size() != 0 )
+    {
+        list < CResourceFile* > ::iterator iterf = m_resourceFiles.begin ();
+        for ( ; iterf != m_resourceFiles.end (); iterf++ )
+        {
+            if ( (*iterf)->GetType() == CResourceFile::RESOURCE_FILE_TYPE_HTML )
+            {
+                if ( ((CResourceHTMLItem *)(*iterf))->IsDefaultPage() )
+                    LAZYNESS "<b>" );
+
+                LAZYNESS "<li> <a href='/resources/%s/%s' style='color:black;'>%s</a>", m_strResourceName.c_str (), (*iterf)->GetName(), (*iterf)->GetName() );
+
+                if ( ((CResourceHTMLItem *)(*iterf))->IsDefaultPage() )
+                    LAZYNESS "</b>" );
+
+            }
+            else
+                LAZYNESS "<li> %s", (*iterf)->GetName() );
+        }
+        LAZYNESS "<BR>" );
+    }
+    LAZYNESS "<BR><BR><a href='/resources/' style='color:black' />Resource List</a>" );
+    return info;
+}
+
 bool CResource::ExtractFile ( const char * szFilename )
 {
     if ( DoesFileExistInZip ( szFilename ) )
@@ -1305,19 +1383,6 @@ bool CResource::DoesFileExistInZip ( const char * szFilename )
         m_zipfile = NULL;
     }
     return bRes;
-}
-
-// Return true if is looks like the resource files have been removed
-bool CResource::HasGoneAway ( void )
-{
-    if ( !IsResourceZip () )
-    {
-        return !FileExists( PathJoin( m_strResourceDirectoryPath, "meta.xml" ) );
-    }
-    else
-    {
-        return !FileExists( m_strResourceZip );
-    }
 }
 
 // gets the path of the file specified, may extract it from the zip
@@ -1391,25 +1456,6 @@ bool CResource::GetFilePath ( const char * szFilename, string& strPath )
     return false;
 }
 
-// Return true if file name is used by this resource
-bool CResource::IsFilenameUsed( const SString& strFilename, bool bClient )
-{
-    for ( std::list <CResourceFile*> ::iterator iter = m_resourceFiles.begin() ; iter != m_resourceFiles.end() ; iter++ )
-    {
-        CResourceFile* pFile = *iter;
-        if ( strFilename.CompareI( pFile->GetName() ) )
-        {
-            bool bIsClientFile = ( pFile->GetType() == CResourceFile::RESOURCE_FILE_TYPE_CLIENT_SCRIPT
-                                   || pFile->GetType() == CResourceFile::RESOURCE_FILE_TYPE_CLIENT_CONFIG
-                                   || pFile->GetType() == CResourceFile::RESOURCE_FILE_TYPE_CLIENT_FILE );
-            if ( bIsClientFile == bClient )
-            {
-                return true;
-            }
-        }
-    }
-    return false;
-}
 
 bool CResource::ReadIncludedHTML ( CXMLNode * root )
 {
@@ -1470,11 +1516,6 @@ bool CResource::ReadIncludedHTML ( CXMLNode * root )
                 string strFullFilename;
                 ReplaceSlashes ( strFilename );
 
-                if ( IsFilenameUsed( strFilename, false ) )
-                {
-                    CLogger::LogPrintf( "WARNING: Duplicate html file in resource '%s': '%s'\n", m_strResourceName.c_str(), strFilename.c_str() );
-                }
-
                 // Try to find the file
                 if ( IsValidFilePath ( strFilename.c_str () ) && GetFilePath ( strFilename.c_str (), strFullFilename ) )
                 {
@@ -1490,7 +1531,7 @@ bool CResource::ReadIncludedHTML ( CXMLNode * root )
                         bFoundDefault = true;
 
                     // Create a new resource HTML file and add it to the list
-                    CResourceFile * afile = new CResourceHTMLItem ( this, strFilename.c_str (), strFullFilename.c_str (), attributes, bIsDefault, bIsRaw, bIsRestricted, m_bOOPEnabledInMetaXml );
+                    CResourceFile * afile = new CResourceHTMLItem ( this, strFilename.c_str (), strFullFilename.c_str (), attributes, bIsDefault, bIsRaw, bIsRestricted );
                     m_resourceFiles.push_back ( afile );
 
                     // This is the first HTML file? Remember it
@@ -1529,22 +1570,17 @@ bool CResource::ReadIncludedConfigs ( CXMLNode * root )
         CXMLAttributes * attributes = &(inc->GetAttributes());
         if ( attributes )
         {
-            bool bServer = true;
-            bool bClient = false;
+            // Find the type attribute (server / client)
+            int iType = CResourceScriptItem::RESOURCE_FILE_TYPE_CONFIG;
             CXMLAttribute * type = attributes->Find("type");
             if ( type )
             {
-                // Grab the type. Client or server or shared
                 const char *szType = type->GetValue ().c_str ();
-                if ( stricmp ( szType, "client" ) == 0 )
-                {
-                    bServer = false;
-                    bClient = true;
-                }
-                else if ( stricmp ( szType, "shared" ) == 0 )
-                    bClient = true;
-                else 
-                if ( stricmp ( szType, "server" ) != 0 )
+                if ( stricmp ( szType, "server" ) == 0 )
+                    iType = CResourceScriptItem::RESOURCE_FILE_TYPE_CONFIG;
+                else if ( stricmp ( szType, "client" ) == 0 )
+                    iType = CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_CONFIG;
+                else
                     CLogger::LogPrintf ( "Unknown config type specified in %s. Assuming 'server'\n", m_strResourceName.c_str () );
             }
 
@@ -1557,23 +1593,13 @@ bool CResource::ReadIncludedConfigs ( CXMLNode * root )
                 string strFullFilename;
                 ReplaceSlashes ( strFilename );
 
-                if ( bClient && IsFilenameUsed( strFilename, true ) )
-                {
-                    CLogger::LogPrintf( "WARNING: Ignoring duplicate client config file in resource '%s': '%s'\n", m_strResourceName.c_str(), strFilename.c_str() );
-                    bClient = false;
-                }
-                if ( bServer && IsFilenameUsed( strFilename, false ) )
-                {
-                    CLogger::LogPrintf( "WARNING: Duplicate config file in resource '%s': '%s'\n", m_strResourceName.c_str(), strFilename.c_str() );
-                }
-
                 // Extract / grab the filepath
                 if ( IsValidFilePath ( strFilename.c_str () ) && GetFilePath ( strFilename.c_str (), strFullFilename ) )
                 {
                     // Create it and push it to the list over resource files. Depending on if it's client or server type
-                    if ( bServer )
+                    if ( iType == CResourceScriptItem::RESOURCE_FILE_TYPE_CONFIG )
                         m_resourceFiles.push_back ( new CResourceConfigItem ( this, strFilename.c_str (), strFullFilename.c_str (), attributes ) );
-                    if ( bClient )
+                    else if ( iType == CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_CONFIG )
                         m_resourceFiles.push_back ( new CResourceClientConfigItem ( this, strFilename.c_str (), strFullFilename.c_str (), attributes ) );
                 }
                 else
@@ -1613,12 +1639,6 @@ bool CResource::ReadIncludedFiles ( CXMLNode * root )
                 string strFilename = src->GetValue ();
                 string strFullFilename;
                 ReplaceSlashes ( strFilename );
-
-                if ( IsFilenameUsed( strFilename, true ) )
-                {
-                    CLogger::LogPrintf( "WARNING: Ignoring duplicate client file in resource '%s': '%s'\n", m_strResourceName.c_str(), strFilename.c_str() );
-                    continue;
-                }
 
                 bool bDownload = true;
                 CXMLAttribute * download = attributes->Find("download");
@@ -1687,24 +1707,24 @@ bool CResource::ReadIncludedExports ( CXMLNode * root )
             }
 
             // Find the type attribute
-            bool bServer = true;
-            bool bClient = false;
-            
+            CExportedFunction::eExportedFunctionType ucType = CExportedFunction::EXPORTED_FUNCTION_TYPE_SERVER;
             CXMLAttribute * type = attributes->Find("type");
             if ( type )
             {
-                // Grab the type. Client or server or shared
+                // Grab the type. Client or server
                 const char *szType = type->GetValue ().c_str ();
-                if ( stricmp ( szType, "client" ) == 0 )
+                if ( stricmp ( szType, "server" ) == 0 )
                 {
-                    bServer = false;
-                    bClient = true;
+                    ucType = CExportedFunction::EXPORTED_FUNCTION_TYPE_SERVER;
                 }
-                else if ( stricmp ( szType, "shared" ) == 0 )
-                    bClient = true;
-                else 
-                if ( stricmp ( szType, "server" ) != 0 )
+                else if ( stricmp ( szType, "client" ) == 0 )
+                {
+                    ucType = CExportedFunction::EXPORTED_FUNCTION_TYPE_CLIENT;
+                }
+                else
+                {
                     CLogger::LogPrintf ( "Unknown exported function type specified in %s. Assuming 'server'\n", m_strResourceName.c_str () );
+                }
             }
 
             // Grab the functionname attribute
@@ -1717,10 +1737,7 @@ bool CResource::ReadIncludedExports ( CXMLNode * root )
                 // Add it to the list if it wasn't zero long. Otherwize show a warning
                 if ( !strFunction.empty () )
                 {
-                    if ( bServer )
-                        m_exportedFunctions.push_back ( CExportedFunction ( strFunction.c_str (), bHTTP, CExportedFunction::EXPORTED_FUNCTION_TYPE_SERVER, bRestricted || GetName () == "webadmin" || GetName () == "runcode" ) );
-                    if ( bClient )
-                        m_exportedFunctions.push_back ( CExportedFunction ( strFunction.c_str (), bHTTP, CExportedFunction::EXPORTED_FUNCTION_TYPE_CLIENT, bRestricted || GetName () == "webadmin" || GetName () == "runcode" ) );
+                    m_exportedFunctions.push_back ( CExportedFunction ( strFunction.c_str (), bHTTP, ucType, bRestricted || GetName () == "webadmin" || GetName () == "runcode" ) );
                 }
                 else
                 {
@@ -1750,24 +1767,19 @@ bool CResource::ReadIncludedScripts ( CXMLNode * root )
         if ( attributes )
         {
             // Grab the type attribute (server / client)
-            bool bServer = true;
-            bool bClient = false;
+            int iType = CResourceScriptItem::RESOURCE_FILE_TYPE_SCRIPT;
             CXMLAttribute * type = attributes->Find("type");
             if ( type )
             {
                 // Grab the text
                 const char *szType = type->GetValue ().c_str ();
 
-                // Check its content (server or client or shared) and set the type accordingly
-                if ( stricmp ( szType, "client" ) == 0 )
-                {
-                    bServer = false;
-                    bClient = true;
-                }
-                else if ( stricmp ( szType, "shared" ) == 0 )
-                    bClient = true;
+                // Check its content (server or client) and set the type accordingly
+                if ( stricmp ( szType, "server" ) == 0 )
+                    iType = CResourceScriptItem::RESOURCE_FILE_TYPE_SCRIPT;
+                else if ( stricmp ( szType, "client" ) == 0 )
+                    iType = CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_SCRIPT;
                 else
-                if ( stricmp ( szType, "server" ) != 0 )
                     CLogger::LogPrintf ( "Unknown script type specified in %s. Assuming 'server'\n", m_strResourceName.c_str () );
             }
 
@@ -1780,23 +1792,13 @@ bool CResource::ReadIncludedScripts ( CXMLNode * root )
                 string strFullFilename;
                 ReplaceSlashes ( strFilename );
 
-                if ( bClient && IsFilenameUsed( strFilename, true ) )
-                {
-                    CLogger::LogPrintf( "WARNING: Ignoring duplicate client script file in resource '%s': '%s'\n", m_strResourceName.c_str(), strFilename.c_str() );
-                    bClient = false;
-                }
-                if ( bServer && IsFilenameUsed( strFilename, false ) )
-                {
-                    CLogger::LogPrintf( "WARNING: Duplicate script file in resource '%s': '%s'\n", m_strResourceName.c_str(), strFilename.c_str() );
-                }
-
                 // Extract / get the filepath of the file
                 if ( IsValidFilePath ( strFilename.c_str () ) && GetFilePath ( strFilename.c_str (), strFullFilename ) )
                 {
-                    // Create it depending on the type (client or server or shared) and add it to the list of resource files
-                    if ( bServer )
+                    // Create it depending on the type (clietn or server) and add it to the list over resource files
+                    if ( iType == CResourceScriptItem::RESOURCE_FILE_TYPE_SCRIPT )
                         m_resourceFiles.push_back ( new CResourceScriptItem ( this, strFilename.c_str (), strFullFilename.c_str (), attributes ) );
-                    if ( bClient )
+                    else if ( iType == CResourceScriptItem::RESOURCE_FILE_TYPE_CLIENT_SCRIPT )
                         m_resourceFiles.push_back ( new CResourceClientScriptItem ( this, strFilename.c_str (), strFullFilename.c_str (), attributes ) );
                 }
                 else
@@ -1847,12 +1849,6 @@ bool CResource::ReadIncludedMaps ( CXMLNode * root )
                 string strFilename = src->GetValue ();
                 string strFullFilename;
                 ReplaceSlashes ( strFilename );
-
-                if ( IsFilenameUsed( strFilename, false ) )
-                {
-                    CLogger::LogPrintf( "WARNING: Duplicate map file in resource '%s': '%s'\n", m_strResourceName.c_str(), strFilename.c_str() );
-                }
-
                 // Grab the file (evt extract it). Make a map item resource and put it into the resourcefiles list
                 if ( IsValidFilePath ( strFilename.c_str () ) && GetFilePath ( strFilename.c_str (), strFullFilename ) )
                 {
@@ -2507,9 +2503,25 @@ void CResource::RemoveDependent ( CResource * resource )
     CheckState();
 }
 
-// Called on another thread, but g_pGame->Lock() has been called, so everything is going to be OK
 ResponseCode CResource::HandleRequest ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse )
 {
+    if ( !g_pGame->IsServerFullyUp () )
+    {
+        SStringX strWait ( "The server is not ready. Please try again in a minute." );
+        ipoHttpResponse->SetBody ( strWait.c_str (), strWait.size () );
+        return HTTPRESPONSECODE_200_OK;
+    }
+
+    // if the mutex is already locked (i.e. the resource is being deleted), we return from this asap
+    // otherwise, we get the mutex and can handle the request
+
+  /*  if ( pthread_mutex_trylock(&m_mutex) == EBUSY ) {
+        ipoHttpResponse->SetBody("Resource shutting down",strlen("Resource shutting down"));
+        printf(" X\n");
+        return HTTPRESPONSECODE_500_INTERNALSERVERERROR;
+    }*/
+    g_pGame->Lock(); // get the mutex (blocking)
+
     std::string strAccessType;
     const char* szRequest = ipoHttpRequest->sOriginalUri.c_str();
     if ( *szRequest )
@@ -2532,9 +2544,10 @@ ResponseCode CResource::HandleRequest ( HttpRequest * ipoHttpRequest, HttpRespon
         else
             response = HandleRequestActive ( ipoHttpRequest, ipoHttpResponse, account );
 
+        g_pGame->Unlock();
         return response;
     }
-
+   g_pGame->Unlock();
    return HTTPRESPONSECODE_200_OK;
 
 }
@@ -2758,8 +2771,6 @@ ResponseCode CResource::HandleRequestCall ( HttpRequest * ipoHttpRequest, HttpRe
 						headers.PushString ( (*iter).second.c_str() );
 					}
 
-                    LUA_CHECKSTACK ( m_pVM->GetVM(), 1 );   // Ensure some room
-
 					// cache old data
 					lua_getglobal ( m_pVM->GetVM(), "form" );
 					CLuaArgument OldForm ( m_pVM->GetVM(), -1 );
@@ -2826,13 +2837,8 @@ ResponseCode CResource::HandleRequestCall ( HttpRequest * ipoHttpRequest, HttpRe
 					OldUser.Push ( m_pVM->GetVM() );
 					lua_setglobal ( m_pVM->GetVM(), "user" );
 
-                    // Set debug info in case error occurs in WriteToJSONString
-                    g_pGame->GetScriptDebugging()->SaveLuaDebugInfo( SLuaDebugInfo( m_strResourceName, INVALID_LINE_NUMBER, SString( "[HTTP:%s]", strFuncName.c_str () ) ) );
-
                     std::string strJSON;
                     luaReturns.WriteToJSONString ( strJSON, true );
-
-                    g_pGame->GetScriptDebugging()->SaveLuaDebugInfo( SLuaDebugInfo() );
 
                     ipoHttpResponse->SetBody ( strJSON.c_str (), strJSON.length () );
                     bAlreadyCalling = false;
@@ -2841,13 +2847,13 @@ ResponseCode CResource::HandleRequestCall ( HttpRequest * ipoHttpRequest, HttpRe
                 else
                 {
                     bAlreadyCalling = false;
-                    return g_pGame->GetHTTPD()->RequestLogin ( ipoHttpResponse );
+                    return g_pGame->GetHTTPD()->RequestLogin ( ipoHttpResponse );;
                 }
             }
             else
             {
                 bAlreadyCalling = false;
-                return g_pGame->GetHTTPD()->RequestLogin ( ipoHttpResponse );
+                return g_pGame->GetHTTPD()->RequestLogin ( ipoHttpResponse );;
             }
         }
     }
@@ -2855,6 +2861,14 @@ ResponseCode CResource::HandleRequestCall ( HttpRequest * ipoHttpRequest, HttpRe
     const char* szError = "error: not found";
     ipoHttpResponse->SetBody ( szError, strlen(szError) );
     bAlreadyCalling = false;
+    return HTTPRESPONSECODE_200_OK;
+}
+
+ResponseCode CResource::HandleRequestInfo ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse )
+{
+    char szDebug[4024];
+    DisplayInfoHTML ( szDebug, 4024 );
+    ipoHttpResponse->SetBody ( szDebug, strlen(szDebug) );
     return HTTPRESPONSECODE_200_OK;
 }
 
@@ -3082,10 +3096,10 @@ void CResource::OnPlayerJoin ( CPlayer& Player )
 {
     // do the player join crap
     Player.Send ( CResourceStartPacket ( m_strResourceName.c_str (), this ) );
-    SendNoClientCacheScripts ( &Player );
+    SendProtectedScripts ( &Player );
 }
 
-void CResource::SendNoClientCacheScripts ( CPlayer* player )
+void CResource::SendProtectedScripts ( CPlayer* player )
 {
     if ( !IsClientScriptsOn() )
         return;
@@ -3119,7 +3133,7 @@ void CResource::SendNoClientCacheScripts ( CPlayer* player )
             if ( file->GetType() == CResourceFile::RESOURCE_FILE_TYPE_CLIENT_SCRIPT )
             {
                 CResourceClientScriptItem* clientScript = static_cast < CResourceClientScriptItem* > ( file );
-                if ( clientScript->IsNoClientCache() == true )
+                if ( clientScript->IsProtected() == true )
                 {
                     packet.AddItem ( clientScript );
                     anyScript = true;
@@ -3432,38 +3446,4 @@ void CResource::InvalidateIncludedResourceReference ( CResource * resource )
     m_temporaryIncludes.remove ( resource );
     assert ( this != resource );
     m_dependents.remove ( resource );
-}
-
-//
-// Check ACL 'function right' cache for this resource.
-// Will automatically clear the cache if ACL has changed.
-//
-// Returns true if setting was found in cache
-//
-bool CResource::CheckFunctionRightCache( lua_CFunction f, bool* pbOutAllowed )
-{
-    uint uiACLRevision = g_pGame->GetACLManager()->GetGlobalRevision();
-
-    // Check validity of cache
-    if ( m_uiFunctionRightCacheRevision != uiACLRevision )
-    {
-        m_FunctionRightCacheMap.clear();
-        m_uiFunctionRightCacheRevision = uiACLRevision;
-    }
-
-    // Read cache
-    bool* pResult = MapFind( m_FunctionRightCacheMap, f );
-    if ( !pResult )
-        return false;
-
-    *pbOutAllowed = *pResult;
-    return true;
-}
-
-//
-// Update ACL 'function right' cache for this resource.
-//
-void CResource::UpdateFunctionRightCache( lua_CFunction f, bool bAllowed )
-{
-    MapSet( m_FunctionRightCacheMap, f, bAllowed );
 }

@@ -256,7 +256,7 @@ void CClientVariables::LoadDefaults ( void )
 
     if(!Exists("nick")) 
     {
-        DEFAULT ( "nick",                       _S(CNickGen::GetRandomNickname()) );       // nickname
+        DEFAULT ( "nick",                       _S(GenerateNickname()) );       // nickname
         CCore::GetSingleton ().RequestNewNickOnStart();  // Request the user to set a new nickname
     }
 
@@ -292,43 +292,19 @@ void CClientVariables::LoadDefaults ( void )
     DEFAULT ( "classic_controls",           false );                        // classic/standard controls
     DEFAULT ( "mtavolume",                  1.0f );                         // custom sound's volume
     DEFAULT ( "voicevolume",                1.0f );                         // voice chat output volume
+    DEFAULT ( "async_loading",              1 );                            // loading while crashing
     DEFAULT ( "mapalpha",                   155 );                          // map alpha
-    DEFAULT ( "browser_speed",              1 );                            // Browser speed
+    DEFAULT ( "browser_speed",              2 );                            // Browser speed
     DEFAULT ( "single_download",            0 );                            // Single connection for downloads
-    DEFAULT ( "packet_tag",                 0 );                            // Tag network packets
-    DEFAULT ( "progress_animation",         1 );                            // Progress spinner at the bottom of the screen
     DEFAULT ( "update_build_type",          0 );                            // 0-stable 1-test 2-nightly
-    DEFAULT ( "update_auto_install",        1 );                            // 0-off 1-on
     DEFAULT ( "volumetric_shadows",         0 );                            // Enable volumetric shadows
     DEFAULT ( "aspect_ratio",               0 );                            // Display aspect ratio
-    DEFAULT ( "hud_match_aspect_ratio",     1 );                            // GTA HUD should match the display aspect ratio
     DEFAULT ( "anisotropic",                0 );                            // Anisotropic filtering
     DEFAULT ( "grass",                      1 );                            // Enable grass
     DEFAULT ( "heat_haze",                  1 );                            // Enable heat haze
-    DEFAULT ( "tyre_smoke_enabled",         1 );                            // Enable tyre smoke
     DEFAULT ( "fast_clothes_loading",       1 );                            // 0-off 1-auto 2-on
     DEFAULT ( "allow_screen_upload",        1 );                            // 0-off 1-on
     DEFAULT ( "max_clientscript_log_kb",    5000 );                         // Max size in KB (0-No limit)
-    DEFAULT ( "display_fullscreen_style",   0 );                            // 0-standard 1-borderless 2-borderless keep res 3-borderless stretch
-    DEFAULT ( "display_windowed",           0 );                            // 0-off 1-on
-    DEFAULT ( "multimon_fullscreen_minimize", 1 );                          // 0-off 1-on
-    DEFAULT ( "vertical_aim_sensitivity",   0.0015f );                      // 0.0015f is GTA default setting
-    DEFAULT ( "process_priority",           0 );                            // 0-normal 1-above normal 2-high
-    DEFAULT ( "mute_sfx_when_minimized",    0 );                            // 0-off 1-on
-    DEFAULT ( "mute_radio_when_minimized",  0 );                            // 0-off 1-on
-    DEFAULT ( "mute_mta_when_minimized",    0 );                            // 0-off 1-on
-    DEFAULT ( "mute_voice_when_minimized",  0 );                            // 0-off 1-on
-    DEFAULT ( "share_file_cache",           1 );                            // 0-no 1-share client resource file cache with other MTA installs
-    DEFAULT ( "show_unsafe_resolutions",    0 );                            // 0-off 1-show resolutions that are higher that the desktop
-    DEFAULT ( "browser_remote_websites",    true );                         // Load remote websites?
-    DEFAULT ( "browser_remote_javascript",  true );                         // Execute javascript on remote websites?
-    DEFAULT ( "browser_plugins",            true );                         // Enable browser plugins?
-
-    if(!Exists("locale")) 
-    {
-        SString strLangCode = GetApplicationSetting ( "locale" );
-        Set ( "locale", !strLangCode.empty() ? strLangCode : _S("en_US") );
-    }
 
     // We will default this one at CClientGame.cpp, because we need a valid direct3d device to give a proper default value.
 #if 0

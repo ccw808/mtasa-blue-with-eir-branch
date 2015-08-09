@@ -3,7 +3,6 @@
  * Borrowed from Bochs x86 PC emulator(bochs)
  */
 
-#include "StdInc.h"
 #include "crc32.h"
 #include <stdio.h>
 #include <cstring>
@@ -38,14 +37,14 @@ unsigned long CRCGenerator::GetCRCFromFile ( const char* szFilename, unsigned lo
         unsigned long ulCRC = ucOldCRC;
 
         // While we're not at the end
-        char pBuffer [65536];
+        char pBuffer [4096];
         do
         {
-            // Try to read 65536 bytes. It returns number of bytes actually read.
+            // Try to read 4096 bytes. It returns number of bytes actually read.
             // Then CRC that using the CRC from last loop as beginning. This should
             // be faster/more compatible than allocating a huge buffer for the entire
             // file.
-            size_t sizeRead = fread ( pBuffer, 1, 65536, pFile );
+            size_t sizeRead = fread ( pBuffer, 1, 4096, pFile );
             ulCRC = crc32 ( ulCRC, (Bytef*) pBuffer, sizeRead );
         }
         while ( !feof ( pFile ) );

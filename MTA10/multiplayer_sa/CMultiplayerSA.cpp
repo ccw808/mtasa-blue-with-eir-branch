@@ -92,8 +92,6 @@ DWORD RETURN_CollisionStreamRead =                          0x41B1D6;
 
 #define CALL_CTrafficLights_GetPrimaryLightState 			0x49DB5F
 #define CALL_CTrafficLights_GetSecondaryLightState 			0x49DB6D
-#define HOOKPOS_CTrafficLights_DisplayActualLight           0x49E1D9
-DWORD RETURN_CTrafficLights_DisplayActualLight =            0x49E1FF;
 
 #define HOOKPOS_CGame_Process                               0x53C095
 DWORD RETURN_CGame_Process =                                0x53C09F;
@@ -272,26 +270,6 @@ DWORD RETURN_CHeli_ProcessHeliKill_RETN_Cancel = 0x6DB9E0;
 DWORD RETURN_CHeli_ProcessHeliKill_RETN_Cont_Zero = 0x6DB207;
 DWORD RETURN_CHeli_ProcessHeliKill_6DB437h = 0x6DB437;
 
-#define HOOKPOS_CObject_ProcessBreak                        0x5A0F0F
-DWORD RETURN_CObject_ProcessBreak = 0x5A0F14;
-#define HOOKPOS_CObject_ProcessDamage                       0x5A0E0D
-DWORD RETURN_CObject_ProcessDamage = 0x5A0E13;
-DWORD RETURN_CObject_ProcessDamage_Cancel = 0x5A1241;
-#define HOOKPOS_CObject_ProcessCollision                    0x548DC7
-DWORD RETURN_CObject_ProcessCollision = 0x548DD1;
-DWORD JMP_DynamicObject_Cond_Zero = 0x548E98;
-#define HOOKPOS_CGlass_WindowRespondsToCollision           0x71BC40
-DWORD RETURN_CGlass_WindowRespondsToCollision = 0x71BC48;
-
-#define HOOKPOS_FxManager_c__DestroyFxSystem                0x4A989A
-
-#define HOOKPOS_CTaskSimplyGangDriveBy__ProcessPed          0x62D5A7
-DWORD RETURN_CTaskSimplyGangDriveBy__ProcessPed = 0x62D5AC;
-
-#define HOOKPOS_CAERadioTrackManager__ChooseMusicTrackIndex 0x4EA296
-DWORD RETURN_CAERadioTrackManager__ChooseMusicTrackIndex             = 0x4EA2A0;
-DWORD RETURN_CAERadioTrackManager__ChooseMusicTrackIndex_Regenerate  = 0x04EA286;
-
 CPed* pContextSwitchedPed = 0;
 CVector vecCenterOfWorld;
 FLOAT fFalseHeading;
@@ -311,7 +289,6 @@ bool bCustomCameraRotation = false;
 unsigned char ucTrafficLightState = 0;
 bool bTrafficLightsBlocked = false;
 bool bInteriorSoundsEnabled = true;
-bool bInteriorFurnitureStates[5] = {true, true, true, true, true};
 
 bool bUsingCustomSkyGradient = false;
 BYTE ucSkyGradientTopR = 0;
@@ -337,7 +314,6 @@ PostWeaponFireHandler* m_pPostWeaponFireHandler = NULL;
 BulletImpactHandler* m_pBulletImpactHandler = NULL;
 BulletFireHandler* m_pBulletFireHandler = NULL;
 DamageHandler* m_pDamageHandler = NULL;
-DeathHandler* m_pDeathHandler = NULL;
 FireHandler* m_pFireHandler = NULL;
 ProjectileHandler* m_pProjectileHandler = NULL;
 ProjectileStopHandler* m_pProjectileStopHandler = NULL;
@@ -357,11 +333,6 @@ BlendAnimationHandler* m_pBlendAnimationHandler = NULL;
 ProcessCollisionHandler* m_pProcessCollisionHandler = NULL;
 VehicleCollisionHandler* m_pVehicleCollisionHandler = NULL;
 HeliKillHandler* m_pHeliKillHandler = NULL;
-ObjectDamageHandler* m_pObjectDamageHandler = NULL;
-ObjectBreakHandler* m_pObjectBreakHandler = NULL;
-FxSystemDestructionHandler* m_pFxSystemDestructionHandler = NULL;
-DrivebyAnimationHandler* m_pDrivebyAnimationHandler = NULL;
-
 CEntitySAInterface * dwSavedPlayerPointer = 0;
 CEntitySAInterface * activeEntityForStreaming = 0; // the entity that the streaming system considers active
 
@@ -455,7 +426,6 @@ void HOOK_PreHUDRender ();
 
 void HOOK_CTrafficLights_GetPrimaryLightState ();
 void HOOK_CTrafficLights_GetSecondaryLightState ();
-void HOOK_CTrafficLights_DisplayActualLight ();
 
 void HOOK_CAutomobile__ProcessSwingingDoor ();
 
@@ -495,21 +465,11 @@ void HOOK_CProjectileInfo_Update_FindLocalPlayer_FindLocalPlayerVehicle ();
 
 void HOOK_CHeli_ProcessHeliKill ();
 
-void HOOK_CObject_ProcessDamage ();
-void HOOK_CObject_ProcessBreak ();
-void HOOK_CObject_ProcessCollision ();
-void HOOK_CGlass_WindowRespondsToCollision ();
-
-void HOOK_FxManager_c__DestroyFxSystem ();
-
-void HOOK_CTaskSimpleGangDriveBy__ProcessPed();
-
-void HOOK_CAERadioTrackManager__ChooseMusicTrackIndex ( );
-
 CMultiplayerSA::CMultiplayerSA()
 {
     // Unprotect all of the GTASA code at once and leave it that way
-    SetInitialVirtualProtect();
+    DWORD oldProt;
+    VirtualProtect((LPVOID)0x401000, 0x4A3000, PAGE_EXECUTE_READWRITE, &oldProt);
 
     // Initialize the offsets
     eGameVersion version = pGameInterface->GetGameVersion ();
@@ -540,9 +500,6 @@ CMultiplayerSA::CMultiplayerSA()
 
     m_fAircraftMaxHeight = 800.0f;
 
-    m_fAircraftMaxVelocity = 1.5f;
-    m_fAircraftMaxVelocity_Sq = m_fAircraftMaxVelocity * m_fAircraftMaxVelocity;
-
     m_bHeatHazeEnabled = true;
     m_bHeatHazeCustomized = false;
 }
@@ -554,7 +511,6 @@ void CMultiplayerSA::InitHooks()
     vehicle_lights_init ();
     bSetCenterOfWorld = false;
     bHasProcessedScript = false;
-    m_fNearClipDistance = DEFAULT_NEAR_CLIP_DISTANCE;
 
     eGameVersion version = pGameInterface->GetGameVersion ();
 
@@ -653,7 +609,6 @@ void CMultiplayerSA::InitHooks()
 
     HookInstallCall ( CALL_CTrafficLights_GetPrimaryLightState, (DWORD)HOOK_CTrafficLights_GetPrimaryLightState);
     HookInstallCall ( CALL_CTrafficLights_GetSecondaryLightState, (DWORD)HOOK_CTrafficLights_GetSecondaryLightState);
-    HookInstall ( HOOKPOS_CTrafficLights_DisplayActualLight, (DWORD)HOOK_CTrafficLights_DisplayActualLight, 36 );
 
     HookInstall(HOOKPOS_CEntity_IsOnScreen_FixObjectsScale, (DWORD)HOOK_CEntity_IsOnScreen_FixObjectScale, 7);
 
@@ -699,25 +654,6 @@ void CMultiplayerSA::InitHooks()
     HookInstallCall ( (DWORD)HOOKPOS_CProjectileInfo_FindPlayerVehicle, (DWORD)HOOK_CProjectileInfo_Update_FindLocalPlayer_FindLocalPlayerVehicle );
 
     HookInstall( (DWORD)HOOKPOS_CHeli_ProcessHeliKill, (DWORD)HOOK_CHeli_ProcessHeliKill, 6);
-
-    // Hooks for object break events
-    HookInstall ( HOOKPOS_CObject_ProcessDamage, (DWORD)HOOK_CObject_ProcessDamage, 6 );
-    HookInstall ( HOOKPOS_CObject_ProcessBreak, (DWORD)HOOK_CObject_ProcessBreak, 5 );
-    HookInstall ( HOOKPOS_CObject_ProcessCollision, (DWORD)HOOK_CObject_ProcessCollision, 10 );
-    HookInstall ( HOOKPOS_CGlass_WindowRespondsToCollision, (DWORD)HOOK_CGlass_WindowRespondsToCollision, 8 );
-
-    // Post-destruction hook for FxSystems
-    HookInstall ( HOOKPOS_FxManager_c__DestroyFxSystem, (DWORD)HOOK_FxManager_c__DestroyFxSystem, 5);
-
-    // CTaskSimpleGangDriveBy::ProcessPed hook for disabling certain animations
-    HookInstall(HOOKPOS_CTaskSimplyGangDriveBy__ProcessPed, (DWORD) HOOK_CTaskSimpleGangDriveBy__ProcessPed, 5);
-
-    SString strTrakLkupMd5 = CMD5Hasher::CalculateHexString( PathJoin( GetLaunchPath(), "audio", "CONFIG", "TrakLkup.dat" ) );
-    if ( strTrakLkupMd5 != "528E75D663B8BAE072A01351081A2145" )
-    {
-        // CAERadioTrackManager::ChooseMusicTrackIndex hook for fixing a crash with the steam audio files
-        HookInstall(HOOKPOS_CAERadioTrackManager__ChooseMusicTrackIndex, (DWORD) HOOK_CAERadioTrackManager__ChooseMusicTrackIndex, 10);
-    }
 
     // Disable GTA setting g_bGotFocus to false when we minimize
     MemSet ( (void *)ADDR_GotFocus, 0x90, pGameInterface->GetGameVersion () == VERSION_EU_10 ? 6 : 10 );
@@ -1047,9 +983,6 @@ void CMultiplayerSA::InitHooks()
     
     // Prevent TRAINS spawning with PEDs
     MemPut < BYTE > ( 0x6F7865, 0xEB );
-    MemPut < BYTE > ( 0x6F8E7B, 0xE9 );
-    MemPut < DWORD > ( 0x6F8E7C, 0x109 ); // jmp to 0x6F8F89
-    MemPut < BYTE > ( 0x6F8E80, 0x90 );
 
     // DISABLE PLANES
     MemPut < BYTE > ( 0x6CD2F0, 0xC3 );
@@ -1265,9 +1198,6 @@ void CMultiplayerSA::InitHooks()
 
     // Disable idle cam
     MemPut < BYTE > ( 0x522C80, 0xC3 );
-    
-    // Ignore camera fade state in rendering routine
-    MemSet ( (void*)0x53E9C6, 0x90, 6 );
 
     // Disable radar map hiding when pressing TAB (action key) while on foot
     MemSet ( (void *)0x58FC3E, 0x90, 14 );
@@ -1345,6 +1275,9 @@ void CMultiplayerSA::InitHooks()
     // Force the MrWhoopee music to load even if we are not the driver.
     MemPut < BYTE > ( 0x4F9CCE, 0xCE );
 
+    // Force plane and helicopters music to load even if we are not the driver.
+    MemPut < BYTE > ( 0x4F9C9D, 0xCE );
+
     // Disable re-initialization of DirectInput mouse device by the game
     MemPut < BYTE > ( 0x576CCC, 0xEB );
     MemPut < BYTE > ( 0x576EBA, 0xEB );
@@ -1421,36 +1354,10 @@ void CMultiplayerSA::InitHooks()
     MemPut ( 0x6D2614, &m_fAircraftMaxHeight );
     MemPut ( 0x6D2625, &m_fAircraftMaxHeight );
 
-    // Aircraft Max Velocity
-    MemPut( 0x6DADDF, &m_fAircraftMaxVelocity_Sq );
-    MemPut( 0x6DADEF, &m_fAircraftMaxVelocity );
-    MemPut( 0x6DADF8, &m_fAircraftMaxVelocity );
-    MemPut( 0x6DAE01, &m_fAircraftMaxVelocity );
-
-    // Disable calls to CFireManager::ExtinguishPoint and CWorld::ExtinguishAllCarFiresInArea  
-    // from CWorld::ClearExcitingStuffFromArea
-    MemSet( (void*)0x56A404, 0x90, 0x56A446-0x56A404 );
-
-    // Disable setting the occupied's vehicles health to 75.0f when a burning ped enters it
-    // in CFire::ProcessFire
-    MemSet((void*)0x53A651, 0x90, 0xA);
-
-    // Prevent money change (+12$) when entering a taxi/cabbie (fix for #8332)
-    MemSet ( (void*)0x6D1741, 0x90, 0x6D175F-0x6D1741 );
-
-    // Increase intensity of vehicle tail light corona
-    MemPut < BYTE > ( 0x6E1A22, 0xF0 );
-
-
     InitHooks_CrashFixHacks ();
 
     // Init our 1.3 hooks.
     Init_13 ();
-    InitHooks_LicensePlate ();
-    InitHooks_Direct3D();
-    InitHooks_FixLineOfSightArgs();
-    InitHooks_VehicleDamage();
-    InitHooks_VehicleLights();
 }
 
 
@@ -1468,7 +1375,7 @@ void RemoveFxSystemPointer ( DWORD* pPointer )
 {
     // Look through our list for the pointer
     std::list < DWORD* > ::iterator iter = Pointers_FxSystem.begin ();
-    for ( ; iter != Pointers_FxSystem.end (); ++iter )
+    for ( ; iter != Pointers_FxSystem.end (); iter++ )
     {
         // It exists in our list?
         if ( *iter == pPointer )
@@ -1714,44 +1621,6 @@ void CMultiplayerSA::SetInteriorSoundsEnabled ( bool bEnabled )
     bInteriorSoundsEnabled = bEnabled;
 }
 
-bool CMultiplayerSA::GetInteriorFurnitureEnabled ( char cRoomId )
-{
-    assert ( cRoomId >= 0 && cRoomId <= 4 );
-    return bInteriorFurnitureStates[cRoomId];
-}
-
-void CMultiplayerSA::SetInteriorFurnitureEnabled ( char cRoomId, bool bEnabled )
-{
-    assert ( cRoomId >= 0 && cRoomId <= 4 );
-
-    // 0 = Shop; 1 = Office; 2 = Lounge; 3 = Bedroom; 4 = Kitchen
-    DWORD originalCodeAddresses[] = {0x593D00, 0x593D0E, 0x593D1C, 0x593D2A, 0x593D38};
-    BYTE originalCodes[][5] = {
-        {0xE8, 0x8B, 0x6A, 0x0, 0x0},
-        {0xE8, 0xDD, 0x5D, 0x0, 0x0},
-        {0xE8, 0x1F, 0x3A, 0x0, 0x0},
-        {0xE8, 0x91, 0x2, 0x0, 0x0},
-        {0xE8, 0x73, 0x33, 0x0, 0x0}
-    };
-
-    if ( bEnabled )
-    {
-        MemCpy ( (void*)originalCodeAddresses[cRoomId], &originalCodes[cRoomId], 5 );
-
-        if ( cRoomId == 0 )
-            MemPut < BYTE > ( 0x593CFD, 0x50 );
-    }
-    else
-    {
-        MemSet ( (void*)originalCodeAddresses[cRoomId], 0x90, 5 );
-        
-        if ( cRoomId == 0 )
-            MemPut < BYTE > ( 0x593CFD, 0x90 );
-    }
-
-    bInteriorFurnitureStates[cRoomId] = bEnabled;
-}
-
 void CMultiplayerSA::SetWindVelocity ( float fX, float fY, float fZ )
 {
     //Disable
@@ -1832,21 +1701,6 @@ void CMultiplayerSA::RestoreFarClipDistance ( )
         MemCpy ( (LPVOID)0x560EDD, &originalFstp, 3 );
         MemCpy ( (LPVOID)0x560F18, &originalFstp, 3 );
     }
-}
-
-float CMultiplayerSA::GetNearClipDistance ( void )
-{
-    return m_fNearClipDistance;
-}
-
-void CMultiplayerSA::SetNearClipDistance ( float fDistance )
-{
-    m_fNearClipDistance = Clamp( 0.1f, fDistance, 20.f );
-}
-
-void CMultiplayerSA::RestoreNearClipDistance ( void )
-{
-    m_fNearClipDistance = DEFAULT_NEAR_CLIP_DISTANCE;
 }
 
 float CMultiplayerSA::GetFogDistance ( )
@@ -2021,22 +1875,6 @@ void CMultiplayerSA::ResetSky ( void )
     bUsingCustomSkyGradient = false;
 }
 
-void CMultiplayerSA::SetMoonSize ( int iSize )
-{
-    MemPutFast < BYTE > ( 0x8D4B60, iSize );
-}
-
-int CMultiplayerSA::GetMoonSize ()
-{
-    return *(BYTE *)0x8D4B60;
-}
-
-void CMultiplayerSA::ResetMoonSize ()
-{
-    // Set default moon size 3
-    SetMoonSize ( 3 );
-}
-
 bool CMultiplayerSA::HasWaterColor ( )
 {
     return bUsingCustomWaterColor;
@@ -2135,11 +1973,6 @@ void CMultiplayerSA::SetDamageHandler ( DamageHandler * pDamageHandler )
     m_pDamageHandler = pDamageHandler;
 }
 
-void CMultiplayerSA::SetDeathHandler ( DeathHandler * pDeathHandler )
-{
-    m_pDeathHandler = pDeathHandler;
-}
-
 void CMultiplayerSA::SetFireHandler ( FireHandler * pFireHandler )
 {
     m_pFireHandler = pFireHandler;
@@ -2200,30 +2033,9 @@ void CMultiplayerSA::SetVehicleCollisionHandler ( VehicleCollisionHandler * pHan
     m_pVehicleCollisionHandler = pHandler;
 }
 
-
 void CMultiplayerSA::SetHeliKillHandler ( HeliKillHandler * pHandler )
 {
     m_pHeliKillHandler = pHandler;
-}
-
-void CMultiplayerSA::SetObjectDamageHandler ( ObjectDamageHandler * pHandler )
-{
-    m_pObjectDamageHandler = pHandler;
-}
-
-void CMultiplayerSA::SetObjectBreakHandler ( ObjectBreakHandler * pHandler )
-{
-    m_pObjectBreakHandler = pHandler;
-}
-
-void CMultiplayerSA::SetFxSystemDestructionHandler ( FxSystemDestructionHandler * pHandler )
-{
-    m_pFxSystemDestructionHandler = pHandler;
-}
-
-void CMultiplayerSA::SetDrivebyAnimationHandler(DrivebyAnimationHandler * pHandler)
-{
-    m_pDrivebyAnimationHandler = pHandler;
 }
 
 // What we do here is check if the idle handler has been set
@@ -2929,7 +2741,7 @@ void _declspec(naked) HOOK_FxManager_CreateFxSystem ()
         mov         [esp+12], eax
 
         // The original code we replaced
-        mov         eax, [esp+16]
+        mov         eax, [esp+10]
         mov         edx, [esp+8]
 
         // Jump back to the rest of the function we hooked
@@ -3294,7 +3106,7 @@ train_would_derail:
 static DWORD dwAlphaEntity = 0;
 static bool bEntityHasAlpha = false;
 static unsigned char ucCurrentAlpha [ 1024 ];
-static uint uiAlphaIdx = 0;
+static unsigned char* pCurAlpha = ucCurrentAlpha;
 
 static void SetEntityAlphaHooked ( DWORD dwEntity, DWORD dwCallback, DWORD dwAlpha )
 {
@@ -3324,8 +3136,8 @@ static void SetEntityAlphaHooked ( DWORD dwEntity, DWORD dwCallback, DWORD dwAlp
 
 static RpMaterial* HOOK_GetAlphaValues ( RpMaterial* pMaterial, unsigned char ucAlpha )
 {
-    ucCurrentAlpha[ uiAlphaIdx ] = pMaterial->color.a;
-    uiAlphaIdx = Min( uiAlphaIdx + 1, NUMELMS( ucCurrentAlpha ) - 1 );
+    *pCurAlpha = pMaterial->color.a;
+    pCurAlpha++;
 
     return pMaterial;
 }
@@ -3337,8 +3149,8 @@ static RpMaterial* HOOK_SetAlphaValues ( RpMaterial* pMaterial, unsigned char uc
 }
 static RpMaterial* HOOK_RestoreAlphaValues ( RpMaterial* pMaterial, unsigned char ucAlpha )
 {
-    pMaterial->color.a = ucCurrentAlpha[ uiAlphaIdx ];
-    uiAlphaIdx = Min( uiAlphaIdx + 1, NUMELMS( ucCurrentAlpha ) - 1 );
+    pMaterial->color.a = *pCurAlpha;
+    pCurAlpha++;
 
     return pMaterial;
 }
@@ -3348,7 +3160,7 @@ static void GetAlphaAndSetNewValues ( unsigned char ucAlpha )
     if ( ucAlpha < 255 )
     {
         bEntityHasAlpha = true;
-        uiAlphaIdx = 0;
+        pCurAlpha = ucCurrentAlpha;
         SetEntityAlphaHooked ( dwAlphaEntity, (DWORD)HOOK_GetAlphaValues, 0 );
         SetEntityAlphaHooked ( dwAlphaEntity, (DWORD)HOOK_SetAlphaValues, ucAlpha );
     }
@@ -3359,7 +3171,7 @@ static void RestoreAlphaValues ()
 {
     if ( bEntityHasAlpha )
     {
-        uiAlphaIdx = 0;
+        pCurAlpha = ucCurrentAlpha;
         SetEntityAlphaHooked ( dwAlphaEntity, (DWORD)HOOK_RestoreAlphaValues, 0 );
     }
 }
@@ -3402,7 +3214,7 @@ static void SetVehicleAlpha ( )
     else if ( dwEAEG && pInterface->m_pVehicle->GetModelIndex() == 0x20A )
     {
         bEntityHasAlpha = true;
-        uiAlphaIdx = 0;
+        pCurAlpha = ucCurrentAlpha;
         SetEntityAlphaHooked ( dwAlphaEntity, (DWORD)HOOK_GetAlphaValues, 0 );
         MemPutFast < DWORD > ( 0x5332D6, (DWORD)CVehicle_EAEG );
         SetEntityAlphaHooked ( dwAlphaEntity, (DWORD)HOOK_SetAlphaValues, 0 );
@@ -3815,10 +3627,8 @@ void CMultiplayerSA::Reset ( void )
     m_pDrawRadarAreasHandler = NULL;
     DisableAllVehicleWeapons ( false );
     m_pDamageHandler = NULL;
-    m_pDeathHandler = NULL;
     m_pFireHandler = NULL;
     m_pRender3DStuffHandler = NULL;
-    m_pFxSystemDestructionHandler = NULL;
 }
 
 
@@ -3973,16 +3783,6 @@ void CMultiplayerSA::SetLocalStatValue ( unsigned short usStat, float fValue )
 }
 
 
-float CMultiplayerSA::GetLocalStatValue ( unsigned short usStat )
-{
-    if ( usStat < MAX_FLOAT_STATS )
-        return localStatsData.StatTypesFloat [usStat];
-    else if ( usStat >= STATS_OFFSET && usStat < MAX_INT_FLOAT_STATS )
-        return (float)localStatsData.StatTypesInt [usStat - STATS_OFFSET];
-    return 0;
-}
-
-
 void CMultiplayerSA::SetLocalStatsStatic ( bool bStatic )
 {
     bLocalStatsStatic = bStatic;
@@ -4083,31 +3883,6 @@ void _declspec(naked) HOOK_CTrafficLights_GetSecondaryLightState ()
         popad
         mov al, ucDesignatedLightState
         retn
-    }
-}
-
-void _declspec(naked) HOOK_CTrafficLights_DisplayActualLight ()
-{
-    _asm pushad
-
-    if ( ucTrafficLightState == 2 )
-    {
-        ucDesignatedLightState = 0;
-    }
-    else if ( ucTrafficLightState == 9 )
-    {
-        ucDesignatedLightState = 1;
-    }
-    else
-    {
-        ucDesignatedLightState = 2;
-    }
-
-    _asm
-    {
-        popad
-        movzx eax, ucDesignatedLightState
-        jmp RETURN_CTrafficLights_DisplayActualLight
     }
 }
 
@@ -5143,20 +4918,6 @@ void CMultiplayerSA::SetAltWaterOrderEnabled ( bool bEnable )
     }
 }
 
-
-//
-// Notify core when rendering grass so we can do optimal things
-//
-void CPlantMgr_Render_Pre( void )
-{
-    g_pCore->NotifyRenderingGrass( true );
-}
-
-void CPlantMgr_Render_Post( void )
-{
-    g_pCore->NotifyRenderingGrass( false );
-}
-
 // The purpose of these hooks is to divide plant (grass) rendering in two:
 // rather than render *all* grass before or after the water like SA does, we render
 // underwater plants before the water and above-water plants after. This way, we have
@@ -5168,20 +4929,12 @@ void _declspec(naked) HOOK_RenderScene_Plants ()
 {
     _asm
     {
-        pushad
-        call    CPlantMgr_Render_Pre
-        popad
-        
         push 1                  // bRenderingBeforeWater
         movzx eax, bl           // bCamBelowWater
         push eax
         mov eax, 0x5DBAE0       // CPlantMgr::Render
         call eax
         add esp, 8
-
-        pushad
-        call    CPlantMgr_Render_Post
-        popad
         ret
     }
 }
@@ -5190,20 +4943,12 @@ void _declspec(naked) HOOK_RenderScene_end ()
 {
     _asm
     {
-        pushad
-        call    CPlantMgr_Render_Pre
-        popad
-
         push 0                  // bRenderingBeforeWater
         movzx eax, bl           // bCamBelowWater
         push eax
         mov eax, 0x5DBAE0       // CPlantMgr::Render
         call eax
         add esp, 8
-
-        pushad
-        call    CPlantMgr_Render_Post
-        popad
 
         pop ebx
         add esp, 8
@@ -5568,55 +5313,31 @@ void _declspec(naked) HOOK_CPhysical_ProcessCollisionSectorList ()
     }
 }
 
-// Ped animation matrix array gets corrupted sometimes by unknown thing
-// Hack fix for now is to validate each matrix before it is used
+
+// If matrix looks bad, fix it
 void _cdecl CheckMatrix ( float* pMatrix )
 {
-    // Peek at IEEE 754 float data to quickly check if any element is outside range of -2 to 2 or is NaN
-    int* p = (int*)pMatrix;
-    int RotBits = p[0] | p[1] | p[2]
-                | p[4] | p[5] | p[6]
-                | p[8] | p[9] | p[10];
+    if ( abs ( pMatrix[0] ) < 1.1f )
+        return;
 
-    int PosBits = p[12] | p[13] | p[14];
+    float scale = 0.0f;
 
-    // If rotational part is outside -2 to 2 range, then flag fix
-    bool bFix = ( RotBits & 0x40000000 ) != 0;
-  
-    // If positional part is outside -2 to 2 range, then do further check for -10 to 10 range
-    if ( PosBits & 0x40000000 )
-    {
-        for ( uint i = 12 ; i < 15 ; i++ )
-        {
-            float f = pMatrix[i];
-            if ( f < -10 || f > 10 || _isnan( f ) )
-                bFix = true;
-        }
-    }
+    pMatrix[0] = scale;
+    pMatrix[1] = 0;
+    pMatrix[2] = 0;
 
-    // Fix if required
-    if ( bFix )
-    {
-        float scale = 0.0f;
+    pMatrix[4] = 0;
+    pMatrix[5] = scale;
+    pMatrix[6] = 0;
 
-        pMatrix[0] = scale;
-        pMatrix[1] = 0;
-        pMatrix[2] = 0;
+    pMatrix[7] = 0;
+    pMatrix[8] = 0;
+    pMatrix[10] = scale;
 
-        pMatrix[4] = 0;
-        pMatrix[5] = scale;
-        pMatrix[6] = 0;
-
-        pMatrix[7] = 0;
-        pMatrix[8] = 0;
-        pMatrix[10] = scale;
-
-        pMatrix[12] = 0;
-        pMatrix[13] = 0;
-        pMatrix[14] = 1;
-    }
+    pMatrix[12] = 0;
+    pMatrix[13] = 0;
+    pMatrix[14] = 1;
 }
-
 
 // hooked at 7C5A5C/7C5A9C 5 bytes
 void _declspec(naked) HOOK_CheckAnimMatrix ()
@@ -5648,7 +5369,16 @@ void _cdecl SaveVehColors ( DWORD dwThis )
     CVehicle* pVehicle = pGameInterface->GetPools ()->GetVehicle ( (DWORD *)dwThis );
     if ( pVehicle )
     {
-        pVehicle->GetColor ( &vehColors[0], &vehColors[1], &vehColors[2], &vehColors[3], true );
+        pVehicle->GetColor ( &vehColors[0], &vehColors[1], &vehColors[2], &vehColors[3], 0 );
+
+        // 0xFF00FF and 0x00FFFF both result in black for some reason
+        for ( uint i = 0 ; i < NUMELMS( vehColors ) ; i++ )
+        {
+            if ( vehColors[i] == 0xFF00FF )
+                vehColors[i] = 0xFF01FF;
+            if ( vehColors[i] == 0x00FFFF )
+                vehColors[i] = 0x01FFFF;
+        }
     }
 }
 
@@ -5763,11 +5493,8 @@ bool CheckHasSuspensionChanged ( void )
     {
         // Check our suspension interface has a valid vehicle and return the suspension changed marker
         CVehicle* pVehicle = pSuspensionInterface->m_pVehicle;
-        if ( !pVehicle )
-            return false;
-
         CModelInfo* pModelInfo = pGameInterface->GetModelInfo ( pVehicle->GetModelIndex () );
-        if ( pModelInfo && ( pModelInfo->IsCar() || pModelInfo->IsMonsterTruck() ) )
+        if ( pVehicle && pModelInfo && ( pModelInfo->IsCar() || pModelInfo->IsMonsterTruck() ) )
             return pVehicle->GetHandlingData()->HasSuspensionChanged ( );
         else
             return false;
@@ -6238,9 +5965,8 @@ IsOnScreen_IsObject:
     }
 }
 CVehicleSAInterface * pCollisionVehicle = NULL;
-void TriggerVehicleCollisionEvent ( )
+void TriggerVehicleDamageEvent ( )
 {
-
     if ( pCollisionVehicle )
     {
         CEntitySAInterface * pEntity = pCollisionVehicle->m_pCollidedEntity;
@@ -6251,7 +5977,7 @@ void TriggerVehicleCollisionEvent ( )
             {
                 if ( m_pVehicleCollisionHandler )
                 {
-                    TIMING_CHECKPOINT( "+TriggerVehColEvent" );
+                    TIMING_CHECKPOINT( "+TriggerVehDamEvent" );
                     if ( pEntity->nType == ENTITY_TYPE_VEHICLE )
                     {
                         CVehicleSAInterface * pInterface = static_cast < CVehicleSAInterface* > ( pEntity );
@@ -6259,12 +5985,10 @@ void TriggerVehicleCollisionEvent ( )
                     }
                     else
                     {
-                        m_pVehicleCollisionHandler ( pCollisionVehicle, pEntity, pEntity->m_nModelIndex, pCollisionVehicle->m_fDamageImpulseMagnitude, 0.0f,                                  pCollisionVehicle->m_usPieceType, pCollisionVehicle->m_vecCollisionPosition, pCollisionVehicle->m_vecCollisionImpactVelocity );
+                        m_pVehicleCollisionHandler ( pCollisionVehicle, pEntity, pEntity->m_nModelIndex, pCollisionVehicle->m_fDamageImpulseMagnitude, 0.0f, pCollisionVehicle->m_usPieceType, pCollisionVehicle->m_vecCollisionPosition, pCollisionVehicle->m_vecCollisionImpactVelocity );
                     }
-                    TIMING_CHECKPOINT( "-TriggerVehColEvent" );
+                    TIMING_CHECKPOINT( "-TriggerVehDamEvent" );
                 }
-
-
             }
         }
     }
@@ -6282,7 +6006,7 @@ void _declspec(naked) HOOK_CEventVehicleDamageCollision ( )
         pushad
         mov pCollisionVehicle, ecx
     }
-    TriggerVehicleCollisionEvent ( );
+    TriggerVehicleDamageEvent ( );
     
     // do the replaced code and return back as if nothing happened.
     _asm
@@ -6306,7 +6030,7 @@ void _declspec(naked) HOOK_CEventVehicleDamageCollision_Plane ( )
         pushad
         mov pCollisionVehicle, ecx
     }
-    TriggerVehicleCollisionEvent ( );
+    TriggerVehicleDamageEvent ( );
 
     // do the replaced code and return back as if nothing happened.
     _asm
@@ -6329,7 +6053,7 @@ void _declspec(naked) HOOK_CEventVehicleDamageCollision_Bike ( )
         pushad
         mov pCollisionVehicle, ecx
     }
-    TriggerVehicleCollisionEvent ( );
+    TriggerVehicleDamageEvent ( );
 
     // do the replaced code and return back as if nothing happened.
     _asm
@@ -6383,21 +6107,21 @@ void CMultiplayerSA::SetAutomaticVehicleStartupOnPedEnter ( bool bSet )
         MemCpyFast ( &originalCode[0], (const void *)0x64BC0D, 6 );
 
     if ( bSet )
-        MemCpy ( (char *)0x64BC0D, originalCode, 6 );
+        MemCpyFast ( (char *)0x64BC0D, originalCode, 6 );
     else
-        MemSet ( (char *)0x64BC0D, 0x90, 6 );
+        MemSetFast ( (char *)0x64BC0D, 0x90, 6 );
 }
 
 // Storage
 CVehicleSAInterface * pHeliKiller = NULL;
-CEntitySAInterface * pHitByHeli = NULL;
+CPedSAInterface * pPedKilledByHeli = NULL;
 bool CallHeliKillEvent ( )
 {
     // Is our handler alive
     if ( m_pHeliKillHandler )
     {
         // Return our handlers return
-        return m_pHeliKillHandler ( pHeliKiller, pHitByHeli );
+        return m_pHeliKillHandler ( pHeliKiller, pPedKilledByHeli );
     }
     // Return true else
     return true;
@@ -6417,7 +6141,7 @@ void _declspec(naked) HOOK_CHeli_ProcessHeliKill ( )
         pushfd
         pushad
         mov pHeliKiller, esi
-        mov pHitByHeli, edi
+        mov pPedKilledByHeli, edi
     }
     // Call our event
     if ( CallHeliKillEvent ( ) == false )
@@ -6443,428 +6167,5 @@ void _declspec(naked) HOOK_CHeli_ProcessHeliKill ( )
 
 lp1:        jmp RETURN_CHeli_ProcessHeliKill_6DB437h
         }
-    }
-}
-
-
-CObjectSAInterface * pDamagedObject = NULL;
-CEntitySAInterface * pObjectAttacker = NULL;
-float fNewObjectHealth = NULL;
-bool bObjectDamaged = true;
-
-bool TriggerObjectDamageEvent ( )
-{
-    if ( m_pObjectDamageHandler && pDamagedObject && fNewObjectHealth )
-    {
-        float fHealth = *(float *)( (DWORD)pDamagedObject + 340 );
-        float fLoss = fHealth - fNewObjectHealth;
-
-        return m_pObjectDamageHandler ( pDamagedObject, fLoss, pObjectAttacker );
-    }
-    return true;
-}
-
-void _declspec(naked) HOOK_CObject_ProcessDamage ( )
-{
-    // .text:005A0DF7                 mov     ecx, [esi+160h]
-    // .text:005A0DFD                 fld     [esp+0D4h+arg_0]
-    // .text:005A0E04                 fmul    dword ptr [ecx+18h]
-    // .text:005A0E07                 fsubr   dword ptr [esi+154h]
-    // .text:005A0E0D                 fst     dword ptr [esi+154h]
-
-    _asm
-    {
-        pushad
-        mov     pDamagedObject, esi
-        mov     pObjectAttacker, edi
-        fst     dword ptr fNewObjectHealth
-    }
-    if ( TriggerObjectDamageEvent ( ) )
-    {
-        bObjectDamaged = true;
-        _asm
-        {
-            popad
-            fst     dword ptr [esi+154h]
-            jmp     RETURN_CObject_ProcessDamage
-        }
-    }
-    else
-    {
-        bObjectDamaged = false;
-        _asm
-        {
-            popad
-            ffree   st(0)
-            fdecstp
-            jmp     RETURN_CObject_ProcessDamage_Cancel
-        }
-    }
-}
-
-unsigned char ucColDamageEffect = NULL;
-bool TriggerObjectBreakEvent ( )
-{
-    if ( m_pObjectBreakHandler && pDamagedObject )
-    {
-        return m_pObjectBreakHandler ( pDamagedObject, pObjectAttacker );
-    }
-    return true;
-}
-
-void _declspec(naked) HOOK_CObject_ProcessBreak ( )
-{
-    _asm pushad
-    ucColDamageEffect = *(unsigned char*)((DWORD)pDamagedObject + 324);
-    
-    if ( ucColDamageEffect != NULL  )
-    {
-        if ( ucColDamageEffect == 0xC8 || ucColDamageEffect == 0xCA || ucColDamageEffect == 1 || ucColDamageEffect == 0x14 || ucColDamageEffect == 0x15 )
-        {
-            if ( !TriggerObjectBreakEvent ( ) )
-            {
-                bObjectDamaged = false;
-                _asm
-                {
-                    popad
-                    jmp     RETURN_CObject_ProcessDamage_Cancel
-                }
-            }
-        }
-    }
-    
-    _asm
-    {
-        popad
-        cmp     eax, 0C9h
-        jmp     RETURN_CObject_ProcessBreak
-    }
-}
-
-void _declspec(naked) HOOK_CObject_ProcessCollision ( )
-{
-    if ( bObjectDamaged )
-    {
-        _asm
-        {
-            test    byte ptr [esi+1Ch], 1
-            jnz     checkfordynamic
-            jmp     RETURN_CObject_ProcessCollision
-
-        checkfordynamic:
-            jmp     JMP_DynamicObject_Cond_Zero
-        }
-    }
-    else
-    {
-        _asm
-        {
-            jmp     RETURN_CObject_ProcessCollision
-        }
-    }
-}
-
-void _declspec(naked) HOOK_CGlass_WindowRespondsToCollision ()
-{
-    _asm
-    {
-        pushad
-        mov ecx, [esp+4]
-        mov pDamagedObject, ecx
-    }
-    pObjectAttacker = NULL;
-
-    if ( TriggerObjectBreakEvent () )
-    {
-        _asm
-        {
-            popad
-            
-            sub esp, 68h
-            push esi
-            mov esi, [esp+6Ch+4]
-            jmp RETURN_CGlass_WindowRespondsToCollision
-        }
-    }
-    else
-    {
-        _asm
-        {
-            popad
-            retn
-        }
-    }
-}
-
-void * pFxSystemToBeDestroyed;
-void FxManager_c__DestroyFxSystem()
-{
-    if (m_pFxSystemDestructionHandler)
-    {
-        m_pFxSystemDestructionHandler(pFxSystemToBeDestroyed);
-    }
-}
-
-void _declspec(naked) HOOK_FxManager_c__DestroyFxSystem ()
-{
-    _asm
-    {
-        mov pFxSystemToBeDestroyed, edi
-        pushad
-    }
-
-    FxManager_c__DestroyFxSystem();
-
-    _asm
-    {
-        popad
-
-        // Replaced code
-        add esp, 4
-        pop edi
-        pop ebx
-        pop ecx
-        retn 4
-    }
-}
-
-DWORD pProcessedGangDriveBySimpleTask;
-void CTaskSimpleGangDriveBy__ProcessPed()
-{
-    AnimationId *pRequiredAnim = ((AnimationId*) (pProcessedGangDriveBySimpleTask + 0x24));
-    AssocGroupId requiredAnimGroup = *((AssocGroupId*) (pProcessedGangDriveBySimpleTask + 0x28));
-
-    if (m_pDrivebyAnimationHandler != NULL)
-        *pRequiredAnim = m_pDrivebyAnimationHandler(*pRequiredAnim, requiredAnimGroup);
-}
-
-void _declspec(naked) HOOK_CTaskSimpleGangDriveBy__ProcessPed()
-{
-    // esi contains 'this'
-    _asm
-    {
-        mov pProcessedGangDriveBySimpleTask, esi
-        pushad
-    }
-    CTaskSimpleGangDriveBy__ProcessPed();
-    _asm
-    {
-        popad;
-        // Replaced code
-        cmp[esi + 28h], edi;    // .text:0062D5A7
-        jnz 0x62D5C1;           // .text:0062D5AA
-        // Return to original code
-        jmp RETURN_CTaskSimplyGangDriveBy__ProcessPed;
-    }
-     
-}
-
-
-eRadioStationID dwStationID = UNKNOWN;
-BYTE bTrackID = 0;
-DWORD dwNumberOfTracks = 0;
-
-DWORD pTrackNumbers[] = {
-    0x2, // radio off, somewhere 2 is subtracted from this so that's why it's 2
-    0xB, // playback fm
-    0xF, // k-rose
-    0xF, // k-dst
-    0xE, // bounce fm
-    0x10, // sf-ur
-    0xE, // rls
-    0xD, // radio x
-    0xD, // csr
-    0xE, // k-jah
-    0xC, // master sounds
-    0x1F,
-};
-
-
-bool ChooseMusicTrackIndex_SteamFix ( )
-{
-    // update the number of tracks from the array above as it has the new values
-    dwNumberOfTracks = pTrackNumbers[dwStationID];
-
-    // switch contains all radio stations and music that has been removed from the game
-
-    switch ( dwStationID )
-    {
-    case Playback_FM:
-        {
-            // disable "Critical Beatdown"
-            if ( bTrackID == 9 )
-            {
-                return true;
-            }
-        }
-        break;
-    case K_Rose:
-        break;
-    case K_DST:
-        {
-            // disable "Running Down A Dream"
-            if ( bTrackID == 0 )
-            {
-                return true;
-            }
-            // disable "Woman To Woman"
-            else if ( bTrackID == 2 )
-            {
-                return true;
-            }
-        }
-        break;
-    case BOUNCE_FM:
-        {
-            // disable "You Dropped A Bomb On Me"
-            if ( bTrackID == 3 )
-            {
-                return true;
-            }
-            // disable "Yum Yum"
-            else if ( bTrackID == 8 )
-            {
-                return true;
-            }
-            // disable "Running Away"
-            else if ( bTrackID == 15 )
-            {
-                return true;
-            }
-        }
-        break;
-    case SF_UR:
-        break;
-    case RLS:
-        {
-            // "I Don't Give A f*ck"
-            if ( bTrackID == 1 )
-            {
-                return true;
-            }
-            // disable "Express Yourself"
-            else if ( bTrackID == 6 )
-            {
-                return true;
-            }
-        }
-        break;
-    case RADIO_X:
-        {
-            // disable "Hellraiser"
-            if ( bTrackID == 6 )
-            {
-                return true;
-            }
-            // disable "Killing in the Name of"
-            else if ( bTrackID == 7 )
-            {
-                return true;
-            }
-        }
-        break;
-    case CSR_1039:
-        break;
-    case K_JAH_WEST:
-        {
-            // disable "Ring My Bell"
-            if ( bTrackID == 2 )
-            {
-                return true;
-            }
-            // disable "Don't Let It Go To Your Head"
-            else if ( bTrackID == 3 )
-            {
-                return true;
-            }
-        }
-        break;
-    case Master_Sounds:
-        {
-            // disable "Express Yourself"
-            if ( bTrackID == 0 )
-            {
-                return true;
-            }
-            // disable "Rock Creek Park"
-            else if ( bTrackID == 5 )
-            {
-                return true;
-            }
-            // disable "Funky President"
-            else if ( bTrackID == 7 )
-            {
-                return true;
-            }
-            // disable "Grunt"
-            else if ( bTrackID == 8 )
-            {
-                return true;
-            }
-            // disable "Soul power"
-            else if ( bTrackID == 11 )
-            {
-                return true;
-            }
-            // disable "The payback"
-            else if ( bTrackID == 16 )
-            {
-                return true;
-            }
-        }
-        break;
-    case WCTR:
-        break;
-    }
-#ifdef PRINT_SONGID
-    OutputDebugLine(SString("%i %i", dwStationID, bTrackID ));
-#endif
-    // song is allowed
-    return false;
-}
-/*
-    This hook is ultra important as of 09/11/2014 as steam has released a patch which changes the audio files and causes the following consequenses:
-        1) a division by zero when trying to start deleted songs due to the track list being malformed
-        2) the game getting stuck on a specific song and never carrying on as the game tries to play 15 songs before restarting on a channel that only has 12
-
-    These are as a result of the fact that steam updated gta-sa.exe and gta_sa.exe is our old exe which contains the arrays the game had originally for audio files
-    All the files related to the deleted audio are zeroed and decompress to 5kb 0 length files which includes intros and outros.
-*/
-void _declspec(naked) HOOK_CAERadioTrackManager__ChooseMusicTrackIndex ( )
-{
-    // esi is our station id    
-    // al has the random number picked (music id the game wants to play)
-
-
-    _asm
-    {
-        add esp, 8              // fix the stack from the function call above as we overrote this instruction
-        pushad                  // save our registers
-        mov dwStationID, esi    // save esi, we need the station ID above
-        mov bTrackID, al        // save our track ID which we need to figure out if we can play it.
-    }
-
-    // returns true if this is a restricted song
-    if ( ChooseMusicTrackIndex_SteamFix ( ) )
-    {
-        _asm
-        {
-            // pop the stack
-            popad
-            // go back to generating a number again, this is so that we don't get stuck in an infinite loop if we tried to increment or decrement
-            // SA tries to avoid playing the same songs close together so it won't play anything that's already played once until we have done a full loop
-            // as such generating a new ID is better than trying to fix it (this is how the game naturally works anyway)
-            jmp RETURN_CAERadioTrackManager__ChooseMusicTrackIndex_Regenerate
-        }
-    }
-    // looks good, carry on
-    _asm
-    {
-        // pop the stack
-        popad
-        // this number of tracks needs fixing because we need the game to know about the deletions here as it is used for the wrap around logic of radio 
-        mov ecx, dwNumberOfTracks
-        // jump back to normal processing
-        jmp RETURN_CAERadioTrackManager__ChooseMusicTrackIndex
     }
 }

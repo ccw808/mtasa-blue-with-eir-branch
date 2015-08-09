@@ -17,6 +17,7 @@
 #include "CElement.h"
 #include "CEvents.h"
 #include "CObjectManager.h"
+#include "Utils.h"
 
 #include "CEasingCurve.h"
 #include "TInterpolation.h"
@@ -42,9 +43,6 @@ public:
     void                        GetRotation             ( CVector & vecRotation );
     void                        SetRotation             ( const CVector& vecRotation );
 
-    void                        GetMatrix               ( CMatrix& matrix );
-    void                        SetMatrix               ( const CMatrix& matrix );
-
     bool                        IsMoving                ( void );
     void                        Move                    ( const CPositionRotationAnimation& a_rMoveAnimation );
     void                        StopMoving              ( void );
@@ -56,8 +54,8 @@ public:
     inline unsigned short       GetModel                ( void )                        { return m_usModel; }
     inline void                 SetModel                ( unsigned short usModel )      { m_usModel = usModel; }
 
-    const CVector&              GetScale                ( void )                        { return m_vecScale; }
-    inline void                 SetScale                ( const CVector& vecScale )     { m_vecScale = vecScale; }
+    inline float                GetScale                ( void )                        { return m_fScale; }
+    inline void                 SetScale                ( float fScale )                { m_fScale = fScale; }
 
     inline bool                 GetCollisionEnabled     ( void )                        { return m_bCollisionsEnabled; }
     inline void                 SetCollisionEnabled     ( bool bCollisionEnabled )      { m_bCollisionsEnabled = bCollisionEnabled; }
@@ -83,7 +81,7 @@ private:
     CVector                     m_vecRotation;
     unsigned char               m_ucAlpha;
     unsigned short              m_usModel;
-    CVector                     m_vecScale;
+    float                       m_fScale;
     bool                        m_bIsStatic;
     float                       m_fHealth;
     bool                        m_bBreakable;

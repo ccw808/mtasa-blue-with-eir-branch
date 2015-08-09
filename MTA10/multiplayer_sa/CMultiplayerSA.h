@@ -23,26 +23,9 @@
 #include "CPopulationSA.h"
 #include "multiplayersa_init.h"
 #include "CLimitsSA.h"
-
 #include "CRemoteDataSA.h"
-class CRemoteDataSA;
-#define DEFAULT_NEAR_CLIP_DISTANCE  ( 0.3f )
 
-enum eRadioStationID
-{
-    UNKNOWN = 0,
-    Playback_FM,
-    K_Rose,
-    K_DST,
-    BOUNCE_FM,
-    SF_UR,
-    RLS,
-    RADIO_X,
-    CSR_1039,
-    K_JAH_WEST,
-    Master_Sounds,
-    WCTR,
-};
+class CRemoteDataSA;
 
 class CMultiplayerSA : public CMultiplayer
 {
@@ -68,11 +51,6 @@ public:
     void                        InitHooks_Files ( void );
     void                        InitHooks_Weapons ( void );
     void                        InitHooks_Rendering ( void );
-    void                        InitHooks_LicensePlate ( void );
-    void                        InitHooks_VehicleLights ( void );
-    void                        InitHooks_VehicleDamage ( void );
-    void                        InitHooks_Direct3D ( void );
-    void                        InitHooks_FixLineOfSightArgs ( void );
     CRemoteDataStorage *        CreateRemoteDataStorage     ();
     void                        DestroyRemoteDataStorage    ( CRemoteDataStorage* pData );
     void                        AddRemoteDataStorage        ( CPlayerPed* pPed, CRemoteDataStorage* pData );
@@ -92,13 +70,11 @@ public:
     void                        DisableBirds                ( bool bDisabled );
     void                        DisableQuickReload          ( bool bDisable );
     void                        DisableCloseRangeDamage     ( bool bDisable );
-    void                        DisableBadDrivebyHitboxes   ( bool bDisable )  { m_bBadDrivebyHitboxesDisabled = bDisable; }
 
     bool                        GetExplosionsDisabled       ();
     void                        DisableExplosions           ( bool bDisabled );
     void                        SetExplosionHandler         ( ExplosionHandler * pExplosionHandler );
     void                        SetDamageHandler            ( DamageHandler * pDamageHandler );
-    void                        SetDeathHandler             ( DeathHandler * pDeathHandler );
     void                        SetProjectileHandler        ( ProjectileHandler * pProjectileHandler );
     void                        SetProjectileStopHandler    ( ProjectileStopHandler * pProjectileHandler );
     void                        SetFireHandler              ( FireHandler * pFireHandler );
@@ -114,20 +90,13 @@ public:
     void                        SetBlendAnimationHandler    ( BlendAnimationHandler * pHandler );
     void                        SetProcessCollisionHandler  ( ProcessCollisionHandler * pHandler );
     void                        SetVehicleCollisionHandler  ( VehicleCollisionHandler * pHandler );
-    void                        SetVehicleDamageHandler     ( VehicleDamageHandler * pHandler );
     void                        SetHeliKillHandler          ( HeliKillHandler * pHandler );
-    void                        SetObjectDamageHandler      ( ObjectDamageHandler * pHandler );
-    void                        SetObjectBreakHandler       ( ObjectBreakHandler * pHandler );
     void                        SetWaterCannonHitHandler    ( WaterCannonHitHandler * pHandler );
-    void                        SetVehicleFellThroughMapHandler ( VehicleFellThroughMapHandler * pHandler );
     void                        SetGameObjectDestructHandler    ( GameObjectDestructHandler * pHandler );
     void                        SetGameVehicleDestructHandler   ( GameVehicleDestructHandler * pHandler );
     void                        SetGamePlayerDestructHandler    ( GamePlayerDestructHandler * pHandler );
-    void                        SetGameProjectileDestructHandler( GameProjectileDestructHandler * pHandler );
     void                        SetGameModelRemoveHandler       ( GameModelRemoveHandler * pHandler );
     void                        SetGameEntityRenderHandler  ( GameEntityRenderHandler * pHandler );
-    void                        SetFxSystemDestructionHandler ( FxSystemDestructionHandler * pHandler );
-    void                        SetDrivebyAnimationHandler  (DrivebyAnimationHandler * pHandler);
 
     void                        AllowMouseMovement          ( bool bAllow );
     void                        DoSoundHacksOnLostFocus     ( bool bLostFocus );
@@ -148,17 +117,12 @@ public:
     void                        RebuildMultiplayerPlayer    ( CPed * player );
     bool                        GetInteriorSoundsEnabled    ();
     void                        SetInteriorSoundsEnabled    ( bool bEnabled );
-    bool                        GetInteriorFurnitureEnabled ( char cRoomId );
-    void                        SetInteriorFurnitureEnabled ( char cRoomId, bool bEnabled );
     void                        SetWindVelocity             ( float fX, float fY, float fZ );
     void                        GetWindVelocity             ( float& fX, float& fY, float& fZ );
     void                        RestoreWindVelocity         ( void );
     float                       GetFarClipDistance          ( void );
     void                        SetFarClipDistance          ( float fDistance );
     void                        RestoreFarClipDistance      ( void );
-    float                       GetNearClipDistance         ( void );
-    void                        SetNearClipDistance         ( float fDistance );
-    void                        RestoreNearClipDistance     ( void );
     float                       GetFogDistance              ( void );
     void                        SetFogDistance              ( float fDistance );
     void                        RestoreFogDistance          ( void );
@@ -168,9 +132,6 @@ public:
     float                       GetSunSize                  ( );
     void                        SetSunSize                  ( float fSize );
     void                        ResetSunSize                ( );
-    void                        SetMoonSize                 ( int iSize );
-    int                         GetMoonSize                 ( );
-    void                        ResetMoonSize               ( );
 
     void                        SetNightVisionEnabled       ( bool bEnabled );
     void                        SetThermalVisionEnabled     ( bool bEnabled );
@@ -189,7 +150,6 @@ public:
     void                        SetBulletFireHandler        ( BulletFireHandler* pHandler );
     void                        SetDrawRadarAreasHandler    ( DrawRadarAreasHandler * pRadarAreasHandler );
     void                        SetRender3DStuffHandler     ( Render3DStuffHandler * pHandler );
-    void                        SetPreRenderSkyHandler      ( PreRenderSkyHandler * pHandler );
 
     void                        Reset                       ();
 
@@ -212,7 +172,6 @@ public:
     void                        SetTrafficLightsLocked      ( bool bLocked );
 
     void                        SetLocalStatValue           ( unsigned short usStat, float fValue );
-    float                       GetLocalStatValue           ( unsigned short usStat );
     void                        SetLocalStatsStatic         ( bool bStatic );
 
     void                        SetLocalCameraRotation      ( float fRotation );
@@ -235,16 +194,12 @@ public:
     void                        SetSuspensionEnabled        ( bool bEnabled );
     bool                        IsSuspensionEnabled         ( void )                    { return m_bSuspensionEnabled; };
 
-    virtual void                FlushClothesCache           ( void );
     virtual void                SetFastClothesLoading       ( EFastClothesLoading fastClothesLoading );
     virtual void                SetLODSystemEnabled         ( bool bEnable );
     virtual void                SetAltWaterOrderEnabled     ( bool bEnable );
 
     float                       GetAircraftMaxHeight        ( void )                    { return m_fAircraftMaxHeight; };
     void                        SetAircraftMaxHeight        ( float fHeight )           { m_fAircraftMaxHeight = fHeight; };
-
-    float                       GetAircraftMaxVelocity      ( void )                    { return m_fAircraftMaxVelocity; };
-    void                        SetAircraftMaxVelocity      ( float fVelocity )         { m_fAircraftMaxVelocity = fVelocity; m_fAircraftMaxVelocity_Sq = fVelocity * fVelocity; };
 
     void                        SetAutomaticVehicleStartupOnPedEnter    ( bool bSet );
 
@@ -255,17 +210,10 @@ public:
     virtual void                GetRwResourceStats          ( SRwResourceStats& outStats );
     virtual void                GetClothesCacheStats        ( SClothesCacheStats& outStats );
     virtual void                SetIsMinimizedAndNotConnected ( bool bIsMinimizedAndNotConnected );
-    virtual void                SetMirrorsEnabled           ( bool bEnabled );
-
-
-    void                        SetBoatWaterSplashEnabled   ( bool bEnabled );
-    void                        SetTyreSmokeEnabled         ( bool bEnabled );
-
 
     CVector                     m_vecAkimboTarget;
     bool                        m_bAkimboTargetUp;
     static char*                ms_PlayerImgCachePtr;
-    bool                        m_bBadDrivebyHitboxesDisabled;
 private:
     bool                        m_bSuspensionEnabled;
     std::vector < char >        m_PlayerImgCache;
@@ -275,11 +223,8 @@ private:
     bool                        m_bEnabledAltWaterOrder;
     bool                        m_bEnabledClothesMemFix;
     float                       m_fAircraftMaxHeight;
-    float                       m_fAircraftMaxVelocity;
-    float                       m_fAircraftMaxVelocity_Sq;
     bool                        m_bHeatHazeEnabled;
     bool                        m_bHeatHazeCustomized;
-    float                       m_fNearClipDistance;
 
 /*  VOID                        SetPlayerShotVectors(CPlayerPed* player, Vector3D * vecTarget, Vector3D * vecStart);
     VOID                        SetPlayerCameraVectors(CPlayerPed* player, Vector3D * vecSource, Vector3D * vecFront);

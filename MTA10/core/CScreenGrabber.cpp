@@ -39,8 +39,7 @@ public:
     virtual void                DoPulse                         ( void );
     virtual void                QueueScreenShot                 ( uint uiSizeX, uint uiSizeY, uint uiQuality, PFN_SCREENSHOT_CALLBACK pfnScreenShotCallback );
     virtual void                ClearScreenShotQueue            ( void );
-    virtual bool                GetBackBufferPixels             ( uint uiSizeX, uint uiSizeY, CBuffer& buffer, SString& strOutError );
-    virtual bool                IsQueueEmpty                    ( void );
+    virtual bool                GetBackBufferPixels             ( uint uiSizeX, uint uiSizeY, CBuffer& buffer );
 
     // CScreenGrabber
     void                        ProcessScreenShotQueue          ( void );
@@ -187,14 +186,6 @@ void CScreenGrabber::ProcessScreenShotQueue ( void )
     if ( m_ScreenShotQueue.empty ()  )
         return;
 
-    // Limit queue size
-    while( m_ScreenShotQueue.size() >= 20 )
-    {
-        SScreenShotQueueItem item = m_ScreenShotQueue.front ();
-        m_ScreenShotQueue.pop_front ();
-        item.pfnScreenShotCallback( NULL, 0, "Too many queued screenshots" );
-    }
-
     // Get new args
     SScreenShotQueueItem item = m_ScreenShotQueue.front ();
     uint uiSizeX = item.uiSizeX;
@@ -205,17 +196,10 @@ void CScreenGrabber::ProcessScreenShotQueue ( void )
     m_ScreenShotQueue.pop_front ();
 
     CBuffer buffer;
-    SString strError;
-    if ( GetBackBufferPixels ( uiSizeX, uiSizeY, buffer, strError ) )
-    {
-        // Start compression
-        m_pCompressJobData = m_pCompressorJobQueue->AddCommand ( uiSizeX, uiSizeY, uiQuality, uiTimeSpentInQueue, pfnScreenShotCallback, buffer );
-    }
-    else
-    {
-        // Pass on error
-        pfnScreenShotCallback( NULL, 0, strError );
-    }
+    GetBackBufferPixels ( uiSizeX, uiSizeY, buffer );
+
+    // Start compression
+    m_pCompressJobData = m_pCompressorJobQueue->AddCommand ( uiSizeX, uiSizeY, uiQuality, uiTimeSpentInQueue, pfnScreenShotCallback, buffer );
 }
 
 
@@ -226,18 +210,13 @@ void CScreenGrabber::ProcessScreenShotQueue ( void )
 //
 //
 ////////////////////////////////////////////////////////////////
-bool CScreenGrabber::GetBackBufferPixels ( uint uiSizeX, uint uiSizeY, CBuffer& buffer, SString& strOutError )
+bool CScreenGrabber::GetBackBufferPixels ( uint uiSizeX, uint uiSizeY, CBuffer& buffer )
 {
-    HRESULT hr;
-
     // Try to get the back buffer
     IDirect3DSurface9* pD3DBackBufferSurface = NULL;
-    hr = m_pDevice->GetBackBuffer ( 0, 0, D3DBACKBUFFER_TYPE_MONO, &pD3DBackBufferSurface );
-    if ( FAILED( hr ) )
-    {
-        strOutError = SString( "GetBackBuffer failed (0x%08x)", hr );
+    m_pDevice->GetBackBuffer ( 0, 0, D3DBACKBUFFER_TYPE_MONO, &pD3DBackBufferSurface );
+    if ( !pD3DBackBufferSurface )
         return false;
-    }
 
     // Adjust/create screenshot target size
     if ( !m_pScreenShotTemp || m_pScreenShotTemp->m_uiSizeX != uiSizeX || m_pScreenShotTemp->m_uiSizeY != uiSizeY )
@@ -250,32 +229,19 @@ bool CScreenGrabber::GetBackBufferPixels ( uint uiSizeX, uint uiSizeY, CBuffer& 
             m_pScreenShotTemp = CGraphics::GetSingleton ().GetRenderItemManager ()->CreateRenderTarget ( uiSizeX, uiSizeY, false, true );
     }
 
-    if ( !m_pScreenShotTemp )
-    {
-        strOutError = "No ScreenShotTemp";
-        return false;
-    }
-
-
     // Copy back buffer into our private render target
-    D3DTEXTUREFILTERTYPE FilterType = D3DTEXF_LINEAR;
-    hr = m_pDevice->StretchRect( pD3DBackBufferSurface, NULL, m_pScreenShotTemp->m_pD3DRenderTargetSurface, NULL, FilterType );
-    if ( FAILED( hr ) )
+    if ( m_pScreenShotTemp )
     {
-        strOutError = SString( "StretchRect failed (0x%08x)", hr );
-        return false;
+        D3DTEXTUREFILTERTYPE FilterType = D3DTEXF_LINEAR;
+        HRESULT hr = m_pDevice->StretchRect( pD3DBackBufferSurface, NULL, m_pScreenShotTemp->m_pD3DRenderTargetSurface, NULL, FilterType );
+
+        // Clean up
+        SAFE_RELEASE( pD3DBackBufferSurface );
+
+        if ( m_pScreenShotTemp->ReadPixels ( buffer ) )
+            return true;
     }
-
-    // Clean up
-    SAFE_RELEASE( pD3DBackBufferSurface );
-
-    if ( !m_pScreenShotTemp->ReadPixels ( buffer, strOutError ) )
-    {
-        dassert( !strOutError.empty() );
-        return false;
-    }
-
-    return true;
+    return false;
 }
 
 
@@ -293,17 +259,4 @@ void CScreenGrabber::ClearScreenShotQueue ( void )
     if ( m_pCompressJobData )
         m_pCompressorJobQueue->PollCommand ( m_pCompressJobData, -1 );
     m_pCompressJobData = NULL;
-}
-
-
-////////////////////////////////////////////////////////////////
-//
-// CScreenGrabber::IsQueueEmpty
-//
-// Checks whether the queue is empty
-//
-////////////////////////////////////////////////////////////////
-bool CScreenGrabber::IsQueueEmpty ( void )
-{
-    return m_ScreenShotQueue.empty ();
 }

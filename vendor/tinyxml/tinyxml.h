@@ -37,7 +37,6 @@ distribution.
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include <vector>
 
 // Help out windows:
 #if defined( _DEBUG ) && !defined( DEBUG )
@@ -1414,7 +1413,7 @@ public:
 	/// Save a file using the current document value. Returns true if successful.
 	bool SaveFile() const;
 	/// Load a file using the given filename. Returns true if successful.
-	bool LoadFile( const char * filename, TiXmlEncoding encoding = TIXML_DEFAULT_ENCODING, FILE** pFile = NULL );
+	bool LoadFile( const char * filename, TiXmlEncoding encoding = TIXML_DEFAULT_ENCODING );
 	/// Save a file using the given filename. Returns true if successful.
 	bool SaveFile( const char * filename ) const;
 	/** Load a file using the given FILE*. Returns true if successful. Note that this method

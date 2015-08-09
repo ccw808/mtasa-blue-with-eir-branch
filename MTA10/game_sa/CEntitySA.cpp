@@ -29,7 +29,7 @@ CEntitySA::CEntitySA ( void )
     BeingDeleted = false;
     DoNotRemoveFromGame = false;
     m_pStoredPointer = NULL;
-    m_ulArrayID = INVALID_POOL_ARRAY_ID;
+    m_ulArrayID = 0;
 }
 
 /*VOID CEntitySA::SetModelAlpha ( int iAlpha )
@@ -64,16 +64,12 @@ VOID CEntitySA::SetPosition(float fX, float fY, float fZ)
     {
         // If it's a train, recalculate its rail position parameter (does not affect derailed state)
         DWORD dwThis = (DWORD) m_pInterface;
-        DWORD dwFunc = FUNC_CTrain_FindPositionOnTrackFromCoors;
+        DWORD dwFunc = FUNC_CVehicle_RecalcOnRailDistance;
         _asm
         {
             mov     ecx, dwThis
             call    dwFunc
         }
-    }
-    if ( m_pInterface->nType == ENTITY_TYPE_OBJECT )
-    {
-        ((CObjectSAInterface*)m_pInterface)->bUpdateScale = true;
     }
 }
 
@@ -189,11 +185,6 @@ VOID CEntitySA::SetOrientation ( float fX, float fY, float fZ )
     {
         mov     ecx, dwThis
         call    dwFunc
-    }
-
-    if ( m_pInterface->nType == ENTITY_TYPE_OBJECT )
-    {
-        ((CObjectSAInterface*)m_pInterface)->bUpdateScale = true;
     }
 
     pGame->GetWorld()->Add ( this, CEntity_SetOrientation );
@@ -320,7 +311,12 @@ CMatrix * CEntitySA::GetMatrixInternal ( CMatrix * matrix )
 VOID CEntitySA::SetMatrix ( CMatrix * matrix )
 {
     DEBUG_TRACE("VOID CEntitySA::SetMatrix ( CMatrix * matrix )");
-
+    if ( (DWORD)m_pInterface->vtbl == VTBL_CPlaceable )
+    {
+        #pragma message(__LOC__ "(Cazomino05) Delete before release.")
+        CEntitySAInterface * pInterface = NULL;
+        pInterface->SetIsLowLodEntity();
+    }
     if ( m_pInterface->Placeable.matrix && matrix )
     {
         OnChangingPosition ( matrix->vPos );
@@ -364,12 +360,6 @@ VOID CEntitySA::SetMatrix ( CMatrix * matrix )
             mov     ecx, dwThis
             call    dwFunc
         }
-
-        if ( m_pInterface->nType == ENTITY_TYPE_OBJECT )
-        {
-            ((CObjectSAInterface*)m_pInterface)->bUpdateScale = true;
-        }
-
         pGame->GetWorld()->Add ( this, CEntity_SetMatrix );
     }
 }

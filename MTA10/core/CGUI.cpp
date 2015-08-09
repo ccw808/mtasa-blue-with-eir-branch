@@ -38,6 +38,9 @@ CLocalGUI::CLocalGUI ( void )
     m_bGUIHasInput = false;
     m_uiActiveCompositionSize = 0;
 
+    m_bVisibleWindows = false;
+    m_iVisibleWindows = 0;
+
     m_pVersionUpdater = GetVersionUpdater ();
 
     m_LastSettingsRevision = -1;
@@ -81,7 +84,7 @@ void CLocalGUI::SetSkin( const char* szName )
         catch(...)
         {
             // Even the default skin doesn't work, so give up
-            MessageBoxUTF8 ( 0, _("The skin you selected could not be loaded, and the default skin also could not be loaded, please reinstall MTA."), _("Error")+_E("CC51"), MB_OK | MB_TOPMOST );
+            MessageBox ( 0, "The skin you selected could not be loaded, and the default skin also could not be loaded, please reinstall MTA.", "Error", MB_OK | MB_TOPMOST );
             TerminateProcess ( GetCurrentProcess (), 9 );
         }
     }
@@ -111,10 +114,7 @@ void CLocalGUI::CreateWindows ( bool bGameIsAlreadyLoaded )
 
     // Create the overlayed version labels
     CVector2D ScreenSize = pGUI->GetResolution ();
-    SString strText = "MTA:SA " MTA_DM_BUILDTAG_SHORT;
-    if ( _NETCODE_VERSION_BRANCH_ID != 0x04 )
-        strText += SString( " (%X)", _NETCODE_VERSION_BRANCH_ID );
-    m_pLabelVersionTag = reinterpret_cast < CGUILabel* > ( pGUI->CreateLabel ( strText ) );
+    m_pLabelVersionTag = reinterpret_cast < CGUILabel* > ( pGUI->CreateLabel ( "MTA:SA " MTA_DM_BUILDTAG_SHORT ) );
     m_pLabelVersionTag->SetSize ( CVector2D ( m_pLabelVersionTag->GetTextExtent() + 5, 18 ) );
     m_pLabelVersionTag->SetPosition ( CVector2D ( ScreenSize.fX - m_pLabelVersionTag->GetTextExtent() - 5, ScreenSize.fY - 15 ) );
     m_pLabelVersionTag->SetAlpha ( 0.5f );
@@ -230,8 +230,6 @@ void CLocalGUI::Draw ( void )
             WaitForMenu++;
         } else {
             m_pLabelVersionTag->SetVisible ( true );
-            if ( MTASA_VERSION_TYPE < VERSION_TYPE_RELEASE )
-                m_pLabelVersionTag->SetAlwaysOnTop ( true );
         }
     }
 
@@ -329,12 +327,6 @@ void CLocalGUI::SetConsoleVisible ( bool bVisible )
         
         // Set the visible state
         m_pConsole->SetVisible ( bVisible );
-
-        CGUI* pGUI = CCore::GetSingleton ().GetGUI ();
-        if ( bVisible )
-	        pGUI->SetCursorAlpha ( 1.0f );
-        else
-	        pGUI->SetCursorAlpha ( pGUI->GetCurrentServerCursorAlpha () );
     }
     else
     {
@@ -395,11 +387,6 @@ void CLocalGUI::SetMainMenuVisible ( bool bVisible )
         {
             pGUI->SelectInputHandlers ( INPUT_MOD );
         }
-
-        if ( bVisible )
-            pGUI->SetCursorAlpha ( 1.0f );
-        else
-            pGUI->SetCursorAlpha ( pGUI->GetCurrentServerCursorAlpha () );
     }
     else
     {
@@ -671,16 +658,10 @@ bool CLocalGUI::ProcessMessage ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             break;
 
             case WM_IME_CHAR:
-                return true;
             case WM_IME_KEYDOWN:
             {
-                // Handle space/return seperately in this case
-                if ( wParam == VK_SPACE   )
-                    pGUI->ProcessCharacter ( MapVirtualKey( wParam, MAPVK_VK_TO_CHAR ) );
-
-                DWORD dwTemp = TranslateScanCodeToGUIKey ( wParam );
-                if ( dwTemp > 0 )
-                    pGUI->ProcessKeyboardInput ( dwTemp, true );
+                // Stop these here
+                return true;
             }
             break;
 
@@ -721,12 +702,13 @@ void CLocalGUI::UpdateCursor ( void )
 
     static DWORD dwWidth = CDirect3DData::GetSingleton().GetViewportWidth();
     static DWORD dwHeight = CDirect3DData::GetSingleton().GetViewportHeight();
+    static POINT pointStoredPosition;
     static bool bFirstRun = true;
 
     if ( bFirstRun )
     {
-        m_StoredMousePosition.x = dwWidth / 2;
-        m_StoredMousePosition.y = dwHeight / 2;
+        pointStoredPosition.x = dwWidth / 2;
+        pointStoredPosition.y = dwHeight / 2;
         bFirstRun = false;
     }
     // Called in each frame to make sure the mouse is only visible when a GUI control that uses the
@@ -741,7 +723,7 @@ void CLocalGUI::UpdateCursor ( void )
             CCore::GetSingleton ().GetGame ()->GetPad ()->Clear ();*/
 
             // Restore the mouse cursor to its old position
-            SetCursorPos ( m_StoredMousePosition.x, m_StoredMousePosition.y );
+            SetCursorPos ( pointStoredPosition.x, pointStoredPosition.y );
 
             // Enable our mouse cursor
             CSetCursorPosHook::GetSingleton ( ).DisableSetCursorPos ();
@@ -758,6 +740,9 @@ void CLocalGUI::UpdateCursor ( void )
             /* Restore the controller state
             CCore::GetSingleton ().GetGame ()->GetPad ()->Disable ( false );
             CCore::GetSingleton ().GetGame ()->GetPad ()->Clear ();*/
+
+            // Save the mouse cursor position
+            GetCursorPos ( &pointStoredPosition );
 
             // Set the mouse back to the center of the screen (to prevent the game from reacting to its movement)
             SetCursorPos ( dwWidth / 2, dwHeight / 2 );
@@ -804,12 +789,234 @@ DWORD CLocalGUI::TranslateScanCodeToGUIKey ( DWORD dwCharacter )
     }
 }
 
-void CLocalGUI::SetCursorPos ( int iX, int iY )
+int CLocalGUI::GetVisibleWindows ( )
 {
-	// Update the stored position
-    m_StoredMousePosition.x = iX;
-    m_StoredMousePosition.y = iY;
+    // By calling SetVisibleWindows( true ) a counter will be activated.
+    // This VisibleWindows counter will increase/decrease on any
+    // window show/hide event. By calling GetVisibleWindows( ) you can
+    // determine how many windows are currently visible.
 
-	// Apply the position
-    ::SetCursorPos ( iX, iY );
+    // Return the VisibleWindows counter value
+    return m_iVisibleWindows;
 }
+
+void CLocalGUI::SetVisibleWindows ( bool bEnable )
+{
+    // This function can be used to enable or disable the VisibleWindows
+    // counter. Use 'true' to enable. Use 'false' to disable.
+
+    // Reset the counter in any case
+    m_iVisibleWindows = 0;
+
+    m_bVisibleWindows = bEnable;
+}
+
+void CLocalGUI::HiddenHandler ( bool bHandled )
+{
+    // ACHTUNG: fix CGUIElementEventArgs !
+    /*
+    const CGUIEventArgs& WindowArgs = reinterpret_cast < const CGUIEventArgs& > ( Args );
+
+    // Check if the counter is enabled, and the window's a FrameWindow
+    if ( m_bVisibleWindows && WindowArgs.window->getType( ) == "CGUI/FrameWindow" ) {
+        // Decrement the VisibleWindows counter
+        m_iVisibleWindows--;
+    }
+    */
+    return;
+}
+
+void CLocalGUI::ShownHandler ( bool bHandled )
+{
+    // ACHTUNG: fix CGUIElementEventArgs !
+    /*
+    const CGUIElementEventArgs& WindowArgs = reinterpret_cast < const CGUIElementEventArgs& > ( Args );
+
+    // Check if the counter is enabled, and the window's a FrameWindow
+    if ( m_bVisibleWindows && WindowArgs.window->getType( ) == "CGUI/FrameWindow" ) {
+        // Increment the VisibleWindows counter
+        m_iVisibleWindows++;
+    }
+    */
+    return;
+}
+
+void CLocalGUI::KeyDownHandler ( bool bHandled )
+{
+    // ACHTUNG: fix CGUIKeyEventArgs !
+    /*
+    // Cast it to a set of keyboard arguments
+    const CEGUI::KeyEventArgs& KeyboardArgs = reinterpret_cast < const CEGUI::KeyEventArgs& > ( Args );
+
+    switch ( KeyboardArgs.scancode )
+    {
+        // Cut/Copy keys
+        case CEGUI::Key::Scan::X:
+        case CEGUI::Key::Scan::C:
+        {
+            if ( KeyboardArgs.sysKeys & CEGUI::Control )
+            {
+                // Data to copy
+                CEGUI::String strTemp;
+
+                // Edit boxes
+                CEGUI::Window* Wnd = reinterpret_cast < CEGUI::Window* > ( KeyboardArgs.window );
+                if ( Wnd->getType () == "CGUI/Editbox" )
+                {
+                    // Turn our event window into an editbox
+                    CEGUI::Editbox* WndEdit = reinterpret_cast < CEGUI::Editbox* > ( Wnd );
+
+                    // Get the text from the editbox
+                    size_t sizeSelectionStart = WndEdit->getSelectionStartIndex ();
+                    size_t sizeSelectionLength = WndEdit->getSelectionLength ();
+                    strTemp = WndEdit->getText ().substr ( sizeSelectionStart, sizeSelectionLength );
+
+                    // If the user cut, remove the text too
+                    if ( KeyboardArgs.scancode == CEGUI::Key::Scan::X )
+                    {
+                        // Read only?
+                        if ( !WndEdit->isReadOnly () )
+                        {
+                            // Remove the text from the source
+                            CEGUI::String strTemp2 = WndEdit->getText ();
+                            strTemp2.replace ( sizeSelectionStart, sizeSelectionLength, "", 0 );
+                            WndEdit->setText ( strTemp2 );
+                        }
+                    }
+                }
+
+                // Multiline editboxes
+                if ( Wnd->getType () == "CGUI/MultiLineEditbox" )
+                {
+                    // Turn our event window into an editbox
+                    CEGUI::MultiLineEditbox* WndEdit = reinterpret_cast < CEGUI::MultiLineEditbox* > ( Wnd );
+
+                    // Get the text from the editbox
+                    size_t sizeSelectionStart = WndEdit->getSelectionStartIndex ();
+                    size_t sizeSelectionLength = WndEdit->getSelectionLength ();
+                    strTemp = WndEdit->getText ().substr ( sizeSelectionStart, sizeSelectionLength );
+
+                    // If the user cut, remove the text too
+                    if ( KeyboardArgs.scancode == CEGUI::Key::Scan::X )
+                    {
+                        // Read only?
+                        if ( !WndEdit->isReadOnly () )
+                        {
+                            // Remove the text from the source
+                            CEGUI::String strTemp2 = WndEdit->getText ();
+                            strTemp2.replace ( sizeSelectionStart, sizeSelectionLength, "", 0 );
+                            WndEdit->setText ( strTemp2 );
+                        }
+                    }
+                }
+
+                // If we got something to copy
+                if ( strTemp.length () > 0 )
+                {
+                    // Open and empty the clipboard
+                    OpenClipboard ( NULL );
+                    EmptyClipboard ();
+
+                    // Allocate the clipboard buffer and copy the data
+                    HGLOBAL hBuf = GlobalAlloc ( GMEM_DDESHARE, strTemp.length () + 1 );
+                    char* buf = reinterpret_cast < char* > ( GlobalLock ( hBuf ) );
+                    strcpy ( buf , strTemp.c_str () );
+                    GlobalUnlock ( hBuf );
+
+                    // Copy the data into the clipboard
+                    SetClipboardData ( CF_TEXT , hBuf );
+
+                    // Close the clipboard
+                    CloseClipboard( );
+                }
+            }
+
+            break;
+        }
+
+        // Paste keys
+        case CEGUI::Key::Scan::V:
+        {
+            if ( KeyboardArgs.sysKeys & CEGUI::Control )
+            {
+                CEGUI::Window* Wnd = reinterpret_cast < CEGUI::Window* > ( KeyboardArgs.window );
+                if ( Wnd->getType ( ) == "CGUI/Editbox" )
+                {
+                    // Open the clipboard
+                    OpenClipboard( NULL );
+
+                    // Turn our event window into an editbox
+                    CEGUI::Editbox* WndEdit = reinterpret_cast < CEGUI::Editbox* > ( Wnd );
+
+                    // Get the clipboard's data and put it into a char array
+                    const char * ClipboardBuffer = reinterpret_cast < const char* > ( GetClipboardData ( CF_TEXT ) );
+
+                    // Check to make sure we have valid data.
+                    if ( ClipboardBuffer )
+                    {
+                        // Put the editbox's data into a string and insert the data if it has not reached it's maximum text length
+                        CEGUI::String tmp = WndEdit->getText ();
+                        if ( ( strlen ( ClipboardBuffer ) + tmp.length () ) < WndEdit->getMaxTextLength( ) )
+                        {
+                            // Are there characters selected?
+                            size_t sizeCaratIndex = 0;
+                            if ( WndEdit->getSelectionLength () > 0 )
+                            {
+                                // Replace what's selected with the pasted buffer and set the new carat index
+                                tmp.replace ( WndEdit->getSelectionStartIndex (), WndEdit->getSelectionLength (), ClipboardBuffer, strlen ( ClipboardBuffer ) );
+                                sizeCaratIndex = WndEdit->getSelectionStartIndex () + strlen ( ClipboardBuffer );
+                            }
+                            else
+                            {
+                                // If not, insert the clipboard buffer where we were and set the new carat index
+                                tmp.insert ( WndEdit->getSelectionStartIndex (), ClipboardBuffer , strlen ( ClipboardBuffer ) );
+                                sizeCaratIndex = WndEdit->getCaratIndex () + strlen ( ClipboardBuffer );
+                            }
+
+                            // Set the new text and move the carat at the end of what we pasted
+                            WndEdit->setText ( tmp );
+                            WndEdit->setCaratIndex ( sizeCaratIndex );
+                        }
+                        else
+                        {
+                            // Fire an event if the editbox is full
+                            WndEdit->fireEvent ( CEGUI::Editbox::EventEditboxFull , CEGUI::WindowEventArgs ( WndEdit ) );
+                        }
+                    }
+
+                    // Close the clipboard
+                    CloseClipboard( );
+                }
+            }
+
+            break;
+        }
+
+        // Select all key
+        case CEGUI::Key::Scan::A:
+        {
+            if ( KeyboardArgs.sysKeys & CEGUI::Control )
+            {
+                // Edit boxes
+                CEGUI::Window* Wnd = reinterpret_cast < CEGUI::Window* > ( KeyboardArgs.window );
+                if ( Wnd->getType () == "CGUI/Editbox" )
+                {
+                    // Turn our event window into an editbox
+                    CEGUI::Editbox* WndEdit = reinterpret_cast < CEGUI::Editbox* > ( Wnd );
+                    WndEdit->setSelection ( 0, WndEdit->getText ().size () );
+                }
+                else if ( Wnd->getType () == "CGUI/MultiLineEditbox" )
+                {
+                    // Turn our event window into a multiline editbox
+                    CEGUI::MultiLineEditbox* WndEdit = reinterpret_cast < CEGUI::MultiLineEditbox* > ( Wnd );
+                    WndEdit->setSelection ( 0, WndEdit->getText ().size () );
+                }
+            }
+
+            break;
+        }
+    }
+    */
+    return;
+}
+

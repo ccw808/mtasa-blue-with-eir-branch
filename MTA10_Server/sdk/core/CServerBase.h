@@ -26,8 +26,7 @@ public:
     virtual void        GetTag                      ( char* szInfoTag, int iInfoTag ) = 0;
 
     virtual bool        IsFinished                  ( void ) = 0;
-    virtual bool        PendingWorkToDo             ( void ) = 0;
-    virtual bool        GetSleepIntervals           ( int& iSleepBusyMs, int& iSleepIdleMs, int& iLogicFpsLimit ) = 0;
+    virtual bool        PendingWorkToDo             ( int& iSleepMs ) = 0;
 };
 
 #endif

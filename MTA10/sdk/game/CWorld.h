@@ -184,26 +184,19 @@ public:
     virtual float       GetJetpackMaxHeight         ( void ) = 0;
     virtual void        SetAircraftMaxHeight        ( float fHeight ) = 0;
     virtual float       GetAircraftMaxHeight        ( void ) = 0;
-    virtual void        SetAircraftMaxVelocity      ( float fVelocity ) = 0;
-    virtual float       GetAircraftMaxVelocity      ( void ) = 0;
     virtual void        SetOcclusionsEnabled        ( bool bEnabled ) = 0;
     virtual bool        GetOcclusionsEnabled        ( void ) = 0;
-    virtual void        FindWorldPositionForRailTrackPosition ( float fRailTrackPosition, int iTrackId, CVector* pOutVecPosition ) = 0;
-    virtual int         FindClosestRailTrackNode    ( const CVector& vecPosition, uchar& ucOutTrackId, float& fOutRailDistance ) = 0;
-
-    virtual void        RemoveBuilding              ( unsigned short usModelToRemove, float fDistance, float fX, float fY, float fZ, char cInterior, uint* pOutAmount = NULL ) = 0;
+    virtual void        RemoveBuilding              ( unsigned short usModelToRemove, float fDistance, float fX, float fY, float fZ, char cInterior) = 0;
     virtual bool        IsRemovedModelInRadius      ( SIPLInst* pInst ) = 0;
     virtual bool        IsModelRemoved              ( unsigned short usModelID ) = 0;
-    virtual void        ClearRemovedBuildingLists   ( uint* pOutAmount = NULL ) = 0;
-    virtual bool        RestoreBuilding             ( unsigned short usModelToRestore, float fDistance, float fX, float fY, float fZ, char cInterior, uint* pOutAmount = NULL ) = 0;
+    virtual void        ClearRemovedBuildingLists   ( void ) = 0;
+    virtual bool        RestoreBuilding             ( unsigned short usModelToRestore, float fDistance, float fX, float fY, float fZ, char cInterior ) = 0;
     virtual SBuildingRemoval*   GetBuildingRemoval  ( CEntitySAInterface * pInterface ) = 0;
     virtual void        AddDataBuilding             ( CEntitySAInterface * pInterface ) = 0;
     virtual void        AddBinaryBuilding           ( CEntitySAInterface * pInterface ) = 0;
     virtual void        RemoveWorldBuildingFromLists( CEntitySAInterface * pInterface ) = 0;
     virtual bool        IsObjectRemoved             ( CEntitySAInterface * pInterface ) = 0;
     virtual bool        IsDataModelRemoved          ( unsigned short usModelID ) = 0;
-    virtual bool        IsEntityRemoved             ( CEntitySAInterface * pInterface ) = 0;
-    virtual bool        CalculateImpactPosition     ( const CVector &vecInputStart, CVector &vecInputEnd ) = 0;
 };
 
 #endif

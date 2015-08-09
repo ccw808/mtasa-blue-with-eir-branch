@@ -68,11 +68,9 @@ CMainConfig::CMainConfig ( CConsole* pConsole, CLuaManager* pLuaMain ): CXMLConf
     m_pCommandLineParser = NULL;
 
     m_usServerPort = 0;
-    m_uiHardMaxPlayers = 0;
+    m_uiMaxPlayers = 0;
     m_bHTTPEnabled = true;
     m_iAseMode = 0;
-    m_iUpdateCycleDatagramsLimit = 4;
-    m_iUpdateCycleMessagesLimit = 50;
     m_usHTTPPort = 0;
     m_ucHTTPDownloadType = HTTP_DOWNLOAD_DISABLED;
     m_iHTTPMaxConnectionsPerClient = 4;
@@ -90,6 +88,7 @@ CMainConfig::CMainConfig ( CConsole* pConsole, CLuaManager* pLuaMain ): CXMLConf
     m_ucVoiceQuality = 4;
     m_bVoiceEnabled = false;
     m_uiVoiceBitrate = 0;
+    m_bNetworkEncryptionEnabled = true;
     m_strBandwidthReductionMode = "medium";
     m_iPendingWorkToDoSleepTime = -1;
     m_iNoWorkToDoSleepTime = -1;
@@ -169,8 +168,8 @@ bool CMainConfig::Load ( void )
     iResult = GetInteger ( m_pRootNode, "maxplayers", iTemp, 1, MAX_PLAYER_COUNT );
     if ( iResult == IS_SUCCESS )
     {
-        m_uiHardMaxPlayers = iTemp;
-        m_uiSoftMaxPlayers = iTemp;
+        m_uiMaxPlayers = iTemp;
+        m_uiSoftMaxPlayers = m_uiMaxPlayers;
     }
     else
     {
@@ -233,9 +232,6 @@ bool CMainConfig::Load ( void )
     // httpdosthreshold
     GetInteger ( m_pRootNode, "httpdosthreshold", m_iHTTPDosThreshold, 1, 10000 );
     m_iHTTPDosThreshold = Clamp ( 1, m_iHTTPDosThreshold, 10000 );
-
-    // http_dos_exclude
-    GetString ( m_pRootNode, "http_dos_exclude", m_strHTTPDosExclude );
 
     // verifyclientsettings
     GetInteger ( m_pRootNode, "verifyclientsettings", m_iEnableClientChecks );
@@ -302,14 +298,10 @@ bool CMainConfig::Load ( void )
                 }
         }
 
-        // Add support for SD #12, #14, #15, #16, #20, #22 and #28 (defaults to disabled)
-        MapInsert ( m_DisableComboACMap, "12" );
-        MapInsert ( m_DisableComboACMap, "14" );
-        MapInsert ( m_DisableComboACMap, "15" );
-        MapInsert ( m_DisableComboACMap, "16" );
-        MapInsert ( m_DisableComboACMap, "20" );
-        MapInsert ( m_DisableComboACMap, "22" );
-        MapInsert ( m_DisableComboACMap, "28" );
+        // Add support for SD #12, #14 and #15 (defaults to disabled)
+        MapInsert ( m_DisableComboACMap, SStringX("12") );
+        MapInsert ( m_DisableComboACMap, SStringX("14") );
+        MapInsert ( m_DisableComboACMap, SStringX("15") );
 
         {
             SString strEnableSD;
@@ -322,9 +314,6 @@ bool CMainConfig::Load ( void )
                     MapInsert ( enableSDMap, *it );
                     MapRemove ( m_DisableComboACMap, *it );
                 }
-
-            // Also save initial value in transient settings, so we can update the config without anyone knowing
-            MapSet ( m_TransientSettings, "enablesd", strEnableSD );
         }
 
         CArgMap argMap;
@@ -426,8 +415,6 @@ bool CMainConfig::Load ( void )
     else
         m_strDbLogFilename = g_pServerInterface->GetModManager ()->GetAbsolutePath ( "logs/db.log" );
 
-    if ( GetString ( m_pRootNode, "loadstringfile", strBuffer, 1 ) == IS_SUCCESS )
-        m_strLoadstringLogFilename = g_pServerInterface->GetModManager ()->GetAbsolutePath ( strBuffer.c_str () );
 
     // Grab the server access control list
     if ( GetString ( m_pRootNode, "acl", strBuffer, 1, 255 ) == IS_SUCCESS )
@@ -479,6 +466,9 @@ bool CMainConfig::Load ( void )
 
     GetBoolean ( m_pRootNode, "autologin", m_bAutoLogin );
 
+    // networkencryption - Encryption for Server <-> client communications
+    GetBoolean ( m_pRootNode, "networkencryption", m_bNetworkEncryptionEnabled );
+
     // bandwidth_reduction
     GetString ( m_pRootNode, "bandwidth_reduction", m_strBandwidthReductionMode );
     ApplyBandwidthReductionMode ();
@@ -491,8 +481,8 @@ bool CMainConfig::Load ( void )
     GetInteger ( m_pRootNode, "idle_sleep_time", m_iNoWorkToDoSleepTime );
     m_iNoWorkToDoSleepTime = Clamp ( -1, m_iNoWorkToDoSleepTime, 50 );
 
-    // threadnet - Default to on at startup
-    m_bThreadNetEnabled = true;
+    // threadnet
+    GetBoolean ( m_pRootNode, "threadnet", m_bThreadNetEnabled );
     ApplyThreadNetEnabled ();
 
     // Check settings in this list here
@@ -554,11 +544,6 @@ void CMainConfig::ApplyNetOptions ( void )
 {
     m_NetOptions.netFilter.bValid = true;
     m_NetOptions.netFilter.bAutoFilter = m_bNetAutoFilter != 0;
-
-    m_NetOptions.netOptimize.bValid = true;
-    m_NetOptions.netOptimize.iUpdateCycleDatagramsLimit = m_iUpdateCycleDatagramsLimit;
-    m_NetOptions.netOptimize.iUpdateCycleMessagesLimit = m_iUpdateCycleMessagesLimit;
-
     g_pNetServer->SetNetOptions ( m_NetOptions );
 }
 
@@ -724,10 +709,10 @@ bool CMainConfig::LoadExtended ( void )
                     {
                         if ( !bFoundDefault )
                         {
-                            std::string strDefault = pAttribute->GetValue ();
-                            if ( strDefault.compare ( "true" ) == 0 ||
-                                strDefault.compare ( "yes" ) == 0 ||
-                                strDefault.compare ( "1" ) == 0 )
+                            std::string strProtected = pAttribute->GetValue ();
+                            if ( strProtected.compare ( "true" ) == 0 ||
+                                strProtected.compare ( "yes" ) == 0 ||
+                                strProtected.compare ( "1" ) == 0 )
                             {
                                 std::string strName = loadedResource->GetName ();
                                 if ( !strName.empty () )
@@ -761,6 +746,7 @@ bool CMainConfig::LoadExtended ( void )
     RegisterCommand ( "refreshall", CConsoleCommands::RefreshAllResources, false );
     RegisterCommand ( "list", CConsoleCommands::ListResources, false );
     RegisterCommand ( "info", CConsoleCommands::ResourceInfo, false );
+    RegisterCommand ( "install", CConsoleCommands::InstallResource, false );
     RegisterCommand ( "upgrade", CConsoleCommands::UpgradeResources, false );
     RegisterCommand ( "check", CConsoleCommands::CheckResources, false );
 
@@ -806,8 +792,6 @@ bool CMainConfig::LoadExtended ( void )
     RegisterCommand ( "reloadbans", CConsoleCommands::ReloadBans, false );
 
     RegisterCommand ( "aclrequest", CConsoleCommands::AclRequest, false );
-    RegisterCommand ( "debugjoinflood", CConsoleCommands::DebugJoinFlood, false );
-    RegisterCommand ( "debuguptime", CConsoleCommands::DebugUpTime, false );
 #if defined(MTA_DEBUG) || defined(MTA_BETA)
     RegisterCommand ( "sfakelag", CConsoleCommands::FakeLag, false );
 #endif
@@ -896,25 +880,9 @@ void CMainConfig::RegisterCommand ( const char* szName, FCommandHandler* pFuncti
 void CMainConfig::SetCommandLineParser ( CCommandLineParser* pCommandLineParser )
 {
     m_pCommandLineParser = pCommandLineParser;
-
-    // Adjust max player limits for command line arguments
-    uint uiMaxPlayers;
-    if ( m_pCommandLineParser && m_pCommandLineParser->GetMaxPlayers ( uiMaxPlayers ) )
-    {
-        m_uiHardMaxPlayers = Clamp < uint > ( 1, uiMaxPlayers, MAX_PLAYER_COUNT );
-        m_uiSoftMaxPlayers = uiMaxPlayers;
-    }
 }
 
-SString CMainConfig::GetServerIP ( void )
-{
-    std::string strServerIP;
-    if ( m_pCommandLineParser && m_pCommandLineParser->GetIP ( strServerIP ) )
-        return strServerIP;
-    return SString( m_strServerIP ).SplitLeft( "," );
-}
-
-SString CMainConfig::GetServerIPList ( void )
+std::string CMainConfig::GetServerIP ( void )
 {
     std::string strServerIP;
     if ( m_pCommandLineParser && m_pCommandLineParser->GetIP ( strServerIP ) )
@@ -932,7 +900,10 @@ unsigned short CMainConfig::GetServerPort ( void )
 
 unsigned int CMainConfig::GetHardMaxPlayers ( void )
 {
-    return m_uiHardMaxPlayers;
+    unsigned int uiMaxPlayers;
+    if ( m_pCommandLineParser && m_pCommandLineParser->GetMaxPlayers ( uiMaxPlayers ) )
+        return uiMaxPlayers;
+    return m_uiMaxPlayers;
 }
 
 unsigned int CMainConfig::GetMaxPlayers ( void )
@@ -990,85 +961,6 @@ int CMainConfig::GetNoWorkToDoSleepTime ( void )
 }
 
 
-void CMainConfig::NotifyDidBackup( void )
-{
-    m_bDidBackup = true;
-}
-
-
-bool CMainConfig::ShouldCompactInternalDatabases( void )
-{
-    return ( m_iCompactInternalDatabases == 1 && m_bDidBackup ) || m_iCompactInternalDatabases == 2;
-}
-
-
-//////////////////////////////////////////////////////////////////////
-//
-// Fetch multiple values for a named setting from the server config
-//
-//  <module src="module_test.dll" />
-//  <resource src="admin" startup="1" protected="0" />
-//
-//////////////////////////////////////////////////////////////////////
-bool CMainConfig::GetSettingTable ( const SString& strName, CLuaArguments* outTable )
-{
-    if ( strName == "module" )
-    {
-        static const char* szAttribNames[] = { "src" };
-        return GetSettingTable( strName, szAttribNames, NUMELMS( szAttribNames ), outTable );
-    }
-    else
-    if ( strName == "resource" )
-    {
-        static const char* szAttribNames[] = { "src", "startup", "protected", "default" };
-        return GetSettingTable( strName, szAttribNames, NUMELMS( szAttribNames ), outTable );
-    }
-
-    return false;
-}
-
-
-//////////////////////////////////////////////////////////////////////
-//
-// Fetch multiple values for a named setting from the server config
-//
-//  <module src="module_test.dll" />
-//  <resource src="admin" startup="1" protected="0" />
-//
-//////////////////////////////////////////////////////////////////////
-bool CMainConfig::GetSettingTable ( const SString& strName, const char** szAttribNames, uint uiNumAttribNames, CLuaArguments* outTable )
-{
-    uint uiXMLIndex = 0;
-    uint uiLuaIndex = 1;
-    CXMLNode* pNode = NULL;
-    do
-    {
-        // Grab the current script node
-        pNode = m_pRootNode->FindSubNode ( strName, uiXMLIndex++ );
-        if ( pNode )
-        {
-            CLuaArguments resultLine;
-            CXMLAttributes& attributes = pNode->GetAttributes();
-            for ( uint i = 0 ; i < attributes.Count() ; i++ )
-            {
-                CXMLAttribute* pAttribute = attributes.Get( i );
-                resultLine.PushString( pAttribute->GetName() );
-                resultLine.PushString( pAttribute->GetValue() );
-            }
-
-            if ( resultLine.Count() != 0 )
-            {
-                outTable->PushNumber( uiLuaIndex++ );
-                outTable->PushTable( &resultLine );
-            }
-        }
-    }
-    while( pNode );
-
-    return outTable->Count() != 0;
-}
-
-
 //////////////////////////////////////////////////////////////////////
 //
 // Fetch any single setting from the server config
@@ -1118,8 +1010,7 @@ bool CMainConfig::GetSetting ( const SString& strName, SString& strValue )
     else
     if ( strName == "networkencryption" )
     {
-        // Deprecated
-        strValue = "1";
+        strValue = SString ( "%d", m_bNetworkEncryptionEnabled ? 1 : 0 );
         return true;
     }
     else
@@ -1147,17 +1038,6 @@ bool CMainConfig::GetSetting ( const SString& strName, SString& strValue )
         return true;
     }
     else
-    if ( strName == "threadnet" )
-    {
-        strValue = SString ( "%d", m_bThreadNetEnabled ? 1 : 0 );
-        return true;
-    }
-    else
-    if ( strName == "module" || strName == "resource" )
-    {
-        return false;
-    }
-    else
     {
         // Check settings in this list here
         const std::vector < SIntSetting >& settingList = GetIntSettingList ();
@@ -1171,18 +1051,18 @@ bool CMainConfig::GetSetting ( const SString& strName, SString& strValue )
             }
         }
 
-        // Check transient settings
-        if ( SString* pstrValue = MapFind ( m_TransientSettings, strName ) )
-        {
-            strValue = *pstrValue;
-            return true;
-        }
-
         //
         // Everything else is read only, so can be fetched directly from the XML data
         //
         if ( GetString ( m_pRootNode, strName, strValue ) )
             return true;
+
+        // or transient settings
+        if ( SString* pstrValue = MapFind ( m_TransientSettings, strName ) )
+        {
+            strValue = *pstrValue;
+            return true;
+        }
 
     }
 
@@ -1239,7 +1119,13 @@ bool CMainConfig::SetSetting ( const SString& strName, const SString& strValue, 
     {
         if ( strValue == "0" || strValue == "1" )
         {
-            // Deprecated
+            m_bNetworkEncryptionEnabled = atoi ( strValue ) ? true : false;
+            if ( bSave )
+            {
+                SetBoolean ( m_pRootNode, "networkencryption", m_bNetworkEncryptionEnabled );
+                Save ();
+            }
+            g_pNetServer->SetEncryptionEnabled ( m_bNetworkEncryptionEnabled );
             return true;
         }
     }
@@ -1295,6 +1181,11 @@ bool CMainConfig::SetSetting ( const SString& strName, const SString& strValue, 
         {
             m_bThreadNetEnabled = atoi ( strValue ) ? true : false;
             ApplyThreadNetEnabled ();
+            if ( bSave )
+            {
+                SetString ( m_pRootNode, "threadnet", SString ( "%d", m_bThreadNetEnabled ) );
+                Save ();
+            }
             return true;
         }
     }
@@ -1308,46 +1199,6 @@ bool CMainConfig::SetSetting ( const SString& strName, const SString& strValue, 
             g_pBandwidthSettings->bLightSyncEnabled = atoi ( strValue ) ? true : false;
             return true;
         }
-    }
-    else
-    if ( strName == "enablesd" )
-    {
-        // 'enablesd' can only be added to, and then server has to be restarted
-
-        // Get current setting as list of ids
-        SString strCurSD;
-        GetSetting( "enablesd", strCurSD );
-        std::vector < SString > curSDList;
-        strCurSD.Split ( ",", curSDList );
-
-        // Get new setting as as list of ids
-        std::vector < SString > newSDList;
-        strValue.Split( ",", newSDList );
-
-        // Merge
-        std::set < uint > comboSDMap;
-        for ( std::vector < SString >::iterator it = curSDList.begin () ; it != curSDList.end () ; ++it )
-            MapInsert( comboSDMap, atoi( **it ) );
-        for ( std::vector < SString >::iterator it = newSDList.begin () ; it != newSDList.end () ; ++it )
-            MapInsert( comboSDMap, atoi( **it ) );
-
-        // Make a string
-        SString strComboResult;
-        for ( std::set < uint >::iterator it = comboSDMap.begin () ; it != comboSDMap.end () ; ++it )
-        {
-            uint uiId = *it;
-            if ( uiId )
-            {
-                if ( !strComboResult.empty() )
-                    strComboResult += ",";
-                strComboResult += SString( "%d", uiId );
-            }
-        }
-
-        // Save new setting
-        SetString ( m_pRootNode, "enablesd", strComboResult );
-        Save ();
-        return true;
     }
 
     // Check settings in this list here
@@ -1403,17 +1254,10 @@ const std::vector < SIntSetting >& CMainConfig::GetIntSettingList ( void )
             { true, true,   0,      0,      1,      "bullet_sync",                          &m_bBulletSyncEnabled,                      &CMainConfig::OnTickRateChange },
             { true, true,   0,      0,      120,    "vehext_percent",                       &m_iVehExtrapolatePercent,                  &CMainConfig::OnTickRateChange },
             { true, true,   0,      150,    500,    "vehext_ping_limit",                    &m_iVehExtrapolatePingLimit,                &CMainConfig::OnTickRateChange },
-            { true, true,   0,      0,      1,      "latency_reduction",                    &m_bUseAltPulseOrder,                       &CMainConfig::OnTickRateChange },
             { true, true,   0,      1,      2,      "ase",                                  &m_iAseMode,                                &CMainConfig::OnAseSettingChange },
-            { true, true,   0,      0,      1,      "donotbroadcastlan",                    &m_bDontBroadcastLan,                       &CMainConfig::OnAseSettingChange },
+            { true, true,   0,      1,      1,      "donotbroadcastlan",                    &m_bDontBroadcastLan,                       &CMainConfig::OnAseSettingChange },
             { true, true,   0,      1,      1,      "net_auto_filter",                      &m_bNetAutoFilter,                          &CMainConfig::ApplyNetOptions },
-            { true, true,   1,      4,      100,    "update_cycle_datagrams_limit",         &m_iUpdateCycleDatagramsLimit,              &CMainConfig::ApplyNetOptions },
-            { true, true,   10,     50,     1000,   "update_cycle_messages_limit",          &m_iUpdateCycleMessagesLimit,               &CMainConfig::ApplyNetOptions },
-            { true, true,   50,     100,    400,    "ped_syncer_distance",                  &g_TickRateSettings.iPedSyncerDistance,     &CMainConfig::OnTickRateChange },
-            { true, true,   50,     130,    400,    "unoccupied_vehicle_syncer_distance",   &g_TickRateSettings.iUnoccupiedVehicleSyncerDistance,   &CMainConfig::OnTickRateChange },
-            { false, false, 0,      1,      2,      "compact_internal_databases",           &m_iCompactInternalDatabases,               NULL },
-            { true, true,   0,      1,      2,      "minclientversion_auto_update",         &m_iMinClientVersionAutoUpdate,             NULL },
-            { true, true,   0,      0,      100,    "server_logic_fps_limit",               &m_iServerLogicFpsLimit,                    NULL },
+            { true, true,   0,      0,      1,      "verify_memory",                        &m_bVerifyMemory,                           NULL },
         };
 
     static std::vector < SIntSetting > settingsList;
@@ -1445,14 +1289,14 @@ void CMainConfig::OnAseSettingChange ( void )
 
 void CGame::ApplyAseSetting ( void )
 {
-    if ( !m_pMainConfig->GetAseLanListenEnabled() )
+    if ( m_pMainConfig->GetDontBroadcastLan() )
         SAFE_DELETE( m_pLanBroadcast );
 
-    bool bInternetEnabled = m_pMainConfig->GetAseInternetListenEnabled ();
-    bool bLanEnabled = m_pMainConfig->GetAseLanListenEnabled();
+    bool bInternetEnabled = m_pMainConfig->GetAsePortEnabled () == 1;
+    bool bLanEnabled = !m_pMainConfig->GetDontBroadcastLan();
     m_pASE->SetPortEnabled ( bInternetEnabled, bLanEnabled );
 
-    if ( m_pMainConfig->GetAseLanListenEnabled() )
+    if ( !m_pMainConfig->GetDontBroadcastLan() )
     {
         if ( !m_pLanBroadcast )
             m_pLanBroadcast = m_pASE->InitLan();

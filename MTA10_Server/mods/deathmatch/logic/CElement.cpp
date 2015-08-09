@@ -32,7 +32,6 @@ CElement::CElement ( CElement* pParent, CXMLNode* pNode )
     m_pParent = pParent;
     m_pXMLNode = pNode;
     m_pElementGroup = NULL;
-    m_bCallPropagationEnabled = true;
 
     m_iType = CElement::UNKNOWN;
     m_strName = "";
@@ -43,8 +42,6 @@ CElement::CElement ( CElement* pParent, CXMLNode* pNode )
     m_ucInterior = 0;
     m_bDoubleSided = false;
     m_bUpdatingSpatialData = false;
-    m_pChildrenListSnapshot = NULL;
-    m_uiChildrenListSnapshotRevision = 0;
 
     // Store the line
     if ( m_pXMLNode )
@@ -124,11 +121,12 @@ CElement::~CElement ( void )
             pPed->m_pContactElement = NULL;
     }
 
+    // Hack to fix crash
+    if ( IS_PLAYER ( this ) )
+        CPerPlayerEntity::StaticOnPlayerDelete ( (CPlayer*)this );
+
     // Remove from spatial database
     GetSpatialDatabase ()->RemoveEntity ( this );
-
-    if ( GetID() != INVALID_ELEMENT_ID && GetID() >= MAX_SERVER_ELEMENTS )
-        CLogger::ErrorPrintf( "ERROR: Element ID is incorrect (%08x) (Type:%d)\n", GetID().Value(), GetType() );
 
     // Deallocate our unique ID
     CElementIDs::PushUniqueID ( this );
@@ -140,7 +138,6 @@ CElement::~CElement ( void )
     assert ( m_pParent == NULL );
 
     CElementRefManager::OnElementDelete ( this );
-    SAFE_RELEASE( m_pChildrenListSnapshot );
 }
 
 
@@ -150,18 +147,6 @@ const CVector & CElement::GetPosition ( void )
     return m_vecPosition;
 }
 
-
-void CElement::GetMatrix( CMatrix& matrix )
-{
-    matrix = CMatrix();
-    matrix.vPos = GetPosition();
-}
-
-
-void CElement::SetMatrix( const CMatrix& matrix )
-{
-    SetPosition( matrix.vPos );
-}
 
 // Static function
 uint CElement::GetTypeHashFromString ( const SString& strTypeName )
@@ -267,8 +252,7 @@ void CElement::GetDescendantsByType ( std::vector < CElement* >& outResult, EEle
     }
     else
     {
-        if ( GetTypeHash () == uiTypeHash )
-            outResult.push_back ( this );
+        outResult.push_back ( this );
         GetDescendantsByTypeSlow ( outResult, uiTypeHash );
     }
 }
@@ -452,8 +436,6 @@ bool CElement::AddEvent ( CLuaMain* pLuaMain, const char* szName, const CLuaFunc
 
 bool CElement::CallEvent ( const char* szName, const CLuaArguments& Arguments, CPlayer* pCaller )
 {
-    g_pGame->GetDebugHookManager()->OnPreEvent( szName, Arguments, this, pCaller );
-
     CEvents* pEvents = g_pGame->GetEvents();
 
     // Make sure our event-manager knows we're about to call an event
@@ -467,8 +449,6 @@ bool CElement::CallEvent ( const char* szName, const CLuaArguments& Arguments, C
 
     // Tell the event manager that we're done calling the event
     pEvents->PostEventPulse ();
-
-    g_pGame->GetDebugHookManager()->OnPostEvent( szName, Arguments, this, pCaller );
 
     // Return whether our event was cancelled or not
     return ( !pEvents->WasEventCancelled () );
@@ -982,12 +962,6 @@ CElement* CElement::FindChildIndex ( const char* szName, unsigned int uiIndex, u
             CElement* pElement = (*iter)->FindChildIndex ( szName, uiIndex, uiCurrentIndex, true );
             if ( pElement )
             {
-                if ( pElement->IsBeingDeleted() )
-                {
-                    // If it's being deleted right now we cannot return it. 
-                    // Since we found a match we have to abort the search here.
-                    return NULL;
-                }
                 return pElement;
             }
         }
@@ -1024,12 +998,6 @@ CElement* CElement::FindChildByTypeIndex ( unsigned int uiTypeHash, unsigned int
             CElement* pElement = (*iter)->FindChildByTypeIndex ( uiTypeHash, uiIndex, uiCurrentIndex, true );
             if ( pElement )
             {
-                if (pElement->IsBeingDeleted())
-                {
-                    // If it's being deleted right now we cannot return it. 
-                    // Since we found a match we have to abort the search here.
-                    return NULL;
-                }
                 return pElement;
             }
         }
@@ -1280,12 +1248,6 @@ unsigned char CElement::GenerateSyncTimeContext ( void )
     // Increment the sync time index
     ++m_ucSyncTimeContext;
 
-    #ifdef MTA_DEBUG
-    if ( GetType ( ) == EElementType::PLAYER )
-    {
-        CLogger::LogPrintf ( "Sync Context Updated from %i to %i.\n", m_ucSyncTimeContext - 1, m_ucSyncTimeContext );
-    }
-    #endif
     // It can't be 0 because that will make it not work when wraps around
     if ( m_ucSyncTimeContext == 0 )
         ++m_ucSyncTimeContext;
@@ -1307,19 +1269,17 @@ bool CElement::CanUpdateSync ( unsigned char ucRemote )
 
 // Entities from root optimization for getElementsByType
 typedef CFastList < CElement* > CFromRootListType;
-typedef CFastHashMap < unsigned int, CFromRootListType > t_mapEntitiesFromRoot;
+typedef google::dense_hash_map < unsigned int, CFromRootListType > t_mapEntitiesFromRoot;
 static t_mapEntitiesFromRoot    ms_mapEntitiesFromRoot;
 static bool                     ms_bEntitiesFromRootInitialized = false;
-
-// CFastHashMap helpers
-unsigned int GetEmptyMapKey ( unsigned int* )   { return (unsigned int)0xFFFFFFFF; }
-unsigned int GetDeletedMapKey ( unsigned int* ) { return (unsigned int)0xFFFFFFFE; }
 
 
 void CElement::StartupEntitiesFromRoot ()
 {
     if ( !ms_bEntitiesFromRootInitialized )
     {
+        ms_mapEntitiesFromRoot.set_deleted_key ( (unsigned int)0xFFFFFFFE );
+        ms_mapEntitiesFromRoot.set_empty_key ( (unsigned int)0xFFFFFFFF );
         ms_bEntitiesFromRootInitialized = true;
     }
 }
@@ -1565,31 +1525,4 @@ void CElement::UpdateSpatialData ( void )
         }
         m_bUpdatingSpatialData = false;
     }
-}
-
-//
-// Ensure children list snapshot is up to date and return it
-//
-CElementListSnapshot* CElement::GetChildrenListSnapshot( void )
-{
-    // See if list needs updating
-    if ( m_Children.GetRevision() != m_uiChildrenListSnapshotRevision || m_pChildrenListSnapshot == NULL )
-    {
-        m_uiChildrenListSnapshotRevision = m_Children.GetRevision();
-
-        // Detach old
-        SAFE_RELEASE( m_pChildrenListSnapshot );
-
-        // Make new
-        m_pChildrenListSnapshot = new CElementListSnapshot();
-
-        // Fill it up
-        m_pChildrenListSnapshot->reserve( m_Children.size() );
-        for ( CChildListType::const_iterator iter = m_Children.begin() ; iter != m_Children.end() ; iter++ )
-        {
-            m_pChildrenListSnapshot->push_back( *iter );
-        }
-    }
-
-    return m_pChildrenListSnapshot;
 }

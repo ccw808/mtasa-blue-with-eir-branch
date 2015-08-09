@@ -119,9 +119,9 @@ void CLatentTransferManager::AddSendBatchBegin ( unsigned char ucPacketId, NetBi
     uint uiBitStreamBytesUsed = ( uiBitStreamBitsUsed + 7 ) >> 3;
 
     // Make a buffer containing enough info to recreate ucPacketId+BitStream at the other end
-    m_pBatchBufferRef = new CBufferRef ();
+    m_pBatchBufferRef = new CBufferRef ( new CBuffer () );
 
-    CBuffer& buffer = *m_pBatchBufferRef->operator->();
+    CBuffer& buffer = **m_pBatchBufferRef;
     CBufferWriteStream stream ( buffer );
     stream.Write ( ucPacketId );
     stream.Write ( uiBitStreamBitsUsed );
@@ -129,7 +129,7 @@ void CLatentTransferManager::AddSendBatchBegin ( unsigned char ucPacketId, NetBi
 
     // Copy data from bitstream into buffer
     buffer.SetSize ( uiHeadSize + uiBitStreamBytesUsed );
-    *(buffer.GetData () + buffer.GetSize () - 1) = 0;   // Zero last byte of destination buffer
+    *(buffer.GetData () + buffer.GetSize () - 1) = 0;
     pBitStream->ResetReadPointer ();
     pBitStream->ReadBits ( buffer.GetData () + uiHeadSize, uiBitStreamBitsUsed );
 
@@ -232,13 +232,13 @@ bool CLatentTransferManager::GetSendStatus ( NetPlayerID remoteId, SSendHandle h
 //
 //
 ///////////////////////////////////////////////////////////////
-void CLatentTransferManager::GetSendHandles ( NetPlayerID remoteId, std::vector < SSendHandle >& outResultList )
+bool CLatentTransferManager::GetSendHandles ( NetPlayerID remoteId, std::vector < SSendHandle >& outResultList )
 {
-    outResultList.clear();
-
     CLatentSendQueue* pSendQueue = FindSendQueueForRemote ( remoteId );
-    if ( pSendQueue )
-        pSendQueue->GetSendHandles ( outResultList );
+    if ( !pSendQueue )
+        return false;
+
+    return pSendQueue->GetSendHandles ( outResultList );
 }
 
 
@@ -371,7 +371,7 @@ bool DoStaticProcessPacket ( unsigned char ucPacketID, NetPlayerID remoteId, Net
 
 void DoDisconnectRemote ( NetPlayerID remoteId, const SString& strReason )
 {
-    g_pCore->ShowMessageBox ( _("Error")+_E("CD61"), strReason, MB_BUTTON_OK | MB_ICON_ERROR ); // DoDisconnectRemote
+    g_pCore->ShowMessageBox ( "Error", strReason, MB_BUTTON_OK | MB_ICON_ERROR );
     g_pCore->GetModManager ()->RequestUnload ();
 }
 

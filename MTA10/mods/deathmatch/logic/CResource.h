@@ -40,18 +40,11 @@ public:
     const char* GetFunctionName ( void ) { return m_strFunctionName; }
 };
 
-struct SNoClientCacheScript
-{
-    CBuffer buffer;
-    SString strFilename;
-};
-
-
 class CResource
 {  
 
 public:
-                            CResource       ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq, bool bEnableOOP );
+                            CResource       ( unsigned short usNetID, const char* szResourceName, CClientEntity* pResourceEntity, CClientEntity* pResourceDynamicEntity, const SString& strMinServerReq, const SString& strMinClientReq );
                             ~CResource      ( void );
 
     inline unsigned short   GetNetID        ( void )                { return m_usNetID; };
@@ -61,8 +54,6 @@ public:
     inline bool             GetActive       ( void )                { return m_bActive; };
 
     void                    Load            ( CClientEntity *pRootEntity );
-    void                    Stop            ( void );
-    SString                 GetState        ( void );
 
     bool                    InDownloadQueue     ( void )            { return m_bInDownloadQueue; };
     bool                    SetInDownloadQueue  ( bool bIn )        { m_bInDownloadQueue = bIn; };
@@ -103,12 +94,10 @@ public:
     inline std::list < CResourceFile* >::iterator    IterBeginResourceFiles   ( void )        { return m_ResourceFiles.begin(); }
     inline std::list < CResourceFile* >::iterator    IterEndResourceFiles     ( void )        { return m_ResourceFiles.end(); }
 
-    void                    SetRemainingNoClientCacheScripts    ( unsigned short usRemaining ) { m_usRemainingNoClientCacheScripts = usRemaining; }
-    void                    LoadNoClientCacheScript         ( const char* chunk, unsigned int length, const SString& strFilename );
+    void                    SetRemainingProtectedScripts    ( unsigned short usRemaining ) { m_usRemainingProtectedScripts = usRemaining; }
+    void                    LoadProtectedScript             ( const char* chunk, unsigned int length );
     const SString&          GetMinServerReq                 ( void ) const                  { return m_strMinServerReq; }
     const SString&          GetMinClientReq                 ( void ) const                  { return m_strMinClientReq; }
-    bool                    IsOOPEnabled                    ( void )                        { return m_bOOPEnabled; }
-    void                    HandleDownloadedFileTrouble     ( CResourceFile* pResourceFile, bool bCRCMismatch, const SString &strAppendix = "" );
 
 private:
     unsigned short          m_usNetID;
@@ -118,8 +107,6 @@ private:
     CLuaManager*            m_pLuaManager;
     class CClientEntity*    m_pRootEntity;
     bool                    m_bActive;
-    bool                    m_bStarting;
-    bool                    m_bStopping;
     class CClientEntity*    m_pResourceEntity;          // no idea what this is used for anymore
     class CClientEntity*    m_pResourceDynamicEntity;   // parent of elements created by the resource
     class CClientEntity*    m_pResourceCOLRoot;
@@ -127,11 +114,10 @@ private:
     class CClientEntity*    m_pResourceGUIEntity;
     class CClientEntity*    m_pResourceTXDRoot;
     bool                    m_bInDownloadQueue;
-    unsigned short          m_usRemainingNoClientCacheScripts;
-    bool                    m_bLoadAfterReceivingNoClientCacheScripts;
+    unsigned short          m_usRemainingProtectedScripts;
+    bool                    m_bLoadAfterReceivingProtectedScripts;
     SString                 m_strMinServerReq;
     SString                 m_strMinClientReq;
-    bool                    m_bOOPEnabled;
 
     // To control cursor show/hide
     static int              m_iShowingCursor;
@@ -145,7 +131,6 @@ private:
     std::list < class CResourceConfigItem* >    m_ConfigFiles;
     std::list<CExportedFunction *>              m_exportedFunctions;
     CElementGroup *                             m_pDefaultElementGroup;     // stores elements created by scripts in this resource
-    std::list < SNoClientCacheScript >          m_NoClientCacheScriptList;
 };
 
 #endif

@@ -33,7 +33,7 @@ public:
 
 class NetServerPlayerID
 {
-protected:
+public:
     unsigned long           m_uiBinaryAddress;
     unsigned short          m_usPort;
 
@@ -42,12 +42,6 @@ public:
     {
         m_uiBinaryAddress = 0xFFFFFFFF;
         m_usPort = 0xFFFF;
-    };
-
-    NetServerPlayerID ( unsigned long uiBinaryAddress, unsigned short usPort )
-    {
-        m_uiBinaryAddress = uiBinaryAddress;
-        m_usPort = usPort;
     };
 
     ~NetServerPlayerID ( void )

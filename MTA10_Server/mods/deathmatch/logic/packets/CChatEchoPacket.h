@@ -33,13 +33,18 @@ public:
                                                           unsigned char ucBlue,
                                                           bool bColorCoded = false )    { m_strMessage = strMessage; m_ucRed = ucRed; m_ucGreen = ucGreen; m_ucBlue = ucBlue; m_bColorCoded = bColorCoded; };
 
-                                                                                            // Chat uses low priority channel to avoid getting queued behind large map downloads #6877
     inline ePacketID                GetPacketID                 ( void ) const              { return PACKET_ID_CHAT_ECHO; };
-    inline unsigned long            GetFlags                    ( void ) const              { return PACKET_LOW_PRIORITY | PACKET_RELIABLE | PACKET_SEQUENCED; };
+    inline unsigned long            GetFlags                    ( void ) const              { return PACKET_HIGH_PRIORITY | PACKET_RELIABLE | PACKET_SEQUENCED; };
     virtual ePacketOrdering         GetPacketOrdering           ( void ) const              { return PACKET_ORDERING_CHAT; }
 
     bool                    Write                       ( NetBitStreamInterface& BitStream ) const;
 
+    inline SString          GetMessage                  ( void )                    { return m_strMessage; };
+    void                    SetMessage                  ( SString  strMessage )     { m_strMessage = strMessage; };
+    inline void             SetColor                    ( unsigned char ucRed,
+                                                          unsigned char ucGreen,
+                                                          unsigned char ucBlue )    { m_ucRed = ucRed; m_ucGreen = ucGreen; m_ucRed = ucRed; };
+    inline void             SetColorCoded               ( bool bColorCoded )        { m_bColorCoded = bColorCoded; }
 private:
     unsigned char           m_ucRed;
     unsigned char           m_ucGreen;

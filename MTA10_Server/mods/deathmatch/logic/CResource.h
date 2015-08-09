@@ -212,10 +212,6 @@ private:
     bool                    m_bProtected;
     bool                    m_bStartedManually;
 
-    bool                    m_bOOPEnabledInMetaXml;
-    uint                    m_uiFunctionRightCacheRevision;
-    CFastHashMap < lua_CFunction, bool > m_FunctionRightCacheMap;
-
     bool                    CheckState ( void ); // if the resource has no Dependents, stop it, if it has, start it. returns true if the resource is started.
     bool                    ReadIncludedResources ( class CXMLNode * root );
     bool                    ReadIncludedMaps ( CXMLNode * root );
@@ -224,11 +220,12 @@ private:
     bool                    ReadIncludedHTML ( CXMLNode * root );
     bool                    ReadIncludedExports ( CXMLNode * root );
     bool                    ReadIncludedFiles ( CXMLNode * root );
-    bool                    CreateVM ( bool bEnableOOP );
+    bool                    CreateVM ( void );
     bool                    DestroyVM ( void );
     void                    TidyUp ( void );
     ResponseCode            HandleRequestActive ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse, class CAccount* account );
     ResponseCode            HandleRequestCall ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse, class CAccount* account );
+    ResponseCode            HandleRequestInfo ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse );
     
     pthread_mutex_t         m_mutex;
     bool                    m_bDestroyed;
@@ -295,9 +292,9 @@ public:
     bool                    GetCompatibilityStatus ( SString& strOutStatus );
 
     void                    AddTemporaryInclude ( CResource * resource );
-    SString                 GetFailureReason ( void )
+    const std::string&      GetFailureReason ( void )
     { 
-        return m_strFailureReason.TrimEnd( "\n" ); 
+        return m_strFailureReason; 
     }
     inline CXMLNode *       GetSettingsNode ( void ) { return m_pNodeSettings; }
     inline CXMLNode *       GetStorageNode ( void ) { return m_pNodeStorage; }
@@ -333,7 +330,6 @@ public:
     inline void             SetPersistent ( bool bPersistent ) { m_bIsPersistent = bPersistent; }
     bool                    ExtractFile ( const char * szFilename );
     bool                    DoesFileExistInZip ( const char * szFilename );
-    bool                    HasGoneAway ( void );
     bool                    GetFilePath ( const char * szFilename, string& strPath );
     inline const std::string&   GetResourceDirectoryPath () { return m_strResourceDirectoryPath; };
     inline const std::string&   GetResourceCacheDirectoryPath () { return m_strResourceCachePath; };
@@ -341,6 +337,7 @@ public:
     bool                    CheckIfStartable ( void );
     inline unsigned int     GetFileCount ( void ) { return m_resourceFiles.size(); }
     void                    DisplayInfo ( void );
+    char *                  DisplayInfoHTML ( char * info, size_t length );
     list<CResourceFile *>*  GetFiles ( void ) { return &m_resourceFiles; }
     CElementGroup *         GetElementGroup ( void ) { return m_pDefaultElementGroup; }
     inline time_t           GetTimeStarted ( void ) { return m_timeStarted; }
@@ -349,7 +346,7 @@ public:
     unsigned short          GetNetID ( void ) { return m_usNetID; }
     uint                    GetScriptID ( void ) const { return m_uiScriptID; }
     void                    OnPlayerJoin ( CPlayer& Player );
-    void                    SendNoClientCacheScripts ( CPlayer* pPlayer = NULL );
+    void                    SendProtectedScripts ( CPlayer* player = 0 );
     CDummy*                 GetResourceRootElement ( void ) { return m_pResourceElement; };
     CDummy*                 GetDynamicElementRoot ( void ) { return m_pResourceDynamicElementRoot; };
 
@@ -375,10 +372,6 @@ public:
     bool                HandleAclRequestChange          ( const CAclRightName& strRightName, bool bAccess, const SString& strWho );
     const SString&      GetMinServerReqFromMetaXml      ( void )                                { return m_strMinServerReqFromMetaXml; }
     const SString&      GetMinClientReqFromMetaXml      ( void )                                { return m_strMinClientReqFromMetaXml; }
-    bool                IsOOPEnabledInMetaXml           ( void )                                { return m_bOOPEnabledInMetaXml; }
-    bool                CheckFunctionRightCache         ( lua_CFunction f, bool* pbOutAllowed );
-    void                UpdateFunctionRightCache        ( lua_CFunction f, bool bAllowed );
-    bool                IsFilenameUsed                  ( const SString& strFilename, bool bClient );
 
 protected:
     SString             GetAutoGroupName                ( void );

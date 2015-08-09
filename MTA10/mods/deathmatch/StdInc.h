@@ -1,12 +1,8 @@
 #pragma message("Compiling precompiled header.\n")
 
 #define WIN32_LEAN_AND_MEAN
-#define NOMINMAX
-#include <windows.h>
-#define MTA_CLIENT
-#define SHARED_UTIL_WITH_FAST_HASH_MAP
-#include "SharedUtil.h"
 
+#include <windows.h>
 #include <string.h>
 #include <stdio.h>
 #include <mmsystem.h>
@@ -22,11 +18,12 @@
 #include <cstdio>
 #include <cstring>
 
-#include <base64.h>
 #include <zlib.h>
 
 // SDK includes
-#include <core/CLocalizationInterface.h>
+#define MTA_CLIENT
+#define SHARED_UTIL_WITH_FAST_HASH_MAP
+#include "SharedUtil.h"
 #include <core/CCoreInterface.h>
 #include <core/CExceptionInformation.h>
 #include <xml/CXML.h>
@@ -38,18 +35,15 @@
 #include <net/packetenums.h>
 #include <game/CGame.h>
 #include <CVector.h>
-#include <CVector4D.h>
 #include <CMatrix4.h>
 #include <CQuat.h>
 #include <CSphere.h>
 #include <CBox.h>
 #include <ijsify.h>
 #include <Common.h>
-#include "net/Packets.h"
 #include "Enums.h"
 #include "net/SyncStructures.h"
 #include "CIdArray.h"
-#include "pcrecpp.h"
 
 // Shared logic includes
 #include <Utils.h>
@@ -73,7 +67,6 @@
 #include <CClientPed.h>
 #include <CClientPlayerClothes.h>
 #include <CClientPlayerVoice.h>
-#include <CClientPointLights.h>
 #include <CClientProjectileManager.h>
 #include <CClientStreamSector.h>
 #include <CClientStreamSectorRow.h>
@@ -87,8 +80,9 @@
 #include <CClientMaterial.h>
 #include <CClientTexture.h>
 #include <CClientShader.h>
-#include <CClientWebBrowser.h>
-#include <CClientEffect.h>
+#include <CClientFxManager.h>
+#include <CClientFxSystemBP.h>
+#include <CClientFxSystem.h>
 #include <CCustomData.h>
 #include <CElementArray.h>
 #include <CLogger.h>
@@ -104,30 +98,24 @@
 #include <lua/CLuaFunctionParseHelpers.h>
 #include <CScriptArgReader.h>
 #include <luadefs/CLuaDefs.h>
-#include <luadefs/CLuaClassDefs.h>
-#include <luadefs/CLuaVector2Defs.h>
-#include <luadefs/CLuaVector3Defs.h>
-#include <luadefs/CLuaVector4Defs.h>
-#include <luadefs/CLuaMatrixDefs.h>
 #include <luadefs/CLuaTaskDefs.h>
 #include <luadefs/CLuaFxDefs.h>
 #include <luadefs/CLuaFileDefs.h>
-#include <lua/oopdefs/CLuaOOPDefs.h>
-#include <CRemoteCalls.h>
 
 // Shared includes
 #include "TInterpolation.h"
 #include "CPositionRotationAnimation.h"
 #include "CLatentTransferManager.h"
-#include "CDebugHookManager.h"
-#include "CLuaShared.h"
 
 // Deathmatch includes
+#include "Client.h"
 #include "ClientCommands.h"
 #include "CClient.h"
 #include "CEvents.h"
 #include "HeapTrace.h"
 #include "logic/CClientGame.h"
+#include "net/Packets.h"
+#include "logic/CClientEntityRefManager.h"
 #include "logic/CGameEntityXRefManager.h"
 #include "logic/CClientModelCacheManager.h"
 #include "logic/CClientPerfStatManager.h"
@@ -135,5 +123,3 @@
 #include "logic/CResource.h"
 #include "logic/CStaticFunctionDefinitions.h"
 #include "../../version.h"
-
-

@@ -16,7 +16,9 @@
 #ifndef __CCLIENTVEHICLEMANAGER_H
 #define __CCLIENTVEHICLEMANAGER_H
 
+#include "CClientCommon.h"
 #include "CClientVehicle.h"
+#include <list>
 
 class CClientManager;
 class CClientVehicle;
@@ -25,11 +27,10 @@ extern const SFixedArray < unsigned char, 212 > g_ucMaxPassengers;
 
 class CClientVehicleManager
 {
-public:
-    ZERO_ON_NEW
-                                    CClientVehicleManager   ( CClientManager* pManager );
-                                    ~CClientVehicleManager  ( void );
+    friend class CClientManager;
+    friend class CClientVehicle;
 
+public:
     void                            DeleteAll               ( void );
 
     inline unsigned int             Count                   ( void )                        { return static_cast < unsigned int > ( m_List.size () ); };
@@ -69,19 +70,22 @@ public:
     std::vector < CClientVehicle* > ::const_iterator            IterEnd             ( void )    { return m_List.end (); };
     std::vector < CClientVehicle* > ::const_iterator            StreamedBegin       ( void )    { return m_StreamedIn.begin (); };
     std::vector < CClientVehicle* > ::const_iterator            StreamedEnd         ( void )    { return m_StreamedIn.end (); };
+    
+private:
+                                    CClientVehicleManager   ( CClientManager* pManager );
+                                    ~CClientVehicleManager  ( void );
 
     inline void                     AddToList               ( CClientVehicle* pVehicle )    { m_List.push_back ( pVehicle ); };
-    void                            RemoveFromLists         ( CClientVehicle* pVehicle );
+    void                            RemoveFromList          ( CClientVehicle* pVehicle );
 
     void                            OnCreation              ( CClientVehicle* pVehicle );
     void                            OnDestruction           ( CClientVehicle* pVehicle );
 
-protected:
-
     CClientManager*                 m_pManager;
     bool                            m_bCanRemoveFromList;
     CMappedArray < CClientVehicle* >  m_List;
-    CMappedArray < CClientVehicle* >  m_StreamedIn;
+    std::vector < CClientVehicle* >   m_StreamedIn;
+    std::list < CClientVehicle* >   m_Attached;
 };
 
 #endif

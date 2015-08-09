@@ -231,7 +231,6 @@ void System::constructor_impl(Renderer* renderer, ResourceProvider* resourceProv
 	d_rctrl		= false;
     d_ralt      = false;
     d_lalt      = false;
-    d_started   = false;
 
 	d_click_timeout		= DefaultSingleClickTimeout;
 	d_dblclick_timeout	= DefaultMultiClickTimeout;
@@ -479,7 +478,7 @@ System::~System(void)
 /*************************************************************************
 	Render the GUI for this frame
 *************************************************************************/
-bool System::renderGUI(void)
+void System::renderGUI(void)
 {
 	//////////////////////////////////////////////////////////////////////////
 	// This makes use of some tricks the Renderer can do so that we do not
@@ -513,23 +512,19 @@ bool System::renderGUI(void)
 		d_gui_redraw = false;
 	}
 
-	bool bRenderOk = d_renderer->doRender();
+	d_renderer->doRender();
 
 	// draw mouse
 	d_renderer->setQueueingEnabled(false);
-	// MouseCursor::getSingleton().draw();  This is done by MTA later
+	MouseCursor::getSingleton().draw();
 
     // do final destruction on dead-pool windows
     WindowManager::getSingleton().cleanDeadPool();
 
     // Flag for redraw to rebuild fonts if needed
     for ( FontManager::FontIterator fontIt = d_fontManager->getIterator() ; !fontIt.isAtEnd() ; ++fontIt )
-        if ( (*fontIt)->needsRebuild () )
+        if ( (*fontIt)->needsClearRenderList () )
             d_gui_redraw = true;
-
-    d_started = true;
-
-    return bRenderOk;
 }
 
 
@@ -603,7 +598,6 @@ void System::setDefaultMouseCursor(const Image* image)
     // image directly without a call to this member changing the image back
     // again.  However, 'normal' updates to the cursor when the mouse enters
     // a window will, of course, update the mouse image as expected.
-#if 0
     if (MouseCursor::getSingleton().getImage() == d_defaultMouseCursor)
     {
         // does the window containing the mouse use the default cursor?
@@ -613,10 +607,6 @@ void System::setDefaultMouseCursor(const Image* image)
             MouseCursor::getSingleton().setImage(image);
         }
     }
-#else
-    // Hope fix for #8017: Crash on changing GUI skin.
-    MouseCursor::getSingleton().setImage(image);
-#endif
 
     // update our pointer for the default mouse cursor image.
     d_defaultMouseCursor = image;
@@ -781,11 +771,9 @@ bool System::injectMouseMove(float delta_x, float delta_y)
 			if (d_wndWithMouse != NULL)
 			{
 				ma.window = d_wndWithMouse;
-                ma.switchedWindow = dest_window;
 				d_wndWithMouse->onMouseLeaves(ma);
 			}
 
-            ma.switchedWindow = d_wndWithMouse;
 			d_wndWithMouse = dest_window;
 			ma.window = dest_window;
 			dest_window->onMouseEnters(ma);

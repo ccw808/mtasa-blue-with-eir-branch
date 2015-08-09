@@ -26,7 +26,6 @@ public:
     // Utility
     static SString      GetScaledByteString ( long long Amount );
     static SString      GetScaledBitString  ( long long Amount );
-    static SString      GetScaledFloatString ( float fValue );
     static long long    GetPerSecond        ( long long llValue, long long llDeltaTickCount );
     static void         ToPerSecond         ( long long& llValue, long long llDeltaTickCount );
     static SString      GetPerSecondString  ( long long llValue, double dDeltaTickCount );

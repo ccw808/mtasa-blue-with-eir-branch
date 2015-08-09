@@ -35,12 +35,6 @@ DECLARE_ENUM( EEntityTypeMask );
 DECLARE_ENUM( eWeaponState );
 DECLARE_ENUM( eWeaponFlags );
 DECLARE_ENUM( eVehicleComponent );
-DECLARE_ENUM( eFontType );
-DECLARE_ENUM( eAudioLookupIndex );
-DECLARE_ENUM( eAspectRatio );
-DECLARE_ENUM( eRadioStreamIndex );
-DECLARE_ENUM( EComponentBase::EComponentBaseType );
-DECLARE_ENUM( eWebBrowserMouseButton );
 
 enum eDXHorizontalAlign
 {
@@ -108,8 +102,6 @@ inline SString GetClassTypeName ( CClientGuiFont* )         { return "gui-font";
 inline SString GetClassTypeName ( CClientMaterial* )        { return "material"; }
 inline SString GetClassTypeName ( CClientTexture* )         { return "texture"; }
 inline SString GetClassTypeName ( CClientWeapon* )          { return "weapon"; }
-inline SString GetClassTypeName ( CClientEffect* )          { return "effect"; }
-inline SString GetClassTypeName ( CClientPointLights* )     { return "light"; }
 
 inline SString GetClassTypeName ( CGUIButton* )      { return "gui-button"; }
 inline SString GetClassTypeName ( CGUICheckBox* )    { return "gui-checkbox"; }
@@ -131,10 +123,6 @@ inline SString GetClassTypeName ( CResource* )              { return "resource-d
 inline SString GetClassTypeName ( CXMLNode* )               { return "xml-node"; }
 inline SString GetClassTypeName ( CLuaTimer* )              { return "lua-timer"; }
 inline SString GetClassTypeName ( CEntity* )                { return "entity"; }
-inline SString GetClassTypeName ( CLuaVector2D* )           { return "vector2"; }
-inline SString GetClassTypeName ( CLuaVector3D* )           { return "vector3"; }
-inline SString GetClassTypeName ( CLuaVector4D* )           { return "vector4"; }
-inline SString GetClassTypeName ( CLuaMatrix* )             { return "matrix"; }
 
 
 //
@@ -172,45 +160,6 @@ CLuaTimer* UserDataCast ( CLuaTimer*, void* ptr, lua_State* luaVM )
     return NULL;
 }
 
-//
-// CLuaVector2D from userdata
-//
-template < class T >
-CLuaVector2D* UserDataCast ( CLuaVector2D*, void* ptr, lua_State* luaVM )
-{
-    return CLuaVector2D::GetFromScriptID ( reinterpret_cast < unsigned int > ( ptr ) );
-}
-
-
-//
-// CLuaVector3D from userdata
-//
-template < class T >
-CLuaVector3D* UserDataCast ( CLuaVector3D*, void* ptr, lua_State* luaVM )
-{
-    return CLuaVector3D::GetFromScriptID ( reinterpret_cast < unsigned int > ( ptr ) );
-}
-
-
-//
-// CLuaVector4D from userdata
-//
-template < class T >
-CLuaVector4D* UserDataCast ( CLuaVector4D*, void* ptr, lua_State* luaVM )
-{
-    return CLuaVector4D::GetFromScriptID ( reinterpret_cast < unsigned int > ( ptr ) );
-}
-
-
-//
-// CLuaMatrix from userdata
-//
-template < class T >
-CLuaMatrix* UserDataCast ( CLuaMatrix*, void* ptr, lua_State* luaVM )
-{
-    return CLuaMatrix::GetFromScriptID ( reinterpret_cast < unsigned int > ( ptr ) );
-}
-
 
 //
 // CClientEntity from userdata
@@ -240,6 +189,36 @@ bool CheckWrappedUserDataType ( CClientGUIElement*& pGuiElement, SString& strErr
 }
 
 
+//
+// CEntity from userdata
+//
+template < class T >
+CEntity* UserDataCast ( CEntity*, void* ptr, lua_State* )
+{
+    // Get the client element
+    CClientEntity* pClientElement = UserDataCast < CClientEntity > ( (CClientEntity*)NULL, ptr, NULL );
+
+    // Get its game entity
+    CEntity* pEntity = NULL;
+    if ( pClientElement )
+    {
+        switch ( pClientElement->GetType () )
+        {
+            case CCLIENTPED:
+            case CCLIENTPLAYER:
+                pEntity = static_cast < CClientPed* > ( pClientElement )->GetGamePlayer ();
+                break;
+            case CCLIENTVEHICLE:
+                pEntity = static_cast < CClientVehicle* > ( pClientElement )->GetGameVehicle ();
+                break;
+            case CCLIENTOBJECT:
+                pEntity = static_cast < CClientObject* > ( pClientElement )->GetGameObject ();
+                break;
+        }
+    }
+    return pEntity;
+}
+
 SString GetUserDataClassName ( void* ptr, lua_State* luaVM );
 
 
@@ -247,16 +226,8 @@ SString GetUserDataClassName ( void* ptr, lua_State* luaVM );
 // Reading mixed types
 //
 class CScriptArgReader;
-void MixedReadDxFontString ( CScriptArgReader& argStream, eFontType& outFontType, eFontType defaultFontType, CClientDxFont*& poutDxFontElement );
-void MixedReadGuiFontString ( CScriptArgReader& argStream, SString& strFontName, const char* szDefaultFontName, CClientGuiFont*& poutGuiFontElement );
-void MixedReadMaterialString ( CScriptArgReader& argStream, CClientMaterial*& pMaterialElement );
+bool MixedReadDxFontString ( CScriptArgReader& argStream, SString& strFontName, const char* szDefaultFontName, CClientDxFont*& pFontElement );
+bool MixedReadGuiFontString ( CScriptArgReader& argStream, SString& strFontName, const char* szDefaultFontName, CClientGuiFont*& pFontElement );
+bool MixedReadMaterialString ( CScriptArgReader& argStream, CClientMaterial*& pMaterialElement );
 bool ReadMatrix ( lua_State* luaVM, uint uiArgIndex, CMatrix& outMatrix );
 void MinClientReqCheck ( CScriptArgReader& argStream, const char* szVersionReq, const char* szReason );
-void ReadPregFlags( CScriptArgReader& argStream, pcrecpp::RE_Options& pOptions );
-
-
-//
-// Other misc helpers
-//
-bool IsWeaponPropertyFlag( eWeaponProperty weaponProperty );
-uint GetWeaponPropertyFlagBit( eWeaponProperty weaponProperty );

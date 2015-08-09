@@ -26,7 +26,6 @@ class ASE;
     #include <sys/socket.h>
     #include <sys/stat.h>
     #include <netinet/in.h>
-    #include <arpa/inet.h>
     #define sockclose close
 #endif
 
@@ -101,7 +100,6 @@ private:
     std::string             m_strPort;
 
     static ASE*             _instance;
-    time_t                  m_tStartTime;
 
     list < CASERule* >      m_Rules;
 

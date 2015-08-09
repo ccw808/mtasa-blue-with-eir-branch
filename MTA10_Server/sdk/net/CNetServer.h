@@ -66,26 +66,6 @@ struct SNetOptions
         bool bValid;
         bool bAutoFilter;
     } netFilter;
-
-    struct {
-        bool bValid;
-        int iUpdateCycleDatagramsLimit;
-        int iUpdateCycleMessagesLimit;
-    } netOptimize;
-};
-
-struct SScriptInfo
-{
-    const char* szMinServerHostVer;
-    const char* szMinServerRunVer;
-    const char* szMinClientRunVer;
-};
-
-struct SPlayerPacketUsage
-{
-    NetServerPlayerID playerId;
-    uint uiPktsPerSec;
-    uint uiBytesPerSec;
 };
 
 class CNetServer
@@ -109,9 +89,7 @@ public:
     virtual bool                            GetNetworkStatistics            ( NetStatistics* pDest, const NetServerPlayerID& PlayerID ) = 0;
     virtual const SPacketStat*              GetPacketStats                  ( void ) = 0;
     virtual bool                            GetBandwidthStatistics          ( SBandwidthStatistics* pDest ) = 0;
-    virtual bool                            GetNetPerformanceStatistics     ( SNetPerformanceStatistics* pDest, bool bResetCounters ) = 0;
     virtual void                            GetPingStatus                   ( SFixedString < 32 >* pstrStatus ) = 0;
-    virtual bool                            GetSyncThreadStatistics         ( SSyncThreadStatistics* pDest, bool bResetCounters ) = 0;
 
     virtual NetBitStreamInterface*          AllocateNetServerBitStream      ( unsigned short usBitStreamVersion ) = 0;
     virtual void                            DeallocateNetServerBitStream    ( NetBitStreamInterface* bitStream ) = 0;
@@ -136,16 +114,12 @@ public:
     virtual void                            GetNetRoute                     ( SFixedString < 32 >* pstrRoute ) = 0;
 
     virtual bool                            InitServerId                    ( const char* szPath ) = 0;
+    virtual void                            SetEncryptionEnabled            ( bool bEncryptionEnabled ) = 0;
     virtual void                            ResendModPackets                ( const NetServerPlayerID& playerID ) = 0;
 
-    virtual void                            GetClientSerialAndVersion       ( const NetServerPlayerID& playerID, SFixedString < 32 >& strSerial, SFixedString < 64 >& strExtra, SFixedString < 32 >& strVersion ) = 0;
+    virtual void                            GetClientSerialAndVersion       ( const NetServerPlayerID& playerID, SFixedString < 32 >& strSerial, SFixedString < 32 >& strVersion ) = 0;
     virtual void                            SetNetOptions                   ( const SNetOptions& options ) = 0;
     virtual void                            GenerateRandomData              ( void* pOutData, uint uiLength ) = 0;
-    virtual bool                            EncryptDumpfile                 ( const char* szClearPathFilename, const char* szEncryptedPathFilename ) { return false; }
-    virtual bool                            ValidateHttpCacheFileName       ( const char* szFilename ) { return false; }
-    virtual bool                            GetScriptInfo                   ( const char* cpInBuffer, uint uiInSize, SScriptInfo* pOutInfo ) { return false; }
-    virtual bool                            DecryptScript                   ( const char* cpInBuffer, uint uiInSize, const char** pcpOutBuffer, uint* puiOutSize, const char* szScriptName ) { return false; }
-    virtual bool                            GetPlayerPacketUsageStats       ( uchar* packetIdList, uint uiNumPacketIds, SPlayerPacketUsage* pOutStats, uint uiTopCount ) { return false; }
 };
 
 #endif

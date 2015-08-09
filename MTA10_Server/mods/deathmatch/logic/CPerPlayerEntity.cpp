@@ -86,7 +86,7 @@ void CPerPlayerEntity::UpdatePerPlayer ( void )
     RemoveIdenticalEntries ( m_PlayersAdded, m_PlayersRemoved );
 
     // Delete us for every player in our deleted list
-    std::set < CPlayer* > ::const_iterator iter = m_PlayersRemoved.begin ();
+    list < CPlayer* > ::const_iterator iter = m_PlayersRemoved.begin ();
     for ( ; iter != m_PlayersRemoved.end (); iter++ )
     {
         DestroyEntity ( *iter );
@@ -187,7 +187,15 @@ bool CPerPlayerEntity::IsVisibleToReferenced ( CElement* pElement )
 bool CPerPlayerEntity::IsVisibleToPlayer ( CPlayer& Player )
 {
     // Return true if we're visible to the given player
-    return MapContains( m_Players, &Player );
+    map < ElementID, CPlayer* > ::const_iterator iter = m_PlayersMap.find ( Player.GetID ( ) );
+    if ( iter != m_PlayersMap.end ( ) )
+    {
+        if ( &Player == (*iter).second )
+        {
+            return true;
+        }
+    }
+    return false;
 }
 
 
@@ -218,6 +226,11 @@ void CPerPlayerEntity::CreateEntity ( CPlayer* pPlayer )
     }
 }
 
+
+// Optimizations off for this function to track crash
+#ifdef WIN32
+    #pragma optimize( "", off )
+#endif
 void CPerPlayerEntity::DestroyEntity ( CPlayer* pPlayer )
 {
     // Are we visible?
@@ -240,55 +253,63 @@ void CPerPlayerEntity::DestroyEntity ( CPlayer* pPlayer )
         else
         {
             //CLogger::DebugPrintf ( "Destroyed %u (%s) for everyone (%u)\n", GetID (), GetName (), m_Players.size () );
+
+            // Check m_Players for crash
+            std::multimap < ushort, CPlayer* > groupMap;
+            for ( std::list < CPlayer* > ::iterator iter = m_Players.begin () ; iter != m_Players.end () ; ++iter )
+            {
+                CPlayer* pPlayer = *iter;
+                MapInsert ( groupMap, pPlayer->GetBitStreamVersion (), pPlayer );
+            }
+
             BroadcastOnlyVisible ( Packet );
         }
     }
 }
 
+#ifdef WIN32
+    #pragma optimize( "", on )
+#endif
 
 void CPerPlayerEntity::BroadcastOnlyVisible ( const CPacket& Packet )
 {
     // Are we synced? (if not we're not visible to anybody)
     if ( m_bIsSynced )
     {
-        CPlayerManager* pPlayerManager = g_pGame->GetPlayerManager();
-        for ( std::set < CPlayer* >::iterator iter = m_Players.begin() ; iter != m_Players.end() ; )
-        {
-            if ( !pPlayerManager->Exists( *iter ) )
-            {
-                // Why does this happen?
-                // CLogger::ErrorPrintf( "CPerPlayerEntity removed invalid player from list: %08x", *iter );
-                m_Players.erase( iter++ );
-            }
-            else
-                ++iter;
-        }
-
         // Send it to all players we're visible to
         CPlayerManager::Broadcast ( Packet, m_Players );
     }
 }
 
 
-void CPerPlayerEntity::RemoveIdenticalEntries ( std::set < CPlayer* >& List1, std::set < CPlayer* >& List2 )
+void CPerPlayerEntity::RemoveIdenticalEntries ( list < CPlayer* >& List1, list < CPlayer* >& List2 )
 {
-    std::vector < CPlayer* > dupList;
-
-    // Make list of dups
-    for ( std::set < CPlayer* > ::iterator it = List1.begin (); it != List1.end (); it++ )
-        if ( MapContains( List2, *it ) )
-            dupList.push_back( *it );
-
-    // Remove dups from both lists
-    for ( std::vector < CPlayer* > ::iterator it = dupList.begin (); it != dupList.end (); it++ )
+    // NULL all matching entries
+    bool bRemoved = false;
+    list < CPlayer* > ::iterator iter1 = List1.begin ();
+    list < CPlayer* > ::iterator iter2;
+    for ( ; iter1 != List1.end (); iter1++ )
     {
-        MapRemove( List1, *it );
-        MapRemove( List2, *it );
+        for ( iter2 = List2.begin (); iter2 != List2.end (); iter2++ )
+        {
+            if ( *iter1 == *iter2 )
+            {
+                *iter1 = NULL;
+                *iter2 = NULL;
+            }
+        }
+    }
+
+    // If we removed some, remove the NULL entries in both lists
+    if ( bRemoved )
+    {
+        List1.remove ( NULL );
+        List2.remove ( NULL );
     }
 }
 
 
-void CPerPlayerEntity::AddPlayersBelow ( CElement* pElement, std::set < CPlayer* >& Added )
+void CPerPlayerEntity::AddPlayersBelow ( CElement* pElement, list < CPlayer* >& Added )
 {
     assert ( pElement );
 
@@ -299,7 +320,7 @@ void CPerPlayerEntity::AddPlayersBelow ( CElement* pElement, std::set < CPlayer*
         CPlayer* pPlayer = static_cast < CPlayer* > ( pElement );
         if ( !IsVisibleToPlayer ( *pPlayer ) )
         {
-            MapInsert( Added, pPlayer );
+            Added.push_back ( pPlayer );
         }
 
         // Add it to our reference list
@@ -317,7 +338,7 @@ void CPerPlayerEntity::AddPlayersBelow ( CElement* pElement, std::set < CPlayer*
 }
 
 
-void CPerPlayerEntity::RemovePlayersBelow ( CElement* pElement, std::set < CPlayer* >& Removed )
+void CPerPlayerEntity::RemovePlayersBelow ( CElement* pElement, list < CPlayer* >& Removed )
 {
     assert ( pElement );
 
@@ -331,7 +352,7 @@ void CPerPlayerEntity::RemovePlayersBelow ( CElement* pElement, std::set < CPlay
         // Did we just loose the last reference to that player? Add him to the list over removed players.
         if ( !IsVisibleToPlayer ( *pPlayer ) )
         {
-            MapInsert( Removed, pPlayer );
+            Removed.push_back ( pPlayer );
         }
     }
 
@@ -346,18 +367,24 @@ void CPerPlayerEntity::RemovePlayersBelow ( CElement* pElement, std::set < CPlay
 }
 
 
-void CPerPlayerEntity::AddPlayerReference ( CPlayer* pPlayer )
-{
-    if ( g_pGame->GetPlayerManager()->Exists( pPlayer ) )
-        MapInsert( m_Players, pPlayer );
-    else
-        CLogger::ErrorPrintf( "CPerPlayerEntity tried to add reference for non existing player: %08x\n", pPlayer );
-}
-
-
 void CPerPlayerEntity::RemovePlayerReference ( CPlayer* pPlayer )
 {
-    MapRemove( m_Players, pPlayer );
+    assert ( pPlayer );
+
+    // Find him and remove only that item
+    list < CPlayer* > ::iterator iter = m_Players.begin ();
+    while ( iter != m_Players.end () )
+    {
+        if ( *iter == pPlayer )
+        {
+            iter = m_Players.erase ( iter );
+        }
+        else
+        {
+            iter++;
+        }
+    }
+    m_PlayersMap.erase ( pPlayer->GetID ( ) );
 }
 
 
@@ -366,7 +393,7 @@ void CPerPlayerEntity::RemovePlayerReference ( CPlayer* pPlayer )
 //
 void CPerPlayerEntity::StaticOnPlayerDelete ( CPlayer* pPlayer )
 {
-    for ( std::set < CPerPlayerEntity* >::iterator iter = ms_AllPerPlayerEntityMap.begin (); iter != ms_AllPerPlayerEntityMap.end () ; ++iter )
+    for ( std::set < CPerPlayerEntity* >::iterator iter = ms_AllPerPlayerEntityMap.begin (); iter != ms_AllPerPlayerEntityMap.begin () ; ++iter )
     {
         (*iter)->OnPlayerDelete ( pPlayer );
     }
@@ -375,28 +402,8 @@ void CPerPlayerEntity::StaticOnPlayerDelete ( CPlayer* pPlayer )
 
 void CPerPlayerEntity::OnPlayerDelete ( CPlayer* pPlayer )
 {
-    /* Caz - Debug code disabled because it is being fixed by removing them from the map and the error is misleading users*/
-    //SString strStatus;
-    if ( MapContains( m_Players, pPlayer ) )
-    {
-        //strStatus += "m_Players ";
-        MapRemove( m_Players, pPlayer );
-    }
-
-    if ( MapContains( m_PlayersAdded, pPlayer ) )
-    {
-        //strStatus += "m_PlayersAdded ";
-        MapRemove( m_PlayersAdded, pPlayer );
-    }
-
-    if ( MapContains( m_PlayersRemoved, pPlayer ) )
-    {
-        //strStatus += "m_PlayersRemoved ";
-        MapRemove( m_PlayersRemoved, pPlayer );
-    }
-
-    /*if ( !strStatus.empty() )
-    {
-        CLogger::ErrorPrintf( "CPerPlayerEntity problem: %s\n", *strStatus );
-    }*/
+    MapRemove ( m_PlayersMap, pPlayer->GetID ( ) );
+    ListRemove ( m_Players, pPlayer );
+    ListRemove ( m_PlayersAdded, pPlayer );
+    ListRemove ( m_PlayersRemoved, pPlayer );
 }

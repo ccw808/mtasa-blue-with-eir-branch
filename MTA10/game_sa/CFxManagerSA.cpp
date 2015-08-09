@@ -2,84 +2,85 @@
 *
 *  PROJECT:     Multi Theft Auto v1.0
 *  LICENSE:     See LICENSE in the top level directory
-*  FILE:        game_sa/CFxManagerSA.cpp
-*  PURPOSE:     Game effects handling
+*  FILE:        game_sa/CParticleSystemManagerSA.h
+*  PURPOSE:     Header file for particle system manager class
+*  DEVELOPERS:  
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *
 *****************************************************************************/
 
 #include "StdInc.h"
+#include "CFxSystemSA.h"
 
-
-CFxSystem* CFxManagerSA::CreateFxSystem( const char * szBlueprint, const CVector & vecPosition, RwMatrix * pRwMatrixTag, unsigned char bSkipCameraFrustumCheck )
+CFxManagerSA::CFxManagerSA(CFxManagerSAInterface * pInterface)
 {
-    const CVector * pvecPosition = &vecPosition;
-    DWORD dwThis = ( DWORD ) m_pInterface;
-    DWORD dwFunc = FUNC_FxManager_c__CreateFxSystem;
-    DWORD dwReturn = 0;
-    _asm
-    {
-        mov     ecx, dwThis
-        push    bSkipCameraFrustumCheck
-        push    pRwMatrixTag
-        push    pvecPosition
-        push    szBlueprint
-        call    dwFunc
-        mov     dwReturn, eax
-    }
-    if ( dwReturn != 0 )
-    {
-        CFxSystemSA* pFxSystemSA = new CFxSystemSA((CFxSystemSAInterface*)dwReturn);
-        return pFxSystemSA;
-    }
-    else
-        return NULL;
+    m_pInterface = pInterface;
 }
 
-void CFxManagerSA::DestroyFxSystem(CFxSystem* pFxSystem)
+void CFxManagerSA::SetWindData(const CVector& vecWindDirection, float fWindStrength)
 {
-    DWORD dwThis = ( DWORD ) m_pInterface;
-    DWORD dwFunc = FUNC_FxManager_c__DestroyFxSystem;
-
-    void * pFxSA = pFxSystem->GetInterface();
-
-    _asm
+    uint32 dwFunc = (uint32)FUNC_CFxManager__SetWindData;
+    const CVector * pVecWindDir = &vecWindDirection;
+    __asm
     {
-        mov     ecx, dwThis
-        push    pFxSA
-        call    dwFunc
+        push fWindStrength
+        push pVecWindDir
+        mov ecx, m_pInterface
+        call dwFunc
     }
 }
 
-//
-// Called when GTA deletes an FxSystem
-//
-void CFxManagerSA::OnFxSystemSAInterfaceDestroyed ( CFxSystemSAInterface* pFxSystemSAInterface )
+void CFxManagerSA::DestroyFxSystem(CFxSystemSA* pFxSystem)
 {
-    // Delete our wrapper object if we have one
-    CFxSystemSA* pFxSystemSA = GetFxSystem( pFxSystemSAInterface );
-    if ( pFxSystemSA )
-        delete pFxSystemSA;
+    uint32 dwFunc = (uint32)FUNC_CFxManager__DestroyFxSystem;
+    __asm
+    {
+        push pFxSystem
+        mov ecx, m_pInterface
+        call dwFunc
+    }
 }
 
-//
-// AddToList/RemoveFromList called from CFxSystemSA constructor/destructor
-//
-void CFxManagerSA::AddToList( CFxSystemSAInterface* pFxSystemSAInterface, CFxSystemSA* pFxSystemSA )
+CFxSystemSA* CFxManagerSA::InitialiseFxSystem(CFxSystemBPSA* pFxSystemBP, CVector& vecPos, RwMatrix* pMatrix, bool bUnknown)
 {
-    MapSet( m_FxInterfaceMap, pFxSystemSAInterface, pFxSystemSA );
+    const CVector * pVecPos = &vecPos;
+    uint32 dwFunc = (uint32)FUNC_CFxManager__InitialiseFxSystem;
+    class CFxSystemSAInterface* pRet = NULL;
+    __asm
+    {
+        push bUnknown
+        push pMatrix
+        push pVecPos
+        push pFxSystemBP
+        mov ecx, m_pInterface
+        call dwFunc
+        mov pRet, eax
+    }
+    if(pRet)
+    {
+        return new CFxSystemSA(pRet);
+    }
+    return NULL;
 }
 
-void CFxManagerSA::RemoveFromList( CFxSystemSA* pFxSystemSA )
+CFxSystemSA* CFxManagerSA::InitialiseFxSystem(CFxSystemBPSA* pFxSystemBP, RwMatrix* pMatrix1, RwMatrix* pMatrix2, bool bUnknown)
 {
-    MapRemoveByValue( m_FxInterfaceMap, pFxSystemSA );
-}
-
-//
-// Find our wrapper object for the GTA object
-//
-CFxSystemSA* CFxManagerSA::GetFxSystem( CFxSystemSAInterface* pFxSystemSAInterface )
-{
-    return MapFindRef( m_FxInterfaceMap, pFxSystemSAInterface );
+    uint32 dwFunc = (uint32)FUNC_CFxManager__InitialiseFxSystem2;
+    CFxSystemSAInterface* pRet = NULL;
+    __asm
+    {
+        push bUnknown
+        push pMatrix2
+        push pMatrix1
+        push pFxSystemBP
+        mov ecx, m_pInterface
+        call dwFunc
+        mov pRet, eax
+    }
+    if(pRet)
+    {
+        return new CFxSystemSA(pRet);
+    }
+    return NULL;
 }

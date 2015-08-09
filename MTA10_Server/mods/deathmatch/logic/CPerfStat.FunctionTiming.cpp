@@ -11,7 +11,6 @@
 
 #include "StdInc.h"
 #define DEFAULT_THRESH_MS 1
-TIMEUS CPerfStatFunctionTiming::ms_PeakUsThresh = DEFAULT_THRESH_MS * 1000;
 
 namespace
 {
@@ -20,31 +19,13 @@ namespace
     //
     struct STiming
     {
-        STiming( void ) :
-             uiNumCalls( 0 )
-            ,fTotalMs( 0 )
-            ,fPeakMs( 0 )
-            ,fResBiggestMs( 0 )
-            ,uiTotalBytes( 0 )
-            ,uiPeakBytes( 0 )
-            ,uiResBiggestBytes( 0 )
-        {}
-
         uint uiNumCalls;
         float fTotalMs;
         float fPeakMs;
-        float fResBiggestMs;
-        SString strResBiggestMsName;
-
-        uint uiTotalBytes;
-        uint uiPeakBytes;
-        uint uiResBiggestBytes;
-        SString strResBiggestBytesName;
     };
 
     struct SFunctionTimingInfo
     {
-        SFunctionTimingInfo( void ) : iPrevIndex( 0 ) {}
         STiming now5s;
         STiming prev60s;
         int iPrevIndex;
@@ -108,7 +89,7 @@ public:
     virtual void                GetStats                ( CPerfStatResult* pOutResult, const std::map < SString, int >& optionMap, const SString& strFilter );
 
     // CPerfStatFunctionTiming
-    virtual void                UpdateTiming            ( const SString& strResourceName, const char* szFunctionName, TIMEUS timeUs, uint uiDeltaBytes );
+    virtual void                UpdateTiming            ( const char* szFunctionName, TIMEUS timeUs );
 
     // CPerfStatFunctionTimingImpl functions
     void                        SetActive               ( bool bActive );
@@ -117,6 +98,7 @@ public:
     CElapsedTime                                m_TimeSinceLastViewed;
     bool                                        m_bIsActive;
     CValueHistory                               m_PeakUsRequiredHistory;
+    TIMEUS                                      m_PeakUsThresh;
 
     CElapsedTime                                m_TimeSinceUpdate;
     std::map < SString, SFunctionTimingInfo >   m_TimingMap;
@@ -149,8 +131,7 @@ CPerfStatFunctionTiming* CPerfStatFunctionTiming::GetSingleton ()
 ///////////////////////////////////////////////////////////////
 CPerfStatFunctionTimingImpl::CPerfStatFunctionTimingImpl ( void )
 {
-    m_strCategoryName = "Function stats";
-    ms_PeakUsThresh = DEFAULT_THRESH_MS * 1000;
+    m_strCategoryName = "Function timing";
 }
 
 
@@ -195,12 +176,12 @@ void CPerfStatFunctionTimingImpl::DoPulse ( void )
     // Do nothing if not active
     if ( !m_bIsActive )
     {
-        m_TimingMap.clear ();
+        m_TimingMap.empty ();
         return;
     }
 
     // Check if time to cycle the stats
-    if ( m_TimeSinceUpdate.Get () >= 10000 )
+    if ( m_TimeSinceUpdate.Get () >= 5000 )
     {
         m_TimeSinceUpdate.Reset ();
 
@@ -214,50 +195,19 @@ void CPerfStatFunctionTimingImpl::DoPulse ( void )
 
             // Reset accumulator
             item.now5s.uiNumCalls = 0;
-
             item.now5s.fTotalMs = 0;
             item.now5s.fPeakMs = 0;
-            item.now5s.fResBiggestMs = 0;
-            item.now5s.strResBiggestMsName.clear();
-
-            item.now5s.uiTotalBytes = 0;
-            item.now5s.uiPeakBytes = 0;
-            item.now5s.uiResBiggestBytes = 0;
-            item.now5s.strResBiggestBytesName.clear();
 
             // Recalculate last 60 second stats
             item.prev60s.uiNumCalls = 0;
-
             item.prev60s.fTotalMs = 0;
             item.prev60s.fPeakMs = 0;
-            item.prev60s.fResBiggestMs = 0;
-            item.prev60s.strResBiggestMsName.clear();
-
-            item.prev60s.uiTotalBytes = 0;
-            item.prev60s.uiPeakBytes = 0;
-            item.prev60s.uiResBiggestBytes = 0;
-            item.prev60s.strResBiggestBytesName.clear();
-
             for ( uint i = 0 ; i < NUMELMS( item.history ) ; i++ )
             {
                 const STiming& slot = item.history[i];
                 item.prev60s.uiNumCalls += slot.uiNumCalls;
-
                 item.prev60s.fTotalMs += slot.fTotalMs;
                 item.prev60s.fPeakMs = Max ( item.prev60s.fPeakMs, slot.fPeakMs );
-                if ( item.prev60s.fResBiggestMs < slot.fTotalMs )
-                {
-                    item.prev60s.fResBiggestMs = slot.fTotalMs;
-                    item.prev60s.strResBiggestMsName = slot.strResBiggestMsName;
-                }
-
-                item.prev60s.uiTotalBytes += slot.uiTotalBytes;
-                item.prev60s.uiPeakBytes = Max ( item.prev60s.uiPeakBytes, slot.uiPeakBytes );
-                if ( item.prev60s.uiResBiggestBytes < slot.uiTotalBytes )
-                {
-                    item.prev60s.uiResBiggestBytes = slot.uiTotalBytes;
-                    item.prev60s.strResBiggestBytesName = slot.strResBiggestBytesName;
-                }
             }
 
             // Remove from map if no calls in the last 60s
@@ -272,7 +222,7 @@ void CPerfStatFunctionTimingImpl::DoPulse ( void )
     // Update PeakUs threshold
     //
     m_PeakUsRequiredHistory.RemoveOlderThan ( 10000 );
-    ms_PeakUsThresh = m_PeakUsRequiredHistory.GetLowestValue ( DEFAULT_THRESH_MS * 1000 );
+    m_PeakUsThresh = m_PeakUsRequiredHistory.GetLowestValue ( DEFAULT_THRESH_MS * 1000 );
 }
 
 
@@ -300,13 +250,13 @@ void CPerfStatFunctionTimingImpl::SetActive ( bool bActive )
 //
 //
 ///////////////////////////////////////////////////////////////
-void CPerfStatFunctionTimingImpl::UpdateTiming ( const SString& strResourceName, const char* szFunctionName, TIMEUS timeUs, uint uiDeltaBytes )
+void CPerfStatFunctionTimingImpl::UpdateTiming ( const char* szFunctionName, TIMEUS timeUs )
 {
     if ( !m_bIsActive )
         return;
 
     // Ignore any single calls under lowest threshold from any viewer
-    if ( timeUs < ms_PeakUsThresh )
+    if ( timeUs < m_PeakUsThresh )
         return;
 
     float fTimeMs = timeUs * ( 1 / 1000.f );
@@ -314,22 +264,8 @@ void CPerfStatFunctionTimingImpl::UpdateTiming ( const SString& strResourceName,
     // Record the timing
     SFunctionTimingInfo& item = MapGet ( m_TimingMap, szFunctionName );
     item.now5s.uiNumCalls++;
-
     item.now5s.fTotalMs += fTimeMs;
     item.now5s.fPeakMs = Max ( item.now5s.fPeakMs, fTimeMs );
-    if ( item.now5s.fResBiggestMs < fTimeMs )
-    {
-        item.now5s.fResBiggestMs = fTimeMs;
-        item.now5s.strResBiggestMsName = strResourceName;
-    }
-
-    item.now5s.uiTotalBytes += uiDeltaBytes;
-    item.now5s.uiPeakBytes = Max ( item.now5s.uiPeakBytes, uiDeltaBytes );
-    if ( item.now5s.uiResBiggestBytes < uiDeltaBytes )
-    {
-        item.now5s.uiResBiggestBytes = uiDeltaBytes;
-        item.now5s.strResBiggestBytesName = strResourceName;
-    }
 }
 
 
@@ -349,9 +285,8 @@ void CPerfStatFunctionTimingImpl::GetStats ( CPerfStatResult* pResult, const std
     // Set option flags
     //
     bool bHelp = MapContains ( optionMap, "h" );
-    uint uiPeakBytesThresh = 1000;
-    int iPeakMsThresh = optionMap.empty () ? -1 : atoi ( optionMap.begin ()->first );
-    if ( iPeakMsThresh < 0 )
+    int iPeakMsThresh = optionMap.empty () ? 0 : atoi ( optionMap.begin ()->first );
+    if ( iPeakMsThresh < 1 )
         iPeakMsThresh = DEFAULT_THRESH_MS;
     m_PeakUsRequiredHistory.AddValue ( iPeakMsThresh * 1000 );
 
@@ -362,7 +297,7 @@ void CPerfStatFunctionTimingImpl::GetStats ( CPerfStatResult* pResult, const std
     {
         pResult->AddColumn ( "Function timings help" );
         pResult->AddRow ()[0] = "Option h - This help";
-        pResult->AddRow ()[0] = "0-50 - Peak Ms threshold (defaults to 1)";
+        pResult->AddRow ()[0] = "1-50 - Peak Ms threshold (defaults to 1)";
         return;
     }
 
@@ -371,23 +306,12 @@ void CPerfStatFunctionTimingImpl::GetStats ( CPerfStatResult* pResult, const std
     //
 
     pResult->AddColumn ( " " );
-    pResult->AddColumn ( "10 sec.calls" );
-    pResult->AddColumn ( "10 sec.cpu total" );
-    pResult->AddColumn ( "10 sec.cpu peak" );
-    pResult->AddColumn ( "10 sec.cpu biggest call" );
-
-    pResult->AddColumn ( "10 sec.BW" );
-    //pResult->AddColumn ( "10 sec.BW peak" );
-    pResult->AddColumn ( "10 sec.BW biggest call" );
-
-    pResult->AddColumn ( "120 sec.calls" );
-    pResult->AddColumn ( "120 sec.cpu total" );
-    pResult->AddColumn ( "120 sec.cpu peak" );
-    pResult->AddColumn ( "120 sec.cpu biggest call" );
-
-    pResult->AddColumn ( "120 sec.BW" );
-    //pResult->AddColumn ( "120 sec.BW peak" );
-    pResult->AddColumn ( "120 sec.BW biggest call" );
+    pResult->AddColumn ( "5 sec.calls" );
+    pResult->AddColumn ( "5 sec.cpu total" );
+    pResult->AddColumn ( "5 sec.cpu peak" );
+    pResult->AddColumn ( "60 sec.calls" );
+    pResult->AddColumn ( "60 sec.cpu total" );
+    pResult->AddColumn ( "60 sec.cpu peak" );
 
     //
     // Set rows
@@ -408,8 +332,7 @@ void CPerfStatFunctionTimingImpl::GetStats ( CPerfStatResult* pResult, const std
             continue;
 
         // Filter peak threshold for this viewer
-        if ( prev5s.fPeakMs < iPeakMsThresh && prev60s.fPeakMs < iPeakMsThresh &&
-             prev5s.uiPeakBytes < uiPeakBytesThresh && prev60s.uiPeakBytes < uiPeakBytesThresh )
+        if ( prev5s.fPeakMs < iPeakMsThresh && prev60s.fPeakMs < iPeakMsThresh )
             continue;
 
         // Apply filter
@@ -426,32 +349,16 @@ void CPerfStatFunctionTimingImpl::GetStats ( CPerfStatResult* pResult, const std
             row[c++] = "-";
             row[c++] = "-";
             row[c++] = "-";
-            row[c++] = "-";
-            row[c++] = "";
-            //row[c++] = "";
-            row[c++] = "";
         }
         else
         {
             row[c++] = SString ( "%u", prev5s.uiNumCalls );
-
             row[c++] = SString ( "%2.0f ms", prev5s.fTotalMs );
             row[c++] = SString ( "%2.0f ms", prev5s.fPeakMs );
-            row[c++] = SString ( "%2.0f ms (%s)", prev5s.fResBiggestMs, *prev5s.strResBiggestMsName );
-
-            row[c++] = prev5s.uiTotalBytes < 10 ? "" : SString ( "%s", *CPerfStatManager::GetScaledByteString( prev5s.uiTotalBytes ) );
-            //row[c++] = prev5s.uiPeakBytes < 10 ? "" : SString ( "%s ", *CPerfStatManager::GetScaledByteString( prev5s.uiPeakBytes ) );
-            row[c++] = prev5s.uiResBiggestBytes < 10 ? "" : SString ( "%s (%s)", *CPerfStatManager::GetScaledByteString( prev5s.uiResBiggestBytes ), *prev5s.strResBiggestBytesName );
         }
 
         row[c++] = SString ( "%u", prev60s.uiNumCalls );
-
         row[c++] = SString ( "%2.0f ms", prev60s.fTotalMs );
         row[c++] = SString ( "%2.0f ms", prev60s.fPeakMs );
-        row[c++] = SString ( "%2.0f ms (%s)", prev60s.fResBiggestMs, *prev60s.strResBiggestMsName );
-
-        row[c++] = prev60s.uiTotalBytes < 10 ? "" : SString ( "%s ", *CPerfStatManager::GetScaledByteString( prev60s.uiTotalBytes ) );
-        //row[c++] = prev60s.uiPeakBytes < 10 ? "" : SString ( "%s ", *CPerfStatManager::GetScaledByteString( prev60s.uiPeakBytes ) );
-        row[c++] = prev60s.uiResBiggestBytes < 10 ? "" : SString ( "%s (%s)", *CPerfStatManager::GetScaledByteString( prev60s.uiResBiggestBytes ), *prev60s.strResBiggestBytesName );
     }
 }

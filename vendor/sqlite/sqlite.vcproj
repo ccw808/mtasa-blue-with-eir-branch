@@ -18,8 +18,8 @@
 	<Configurations>
 		<Configuration
 			Name="Debug|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="1"
 			>
@@ -41,7 +41,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;SQLITE_EXPORTS;SQLITE_API=__declspec(dllexport)"
+				PreprocessorDefinitions="WIN32;_DEBUG;_WINDOWS;_USRDLL;SQLITE_EXPORTS;"
 				MinimalRebuild="true"
 				BasicRuntimeChecks="3"
 				RuntimeLibrary="3"
@@ -60,11 +60,11 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\sqlite3_d.dll"
+				OutputFile="../sqlite3d.dll"
 				LinkIncremental="2"
 				GenerateDebugInformation="true"
 				SubSystem="2"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary="lib/sqlite3d.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -87,13 +87,13 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine=""
+				CommandLine="xcopy /y ..\sqlite3d.dll &quot;C:\Program Files\MTA San Andreas 1.4\server\mods\deathmatch\&quot;"
 			/>
 		</Configuration>
 		<Configuration
 			Name="Release|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="x86\$(ConfigurationName)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="$(ConfigurationName)"
 			ConfigurationType="2"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -117,7 +117,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;SQLITE_EXPORTS;SQLITE_API=__declspec(dllexport)"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;SQLITE_EXPORTS;"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				UsePrecompiledHeader="0"
@@ -135,14 +135,17 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\sqlite3.dll"
+				OutputFile="../sqlite3.dll"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
+				GenerateMapFile="true"
+				MapFileName="../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary="lib/sqlite3.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -165,13 +168,13 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine=""
+				CommandLine="xcopy /y ..\sqlite3.dll &quot;C:\Program Files\MTA San Andreas 1.4\server\mods\deathmatch\&quot;"
 			/>
 		</Configuration>
 		<Configuration
 			Name="Nightly|Win32"
-			OutputDirectory="x86\$(ConfigurationName)"
-			IntermediateDirectory="..\..\obj\x86\$(ConfigurationName)\vendor\$(SafeRootNamespace)"
+			OutputDirectory="$(SolutionDir)$(ConfigurationName)"
+			IntermediateDirectory="..\..\obj\vendor\sqlite"
 			ConfigurationType="2"
 			CharacterSet="1"
 			WholeProgramOptimization="1"
@@ -195,7 +198,7 @@
 				Name="VCCLCompilerTool"
 				Optimization="2"
 				EnableIntrinsicFunctions="true"
-				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;SQLITE_EXPORTS;SQLITE_API=__declspec(dllexport)"
+				PreprocessorDefinitions="WIN32;NDEBUG;_WINDOWS;_USRDLL;SQLITE_EXPORTS;"
 				RuntimeLibrary="2"
 				EnableFunctionLevelLinking="true"
 				WarningLevel="3"
@@ -212,14 +215,17 @@
 			/>
 			<Tool
 				Name="VCLinkerTool"
-				OutputFile="$(OutDir)\sqlite3.dll"
+				OutputFile="../sqlite3.dll"
 				LinkIncremental="1"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
+				GenerateMapFile="true"
+				MapFileName="../../symbols/$(ConfigurationName)_$(SafeParentName).map"
+				MapExports="true"
 				SubSystem="2"
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
-				ImportLibrary="$(OutDir)\$(TargetName).lib"
+				ImportLibrary="lib/sqlite3.lib"
 				TargetMachine="1"
 			/>
 			<Tool
@@ -242,7 +248,7 @@
 			/>
 			<Tool
 				Name="VCPostBuildEventTool"
-				CommandLine=""
+				CommandLine="xcopy /y ..\sqlite3.dll &quot;..\..\output\MTA San Andreas\server\mods\deathmatch\&quot;"
 			/>
 		</Configuration>
 	</Configurations>

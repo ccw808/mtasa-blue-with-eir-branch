@@ -36,7 +36,8 @@ CPickup::CPickup ( CElement* pParent, CXMLNode* pNode, CPickupManager* pPickupMa
     m_usAmmo = 0;
     m_fAmount = 0;
     m_ulRespawnIntervals = 30000;
-    m_CreationTime = CTickCount::Now();
+    m_ulLastUsedTime = 0;
+    m_ulCreationTime = GetTime();
     m_usModel = CPickupManager::GetWeaponModel ( m_ucWeaponType );
     m_bVisible = true;
     m_bSpawned = true;
@@ -407,7 +408,7 @@ void CPickup::Use ( CPlayer& Player )
             if ( m_ulRespawnIntervals > 0 )
             {
                 // Save our last used time
-                m_LastUsedTime = CTickCount::Now();
+                m_ulLastUsedTime = GetTime ();
                 // Mark us as not spawned
                 m_bSpawned = false;
         

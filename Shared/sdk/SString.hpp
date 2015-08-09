@@ -23,24 +23,12 @@ SString& SString::vFormat ( const char* szFormat, va_list vl )
 
     // Calc size
     va_copy ( vlLocal, vl );
-    int iRequiredCapacity;
-    __try
-    {
-        iRequiredCapacity = _vscprintf ( szFormat, vlLocal );
-    }
-    __except ( EXCEPTION_EXECUTE_HANDLER )
-    {
-        // Clean up and indicate problem
-        OnFormatException( szFormat );
-        return *this;
-    }
+    int iRequiredCapacity = _vscprintf ( szFormat, vlLocal );
 
     if ( iRequiredCapacity < 1 )
     {
         // Error or empty string
         clear ();
-        if ( iRequiredCapacity == -1 )
-            OnInvalidParameter( szFormat );
         return *this;
     }
 
@@ -49,25 +37,12 @@ SString& SString::vFormat ( const char* szFormat, va_list vl )
 
     // Try to format the string into the buffer.
     va_copy ( vlLocal, vl );
-    int iSize;
-    __try
-    {
-        iSize = vsnprintf ( szDest, iRequiredCapacity, szFormat, vlLocal );
-    }
-    __except ( EXCEPTION_EXECUTE_HANDLER )
-    {
-        // Clean up and indicate problem
-        free ( szDest );
-        OnFormatException( szFormat );
-        return *this;
-    }
+    int iSize = vsnprintf ( szDest, iRequiredCapacity, szFormat, vlLocal );
 
     if ( iSize < 1 )
     {
         // Error
         clear ();
-        if ( iSize == -1 )
-            OnInvalidParameter( szFormat );
     }
     else
     {
@@ -141,38 +116,16 @@ SString& SString::vFormat ( const char* szFormat, va_list vl )
 
 
 //
-// Handle format exception
-//
-void SString::OnFormatException ( const char* szFormat )
-{
-    dassert( 0 );
-    // Replace format characters because it seems like a good idea
-    *this = ( SStringX( "[Format exception] " ) + szFormat ).Replace( "%", "#" );
-}
-
-
-//
-// Handle format invalid parameter
-//
-void SString::OnInvalidParameter ( const char* szFormat )
-{
-    dassert( 0 );
-    // Replace format characters because it seems like a good idea
-    *this = ( SStringX( "[Invalid parameter] " ) + szFormat ).Replace( "%", "#" );
-}
-
-
-//
 // Split into parts
 //
 void SString::Split ( const SString& strDelim, std::vector < SString >& outResult, unsigned int uiMaxAmount, unsigned int uiMinAmount ) const
 {
     outResult.clear ();
-    size_t ulStartPoint = 0;
+    unsigned long ulStartPoint = 0;
 
     while ( true )
     {
-        size_t ulPos = find ( strDelim, ulStartPoint );
+        unsigned long ulPos = find ( strDelim, ulStartPoint );
 
         if ( ulPos == npos || ( uiMaxAmount > 0 && uiMaxAmount <= outResult.size () + 1 ) )
         {
@@ -204,7 +157,7 @@ bool SString::Split ( const SString& strDelim, SString* pstrLeft, SString* pstrR
 
     assert ( iIndex );
     bool bFromEnd = iIndex < 0;
-    size_t ulPos;
+    unsigned long ulPos;
     if ( !bFromEnd )
     {
         ulPos = 0;
@@ -361,7 +314,7 @@ SString SString::TrimEnd ( const char* szOld ) const
 SString SString::ToLower ( void ) const
 {
     SString strResult = *this;
-    std::transform ( strResult.begin(), strResult.end(), strResult.begin(), SharedUtil::tolower < uchar > );
+    std::transform ( strResult.begin(), strResult.end(), strResult.begin(), ::tolower );
     return strResult;
 }
 
@@ -371,7 +324,7 @@ SString SString::ToLower ( void ) const
 SString SString::ToUpper ( void ) const
 {
     SString strResult = *this;
-    std::transform ( strResult.begin(), strResult.end(), strResult.begin(), SharedUtil::toupper < uchar > );
+    std::transform ( strResult.begin(), strResult.end(), strResult.begin(), ::toupper );
     return strResult;
 }
 
@@ -438,28 +391,28 @@ SString SString::Left ( int iCount ) const
 // Right most number of characters
 SString SString::Right ( int iCount ) const
 {
-    return SubStr ( (int)length () - iCount, iCount );
+    return SubStr ( length () - iCount, iCount );
 }
 
 
 bool SString::EndsWith ( const SString& strOther ) const
 {
-    return Right ( (int)strOther.length () ) == strOther;
+    return Right ( strOther.length () ) == strOther;
 }
 
 bool SString::EndsWithI ( const SString& strOther ) const
 {
-    return stricmp ( Right ( (int)strOther.length () ), strOther ) == 0;
+    return stricmp ( Right ( strOther.length () ), strOther ) == 0;
 }
 
 bool SString::BeginsWith ( const SString& strOther ) const
 {
-    return Left ( (int)strOther.length () ) == strOther;
+    return Left ( strOther.length () ) == strOther;
 }
 
 bool SString::BeginsWithI ( const SString& strOther ) const
 {
-    return stricmp ( Left ( (int)strOther.length () ), strOther ) == 0;
+    return stricmp ( Left ( strOther.length () ), strOther ) == 0;
 }
 
 // Static function

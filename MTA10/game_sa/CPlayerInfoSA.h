@@ -55,7 +55,11 @@ public:
     float   TargetX, TargetY;   // -1 ... 1 on screen
 };
 
-
+/**
+ *  This structure has serious alignment issues, 
+ *      1. m_nStandStillTimer is actually at 32, not 30.
+ *      2. there is 8 bytes + 3 bits padding after 2nd bitfield
+ */
 // Note: Information below may be incorrect. Please check before using.
 #pragma pack(push)
 #pragma pack(1)
@@ -105,7 +109,7 @@ public:
     bool    m_bFadeDrunkenness;     // 65
     BYTE    m_nDrugLevel;           // 66
     BYTE    m_nScriptLimitToGangSize; // 67
-    
+
     FLOAT   m_fBreath;  // for holding breath (ie underwater) // 68
 
     // once a set of melee weapon anims have been loaded and referenced for the player
@@ -118,7 +122,7 @@ public:
     FLOAT   m_fLookPitch;
     FLOAT   m_fSkateBoardSpeed;
     FLOAT   m_fSkateBoardLean;
-    
+
     DWORD * m_pSpecialAtomic; // was rpAtomic
     FLOAT   m_fGunSpinSpeed;
     FLOAT   m_fGunSpinAngle;
@@ -126,7 +130,7 @@ public:
     DWORD   m_LastTimeFiring;
     DWORD   m_nTargetBone;
     CVector m_vecTargetBoneOffset;
-    
+
     DWORD   m_busFaresCollected;
     bool    m_bPlayerSprintDisabled;
     bool    m_bDontAllowWeaponChange;
@@ -134,7 +138,7 @@ public:
     BYTE    m_pad3;
     WORD    m_DPadDownPressedInMilliseconds;
     WORD    m_DPadUpPressedInMilliseconds;
-        
+
     BYTE    m_wetness;
     BYTE    m_playersGangActive;
     BYTE    m_waterCoverPerc;
@@ -144,12 +148,12 @@ public:
     // used for doing lock-on with HS missiles
     DWORD   m_FireHSMissilePressedTime;
     CEntitySAInterface * m_LastHSMissileTarget;
-    
+
     long    m_nModelIndexOfLastBuildingShot;
-    
+
     DWORD   m_LastHSMissileLOSTime  :31;
     DWORD   m_bLastHSMissileLOS     :1;
-    
+
     CPedSAInterface * m_pCurrentProstitutePed;
     CPedSAInterface * m_pLastProstituteShagged;
 };
@@ -272,7 +276,7 @@ public:
     CPlayerPed      * GetPlayerPed (  );
     CWanted         * GetWanted ( );
     long            GetPlayerMoney ( void );
-    void            SetPlayerMoney ( long lMoney, bool bInstant );
+    void            SetPlayerMoney ( long lMoney );
 
     void            GetCrossHair ( bool &bActivated, float &fTargetX, float &fTargetY );
 

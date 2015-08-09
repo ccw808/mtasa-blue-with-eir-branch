@@ -42,10 +42,10 @@ enum eEntityStatus
     STATUS_TRAIN_NOT_MOVING,
     STATUS_HELI,
     STATUS_PLANE,
-    STATUS_REMOTE_CONTROLLED,
+    STATUS_PLAYER_REMOTE,
     STATUS_PLAYER_DISABLED,
-    STATUS_TRAILER, // ToDo: Check this. I can't reproduce that this is set for trailers
-    STATUS_SIMPLE_TRAILER // Same here
+    STATUS_TRAILER,
+    STATUS_SIMPLE_TRAILER
 };
 
 class CEntity

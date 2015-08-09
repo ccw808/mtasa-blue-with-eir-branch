@@ -10,7 +10,6 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#include "../game_sa/CTasksSA.h"
 
 void CPlayerPed__ProcessControl_Abort();
 
@@ -42,7 +41,6 @@ void CPlayerPed__ProcessControl_Abort();
 // Support for crash stats
 //
 void OnCrashAverted ( uint uiId );
-void OnEnterCrashZone ( uint uiId );
 
 void _cdecl CrashAverted ( DWORD id )
 {
@@ -51,14 +49,12 @@ void _cdecl CrashAverted ( DWORD id )
 
 #define CRASH_AVERTED(id) \
     } \
-    _asm pushfd \
     _asm pushad \
     _asm mov eax, id \
     _asm push eax \
     _asm call CrashAverted \
     _asm add esp, 4 \
     _asm popad \
-    _asm popfd \
     _asm \
     {
 
@@ -580,6 +576,7 @@ void _declspec(naked) HOOK_CrashFix_Misc19 ()
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////
 // Handle CPlaceable::RemoveMatrix having wrong data
 #define HOOKPOS_CrashFix_Misc20                             0x54F3B0
@@ -612,63 +609,29 @@ void _declspec(naked) HOOK_CrashFix_Misc20 ()
 }
 
 
-//////////////////////////////////////////////////////////////////////////////////////////
-//
+////////////////////////////////////////////////////////////////////////
 // Handle CTaskSimpleCarFallOut::FinishAnimFallOutCB having wrong data
-//
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-bool IsTaskSimpleCarFallOutValid( CAnimBlendAssociationSAInterface* pAnimBlendAssociation, CTaskSimpleCarFallOutSAInterface* pTask )
-{
-    if ( pTask->VTBL != (TaskVTBL*)VTBL_CTaskSimpleCarFallOut )
-    {
-        AddReportLog( 8530, SString( "IsTaskSimpleCarFallOutValid fail - pTask->VTBL: %08x", pTask->VTBL ), 5 );
-        return false;
-    }
-
-    if ( pTask->pVehicle )
-    {
-        CVehicle* pVehicle = pGameInterface->GetPools ()->GetVehicle ( (DWORD*) pTask->pVehicle );
-        if ( !pVehicle )
-        {
-            // Task looks valid, but vehicle is not recognised by MTA
-            AddReportLog( 8531, SString( "IsTaskSimpleCarFallOutValid invalid vehicle ptr - pTask->pVehicle: %08x", pTask->pVehicle ), 5 );
-            pTask->pVehicle = NULL;
-            return true;
-        }
-    }
-
-    return true;
-}
-
-#define HOOKPOS_CrashFix_Misc21                             0x648EE0
-#define HOOKSIZE_CrashFix_Misc21                            7
-DWORD RETURN_CrashFix_Misc21 =                              0x648EE7;
+#define HOOKPOS_CrashFix_Misc21                             0x648EF6
+#define HOOKSIZE_CrashFix_Misc21                            6
+DWORD RETURN_CrashFix_Misc21 =                              0x648EFC;
 void _declspec(naked) HOOK_CrashFix_Misc21 ()
 {
 #if TEST_CRASH_FIXES
     SIMULATE_ERROR_BEGIN( 10 )
         _asm
         {
-            mov     [esp+8], 0x10
+            mov     ecx, 0x10
         }
     SIMULATE_ERROR_END
 #endif
 
     _asm
     {
-        pushad
-        push    [esp+32+4*2]
-        push    [esp+32+4*2]
-        call    IsTaskSimpleCarFallOutValid
-        add     esp, 4*2
-        cmp     al,0
-        popad
-        je      cont  // Skip much code if CTaskSimpleCarFallOut is not valid
+        cmp     ecx, 0x480
+        jb      cont  // Skip much code if ecx is low
 
         // continue standard path
-        mov     eax, [esp+8]
-        mov     ecx, [eax+10h]
+        mov     edx, [ecx+590h]
         jmp     RETURN_CrashFix_Misc21
 
     cont:
@@ -881,149 +844,6 @@ void _declspec(naked) HOOK_CrashFix_Misc26 ()
 }
 
 
-////////////////////////////////////////////////////////////////////////
-// Handle CTaskComplexDieInCar::ControlSubTask ped with no vehicle
-#define HOOKPOS_CrashFix_Misc27                             0x6377FB
-#define HOOKSIZE_CrashFix_Misc27                            7
-DWORD RETURN_CrashFix_Misc27 =                              0x637802;
-void _declspec(naked) HOOK_CrashFix_Misc27 ()
-{
-    _asm
-    {
-        // Execute replaced code
-        cmp     byte ptr [edi+484h], 2
-        je      cont
-
-        // Check if veh pointer is zero
-        mov     ecx, [edi+58Ch]
-        test    ecx, ecx
-        jne     cont
-        CRASH_AVERTED( 27 )
-
-cont:
-        // Continue standard path
-        jmp     RETURN_CrashFix_Misc27
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////
-// Handle CObject::ProcessGarageDoorBehaviour object with no dummy
-#define HOOKPOS_CrashFix_Misc28                             0x44A4FD
-#define HOOKSIZE_CrashFix_Misc28                            6
-DWORD RETURN_CrashFix_Misc28 =                              0x44A503;
-DWORD RETURN_CrashFix_Misc28B =                             0x44A650;
-void _declspec(naked) HOOK_CrashFix_Misc28 ()
-{
-    _asm
-    {
-        // Execute replaced code
-        mov     eax, [esi+170h]
-    }
-
-#if TEST_CRASH_FIXES
-    SIMULATE_ERROR_BEGIN( 50 )
-        _asm
-        {
-            mov     eax, 0
-        }
-    SIMULATE_ERROR_END
-#endif
-
-    _asm
-    {
-        // Check if dummy pointer is zero
-        test    eax, eax
-        jne     cont
-
-        CRASH_AVERTED( 28 )
-        // Skip much code
-        jmp     RETURN_CrashFix_Misc28B
-
-cont:
-        // Continue standard path
-        jmp     RETURN_CrashFix_Misc28
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////
-// Handle CAEPCBankLoader::IsSoundBankLoaded with invalid argument
-#define HOOKPOS_CrashFix_Misc29                             0x4E022C
-#define HOOKSIZE_CrashFix_Misc29                            5
-DWORD RETURN_CrashFix_Misc29 =                              0x4E0231;
-DWORD RETURN_CrashFix_Misc29B =                             0x4E0227;
-void _declspec(naked) HOOK_CrashFix_Misc29 ()
-{
-    _asm
-    {
-        // Execute replaced code
-        movsx   eax,word ptr [esp+8]
-    }
-
-#if TEST_CRASH_FIXES
-    SIMULATE_ERROR_BEGIN( 10 )
-        _asm
-        {
-            mov     eax, 0xFFFFFFFF
-        }
-    SIMULATE_ERROR_END
-#endif
-
-    _asm
-    {
-        // Check word being -1
-        cmp     al, 0xffff
-        jz      cont
-
-        // Continue standard path
-        jmp     RETURN_CrashFix_Misc29
-
-cont:
-        CRASH_AVERTED( 29 )
-        // Skip much code
-        jmp     RETURN_CrashFix_Misc29B
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////
-// Handle CAnimBlendAssociation::SetFinishCallback with invalid ecx
-#define HOOKPOS_CrashFix_Misc30                             0x4CEBE8
-#define HOOKSIZE_CrashFix_Misc30                            7
-#define HOOKCHECK_CrashFix_Misc30                           0xC7
-DWORD RETURN_CrashFix_Misc30 =                              0x4CEBEF;
-DWORD RETURN_CrashFix_Misc30B =                             0x4CEBF5;
-void _declspec(naked) HOOK_CrashFix_Misc30 ()
-{
-#if TEST_CRASH_FIXES
-    SIMULATE_ERROR_BEGIN( 10 )
-        _asm
-        {
-            mov     ecx, 0
-        }
-    SIMULATE_ERROR_END
-#endif
-
-    _asm
-    {
-        // Check for incorrect pointer
-        cmp     ecx, 0
-        jz      cont
-
-        // Execute replaced code
-        mov     dword ptr [ecx+30h], 1
-        // Continue standard path
-        jmp     RETURN_CrashFix_Misc30
-
-cont:
-        CRASH_AVERTED( 30 )
-        // Skip much code
-        jmp     RETURN_CrashFix_Misc30B
-    }
-}
-
-
 //////////////////////////////////////////////////////////////////////////////////////////
 //
 // CClumpModelInfo::GetFrameFromId
@@ -1136,266 +956,12 @@ inner:
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// CEntity::GetBoundRect
-//
-// Check if crash will occur
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CEntity_GetBoundRect( CEntitySAInterface* pEntity )
-{
-    ushort usModelId = pEntity->m_nModelIndex;
-    CBaseModelInfoSAInterface* pModelInfo = ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelId];
-    if ( !pModelInfo )
-    {
-        // Crash will occur at offset 00134131
-        LogEvent( 814, "Model info missing", "CEntity_GetBoundRect", SString( "No info for model:%d", usModelId ), 5414 );
-        CArgMap argMap;
-        argMap.Set( "id", usModelId );
-        argMap.Set( "reason", "info" );
-        SetApplicationSetting( "diagnostics", "gta-model-fail", argMap.ToString() );
-    }
-    else
-    {
-        CColModelSAInterface* pColModel = pModelInfo->pColModel;
-        if ( !pColModel )
-        {
-            // Crash will occur at offset 00134134
-            LogEvent( 815, "Model collision missing", "CEntity_GetBoundRect", SString( "No collision for model:%d", usModelId ), 5415 );
-            CArgMap argMap;
-            argMap.Set( "id", usModelId );
-            argMap.Set( "reason", "collision" );
-            SetApplicationSetting( "diagnostics", "gta-model-fail", argMap.ToString() );
-        }
-    }
-}
-
-// Hook info
-#define HOOKPOS_CEntity_GetBoundRect                      0x53412A
-#define HOOKSIZE_CEntity_GetBoundRect                     7
-#define HOOKCHECK_CEntity_GetBoundRect                    0x8B
-DWORD RETURN_CEntity_GetBoundRect =                       0x534131;
-void _declspec(naked) HOOK_CEntity_GetBoundRect()
-{
-    _asm
-    {
-        pushad
-        push    esi
-        call    OnMY_CEntity_GetBoundRect
-        add     esp, 4*1
-        popad
-
-        // Continue replaced code
-        mov     ecx,dword ptr [eax*4+0A9B0C8h] 
-        jmp     RETURN_CEntity_GetBoundRect
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// CVehicle_AddUpgrade
-//
-// Record some variables in case crash occurs
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CVehicle_AddUpgrade_Pre( CVehicleSAInterface* pVehicle, int iUpgradeId, int iFrame )
-{
-    CArgMap argMap;
-    argMap.Set( "vehid", pVehicle->m_nModelIndex );
-    argMap.Set( "upgid", iUpgradeId );
-    argMap.Set( "frame", iFrame );
-    SetApplicationSetting( "diagnostics", "gta-upgrade-fail", argMap.ToString() );
-}
-
-void OnMY_CVehicle_AddUpgrade_Post( void )
-{
-    SetApplicationSetting( "diagnostics", "gta-upgrade-fail", "" );
-}
-
-// Hook info
-#define HOOKPOS_CVehicle_AddUpgrade                      0x6DFA20
-#define HOOKSIZE_CVehicle_AddUpgrade                     6
-#define HOOKCHECK_CVehicle_AddUpgrade                    0x51
-DWORD RETURN_CVehicle_AddUpgrade =                       0x6DFA26;
-void _declspec(naked) HOOK_CVehicle_AddUpgrade()
-{
-    _asm
-    {
-        pushad
-        push    [esp+32+4*2]
-        push    [esp+32+4*2]
-        push    ecx
-        call    OnMY_CVehicle_AddUpgrade_Pre
-        add     esp, 4*3
-        popad
-
-        push    [esp+4*2]
-        push    [esp+4*2]
-        call inner
-
-        pushad
-        call    OnMY_CVehicle_AddUpgrade_Post
-        popad
-        retn    8
-inner:
-        push    ecx
-        push    ebx
-        mov     ebx, [esp+16]
-        jmp     RETURN_CVehicle_AddUpgrade
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// Train crossings: Detach barrier from post (to be able to create objects 1373 and 1374 separately)
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-#define HOOKPOS_CObject_Destructor_TrainCrossing_Check 0x59F7A8
-#define HOOKSIZE_CObject_Destructor_TrainCrossing_Check 5
-DWORD RETURN_CObject_Destructor_TrainCross_Check = 0x59F7AD;
-DWORD RETURN_CObject_Destructor_TrainCross_INVALID = 0x59F811;
-void _declspec(naked) HOOK_CObject_Destructor_TrainCrossing_Check ()
-{
-    _asm
-    {
-        test eax, eax // Check if pLinkedBarrierPost exists
-        jz jmp_invalid // Skip the barrier stuff
-
-        mov ecx, [eax+14h] // Execute replaced code
-        test ecx, ecx
-        jmp RETURN_CObject_Destructor_TrainCross_Check
-
-    jmp_invalid:
-        jmp RETURN_CObject_Destructor_TrainCross_INVALID
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// GTA doesn't reset the furniture object counter, so do it manually everytime before GTA furnishes an interior (Interior_c::Init)
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-#define HOOKPOS_ResetFurnitureObjectCounter 0x593BF0
-#define HOOKSIZE_ResetFurnitureObjectCounter 6
-DWORD RETURN_ResetFurnitureObjectCounter = 0x593BF6;
-void _declspec(naked) HOOK_ResetFurnitureObjectCounter ()
-{
-    *(int*)0xBB3A18 = 0; // InteriorManager_c::ms_objectCounter
-
-    _asm
-    {
-        // original instruction
-        mov eax, fs:[0]
-        jmp RETURN_ResetFurnitureObjectCounter
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// CVolumetricShadowMgr_Render
-//
-// Custom models can cause problems for volumetric shadows.
-// Record when volumetric shadows are being rendered so we can disable them if a crash occurs.
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CVolumetricShadowMgr_Render_Pre( void )
-{
-    OnEnterCrashZone( 1 );
-}
-
-void OnMY_CVolumetricShadowMgr_Render_Post( void )
-{
-    OnEnterCrashZone( 0 );
-}
-
-// Hook info
-#define HOOKPOS_CVolumetricShadowMgr_Render                 0x7113B0
-#define HOOKSIZE_CVolumetricShadowMgr_Render                8
-#define HOOKCHECK_CVolumetricShadowMgr_Render               0x83
-DWORD RETURN_CVolumetricShadowMgr_Render =                  0x7113B8;
-void _declspec(naked) HOOK_CVolumetricShadowMgr_Render()
-{
-    _asm
-    {
-        pushad
-        call    OnMY_CVolumetricShadowMgr_Render_Pre
-        popad
-
-        call inner
-
-        pushad
-        call    OnMY_CVolumetricShadowMgr_Render_Post
-        popad
-        retn
-
-inner:
-        // Replaced code
-        sub     esp, 18h  
-        mov     ecx, 0A9AE00h 
-        jmp     RETURN_CVolumetricShadowMgr_Render
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// CVolumetricShadowMgr_Update
-//
-// Custom models can cause problems for volumetric shadows.
-// Record when volumetric shadows are being updated so we can disable them if a crash occurs.
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CVolumetricShadowMgr_Update_Pre( void )
-{
-    OnEnterCrashZone( 2 );
-}
-
-void OnMY_CVolumetricShadowMgr_Update_Post( void )
-{
-    OnEnterCrashZone( 0 );
-}
-
-// Hook info
-#define HOOKPOS_CVolumetricShadowMgr_Update                 0x711D90
-#define HOOKSIZE_CVolumetricShadowMgr_Update                5
-#define HOOKCHECK_CVolumetricShadowMgr_Update               0xB9
-DWORD RETURN_CVolumetricShadowMgr_Update =                  0x711D95;
-void _declspec(naked) HOOK_CVolumetricShadowMgr_Update()
-{
-    _asm
-    {
-        pushad
-        call    OnMY_CVolumetricShadowMgr_Update_Pre
-        popad
-
-        push    [esp+4*1]
-        call inner
-        add     esp, 4*1
-
-        pushad
-        call    OnMY_CVolumetricShadowMgr_Update_Post
-        popad
-        retn
-
-inner:
-        // Replaced code
-        mov     ecx, 0A9AE00h  
-        jmp     RETURN_CVolumetricShadowMgr_Update
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
 // Setup hooks for CrashFixHacks
 //
 //////////////////////////////////////////////////////////////////////////////////////////
 void CMultiplayerSA::InitHooks_CrashFixHacks ( void )
 {
-    EZHookInstall ( CrashFix_Misc1 );
+    //EZHookInstall ( CrashFix_Misc1 );
     EZHookInstall ( CrashFix_Misc2 );
     //EZHookInstall ( CrashFix_Misc3 );
     EZHookInstall ( CrashFix_Misc4 );
@@ -1421,15 +987,5 @@ void CMultiplayerSA::InitHooks_CrashFixHacks ( void )
     EZHookInstall ( CrashFix_Misc24 );
     EZHookInstall ( CrashFix_Misc25 );
     EZHookInstall ( CrashFix_Misc26 );
-    EZHookInstall ( CrashFix_Misc27 );
-    EZHookInstall ( CrashFix_Misc28 );
-    EZHookInstall ( CrashFix_Misc29 );
-    EZHookInstallChecked ( CrashFix_Misc30 );
     EZHookInstall ( CClumpModelInfo_GetFrameFromId );
-    EZHookInstallChecked ( CEntity_GetBoundRect );
-    EZHookInstallChecked ( CVehicle_AddUpgrade );
-    EZHookInstall ( CObject_Destructor_TrainCrossing_Check );
-    EZHookInstall ( ResetFurnitureObjectCounter );
-    EZHookInstallChecked ( CVolumetricShadowMgr_Render );
-    EZHookInstallChecked ( CVolumetricShadowMgr_Update );
 }

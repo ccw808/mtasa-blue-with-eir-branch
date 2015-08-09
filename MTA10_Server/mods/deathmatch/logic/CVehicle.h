@@ -144,7 +144,6 @@ class CVehicle : public CElement
     friend class CPlayer;
 
 public:
-    ZERO_ON_NEW
                                     CVehicle                ( class CVehicleManager* pVehicleManager, CElement* pParent, CXMLNode* pNode, unsigned short usModel, unsigned char ucVariant, unsigned char ucVariant2 );
                                     ~CVehicle               ( void );
 
@@ -177,8 +176,6 @@ public:
     void                            GetRotation             ( CVector& vecRotation );
     void                            GetRotationDegrees      ( CVector& vecRotation );
     void                            SetRotationDegrees      ( const CVector& vecRotation );
-    void                            GetMatrix               ( CMatrix& matrix );
-    void                            SetMatrix               ( const CMatrix& matrix );
 
     inline const CVector&           GetVelocity             ( void )                        { return m_vecVelocity; };
     inline void                     SetVelocity             ( const CVector& vecVelocity )  { m_vecVelocity = vecVelocity; };
@@ -189,6 +186,8 @@ public:
 
     inline float                    GetHealth               ( void )                        { return m_fHealth; };
     inline void                     SetHealth               ( float fHealth )               { m_fHealth = fHealth; };
+    inline unsigned long            GetHealthChangeTime     ( void )                        { return m_ulHealthChangeTime; }
+    inline void                     SetHealthChangeTime     ( unsigned long ulTime )        { m_ulHealthChangeTime = ulTime; }
     inline float                    GetLastSyncedHealth     ( void )                        { return m_fLastSyncedHealthHealth; };
     inline void                     SetLastSyncedHealth     ( float fHealth )               { m_fLastSyncedHealthHealth = fHealth; };
     
@@ -287,15 +286,6 @@ public:
     inline bool                     GetTrainDirection       ( void )                        { return m_bTrainDirection; }
     inline void                     SetTrainDirection       ( bool bDirection )             { m_bTrainDirection = bDirection; }
 
-    inline float                    GetTrainSpeed           ( void )                        { return m_fTrainSpeed; }
-    inline void                     SetTrainSpeed           ( float fSpeed )                { m_fTrainSpeed = fSpeed; }
-
-    inline float                    GetTrainPosition        ( void )                        { return m_fTrainPosition; }
-    inline void                     SetTrainPosition        ( float fPosition )             { m_fTrainPosition = fPosition; }
-
-    inline uchar                    GetTrainTrack           ( void )                        { return m_ucTrackID; }
-    inline void                     SetTrainTrack           ( uchar ucTrack )               { m_ucTrackID = ucTrack; }
-
     inline SColor                   GetHeadLightColor       ( void )                        { return m_HeadLightColor; }
     inline void                     SetHeadLightColor       ( const SColor color )          { m_HeadLightColor = color; }
 
@@ -316,7 +306,7 @@ public:
     inline float                    GetRespawnHealth        ( void )                        { return m_fRespawnHealth; };
     inline void                     SetRespawnHealth        ( float fHealth )               { m_fRespawnHealth = fHealth; };
     inline bool                     GetRespawnEnabled       ( void )                        { return m_bRespawnEnabled; }
-    void                            SetRespawnEnabled       ( bool bEnabled );
+    void                            SetRespawnEnabled       ( bool bEnabled )               { m_bRespawnEnabled = bEnabled; }
     void                            SetBlowRespawnInterval  ( unsigned long ulTime )        { m_ulBlowRespawnInterval = ulTime; }
     void                            SetIdleRespawnInterval  ( unsigned long ulTime )        { m_ulIdleRespawnInterval = ulTime; }
 
@@ -346,8 +336,6 @@ public:
     bool                            IsIdleTimerRunning      ( void );
     bool                            IsIdleTimerFinished     ( void );
     bool                            IsStationary            ( void );
-    void                            OnRelayUnoccupiedSync   ( void );
-    void                            HandleDimensionResync   ( void );
 
 private:
     class CVehicleManager*          m_pVehicleManager;
@@ -364,6 +352,7 @@ private:
     CVector                         m_vecTurnSpeed;
     float                           m_fHealth;
     float                           m_fLastSyncedHealthHealth;
+    unsigned long                   m_ulHealthChangeTime;
     CTickCount                      m_llBlowTime;
     CTickCount                      m_llIdleTime;
 
@@ -394,17 +383,12 @@ private:
     bool                            m_bSmokeTrail;
     unsigned char                   m_ucAlpha;
     bool                            m_bInWater;
+    bool                            m_bDerailed;
+    bool                            m_bIsDerailable;
+    bool                            m_bTrainDirection;
     CPlayer *                       m_pJackingPlayer;
     SColor                          m_HeadLightColor;
     bool                            m_bHeliSearchLightVisible;
-
-    // Train specific data
-    bool                        m_bDerailed;
-    bool                        m_bIsDerailable;
-    bool                        m_bTrainDirection;
-    float                       m_fTrainSpeed;
-    float                       m_fTrainPosition;
-    uchar                       m_ucTrackID;
 
     // Used to remember where this vehicle spawns
     CVector                         m_vecRespawnPosition;
@@ -431,18 +415,14 @@ private:
 
     CTickCount                      m_LastPushedTime;
     CVector                         m_vecStationaryCheckPosition;
-    bool                            m_bNeedsDimensionResync;
-    ushort                          m_usLastUnoccupiedSyncDimension;
 
 public: // 'Safe' variables (that have no need for accessors)
     bool                            m_bDamageProof;
-    uint                            m_uiDamageInfoSendPhase;
     SFixedArray < unsigned char, MAX_DOORS >   m_ucDoorStates;
     SFixedArray < unsigned char, MAX_WHEELS >  m_ucWheelStates;
     SFixedArray < unsigned char, MAX_PANELS >  m_ucPanelStates;
     SFixedArray < unsigned char, MAX_LIGHTS >  m_ucLightStates;
     SSirenInfo                      m_tSirenBeaconInfo;
-    bool                            m_bOccupantChanged;
 };
 
 #endif

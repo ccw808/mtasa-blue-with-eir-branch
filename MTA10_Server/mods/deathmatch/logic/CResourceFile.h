@@ -59,11 +59,10 @@ public:
 
     virtual bool                Start ( void ) = 0;
     virtual bool                Stop ( void ) = 0;
-    virtual bool                IsNoClientCache ( void ) const          { return false; }
+    virtual bool                IsProtected ( void ) const              { return false; }
 
     inline eResourceType        GetType() { return m_type; }
     inline const char *         GetName() { return m_strShortName.c_str (); }
-    inline const char *         GetFullName() { return m_strResourceFileName.c_str (); }
     inline const char *         GetWindowsName() { return m_strWindowsName.c_str (); }
 
     inline CChecksum            GetLastChecksum ( void ) { return m_checksum; }
@@ -72,7 +71,7 @@ public:
 
     double                      GetApproxSize ( void ) { return m_uiFileSize; }    // Only used by download counters
     string                      GetMetaFileAttribute ( const string& key ) { return m_attributeMap[key]; }
-    SString                     GetCachedPathFilename ( bool bForceClientCachePath = false );
+    SString                     GetCachedPathFilename ( bool bForceUnprotectedPath = false );
 };
 
 #endif

@@ -29,8 +29,6 @@
 #define FUNC_RemoveReferencesToDeletedObject                0x565510 // ##SA##
 #define FUNC_COcclusion_ProcessBeforeRendering              0x7201C0
 #define VAR_COcclusion_NumActiveOccluders                   0xC73CC0
-#define CALL_CCullZones_FindTunnelAttributesForCoors        0x55570D
-#define FUNC_CWorld_FindPositionForTrackPosition            0x6F59E0
 
 // CCol...
 #define FUNC_CColLine_Constructor                           0x40EF50 // ##SA##
@@ -78,12 +76,8 @@ public:
     float       GetJetpackMaxHeight       ( void );
     void        SetAircraftMaxHeight      ( float fHeight );
     float       GetAircraftMaxHeight      ( void );
-    void        SetAircraftMaxVelocity    ( float fVelocity );
-    float       GetAircraftMaxVelocity    ( void );
     void        SetOcclusionsEnabled      ( bool bEnabled );
     bool        GetOcclusionsEnabled      ( void );
-    void        FindWorldPositionForRailTrackPosition ( float fRailTrackPosition, int iTrackId, CVector* pOutVecPosition );
-    int         FindClosestRailTrackNode  ( const CVector& vecPosition, uchar& ucOutTrackId, float& fOutRailDistance );
 
     /**
      * \todo Add FindObjectsKindaColliding (see 0x430577)
@@ -105,27 +99,22 @@ public:
      * StopAllLawEnforcersInTheirTracks
 
      */
-    void                RemoveBuilding                  ( unsigned short usModelToRemove, float fDistance, float fX, float fY, float fZ, char cInterior, uint* pOutAmount = NULL );
+    void                RemoveBuilding                  ( unsigned short usModelToRemove, float fDistance, float fX, float fY, float fZ, char cInterior );
     bool                IsRemovedModelInRadius          ( SIPLInst* pInst );
     bool                IsModelRemoved                  ( unsigned short modelID );
-    void                ClearRemovedBuildingLists       ( uint* pOutAmount = NULL );
-    bool                RestoreBuilding                 ( unsigned short usModelToRestore, float fDistance, float fX, float fY, float fZ, char cInterior, uint* pOutAmount = NULL );
+    void                ClearRemovedBuildingLists       ( void );
+    bool                RestoreBuilding                 ( unsigned short usModelToRestore, float fDistance, float fX, float fY, float fZ, char cInterior );
     SBuildingRemoval*   GetBuildingRemoval              ( CEntitySAInterface * pInterface );
     void                AddDataBuilding                 ( CEntitySAInterface * pInterface );
     void                RemoveWorldBuildingFromLists    ( CEntitySAInterface * pInterface );
     void                AddBinaryBuilding               ( CEntitySAInterface * pInterface );
     bool                IsObjectRemoved                 ( CEntitySAInterface * pInterface );
     bool                IsDataModelRemoved              ( unsigned short usModelID );
-    bool                IsEntityRemoved                 ( CEntitySAInterface * pInterface );
-    bool                CalculateImpactPosition         ( const CVector &vecInputStart, CVector &vecInputEnd );
-
 private:
     std::multimap< unsigned short, SBuildingRemoval* >          *m_pBuildingRemovals;
     std::multimap < unsigned short, sDataBuildingRemovalItem* > *m_pDataBuildings;
     std::multimap < unsigned short, sBuildingRemovalItem* >     *m_pBinaryBuildings;
     std::map < unsigned short, unsigned short >                 *m_pRemovedObjects;
-    std::map < DWORD, bool >                                    m_pRemovedEntities;
-    std::map < DWORD, bool >                                    m_pAddedEntities;
     float                                                       m_fAircraftMaxHeight;
 };
 

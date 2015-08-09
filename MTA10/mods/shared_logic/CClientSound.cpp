@@ -28,19 +28,12 @@ CClientSound::CClientSound ( CClientManager* pManager, ElementID ID ) : ClassIni
     m_fMaxDistance = 20.0f;
     m_fPlaybackSpeed = 1.0f;
     m_bPan = true;
-    m_fPan = 0.0f;
-
-    m_pBuffer = NULL;
-    m_uiFrameNumberCreated = g_pClientGame->GetFrameCount();
 }
 
 CClientSound::~CClientSound ( void )
 {
     Destroy ();
     m_pSoundManager->RemoveFromList ( this );
-
-    delete m_pBuffer;
-    m_pBuffer = NULL;
 }
 
 
@@ -112,11 +105,7 @@ bool CClientSound::Create ( void )
         return false;
 
     // Initial state
-    if ( !m_pBuffer )
-        m_pAudio = new CBassAudio ( m_bStream, m_strPath, m_bLoop, m_b3D );
-    else
-        m_pAudio = new CBassAudio ( m_pBuffer, m_uiBufferLength, m_bLoop, m_b3D );
-        
+    m_pAudio = new CBassAudio ( m_bStream, m_strPath, m_bLoop, m_b3D );
     m_bDoneCreate = true;
 
     // Load file/start connect
@@ -145,7 +134,6 @@ bool CClientSound::Create ( void )
     m_pAudio->SetFxEffects ( &m_EnabledEffects[0], NUMELMS( m_EnabledEffects ) );
     m_pAudio->SetTempoValues ( m_fSampleRate, m_fTempo, m_fPitch, m_bReversed );
     m_pAudio->SetPanEnabled ( m_bPan );
-    m_pAudio->SetPan ( m_fPan );
 
     // Transfer play position if it was being simulated
     EndSimulationOfPlayPositionAndApply ();
@@ -234,23 +222,6 @@ bool CClientSound::Play ( const SString& strPath, bool bLoop )
     m_b3D = false;
     m_strPath = strPath;
     m_bLoop = bLoop;
-    m_bPan = false;
-
-    // Instant distance-stream in
-    return Create ();
-}
-
-
-bool CClientSound::Play ( void* pMemory, unsigned int uiLength, bool bLoop )
-{
-    assert ( pMemory );
-
-    m_bStream = false;
-    m_b3D = false;
-    m_pBuffer = pMemory;
-    m_uiBufferLength = uiLength;
-    m_bLoop = bLoop;
-    m_bPan = false;
 
     // Instant distance-stream in
     return Create ();
@@ -264,20 +235,6 @@ bool CClientSound::Play3D ( const SString& strPath, bool bLoop )
     m_bStream = false;
     m_b3D = true;
     m_strPath = strPath;
-    m_bLoop = bLoop;
-
-    BeginSimulationOfPlayPosition ();
-
-    return true;
-}
-
-
-bool CClientSound::Play3D ( void* pMemory, unsigned int uiLength, bool bLoop )
-{
-    m_bStream = false;
-    m_b3D = true;
-    m_pBuffer = pMemory;
-    m_uiBufferLength = uiLength;
     m_bLoop = bLoop;
 
     BeginSimulationOfPlayPosition ();
@@ -707,54 +664,17 @@ void CClientSound::Process3D ( const CVector& vecPlayerPosition, const CVector& 
 bool CClientSound::IsFinished ( void )
 {
     if ( m_pAudio )
-    {
-        if ( !m_bLoop && !m_bStream )
-            if ( m_pAudio->GetReachedEndCount() )
-                return true;
-        return m_pAudio->IsFreed();
-    }
+        return m_pAudio->IsFinished ();
 
     // For 3D non-streamed non-looped sounds, check if simulated position has reached the end
     if ( m_b3D && !m_bStream && !m_bLoop )
     {
         // SimulatedPlayPosition needs the correct length. Try to get the length without loading the file
         if ( m_dLength == 0 )
-        {
-            // Optimization: If new sound, assume it hasn't finished yet. (GetLength() might do a Create/Destroy)
-            if ( g_pClientGame->GetFrameCount() - m_uiFrameNumberCreated < 2 )
-                return false;
-
             GetLength ( true );
-        }
 
         m_SimulatedPlayPosition.SetLength ( m_dLength );
         return m_SimulatedPlayPosition.IsFinished ();
-    }
-
-    return false;
-}
-
-
-bool CClientSound::GetPan ( float& fPan )
-{
-    if ( m_pAudio && !m_b3D )
-    {
-        fPan = m_pAudio->GetPan();
-        return true;
-    }
-    
-    return false;
-}
-
-
-bool CClientSound::SetPan ( float fPan )
-{
-    if ( m_pAudio && !m_b3D )
-    {
-        m_pAudio->SetPan ( fPan );
-        m_fPan = fPan;
-
-        return true;
     }
 
     return false;

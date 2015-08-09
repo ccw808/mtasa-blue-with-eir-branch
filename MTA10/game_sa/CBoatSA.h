@@ -36,6 +36,7 @@ class CBoatSAInterface : public CVehicleSAInterface
     uint8 pad9[2]; // 1598
     uint32 pad10[106]; // 1600
 };
+C_ASSERT(sizeof(CBoatSAInterface) == 0x7E8);
 
 class CBoatSA : public virtual CBoat, public virtual CVehicleSA
 {

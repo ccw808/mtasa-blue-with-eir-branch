@@ -31,6 +31,11 @@ CModManager::CModManager ( void )
 
     // Load the modlist from the folders in "mta/mods"
     InitializeModList ( CalcMTASAPath( "mods\\" ) );
+
+    // Set up our exception handler
+    #ifndef MTA_DEBUG
+    SetCrashHandlerFilter ( CCrashDumpWriter::HandleExceptionGlobal );
+    #endif
 }
 
 CModManager::~CModManager ( void )
@@ -101,8 +106,6 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
     // Make sure we haven't already loaded a mod
     Unload ();
 
-    CMessageLoopHook::GetSingleton ().SetRefreshMsgQueueEnabled( false );
-
     // Get the entry for the given name
     std::map < std::string, std::string >::iterator itMod = m_ModDLLFiles.find ( szName );
     if ( itMod == m_ModDLLFiles.end () )
@@ -112,10 +115,11 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
     }
 
     // Ensure DllDirectory has not been changed
-    SString strDllDirectory = GetSystemDllDirectory();
-    if ( CalcMTASAPath ( "mta" ).CompareI ( strDllDirectory ) == false )
+    char szDllDirectory[ MAX_PATH + 1 ] = {'\0'};
+    GetDllDirectory( sizeof ( szDllDirectory ), szDllDirectory );
+    if ( stricmp( CalcMTASAPath ( "mta" ), szDllDirectory ) != 0 )
     {
-        AddReportLog ( 3119, SString ( "DllDirectory wrong:  DllDirectory:'%s'  Path:'%s'", *strDllDirectory, *CalcMTASAPath ( "mta" ) ) );
+        AddReportLog ( 3119, SString ( "DllDirectory wrong:  DllDirectory:'%s'  Path:'%s'", szDllDirectory, *CalcMTASAPath ( "mta" ) ) );
         SetDllDirectory( CalcMTASAPath ( "mta" ) );
     }
     
@@ -172,9 +176,7 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
 
     // Tell chat to start handling input
     CLocalGUI::GetSingleton ().GetChat ()->OnModLoad ();
-
-    CMessageLoopHook::GetSingleton ().SetRefreshMsgQueueEnabled( true );
-
+ 
     // Return the interface
     return m_pClientBase;
 }
@@ -182,8 +184,6 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
 
 void CModManager::Unload ( void )
 {
-    CMessageLoopHook::GetSingleton ().SetRefreshMsgQueueEnabled( false );
-
     // If a mod is loaded, we call m_pClientBase->ClientShutdown and then free the library
     if ( m_hClientDLL != NULL )
     {
@@ -223,9 +223,6 @@ void CModManager::Unload ( void )
         CCore::GetSingleton ().SetClientMessageProcessor ( NULL );
         CCore::GetSingleton ().GetCommands ()->SetExecuteHandler ( NULL );
 
-        // Reset cursor alpha
-        CCore::GetSingleton ().GetGUI ()->SetCursorAlpha ( 1.0f, true );
-
         // Reset the modules
         CCore::GetSingleton ().GetGame ()->Reset ();
         CCore::GetSingleton ().GetMultiplayer ()->Reset ();
@@ -245,7 +242,6 @@ void CModManager::Unload ( void )
             XfireSetCustomGameData ( 0, NULL, NULL ); 
         }
     }
-    CMessageLoopHook::GetSingleton ().SetRefreshMsgQueueEnabled( true );
 }
 
 
@@ -335,7 +331,7 @@ void CModManager::RefreshMods ( void )
 void CModManager::InitializeModList ( const char* szModFolderPath )
 {
     // Variables used to search the mod directory
-    WIN32_FIND_DATAW FindData;
+    WIN32_FIND_DATAA FindData;
     HANDLE hFind;
 
     // Allocate a string with length of path + 5 letters to store searchpath plus "\*.*"
@@ -346,18 +342,18 @@ void CModManager::InitializeModList ( const char* szModFolderPath )
     filePathTranslator.SetCurrentWorkingDirectory ( "mta" );
 
     // Create a search
-    hFind = FindFirstFileW ( FromUTF8( strPathWildchars), &FindData );
+    hFind = FindFirstFile ( strPathWildchars, &FindData );
 
     // If we found a first file ...
     if ( hFind != INVALID_HANDLE_VALUE )
     {
         // Add it to the list
-        VerifyAndAddEntry ( szModFolderPath, ToUTF8( FindData.cFileName ) );
+        VerifyAndAddEntry ( szModFolderPath, FindData.cFileName );
 
         // Search until there aren't any files left
-        while ( FindNextFileW ( hFind, &FindData ) == TRUE )
+        while ( FindNextFile ( hFind, &FindData ) == TRUE )
         {
-            VerifyAndAddEntry ( szModFolderPath, ToUTF8( FindData.cFileName ) );
+            VerifyAndAddEntry ( szModFolderPath, FindData.cFileName );
         }
 
         // End the search
@@ -399,7 +395,7 @@ void CModManager::VerifyAndAddEntry ( const char* szModFolderPath, const char* s
             }
             else
             {
-                WriteErrorEvent( SString( "Unknown mod DLL: %s", szName ) );
+                CLogger::GetSingleton ().ErrorPrintf ( "Unknown mod DLL: %s", szName );
             }
 
             // Free the DLL
@@ -407,7 +403,7 @@ void CModManager::VerifyAndAddEntry ( const char* szModFolderPath, const char* s
         }
         else
         {
-            WriteErrorEvent( SString( "Invalid mod DLL: %s (reason: %d)", szName, GetLastError() ) );
+            CLogger::GetSingleton ().ErrorPrintf ( "Invalid mod DLL: %s (reason: %d)", szName, GetLastError() );
         }
     }
 }

@@ -44,9 +44,7 @@ void CLuaWorldDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "getFarClipDistance", CLuaWorldDefs::getFarClipDistance );
     CLuaCFunctions::AddFunction ( "getFogDistance", CLuaWorldDefs::getFogDistance );
     CLuaCFunctions::AddFunction ( "getAircraftMaxHeight", CLuaWorldDefs::getAircraftMaxHeight );
-    CLuaCFunctions::AddFunction ( "getAircraftMaxVelocity", CLuaWorldDefs::getAircraftMaxVelocity );
     CLuaCFunctions::AddFunction ( "getOcclusionsEnabled", CLuaWorldDefs::getOcclusionsEnabled );
-    CLuaCFunctions::AddFunction ( "getMoonSize", CLuaWorldDefs::getMoonSize );
 
     // Set
     CLuaCFunctions::AddFunction ( "setTime", CLuaWorldDefs::setTime );
@@ -73,9 +71,7 @@ void CLuaWorldDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "setFarClipDistance", CLuaWorldDefs::setFarClipDistance );
     CLuaCFunctions::AddFunction ( "setFogDistance", CLuaWorldDefs::setFogDistance );
     CLuaCFunctions::AddFunction ( "setAircraftMaxHeight", CLuaWorldDefs::setAircraftMaxHeight );
-    CLuaCFunctions::AddFunction ( "setAircraftMaxVelocity", CLuaWorldDefs::setAircraftMaxVelocity );
     CLuaCFunctions::AddFunction ( "setOcclusionsEnabled", CLuaWorldDefs::setOcclusionsEnabled );
-    CLuaCFunctions::AddFunction ( "setMoonSize", CLuaWorldDefs::setMoonSize );
 
     // Reset
     CLuaCFunctions::AddFunction ( "resetSkyGradient", CLuaWorldDefs::resetSkyGradient );
@@ -89,7 +85,6 @@ void CLuaWorldDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "removeWorldModel", CLuaWorldDefs::RemoveWorldModel );
     CLuaCFunctions::AddFunction ( "restoreWorldModel", CLuaWorldDefs::RestoreWorldModel );
     CLuaCFunctions::AddFunction ( "restoreAllWorldModels", CLuaWorldDefs::RestoreAllWorldModels );
-    CLuaCFunctions::AddFunction ( "resetMoonSize", CLuaWorldDefs::resetMoonSize );
 }
 
 
@@ -133,15 +128,21 @@ int CLuaWorldDefs::getWeather ( lua_State* luaVM )
 
 int CLuaWorldDefs::getZoneName ( lua_State* luaVM )
 {
-    CVector vecPosition;
-    bool bCitiesOnly;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecPosition );
-    argStream.ReadBool ( bCitiesOnly, false );
-
-    if ( !argStream.HasErrors ( ) )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    int iArgument2 = lua_type ( luaVM, 2 );
+    int iArgument3 = lua_type ( luaVM, 3 );
+    if ( ( iArgument1 == LUA_TSTRING || iArgument1 == LUA_TNUMBER ) &&
+         ( iArgument2 == LUA_TSTRING || iArgument2 == LUA_TNUMBER ) &&
+         ( iArgument3 == LUA_TSTRING || iArgument3 == LUA_TNUMBER ) )
     {
+        CVector vecPosition ( static_cast < float > ( lua_tonumber ( luaVM, 1 ) ),
+                              static_cast < float > ( lua_tonumber ( luaVM, 2 ) ),
+                              static_cast < float > ( lua_tonumber ( luaVM, 3 ) ) );
+
+        bool bCitiesOnly = false;
+        if ( lua_type ( luaVM, 4 ) == LUA_TBOOLEAN )
+            bCitiesOnly = ( lua_toboolean ( luaVM, 4 ) ) ? true:false;
+
         SString strZoneName;
         if ( CStaticFunctionDefinitions::GetZoneName ( vecPosition, strZoneName, bCitiesOnly ) )
         {
@@ -150,7 +151,7 @@ int CLuaWorldDefs::getZoneName ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -228,23 +229,21 @@ int CLuaWorldDefs::getMinuteDuration ( lua_State* luaVM )
 
 int CLuaWorldDefs::isGarageOpen ( lua_State* luaVM )
 {
-//  bool isGarageOpen ( int garageID )
-    int iGarageID;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( iGarageID );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type( luaVM, 1 ) == LUA_TNUMBER )
     {
+        unsigned char ucGarageID = static_cast < unsigned char > ( lua_tonumber( luaVM, 1 ) );
         bool bIsOpen;
-        if ( CStaticFunctionDefinitions::IsGarageOpen ( iGarageID, bIsOpen ) )
+
+        if ( CStaticFunctionDefinitions::IsGarageOpen ( ucGarageID, bIsOpen ) )
         {
             lua_pushboolean ( luaVM, bIsOpen );
             return 1;
         }
+        else
+            m_pScriptDebugging->LogBadType ( luaVM );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -278,24 +277,21 @@ int CLuaWorldDefs::areTrafficLightsLocked ( lua_State* luaVM )
 
 int CLuaWorldDefs::setTime ( lua_State* luaVM )
 {
-//  bool setTimer ( int hour, int minute )
-    unsigned char ucHour, ucMinute;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( ucHour );
-    argStream.ReadNumber ( ucMinute );
-    
-    if ( !argStream.HasErrors () )
+    // Verify the argument types
+    int iArgument1 = lua_type ( luaVM, 1 );
+    int iArgument2 = lua_type ( luaVM, 2 );
+    if ( ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING ) &&
+         ( iArgument2 == LUA_TNUMBER || iArgument2 == LUA_TSTRING ) )
     {
         // Set the new time
-        if ( CStaticFunctionDefinitions::SetTime ( ucHour, ucMinute ) )
+        if ( CStaticFunctionDefinitions::SetTime ( static_cast < unsigned char > ( lua_tonumber ( luaVM, 1 ) ), static_cast < unsigned char > ( lua_tonumber ( luaVM, 2 ) ) ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     // Return false
     lua_pushboolean ( luaVM, false );
@@ -380,14 +376,9 @@ int CLuaWorldDefs::setTrafficLightState ( lua_State* luaVM )
 
 int CLuaWorldDefs::setTrafficLightsLocked ( lua_State* luaVM )
 {
-//  bool setTrafficLightsLocked ( bool locked )
-    bool bTrafficLightsLocked;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadBool ( bTrafficLightsLocked );
-        
-    if ( !argStream.HasErrors () )
+    if ( lua_type ( luaVM, 1 ) == LUA_TBOOLEAN )
     {
+        bool bTrafficLightsLocked = ( ( lua_toboolean( luaVM, 1 ) == 0 ) ? false : true );
         if ( CStaticFunctionDefinitions::SetTrafficLightsLocked ( bTrafficLightsLocked ) )
         {
             lua_pushboolean ( luaVM, true );
@@ -395,7 +386,7 @@ int CLuaWorldDefs::setTrafficLightsLocked ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -404,14 +395,10 @@ int CLuaWorldDefs::setTrafficLightsLocked ( lua_State* luaVM )
 
 int CLuaWorldDefs::setJetpackMaxHeight ( lua_State* luaVM )
 {
-//  bool setJatpackMaxHeight ( float height )
-    float fMaxHeight;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( fMaxHeight );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
+        float fMaxHeight = static_cast < float > ( lua_tonumber ( luaVM, 1 ) );
         if ( CStaticFunctionDefinitions::SetJetpackMaxHeight ( fMaxHeight ) )
         {
             lua_pushboolean ( luaVM, true );
@@ -419,7 +406,7 @@ int CLuaWorldDefs::setJetpackMaxHeight ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -428,22 +415,19 @@ int CLuaWorldDefs::setJetpackMaxHeight ( lua_State* luaVM )
 
 int CLuaWorldDefs::setWeather ( lua_State* luaVM )
 {
-//  bool setWeather ( int weatherID )
-    int iWeather;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( iWeather );
-
-    if ( !argStream.HasErrors () )
+    // Verify the argument types
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
-        if ( CStaticFunctionDefinitions::SetWeather ( iWeather ) )
+        // Set the new time
+        if ( CStaticFunctionDefinitions::SetWeather ( static_cast < unsigned char > ( lua_tonumber ( luaVM, 1 ) ) ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     // Return false
     lua_pushboolean ( luaVM, false );
@@ -453,22 +437,19 @@ int CLuaWorldDefs::setWeather ( lua_State* luaVM )
 
 int CLuaWorldDefs::setWeatherBlended ( lua_State* luaVM )
 {
-//  bool setWeatherBlended ( int weatherID )
-    int iWeather;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( iWeather );
-
-    if ( !argStream.HasErrors () )
+    // Verify the argument types
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
-        if ( CStaticFunctionDefinitions::SetWeatherBlended ( iWeather ) )
+        // Set the new time
+        if ( CStaticFunctionDefinitions::SetWeatherBlended ( static_cast < unsigned char > ( lua_tonumber ( luaVM, 1 ) ) ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     // Return false
     lua_pushboolean ( luaVM, false );
@@ -476,17 +457,12 @@ int CLuaWorldDefs::setWeatherBlended ( lua_State* luaVM )
 }
 
 
-
 int CLuaWorldDefs::setGravity ( lua_State* luaVM )
 {
-//  bool setGravity ( float level )
-    float fGravity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( fGravity );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
+        float fGravity = static_cast < float > ( lua_tonumber ( luaVM, 1 ) );
         if ( CStaticFunctionDefinitions::SetGravity ( fGravity ) )
         {
             lua_pushboolean ( luaVM, true );
@@ -494,50 +470,39 @@ int CLuaWorldDefs::setGravity ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
-    // Return false
     lua_pushboolean ( luaVM, false );
-    return 1;        
+    return 1;
 }
 
 
 int CLuaWorldDefs::setGameSpeed ( lua_State* luaVM )
 {
-//  bool setGameSpeed ( float value )
-    float fGameSpeed;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( fGameSpeed );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
-        if ( CStaticFunctionDefinitions::SetGameSpeed ( fGameSpeed ) )
+        float fSpeed = static_cast < float > ( lua_tonumber ( luaVM, 1 ) );
+        if ( CStaticFunctionDefinitions::SetGameSpeed ( fSpeed ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
-    // Return false
     lua_pushboolean ( luaVM, false );
-    return 1;        
+    return 1;
 }
-
 
 
 int CLuaWorldDefs::setWaveHeight ( lua_State* luaVM )
 {
-//  bool setWaveHeight ( float height )
-    float fHeight;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( fHeight );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
+        float fHeight = static_cast < float > ( lua_tonumber ( luaVM, 1 ) );
         if ( CStaticFunctionDefinitions::SetWaveHeight ( fHeight ) )
         {
             lua_pushboolean ( luaVM, true );
@@ -545,11 +510,10 @@ int CLuaWorldDefs::setWaveHeight ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
-    // Return false
     lua_pushboolean ( luaVM, false );
-    return 1;        
+    return 1;
 }
 
 
@@ -668,7 +632,7 @@ int CLuaWorldDefs::setHeatHaze ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     // Return false
     lua_pushboolean ( luaVM, false );
@@ -727,19 +691,6 @@ int CLuaWorldDefs::getSunSize ( lua_State* luaVM )
     {
         lua_pushnumber ( luaVM, fSunSize );
 
-        return 1;
-    }
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaWorldDefs::getMoonSize ( lua_State* luaVM )
-{
-    int iMoonSize;
-    if ( CStaticFunctionDefinitions::GetMoonSize ( iMoonSize ) )
-    {
-        lua_pushnumber ( luaVM, iMoonSize );
         return 1;
     }
 
@@ -884,28 +835,6 @@ int CLuaWorldDefs::setSunSize ( lua_State* luaVM )
     return 1;
 }
 
-int CLuaWorldDefs::setMoonSize ( lua_State* luaVM )
-{
-    CScriptArgReader argStream ( luaVM );
-
-    int iMoonSize;
-    argStream.ReadNumber ( iMoonSize );
-
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( CStaticFunctionDefinitions::SetMoonSize ( iMoonSize ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogBadType ( luaVM );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
 int CLuaWorldDefs::setSunColor ( lua_State* luaVM )
 {
     CScriptArgReader argStream ( luaVM );
@@ -1034,17 +963,6 @@ int CLuaWorldDefs::resetSunColor ( lua_State* luaVM )
     return 1;
 }
 
-int CLuaWorldDefs::resetMoonSize ( lua_State* luaVM )
-{
-    if ( CStaticFunctionDefinitions::ResetMoonSize ( ) )
-    {
-        lua_pushboolean ( luaVM, true );
-        return 1;
-    }
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
 int CLuaWorldDefs::resetWindVelocity ( lua_State* luaVM )
 {
     if ( CStaticFunctionDefinitions::ResetWindVelocity ( ) )
@@ -1083,24 +1001,22 @@ int CLuaWorldDefs::RemoveWorldModel ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
 
     unsigned short usModel = 0;
-    float fRadius = 0.0f;
+    float fRadius = 0.0f, fX = 0.0f, fY = 0.0f, fZ = 0.0f;
     char cInterior = -1;
-    CVector vecPosition;
     argStream.ReadNumber ( usModel );
     argStream.ReadNumber ( fRadius );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( fX );
+    argStream.ReadNumber ( fY );
+    argStream.ReadNumber ( fZ );
     argStream.ReadNumber ( cInterior, -1 );
     if ( !argStream.HasErrors ( ) )
     {
-        if ( CStaticFunctionDefinitions::RemoveWorldModel ( usModel, fRadius, vecPosition, cInterior ) )
+        if ( CStaticFunctionDefinitions::RemoveWorldModel ( usModel, fRadius, fX, fY, fZ, cInterior ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -1110,24 +1026,22 @@ int CLuaWorldDefs::RestoreWorldModel ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
 
     unsigned short usModel = 0;
-    float fRadius = 0.0f;
+    float fRadius = 0.0f, fX = 0.0f, fY = 0.0f, fZ = 0.0f;
     char cInterior = -1;
-    CVector vecPosition;
     argStream.ReadNumber ( usModel );
     argStream.ReadNumber ( fRadius );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( fX );
+    argStream.ReadNumber ( fY );
+    argStream.ReadNumber ( fZ );
     argStream.ReadNumber ( cInterior, -1 );
     if ( !argStream.HasErrors ( ) )
     {
-        if ( CStaticFunctionDefinitions::RestoreWorldModel ( usModel, fRadius, vecPosition, cInterior ) )
+        if ( CStaticFunctionDefinitions::RestoreWorldModel ( usModel, fRadius, fX, fY, fZ, cInterior ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -1145,14 +1059,10 @@ int CLuaWorldDefs::RestoreAllWorldModels ( lua_State* luaVM )
 
 int CLuaWorldDefs::setFPSLimit ( lua_State* luaVM )
 {
-//  bool setFPSLimit ( int fpsLimit )
-    unsigned short usLimit;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( usLimit );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING || iArgument1 == LUA_TBOOLEAN )
     {
+        unsigned short usLimit = static_cast < unsigned short > ( lua_tonumber ( luaVM, 1 ) );
         if ( CStaticFunctionDefinitions::SetFPSLimit ( usLimit, false ) )
         {
             lua_pushboolean ( luaVM, true );
@@ -1160,7 +1070,7 @@ int CLuaWorldDefs::setFPSLimit ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1169,47 +1079,37 @@ int CLuaWorldDefs::setFPSLimit ( lua_State* luaVM )
 
 int CLuaWorldDefs::setMinuteDuration ( lua_State* luaVM )
 {
-    unsigned long ulDuration;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( ulDuration );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
+        unsigned long ulDuration = static_cast < unsigned long > ( lua_tonumber ( luaVM, 1 ) );
         if ( CStaticFunctionDefinitions::SetMinuteDuration ( ulDuration ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
     lua_pushboolean ( luaVM, false );
     return 1;
 }
 
-
 int CLuaWorldDefs::setGarageOpen ( lua_State* luaVM )
 {
-//  bool setGarageOpen ( int garageID, bool open )
-    unsigned char ucGarage;
-    bool bOpen;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( ucGarage );
-    argStream.ReadBool ( bOpen );
-
-    if ( !argStream.HasErrors () )
+    if ( lua_type( luaVM, 1 ) == LUA_TNUMBER && lua_type ( luaVM, 2 ) == LUA_TBOOLEAN )
     {
-        if ( CStaticFunctionDefinitions::SetGarageOpen ( ucGarage, bOpen ) )
+        unsigned char ucGarageID = static_cast < unsigned char > ( lua_tonumber( luaVM, 1 ) );
+        bool bIsOpen = ( ( lua_toboolean( luaVM, 2 ) == 0 ) ? false : true );
+
+        if ( CStaticFunctionDefinitions::SetGarageOpen ( ucGarageID, bIsOpen ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
+        else
+            m_pScriptDebugging->LogBadType ( luaVM );
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1217,24 +1117,27 @@ int CLuaWorldDefs::setGarageOpen ( lua_State* luaVM )
 
 int CLuaWorldDefs::setGlitchEnabled ( lua_State* luaVM )
 {
-//  bool setGlitchEnabled ( string glitchName, bool enable )
-    SString strGlitch;
-    bool bEnabled;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strGlitch );
-    argStream.ReadBool ( bEnabled );
-
-    if ( !argStream.HasErrors () )
+    int iArgument = lua_type ( luaVM, 1 );
+    if ( iArgument == LUA_TSTRING )
     {
-        if ( CStaticFunctionDefinitions::SetGlitchEnabled ( strGlitch, bEnabled ) )
+        iArgument = lua_type ( luaVM, 2 );
+        if ( iArgument == LUA_TBOOLEAN )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            std::string szGlitchName = lua_tostring ( luaVM, 1 );
+            bool bEnabled = (lua_toboolean ( luaVM, 2 ) == 1);
+            if ( CStaticFunctionDefinitions::SetGlitchEnabled ( szGlitchName, bEnabled ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
+        }
+        else
+        {
+            m_pScriptDebugging->LogBadType ( luaVM );
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1242,25 +1145,21 @@ int CLuaWorldDefs::setGlitchEnabled ( lua_State* luaVM )
 
 int CLuaWorldDefs::isGlitchEnabled ( lua_State* luaVM )
 {
-//  bool isGlitchEnabled ( string glitchName )
-    SString strGlitch;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadString ( strGlitch );
-
-    if ( !argStream.HasErrors () )
+    int iArgument = lua_type ( luaVM, 1 );
+    if ( iArgument == LUA_TSTRING )
     {
+        std::string szGlitchName = lua_tostring ( luaVM, 1 );
         bool bEnabled;
-        if ( CStaticFunctionDefinitions::IsGlitchEnabled ( strGlitch, bEnabled ) )
+        if ( CStaticFunctionDefinitions::IsGlitchEnabled ( szGlitchName, bEnabled ) )
         {
             lua_pushboolean ( luaVM, bEnabled );
             return 1;
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
-    lua_pushboolean ( luaVM, false );
+    lua_pushnil ( luaVM );
     return 1;
 }
 
@@ -1314,27 +1213,22 @@ int CLuaWorldDefs::getJetpackWeaponEnabled ( lua_State* luaVM )
 
 int CLuaWorldDefs::setCloudsEnabled ( lua_State* luaVM )
 {
-//  bool setCloudsEnabled ( bool enable )
-    bool bEnable;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadBool ( bEnable );
-
-    if ( !argStream.HasErrors () )
+    int iArgument = lua_type ( luaVM, 1 );
+    if ( iArgument == LUA_TBOOLEAN )
     {
-        if ( CStaticFunctionDefinitions::SetCloudsEnabled ( bEnable ) )
+        bool bEnabled = lua_toboolean ( luaVM, 1 ) ? true : false;
+        if ( CStaticFunctionDefinitions::SetCloudsEnabled ( bEnabled ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogBadType ( luaVM );
 
     lua_pushboolean ( luaVM, false );
     return 1;
 }
-
 
 int CLuaWorldDefs::getCloudsEnabled ( lua_State* luaVM )
 {
@@ -1357,14 +1251,10 @@ int CLuaWorldDefs::getJetpackMaxHeight ( lua_State* luaVM )
 
 int CLuaWorldDefs::setAircraftMaxHeight ( lua_State* luaVM )
 {
-//  bool setAircraftMaxHeight ( float height )
-    float fMaxHeight;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( fMaxHeight );
-
-    if ( !argStream.HasErrors () )
+    int iArgument1 = lua_type ( luaVM, 1 );
+    if ( iArgument1 == LUA_TNUMBER || iArgument1 == LUA_TSTRING )
     {
+        float fMaxHeight = static_cast < float > ( lua_tonumber ( luaVM, 1 ) );
         if ( CStaticFunctionDefinitions::SetAircraftMaxHeight ( fMaxHeight ) )
         {
             lua_pushboolean ( luaVM, true );
@@ -1372,8 +1262,8 @@ int CLuaWorldDefs::setAircraftMaxHeight ( lua_State* luaVM )
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
+        m_pScriptDebugging->LogBadType ( luaVM );
+        
     lua_pushboolean ( luaVM, false );
     return 1;
 }
@@ -1384,41 +1274,6 @@ int CLuaWorldDefs::getAircraftMaxHeight ( lua_State* luaVM )
     if ( CStaticFunctionDefinitions::GetAircraftMaxHeight ( fMaxHeight ) )
     {
         lua_pushnumber ( luaVM, fMaxHeight );
-        return 1;
-    }
-    
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaWorldDefs::setAircraftMaxVelocity ( lua_State* luaVM )
-{
-//  bool setAircraftMaxVelocity ( float fVelocity )
-    float fVelocity;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadNumber ( fVelocity );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetAircraftMaxVelocity ( fVelocity ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-        
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaWorldDefs::getAircraftMaxVelocity ( lua_State* luaVM )
-{
-    float fVelocity;
-    if ( CStaticFunctionDefinitions::GetAircraftMaxVelocity ( fVelocity ) )
-    {
-        lua_pushnumber ( luaVM, fVelocity );
         return 1;
     }
     

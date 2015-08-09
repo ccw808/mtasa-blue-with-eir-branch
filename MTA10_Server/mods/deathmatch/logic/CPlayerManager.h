@@ -48,18 +48,14 @@ public:
     inline std::list < CPlayer* > ::const_iterator  IterEnd                     ( void )                                            { return m_Players.end (); };
 
     void                                        BroadcastOnlyJoined             ( const CPacket& Packet, CPlayer* pSkip = NULL );
-    void                                        BroadcastDimensionOnlyJoined    ( const CPacket& Packet, ushort usDimension, CPlayer* pSkip = NULL );
 
     static void                                 Broadcast                       ( const CPacket& Packet, const std::set < CPlayer* >& sendList );
     static void                                 Broadcast                       ( const CPacket& Packet, const std::list < CPlayer* >& sendList );
     static void                                 Broadcast                       ( const CPacket& Packet, const std::vector < CPlayer* >& sendList );
-    static void                                 Broadcast                       ( const CPacket& Packet, const std::multimap < ushort, CPlayer* >& groupMap );
 
     static bool                                 IsValidPlayerModel              ( unsigned short usPlayerModel );
 
     void                                        ResetAll                        ( void );
-    void                                        OnPlayerJoin                    ( CPlayer* pPlayer );
-    const SString&                              GetLowestConnectedPlayerVersion ( void )                                            { return m_strLowestConnectedPlayerVersion; }
 
 private:
     void                                        AddToList                       ( CPlayer* pPlayer );
@@ -69,7 +65,6 @@ private:
 
     CMappedList < CPlayer* >                    m_Players;
     std::map < NetServerPlayerID, CPlayer* >    m_SocketPlayerMap;
-    SString                                     m_strLowestConnectedPlayerVersion;
 };
 
 #endif

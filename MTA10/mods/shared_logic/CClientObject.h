@@ -48,6 +48,8 @@ public:
     void                            SetPosition             ( const CVector& vecPosition );
     virtual CSphere                 GetWorldBoundingSphere  ( void );
 
+    void                            AttachTo                ( CClientEntity* pEntity );
+
     void                            GetRotationDegrees      ( CVector& vecRotation ) const;
     void                            GetRotationRadians      ( CVector& vecRotation ) const;
     void                            SetRotationDegrees      ( const CVector& vecRotation );
@@ -80,8 +82,8 @@ public:
     
     inline unsigned char            GetAlpha                ( void )                            { return m_ucAlpha; }   
     void                            SetAlpha                ( unsigned char ucAlpha );
-    void                            GetScale                ( CVector& vecScale ) const;
-    void                            SetScale                ( const CVector& vecScale );
+    inline float                    GetScale                ( void )                            { return m_fScale; }
+    void                            SetScale                ( float fScale );
 
     inline bool                     IsCollisionEnabled      ( void )                            { return m_bUsesCollision; };
     void                            SetCollisionEnabled     ( bool bCollisionEnabled );
@@ -89,21 +91,11 @@ public:
     float                           GetHealth               ( void );
     void                            SetHealth               ( float fHealth );
 
-    bool                            IsBreakable             ( bool bCheckModelList = true );
+    inline bool                     IsBreakable             ( void )                            { return m_pObjectManager->IsBreakableModel ( m_usModel ) && m_bBreakable; };
     bool                            SetBreakable            ( bool bBreakable );
-    bool                            Break                   ( void );
-    inline bool                     IsRespawnEnabled        ( void )                            { return m_bRespawnEnabled; };
-    inline void                     SetRespawnEnabled       ( bool bRespawnEnabled )            { m_bRespawnEnabled = bRespawnEnabled; };
-
-    float                           GetMass                 ( void );
-    void                            SetMass                 ( float fMass );
 
     void                            ReCreate                ( void );
     void                            UpdateVisibility        ( void );
-
-    inline bool                     IsBeingRespawned        ( void )                            { return m_bBeingRespawned; };
-    inline void                     SetBeingRespawned       ( bool bBeingRespawned )            { m_bBeingRespawned = bBeingRespawned; };
-
 
 protected:
     void                            StreamIn                ( bool bInstantly );
@@ -128,12 +120,9 @@ protected:
     bool                                m_bIsStatic;
     bool                                m_bUsesCollision;
     unsigned char                       m_ucAlpha;
-    CVector                             m_vecScale;
+    float                               m_fScale;
     float                               m_fHealth;
-    bool                                m_bBreakingDisabled;
-    bool                                m_bBeingRespawned;
-    bool                                m_bRespawnEnabled;
-    float                               m_fMass;
+    bool                                m_bBreakable;
 
     CVector                             m_vecMoveSpeed;
 

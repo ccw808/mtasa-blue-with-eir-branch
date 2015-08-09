@@ -25,7 +25,7 @@ CClientProjectile::CClientProjectile ( class CClientManager* pManager, CProjecti
     m_pManager = pManager;
     m_pProjectileManager = pManager->GetProjectileManager ();
     m_pProjectile = pProjectile;
-    m_pProjectileInfo = pProjectileInfo;
+    m_pProjectileInfo = pProjectileInfo;   
 
     SetTypeName ( "projectile" );
 
@@ -64,7 +64,10 @@ CClientProjectile::CClientProjectile ( class CClientManager* pManager, CProjecti
 
 
 CClientProjectile::~CClientProjectile ( void )
-{
+{   
+    // Make sure we're destroyed
+    Destroy ();
+
     // If our creator is getting destroyed, this should be null
     if ( m_pCreator )
     {
@@ -72,10 +75,10 @@ CClientProjectile::~CClientProjectile ( void )
         {
             case CCLIENTPLAYER:
             case CCLIENTPED:
-                static_cast < CClientPed * > ( (CClientEntity*)m_pCreator )->RemoveProjectile ( this );
+                static_cast < CClientPed * > ( m_pCreator )->RemoveProjectile ( this );
                 break;
             case CCLIENTVEHICLE:
-                static_cast < CClientVehicle * > ( (CClientEntity*)m_pCreator )->RemoveProjectile ( this );
+                static_cast < CClientVehicle * > ( m_pCreator )->RemoveProjectile ( this );
                 break;
             default: break;
         }
@@ -88,14 +91,6 @@ CClientProjectile::~CClientProjectile ( void )
 
     Unlink ();
 
-    if ( m_pProjectile )
-    {
-        // Make sure we're destroyed
-        delete m_pProjectile;
-
-        m_pProjectile = NULL;
-    }
-
     CClientEntityRefManager::RemoveEntityRefs ( 0, &m_pCreator, &m_pTarget, NULL );
 }
 
@@ -107,13 +102,6 @@ void CClientProjectile::Unlink ( void )
     {
         m_pProjectileManager->RemoveFromList ( this ); 
         m_bLinked = false;
-        if ( m_pProjectile )
-        {
-            // Make sure we're destroyed
-            delete m_pProjectile;
-
-            m_pProjectile = NULL;
-        }
     }
 }
 
@@ -139,17 +127,10 @@ void CClientProjectile::DoPulse ( void )
 
     // Update our position/rotation if we're attached
     DoAttaching ();
-
-    if ( m_bCorrected == false &&
-        m_pProjectile != NULL && 
-        GetWeaponType ( ) == eWeaponType::WEAPONTYPE_REMOTE_SATCHEL_CHARGE )
-    {
-        m_bCorrected = m_pProjectile->CorrectPhysics ( );
-    }
 }
 
 
-void CClientProjectile::Initiate ( CVector& vecPosition, CVector& vecRotation, CVector& vecVelocity, unsigned short usModel )
+void CClientProjectile::Initiate ( CVector * pvecPosition, CVector * pvecRotation, CVector * pvecVelocity, unsigned short usModel )
 {
 #ifdef MTA_DEBUG
     if ( m_pInitiateData ) _asm int 3
@@ -157,31 +138,22 @@ void CClientProjectile::Initiate ( CVector& vecPosition, CVector& vecRotation, C
 
     // Store our initiation data
     m_pInitiateData = new CProjectileInitiateData;
-    m_pInitiateData->pvecPosition = new CVector ( vecPosition );
-
-    if ( vecRotation != CVector ( 0, 0, 0 ) )
-    {
-        m_pInitiateData->pvecRotation = new CVector ( vecRotation );
-    }
-    else
-    {
-        m_pInitiateData->pvecRotation = NULL;
-    }
-
-    if ( vecVelocity != CVector(0,0,0) ) 
-        m_pInitiateData->pvecVelocity = new CVector ( vecVelocity );
-    else 
-        m_pInitiateData->pvecVelocity = NULL;
-
+    if ( pvecPosition ) m_pInitiateData->pvecPosition = new CVector ( *pvecPosition );
+    else m_pInitiateData->pvecPosition = NULL;
+    if ( pvecRotation ) m_pInitiateData->pvecRotation = new CVector ( *pvecRotation );
+    else m_pInitiateData->pvecRotation = NULL;
+    if ( pvecVelocity ) m_pInitiateData->pvecVelocity = new CVector ( *pvecVelocity );
+    else m_pInitiateData->pvecVelocity = NULL;
     m_pInitiateData->usModel = usModel;
 }
 
 
-void CClientProjectile::Destroy ( bool bBlow )
+void CClientProjectile::Destroy ( void )
 {
     if ( m_pProjectile )
     {
-        m_pProjectile->Destroy ( bBlow );
+        m_pProjectile->Destroy ();
+        m_pProjectile = NULL;
     }
 }
 
@@ -229,25 +201,20 @@ bool CClientProjectile::SetMatrix ( const CMatrix & matrix_ )
         matrix.vUp.fY = 0.0f - matrix.vUp.fY;
     }
 
-    if ( m_pProjectile )
-        m_pProjectile->SetMatrix ( &matrix );
+    m_pProjectile->SetMatrix ( &matrix );
     return true;
 }
 
 
 void CClientProjectile::GetPosition ( CVector & vecPosition ) const
 {
-    if ( m_pProjectile )
-        vecPosition = *m_pProjectile->GetPosition ();
-    else
-        vecPosition = CVector();
+    vecPosition = *m_pProjectile->GetPosition ();
 }
 
 
 void CClientProjectile::SetPosition ( const CVector & vecPosition )
 {
-    if ( m_pProjectile )
-        m_pProjectile->SetPosition ( const_cast < CVector* > ( &vecPosition ) );
+    m_pProjectile->SetPosition ( const_cast < CVector* > ( &vecPosition ) );
 }
 
 
@@ -283,54 +250,27 @@ void CClientProjectile::SetRotationDegrees ( const CVector & vecRotation )
 
 void CClientProjectile::GetVelocity ( CVector & vecVelocity )
 {
-    if ( m_pProjectile )
-        m_pProjectile->GetMoveSpeed ( &vecVelocity );
-    else
-        vecVelocity = CVector();
+    m_pProjectile->GetMoveSpeed ( &vecVelocity );
 }
 
 
 void CClientProjectile::SetVelocity ( CVector & vecVelocity )
 {
-    if ( m_pProjectile )
-        m_pProjectile->SetMoveSpeed ( &vecVelocity );
+    m_pProjectile->SetMoveSpeed ( &vecVelocity );
 }
 
-unsigned short CClientProjectile::GetModel ( void )
-{
-    if ( m_pProjectile )
-        return m_pProjectile->GetModelIndex ();
-    return 0;
-}
 
 void CClientProjectile::SetModel ( unsigned short usModel )
 {
-    if ( m_pProjectile )
-        m_pProjectile->SetModelIndex ( usModel );
+    m_pProjectile->SetModelIndex ( usModel );
 }
 
 void CClientProjectile::SetCounter ( DWORD dwCounter )
 {
-    if ( m_pProjectile )
-        m_pProjectileInfo->SetCounter ( dwCounter );
+    m_pProjectileInfo->SetCounter ( dwCounter );
 }
 
 DWORD CClientProjectile::GetCounter ( void )
 {
-    if ( m_pProjectile )
-        return m_pProjectileInfo->GetCounter ( );
-    return 0;
-}
-
-CClientEntity* CClientProjectile::GetSatchelAttachedTo ( void )
-{
-    if ( !m_pProjectile )
-        return NULL;
-
-    CEntity* pAttachedToSA = m_pProjectile->GetAttachedEntity ( );
-
-    if ( !pAttachedToSA )
-        return NULL;
-
-    return m_pManager->FindEntity ( pAttachedToSA, false );
+    return m_pProjectileInfo->GetCounter ( );
 }

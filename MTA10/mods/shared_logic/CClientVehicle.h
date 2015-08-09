@@ -63,17 +63,6 @@ enum eDelayedSyncVehicleData
     DELAYEDSYNC_VEHICLE_TURNSPEED,
 };
 
-namespace EComponentBase
-{
-    enum EComponentBaseType
-    {
-        WORLD,
-        ROOT,
-        PARENT,
-    };
-}
-using EComponentBase::EComponentBaseType;
-
 struct SDelayedSyncVehicleData
 {
     unsigned long       ulTime;
@@ -110,11 +99,10 @@ struct SVehicleComponentData
         m_bRotationChanged = false;
         m_bVisible = true;
     }
-    SString m_strParentName;
-    CVector m_vecComponentPosition;         // Parent relative
-    CVector m_vecComponentRotation;         // Parent relative radians
-    CVector m_vecOriginalComponentPosition; // Parent relative
-    CVector m_vecOriginalComponentRotation; // Parent relative radians
+    CVector m_vecComponentPosition;
+    CVector m_vecComponentRotation;
+    CVector m_vecOriginalComponentPosition;
+    CVector m_vecOriginalComponentRotation;
     bool m_bPositionChanged;
     bool m_bRotationChanged;
     bool m_bVisible;
@@ -145,9 +133,7 @@ public:
 
     void                        GetPosition             ( CVector& vecPosition ) const;
     void                        SetPosition             ( const CVector& vecPosition )      { SetPosition ( vecPosition, true ); }
-    void                        SetPosition             ( const CVector& vecPosition, bool bResetInterpolation, bool bAllowGroundLoadFreeze = true );
-
-    void                        UpdatePedPositions      ( const CVector& vecPosition );
+    void                        SetPosition             ( const CVector& vecPosition, bool bResetInterpolation );
 
     void                        GetRotationDegrees      ( CVector& vecRotation ) const;
     void                        GetRotationRadians      ( CVector& vecRotation ) const;
@@ -156,6 +142,8 @@ public:
     void                        SetRotationRadians      ( const CVector& vecRotation )      { SetRotationRadians ( vecRotation, true ); }
     void                        SetRotationRadians      ( const CVector& vecRotation, bool bResetInterpolation );
     
+    void                        AttachTo                ( CClientEntity * pEntity );
+
     float                       GetDistanceFromCentreOfMassToBaseOfModel ( void );
 
     bool                        GetMatrix               ( CMatrix& Matrix ) const;
@@ -175,7 +163,7 @@ public:
     float                       GetDoorOpenRatio        ( unsigned char ucDoor );
     void                        SetSwingingDoorsAllowed ( bool bAllowed );
     bool                        AreSwingingDoorsAllowed () const;
-    void                        AllowDoorRatioSetting   ( unsigned char ucDoor, bool bAllow, bool bAutoReallowAfterDelay = true );
+    void                        AllowDoorRatioSetting   ( unsigned char ucDoor, bool bAllow );
     bool                        AreDoorsLocked          ( void );
     void                        SetDoorsLocked          ( bool bLocked );
 
@@ -259,7 +247,6 @@ public:
     void                        SetWheelStatus          ( unsigned char ucWheel, unsigned char ucStatus, bool bSilent = true );
     void                        SetPanelStatus          ( unsigned char ucPanel, unsigned char ucStatus );
     void                        SetLightStatus          ( unsigned char ucLight, unsigned char ucStatus );
-    bool                        GetWheelMissing         ( unsigned char ucWheel, const SString& strWheelName = "" );
 
     // TODO: Make the class remember on virtualization
     float                       GetHeliRotorSpeed       ( void );
@@ -303,16 +290,12 @@ public:
     void                        SetFrozen               ( bool bFrozen );
     void                        SetScriptFrozen         ( bool bFrozen )                    { m_bScriptFrozen = bFrozen; };
     bool                        IsFrozenWaitingForGroundToLoad      ( void ) const;
-    void                        SetFrozenWaitingForGroundToLoad     ( bool bFrozen, bool bDisableAsyncLoading );
+    void                        SetFrozenWaitingForGroundToLoad     ( bool bFrozen );
 
     CClientVehicle*             GetPreviousTrainCarriage( void );
     CClientVehicle*             GetNextTrainCarriage    ( void );
     void                        SetPreviousTrainCarriage( CClientVehicle* pPrevious );
     void                        SetNextTrainCarriage    ( CClientVehicle* pNext );
-    inline bool                 IsChainEngine           ( void )                            { return m_bChainEngine; };
-    void                        SetIsChainEngine        ( bool bChainEngine = true, bool bTemporary = false );
-    CClientVehicle*             GetChainEngine          ( void );
-    bool                        IsTrainConnectedTo      ( CClientVehicle * pTrailer );
 
     bool                        IsDerailed              ( void );
     void                        SetDerailed             ( bool bDerailed );
@@ -324,13 +307,6 @@ public:
 
     float                       GetTrainSpeed           ( void );
     void                        SetTrainSpeed           ( float fSpeed );
-
-    float                       GetTrainPosition        ( void );
-    void                        SetTrainPosition        ( float fTrainPosition, bool bRecalcOnRailDistance = true );
-
-    uchar                       GetTrainTrack           ( void );
-    void                        SetTrainTrack           ( uchar ucTrack );
-
 
     inline unsigned char        GetOverrideLights       ( void )                            { return m_ucOverrideLights; }
     void                        SetOverrideLights       ( unsigned char ucOverrideLights );
@@ -344,9 +320,8 @@ public:
 
     CClientVehicle*             GetTowedVehicle         ( void );
     CClientVehicle*             GetRealTowedVehicle     ( void );
-    bool                        SetTowedVehicle         ( CClientVehicle* pVehicle, const CVector* vecRotationDegrees = NULL );
+    bool                        SetTowedVehicle         ( CClientVehicle* pVehicle );
     inline CClientVehicle *     GetTowedByVehicle       ( void )                            { return m_pTowedByVehicle; }
-    bool                        InternalSetTowLink      ( CClientVehicle* pTrailer );
 
     eWinchType                  GetWinchType            ( void )                            { return m_eWinchType; }
     bool                        SetWinchType            ( eWinchType winchType );
@@ -356,20 +331,13 @@ public:
     CClientEntity*              GetPickedUpEntityWithWinch ( void );
 
     inline const char*          GetRegPlate             ( void )                            { return m_strRegPlate.empty () ? NULL : m_strRegPlate.c_str (); }
-    bool                        SetRegPlate             ( const char* szPlate );
+    void                        SetRegPlate             ( const char* szPlate );
 
     unsigned char               GetPaintjob             ( void );
     void                        SetPaintjob             ( unsigned char ucPaintjob );
     
     float                       GetDirtLevel            ( void );
     void                        SetDirtLevel            ( float fDirtLevel );
-	
-    char                        GetNitroCount           ( void );
-    float                       GetNitroLevel           ( void );
-    void                        SetNitroCount           ( char cCount );
-    void                        SetNitroLevel           ( float fLevel );
-
-    bool                        IsNitroInstalled        ( void );
 
     float                       GetDistanceFromGround   ( void );
 
@@ -388,6 +356,10 @@ public:
     void                        UpdateKeysync           ( void );
 
     void                        GetInitialDoorStates    ( SFixedArray < unsigned char, MAX_DOORS >& ucOutDoorStates );
+
+    void                        AddMatrix               ( CMatrix& Matrix, double dTime, unsigned short usTickRate );
+    void                        AddVelocity             ( CVector& vecVelocity );
+
 
     // Time dependent interpolation
     inline void                 GetTargetPosition       ( CVector& vecPosition )            { vecPosition = m_interp.pos.vecTarget; }
@@ -460,33 +432,20 @@ public:
     void                        SetVehicleFlags             ( bool bEnable360, bool bEnableRandomiser, bool bEnableLOSCheck, bool bEnableSilent );
     void                        RemoveVehicleSirens         ( void );
 
-    bool                        ResetComponentPosition  ( const SString& vehicleComponent );
-    bool                        SetComponentPosition    ( const SString& vehicleComponent, CVector vecPosition, EComponentBaseType base = EComponentBase::PARENT );
-    bool                        GetComponentPosition    ( const SString& vehicleComponent, CVector &vecPosition, EComponentBaseType base = EComponentBase::PARENT );
+    bool                        ResetComponentPosition  ( SString vehicleComponent );
+    bool                        SetComponentPosition    ( SString vehicleComponent, CVector vecPosition );
+    bool                        GetComponentPosition    ( SString vehicleComponent, CVector &vecPosition );
     
-    bool                        ResetComponentRotation  ( const SString& vehicleComponent );
-    bool                        SetComponentRotation    ( const SString& vehicleComponent, CVector vecRotation, EComponentBaseType base = EComponentBase::PARENT );
-    bool                        GetComponentRotation    ( const SString& vehicleComponent, CVector &vecRotation, EComponentBaseType base = EComponentBase::PARENT );
+    bool                        ResetComponentRotation  ( SString vehicleComponent );
+    bool                        SetComponentRotation    ( SString vehicleComponent, CVector vecRotation );
+    bool                        GetComponentRotation    ( SString vehicleComponent, CVector &vecRotation );
 
-    bool                        SetComponentVisible     ( const SString& vehicleComponent, bool bVisible );
-    bool                        GetComponentVisible     ( const SString& vehicleComponent, bool &bVisible );
+    bool                        SetComponentVisible     ( SString vehicleComponent, bool bVisible );
+    bool                        GetComponentVisible     ( SString vehicleComponent, bool &bVisible );
     std::map < SString, SVehicleComponentData > ::iterator ComponentsBegin ( void )                               { return m_ComponentData.begin (); }
     std::map < SString, SVehicleComponentData > ::iterator ComponentsEnd   ( void )                               { return m_ComponentData.end (); }
-    
-    bool                        DoesSupportUpgrade      ( const SString& strFrameName );
-
-    bool                        AreHeliBladeCollisionsEnabled              ( void )                              { return m_bEnableHeliBladeCollisions; }
-
-    void                        SetHeliBladeCollisionsEnabled              ( bool bEnable )                    { m_bEnableHeliBladeCollisions = bEnable; }
-
-    bool                        OnVehicleFallThroughMap                    ( );
 
 protected:
-    void                        ConvertComponentRotationBase        ( const SString& vehicleComponent, CVector& vecInOutRotation, EComponentBaseType inputBase, EComponentBaseType outputBase );
-    void                        ConvertComponentPositionBase        ( const SString& vehicleComponent, CVector& vecInOutPosition, EComponentBaseType inputBase, EComponentBaseType outputBase );
-    void                        ConvertComponentMatrixBase          ( const SString& vehicleComponent, CMatrix& matInOutOrientation, EComponentBaseType inputBase, EComponentBaseType outputBase );
-    void                        GetComponentParentToRootMatrix      ( const SString& vehicleComponent, CMatrix& matOutParentToRoot );
-
     void                        StreamIn                ( bool bInstantly );
     void                        StreamOut               ( void );
 
@@ -495,9 +454,11 @@ protected:
 
     bool                        DoCheckHasLandingGear   ( void );
     void                        HandleWaitingForGroundToLoad ( void );
-    bool                        DoesNeedToWaitForGroundToLoad ( void );
 
     void                        StreamedInPulse         ( void );
+    void                        Dump                    ( FILE* pFile, bool bDumpDetails, unsigned int uiIndex );
+    eVehicleComponent           ConvertStringToEnum     ( SString strInput );
+    SString                     ConvertEnumToString     ( eVehicleComponent strInput );
 
     class CClientObjectManager* m_pObjectManager;
     CClientVehicleManager*      m_pVehicleManager;
@@ -508,15 +469,15 @@ protected:
     unsigned char               m_ucMaxPassengers;
     bool                        m_bIsVirtualized;
     CVehicle*                   m_pVehicle;
-    CClientPedPtr               m_pDriver;
+    CClientPed*                 m_pDriver;
     SFixedArray < CClientPed*, 8 >  m_pPassengers;
-    CClientPedPtr               m_pOccupyingDriver;
+    CClientPed*                 m_pOccupyingDriver;
     SFixedArray < CClientPed*, 8 >  m_pOccupyingPassengers;
     RpClump*                    m_pClump;
     short                       m_usRemoveTimer;
 
-    CClientVehiclePtr           m_pPreviousLink;
-    CClientVehiclePtr           m_pNextLink;
+    CClientVehicle*             m_pPreviousLink;
+    CClientVehicle*             m_pNextLink;
     CMatrix                     m_Matrix;
     CMatrix                     m_MatrixLast;
     CMatrix                     m_MatrixPure;   
@@ -536,7 +497,6 @@ protected:
     bool                        m_bLandingGearDown;
     bool                        m_bHasAdjustableProperty;
     unsigned short              m_usAdjustablePropertyValue;
-    std::map < eDoors, CTickCount > m_AutoReallowDoorRatioMap;
     SFixedArray < bool, 6 >     m_bAllowDoorRatioSetting;
     SFixedArray < float, 6 >    m_fDoorOpenRatio;
     struct
@@ -568,16 +528,14 @@ protected:
     bool                        m_bFrozenWaitingForGroundToLoad;
     float                       m_fGroundCheckTolerance;
     float                       m_fObjectsAroundTolerance;
-    CVector                     m_vecWaitingForGroundSavedMoveSpeed;
-    CVector                     m_vecWaitingForGroundSavedTurnSpeed;
     CMatrix                     m_matFrozen;
     CVehicleUpgrades*           m_pUpgrades;
     unsigned char               m_ucOverrideLights;
-    CClientVehiclePtr           m_pTowedVehicle;
-    CClientVehiclePtr           m_pTowedByVehicle;
+    CClientVehicle*             m_pTowedVehicle;
+    CClientVehicle*             m_pTowedByVehicle;
     eWinchType                  m_eWinchType;
-    CClientEntityPtr            m_pPickedUpWinchEntity;
-    SString                     m_strRegPlate;
+    CClientEntity*              m_pPickedUpWinchEntity;
+    std::string                 m_strRegPlate;
     unsigned char               m_ucPaintjob;
     float                       m_fDirtLevel;
     bool                        m_bSmokeTrail;
@@ -590,16 +548,11 @@ protected:
     float                       m_fHeliRotorSpeed;
     const CHandlingEntry*       m_pOriginalHandlingEntry;
     CHandlingEntry*             m_pHandlingEntry;
-    float                       m_fNitroLevel;
-    char                        m_cNitroCount;
 
-    bool                        m_bChainEngine;
     bool                        m_bIsDerailed;
     bool                        m_bIsDerailable;
     bool                        m_bTrainDirection;
     float                       m_fTrainSpeed;
-    float                       m_fTrainPosition;
-    uchar                       m_ucTrackID;
 
     // Time dependent error compensation interpolation
     struct
@@ -639,8 +592,6 @@ protected:
 
     bool                        m_bIsInWater;
 
-    bool                        m_bNitroActivated;
-
     CVector                     m_vecGravity;
     SColor                      m_HeadLightColor;
 
@@ -652,10 +603,6 @@ protected:
     CTickCount                  m_LastPushedTime;
     uint                        m_uiForceLocalZCounter;
 
-    bool                        m_bEnableHeliBladeCollisions;
-    CMatrix                     m_matCreate;
-    unsigned char               m_ucFellThroughMapCount;
-
 public:
 #ifdef MTA_DEBUG
     CClientPlayer *             m_pLastSyncer;
@@ -665,8 +612,7 @@ public:
     SLastSyncedVehData*         m_LastSyncedData;
     SSirenInfo                  m_tSirenBeaconInfo;
     std::map<SString, SVehicleComponentData>  m_ComponentData;
-    bool                        m_bAsyncLoadingDisabled;
-
+    bool                        m_bInWater;
 };
 
 #endif

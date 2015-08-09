@@ -26,8 +26,7 @@ void CLuaTimerManager::DoPulse ( CLuaMain* pLuaMain )
     CTickCount llCurrentTime = CTickCount::Now ();
 
     // Use a separate queue to avoid trouble
-    // What kind of problems are we trying to avoid? Doing a copy each frame isn't quite efficient
-    for ( CFastList < CLuaTimer* > ::const_iterator iter = m_TimerList.begin () ; iter != m_TimerList.end () ; ++iter )
+    for ( CFastList < CLuaTimer* > ::const_iterator iter = m_TimerList.begin () ; iter != m_TimerList.end () ; iter++ )
         m_ProcessQueue.push_back ( *iter );
 
     while ( !m_ProcessQueue.empty () )
@@ -43,11 +42,11 @@ void CLuaTimerManager::DoPulse ( CLuaMain* pLuaMain )
         if ( llCurrentTime >= ( llStartTime + llDelay ) )
         {
             // Set our debug info
-            g_pGame->GetScriptDebugging()->SaveLuaDebugInfo ( m_pProcessingTimer->GetLuaDebugInfo ( ) );
+            g_pGame->GetScriptDebugging()->SetErrorLineAndFile ( m_pProcessingTimer->GetDebugInfo ( ) );
             
             m_pProcessingTimer->ExecuteTimer ( pLuaMain );
             // Reset
-            g_pGame->GetScriptDebugging()->SaveLuaDebugInfo ( SLuaDebugInfo() );
+            g_pGame->GetScriptDebugging()->SetErrorLineAndFile ( "" );
 
             // If this is the last repeat, remove
             if ( uiRepeats == 1 )
@@ -105,7 +104,7 @@ void CLuaTimerManager::RemoveAllTimers ( void )
 {
     // Delete all the timers
     CFastList < CLuaTimer* > ::const_iterator iter = m_TimerList.begin ();
-    for ( ; iter != m_TimerList.end (); ++iter )
+    for ( ; iter != m_TimerList.end (); iter++ )
     {
         delete *iter;
     }
@@ -156,5 +155,5 @@ CLuaTimer* CLuaTimerManager::AddTimer ( const CLuaFunctionRef& iLuaFunction, CTi
         return pLuaTimer;
     }
 
-    return NULL;
+    return false;
 }

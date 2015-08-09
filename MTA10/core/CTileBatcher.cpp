@@ -144,9 +144,13 @@ void CTileBatcher::Flush ( void )
             m_bZBufferDirty = false;
         }
 
+        // Save state
+        LPDIRECT3DSTATEBLOCK9   m_pDeviceState = NULL;
+#if 0   // Creating a state block here may not be necessary
+        m_pDevice->CreateStateBlock ( D3DSBT_ALL, &m_pDeviceState );
+#endif
+
         // Set states
-        if ( g_pDeviceState->AdapterState.bRequiresClipping )
-            m_pDevice->SetRenderState ( D3DRS_CLIPPING, TRUE );
         m_pDevice->SetRenderState ( D3DRS_ZENABLE, m_bUseCustomMatrices ? D3DZB_TRUE : D3DZB_FALSE );
         m_pDevice->SetRenderState ( D3DRS_CULLMODE, D3DCULL_NONE );
         m_pDevice->SetRenderState ( D3DRS_SHADEMODE, D3DSHADE_GOURAUD );
@@ -203,7 +207,7 @@ void CTileBatcher::Flush ( void )
         // Set vertex stream
         uint PrimitiveCount                 = m_Indices.size () / 3;
         const void* pIndexData              = &m_Indices[0];
-        uint NumVertices                    = m_Vertices.size ();
+        uint NumVertices                    = m_Indices.size ();
         const void* pVertexStreamZeroData   = &m_Vertices[0];
         uint VertexStreamZeroStride         = sizeof(SPDTVertex);
         m_pDevice->SetFVF ( SPDTVertex::FVF );
@@ -211,9 +215,6 @@ void CTileBatcher::Flush ( void )
         // Set texture addressing mode
         m_pDevice->SetSamplerState( 0, D3DSAMP_ADDRESSU, m_pCurrentMaterial->m_TextureAddress );
         m_pDevice->SetSamplerState( 0, D3DSAMP_ADDRESSV, m_pCurrentMaterial->m_TextureAddress );
-
-        if ( m_pCurrentMaterial->m_TextureAddress == TADDRESS_BORDER )
-            m_pDevice->SetSamplerState ( 0, D3DSAMP_BORDERCOLOR, m_pCurrentMaterial->m_uiBorderColor );
 
         // Draw
         if ( CTextureItem* pTextureItem = DynamicCast < CTextureItem > ( m_pCurrentMaterial ) )
@@ -265,8 +266,13 @@ void CTileBatcher::Flush ( void )
         m_fCurrentRotCenX = 0;
         m_fCurrentRotCenY = 0;
 
-        if ( g_pDeviceState->AdapterState.bRequiresClipping )
-            m_pDevice->SetRenderState ( D3DRS_CLIPPING, FALSE );
+        // Restore state
+        if ( m_pDeviceState )
+        {
+            m_pDeviceState->Apply ( );
+            m_pDeviceState->Release ( );
+            m_pDeviceState = NULL;
+        }
     }
 }
 
@@ -369,8 +375,6 @@ void CTileBatcher::AddTile ( float fX1, float fY1,
         m_fCurrentRotCenY = fRotCenY;
     }
 
-    uint uiBaseIndex = m_Vertices.size ();
-
     // Do quicker things if tessellation is not required
     if ( uiTessellationX == 1 && uiTessellationY == 1 )
     {
@@ -385,6 +389,7 @@ void CTileBatcher::AddTile ( float fX1, float fY1,
         WRITE_PDT_VERTEX( pVBuffer, fX2, fY2, 0, ulColor, fU2 , fV2 );
 
         // Make room for 6 more indices
+        uint uiBaseIndex = m_Indices.size ();
         m_Indices.resize ( m_Indices.size () + 6 );
         WORD* pIBuffer = &m_Indices[m_Indices.size () - 6];
 
@@ -434,7 +439,7 @@ void CTileBatcher::AddTile ( float fX1, float fY1,
 
             for ( uint x = 0 ; x < uiTessellationX ; x++ )
             {
-                WRITE_QUAD_INDICES( pIBuffer, uiBaseIndex + uiRow0Base + x, uiBaseIndex + uiRow1Base + x );
+                WRITE_QUAD_INDICES( pIBuffer, uiRow0Base + x, uiRow1Base + x );
             }
         }
     }
@@ -479,7 +484,7 @@ void CTileBatcher::MakeCustomMatrices ( const SShaderTransform& t
 
 
     // Perspective
-    CVector2D useCenOfPers = t.vecPersCenOffset * vecHalfScreenSize;
+    CVector useCenOfPers = t.vecPersCenOffset * vecHalfScreenSize;
     if ( !t.bPersCenOffsetOriginIsScreen )
     {
         useCenOfPers += vecCenterOfTile - vecCenterOfScreen;

@@ -10,8 +10,7 @@
 #include "StdInc.h"
 #include "SimHeaders.h"
 
-SThreadCPUTimesStore g_SyncThreadCPUTimes;
-uint g_uiNetSentByteCounter = 0;
+uint g_uiThreadnetProcessorNumber = -1;
 
 namespace
 {
@@ -28,77 +27,6 @@ namespace
     SFixedString < 32 >     ms_PingStatusLastSaved;
     bool                    ms_bNetRouteLastSavedValid = false;
     SFixedString < 32 >     ms_NetRouteLastSaved;
-
-    // Sync thread stats
-    uint                    ms_StatsResetCounters;
-    int                     ms_StatsLoopCount;
-    TIMEUS                  ms_StatsRecvTimeTotalUs;
-    TIMEUS                  ms_StatsRecvTimeMaxUs;
-    TIMEUS                  ms_StatsSendTimeTotalUs;
-    TIMEUS                  ms_StatsSendTimeMaxUs;
-    uint                    ms_StatsRecvMsgsTotal;
-    uint                    ms_StatsRecvMsgsMax;
-    uint                    ms_StatsSendCmdsTotal;
-    uint                    ms_StatsSendCmdsMax;
-    uint                    ms_StatsRecvNumMessages;
-    uint                    ms_StatsSendNumCommands;
-    TIMEUS                  ms_StatsTimePoint1;
-    TIMEUS                  ms_StatsTimePoint2;
-    TIMEUS                  ms_StatsTimePoint3;
-
-    // Sync thread stats helper functions
-    void UpdateStatsPreDoPulse ( void )
-    {
-        ms_StatsTimePoint1 = GetTimeUs();
-        ms_StatsRecvNumMessages = 0;
-    }
-
-    void UpdateStatsPreCommands ( int uiNumCommands )
-    {
-        ms_StatsTimePoint2 = GetTimeUs();
-        ms_StatsTimePoint3 = ms_StatsTimePoint2;
-        ms_StatsSendNumCommands = uiNumCommands;
-    }
-
-    void UpdateStatsFinish ( void )
-    {
-        if ( ms_StatsSendNumCommands != 0 )
-            ms_StatsTimePoint3 = GetTimeUs();
-
-        static CElapsedTime lastStatsResetTime;
-        static uint uiLastResetValue = 10;
-        // Do reset if requested from other thread, or it's been a little while
-        if ( ms_StatsResetCounters != uiLastResetValue || lastStatsResetTime.Get() > 20000 )
-        {
-            lastStatsResetTime.Reset();
-            uiLastResetValue = ms_StatsResetCounters;
-            ms_StatsLoopCount = 0;
-            ms_StatsRecvTimeTotalUs = 0;
-            ms_StatsRecvTimeMaxUs = 0;
-            ms_StatsRecvMsgsTotal = 0;
-            ms_StatsRecvMsgsMax = 0;
-            ms_StatsSendTimeTotalUs = 0;
-            ms_StatsSendTimeMaxUs = 0;
-            ms_StatsSendCmdsTotal = 0;
-            ms_StatsSendCmdsMax = 0;
-        }
-
-        ms_StatsLoopCount++;
-
-        TIMEUS llRecvTimeUs = ms_StatsTimePoint2 - ms_StatsTimePoint1;
-        ms_StatsRecvTimeTotalUs += llRecvTimeUs;
-        ms_StatsRecvTimeMaxUs = Max( ms_StatsRecvTimeMaxUs, llRecvTimeUs );
-
-        TIMEUS llSendTimeUs = ms_StatsTimePoint3 - ms_StatsTimePoint2;
-        ms_StatsSendTimeTotalUs += llSendTimeUs;
-        ms_StatsSendTimeMaxUs = Max( ms_StatsSendTimeMaxUs, llSendTimeUs );
-
-        ms_StatsRecvMsgsTotal += ms_StatsRecvNumMessages;
-        ms_StatsRecvMsgsMax = Max( ms_StatsRecvMsgsMax, ms_StatsRecvNumMessages );
-
-        ms_StatsSendCmdsTotal += ms_StatsSendNumCommands;
-        ms_StatsSendCmdsMax = Max( ms_StatsSendCmdsMax, ms_StatsSendNumCommands );
-    }
 }
 
 
@@ -155,9 +83,9 @@ CNetServerBuffer::~CNetServerBuffer ( void )
 ///////////////////////////////////////////////////////////////
 void CNetServerBuffer::SetAutoPulseEnabled ( bool bEnable )
 {
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::SetAutoPulseEnabled );
     shared.m_bAutoPulse = bEnable;
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::SetAutoPulseEnabled );
 }
 
 
@@ -171,10 +99,10 @@ void CNetServerBuffer::SetAutoPulseEnabled ( bool bEnable )
 void CNetServerBuffer::StopThread ( void )
 {
     // Stop the job queue processing thread
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::StopThread );
     shared.m_bTerminateThread = true;
-    shared.m_Mutex.Signal ();
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Signal ( EActionWho::MAIN, EActionWhere::StopThread );
+    shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::StopThread );
 
     for ( uint i = 0 ; i < 5000 ; i += 15 )
     {
@@ -253,11 +181,11 @@ void CNetServerBuffer::DoPulse ( void )
     {
         m_TimeThreadFPSLastCalced.Reset ();
         float fSyncFPS;
-        shared.m_Mutex.Lock ();
+        shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::DoPulse );
         fSyncFPS = static_cast < float > ( shared.m_iThreadFrameCount );
         shared.m_iThreadFrameCount = 0;
         shared.m_iuGamePlayerCount = g_pGame->GetPlayerManager ()->Count (); // Also update player count here (for scaling buffer size checks)
-        shared.m_Mutex.Unlock ();
+        shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::DoPulse );
 
         // Compress high counts
         if ( fSyncFPS > 500 )
@@ -394,51 +322,6 @@ bool CNetServerBuffer::GetBandwidthStatistics ( SBandwidthStatistics* pDest )
 
     // but use results from previous
     *pDest = ms_BandwidthStatisticsLastSaved;
-    return true;
-}
-
-
-///////////////////////////////////////////////////////////////////////////
-//
-// CNetServerBuffer::GetNetPerformanceStatistics
-//
-// Thread safe, but numbers could be wrong
-//
-///////////////////////////////////////////////////////////////////////////
-bool CNetServerBuffer::GetNetPerformanceStatistics ( SNetPerformanceStatistics* pDest, bool bResetCounters )
-{
-    return m_pRealNetServer->GetNetPerformanceStatistics ( pDest, bResetCounters );
-}
-
-
-///////////////////////////////////////////////////////////////////////////
-//
-// CNetServerBuffer::GetSyncThreadStatistics
-//
-// Thread safe, but numbers could be wrong
-//
-///////////////////////////////////////////////////////////////////////////
-bool CNetServerBuffer::GetSyncThreadStatistics ( SSyncThreadStatistics* pDest, bool bResetCounters )
-{
-    if ( !pDest )
-        return false;
-
-    int iNumActiveRemoteSystems = Max( 1U, g_pGame->GetPlayerManager()->Count() );
-    int iLoopCount = Max( 1, ms_StatsLoopCount );
-    pDest->uiRecvTimeAvgUs = (uint)( ms_StatsRecvTimeTotalUs / iLoopCount );
-    pDest->uiSendTimeAvgUs = (uint)( ms_StatsSendTimeTotalUs / iLoopCount );
-
-    pDest->uiRecvTimeMaxUs = (uint)( ms_StatsRecvTimeMaxUs );
-    pDest->uiSendTimeMaxUs = (uint)( ms_StatsSendTimeMaxUs );
-
-    pDest->fRecvMsgsAvg = ms_StatsRecvMsgsTotal / (float)iNumActiveRemoteSystems / (float)iLoopCount;
-    pDest->uiRecvMsgsMax = ms_StatsRecvMsgsMax / iNumActiveRemoteSystems;
-    pDest->fSendCmdsAvg = ms_StatsSendCmdsTotal / (float)iNumActiveRemoteSystems / (float)iLoopCount;
-    pDest->uiSendCmdsMax = ms_StatsSendCmdsMax / iNumActiveRemoteSystems;
-
-    if ( bResetCounters )
-        ms_StatsResetCounters++;
-
     return true;
 }
 
@@ -654,9 +537,9 @@ void CNetServerBuffer::SetChecks ( const char* szDisableComboACMap, const char* 
 ///////////////////////////////////////////////////////////////////////////
 unsigned int CNetServerBuffer::GetPendingPacketCount ( void )
 {
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::GetPendingPacketCount );
     uint uiCount = shared.m_InResultQueue.size ();
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::GetPendingPacketCount );
     return uiCount;
 }
 
@@ -723,6 +606,20 @@ bool CNetServerBuffer::InitServerId ( const char* szPath )
 
 ///////////////////////////////////////////////////////////////////////////
 //
+// CNetServerBuffer::SetEncryptionEnabled
+//
+// Non-blocking. Called once at startup, and when config changes
+//
+///////////////////////////////////////////////////////////////////////////
+void CNetServerBuffer::SetEncryptionEnabled ( bool bEncryptionEnabled )
+{
+    SSetEncryptionEnabledArgs* pArgs = new SSetEncryptionEnabledArgs ( bEncryptionEnabled );
+    AddCommandAndFree ( pArgs );
+}
+
+
+///////////////////////////////////////////////////////////////////////////
+//
 // CNetServerBuffer::ResendModPackets
 //
 // Non-blocking.
@@ -743,9 +640,9 @@ void CNetServerBuffer::ResendModPackets ( const NetServerPlayerID& playerID )
 // (To make non blocking, don't)
 //
 ///////////////////////////////////////////////////////////////////////////
-void CNetServerBuffer::GetClientSerialAndVersion ( const NetServerPlayerID& playerID, SFixedString < 32 >& strSerial, SFixedString < 64 >& strExtra, SFixedString < 32 >& strVersion )
+void CNetServerBuffer::GetClientSerialAndVersion ( const NetServerPlayerID& playerID, SFixedString < 32 >& strSerial, SFixedString < 32 >& strVersion )
 {
-    SGetClientSerialAndVersionArgs* pArgs = new SGetClientSerialAndVersionArgs ( playerID, strSerial, strExtra, strVersion );
+    SGetClientSerialAndVersionArgs* pArgs = new SGetClientSerialAndVersionArgs ( playerID, strSerial, strVersion );
     AddCommandAndWait ( pArgs );
 }
 
@@ -816,11 +713,11 @@ CNetJobData* CNetServerBuffer::AddCommand ( SArgs* pArgs, bool bAutoFree )
     pJobData->bAutoFree = bAutoFree;
 
     // Add to queue
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::AddCommand );
     pJobData->stage = EJobStage::COMMAND_QUEUE;
     shared.m_OutCommandQueue.push_back ( pJobData );
-    shared.m_Mutex.Signal ();
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Signal ( EActionWho::MAIN, EActionWhere::AddCommand );
+    shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::AddCommand );
 
     return bAutoFree ? NULL : pJobData;
 }
@@ -888,7 +785,7 @@ bool CNetServerBuffer::PollCommand ( CNetJobData* pJobData, uint uiTimeout )
 {
     bool bFound = false;
 
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::PollCommand );
     while ( true )
     {
         // Find result with the required job handle
@@ -904,9 +801,9 @@ bool CNetServerBuffer::PollCommand ( CNetJobData* pJobData, uint uiTimeout )
                 // Do callback incase any cleanup is needed
                 if ( pJobData->HasCallback () )
                 {
-                    shared.m_Mutex.Unlock ();                 
+                    shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::PollCommand2 );                 
                     pJobData->ProcessCallback ();              
-                    shared.m_Mutex.Lock ();
+                    shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::PollCommand2 );
                 }
 
                 bFound = true;
@@ -916,11 +813,11 @@ bool CNetServerBuffer::PollCommand ( CNetJobData* pJobData, uint uiTimeout )
 
         if ( bFound || uiTimeout == 0 )
         {
-            shared.m_Mutex.Unlock ();
+            shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::PollCommand );
             break;
         }
 
-        shared.m_Mutex.Wait ( uiTimeout );
+        shared.m_Mutex.Wait ( uiTimeout, EActionWho::MAIN, EActionWhere::PollCommand );
 
         // If not infinite, break after next check
         if ( uiTimeout != (uint)-1 )
@@ -941,7 +838,6 @@ void CNetServerBuffer::AddPacketStat ( CNetServer::ENetworkUsageDirection eDirec
     stat.iCount++;
     stat.iTotalBytes += iPacketSize;
     stat.totalTime += elapsedTime;
-    g_uiNetSentByteCounter += iPacketSize;
 }
 
 
@@ -957,10 +853,10 @@ void CNetServerBuffer::ProcessIncoming ( void )
     bool bTimePacketHandler = m_TimeSinceGetPacketStats.Get () < 10000;
 
     // Get incoming packets
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::ProcessIncoming );
     std::list < SProcessPacketArgs* > inResultQueue = shared.m_InResultQueue;
     shared.m_InResultQueue.clear ();
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::ProcessIncoming );
 
     // Handle incoming packets
     for ( std::list < SProcessPacketArgs* >::iterator iter = inResultQueue.begin () ; iter != inResultQueue.end () ; ++iter )
@@ -983,7 +879,7 @@ void CNetServerBuffer::ProcessIncoming ( void )
         SAFE_DELETE( pArgs );
     }
 
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::ProcessIncoming2 );
 
     // Delete finished
     for ( std::set < CNetJobData* >::iterator iter = shared.m_FinishedList.begin () ; iter != shared.m_FinishedList.end () ; )
@@ -1005,16 +901,16 @@ again:
 
         if ( pJobData->HasCallback () )
         {
-            shared.m_Mutex.Unlock ();
+            shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::ProcessIncoming3 );
             pJobData->ProcessCallback ();              
-            shared.m_Mutex.Lock ();
+            shared.m_Mutex.Lock ( EActionWho::MAIN, EActionWhere::ProcessIncoming3 );
 
             // Redo from the top ensure everything is consistent
             goto again;
         }
     }
 
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Unlock ( EActionWho::MAIN, EActionWhere::ProcessIncoming2 );
 }
 
 
@@ -1036,6 +932,7 @@ again:
 ///////////////////////////////////////////////////////////////
 void* CNetServerBuffer::StaticThreadProc ( void* pContext )
 {
+    SetCurrentThreadType ( EActionWho::SYNC );
     CThreadHandle::AllowASyncCancel ();
     return ((CNetServerBuffer*)pContext)->ThreadProc ();
 }
@@ -1050,26 +947,23 @@ void* CNetServerBuffer::StaticThreadProc ( void* pContext )
 ///////////////////////////////////////////////////////////////
 void* CNetServerBuffer::ThreadProc ( void )
 {
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::SYNC, EActionWhere::ThreadProc );
     while ( !shared.m_bTerminateThread )
     {
         shared.m_iThreadFrameCount++;
-        UpdateStatsPreDoPulse();
 
         if ( shared.m_bAutoPulse )
         {
-            shared.m_Mutex.Unlock ();
+            shared.m_Mutex.Unlock ( EActionWho::SYNC, EActionWhere::ThreadProc2 );
             m_pRealNetServer->DoPulse ();
-            UpdateThreadCPUTimes( g_SyncThreadCPUTimes );
-            shared.m_Mutex.Lock ();
+            g_uiThreadnetProcessorNumber = _GetCurrentProcessorNumber ();
+            shared.m_Mutex.Lock ( EActionWho::SYNC, EActionWhere::ThreadProc2 );
         }
-
-        UpdateStatsPreCommands( shared.m_OutCommandQueue.size() );
 
         // Is there a waiting command?
         if ( shared.m_OutCommandQueue.empty () )
         {
-            shared.m_Mutex.Wait ( 10 );
+            shared.m_Mutex.Wait ( 10, EActionWho::SYNC, EActionWhere::ThreadProc );
         }
         else
         {
@@ -1081,13 +975,13 @@ void* CNetServerBuffer::ThreadProc ( void )
                 // Get next command
                 CNetJobData* pJobData = shared.m_OutCommandQueue.front ();
                 pJobData->stage = EJobStage::PROCCESSING;
-                shared.m_Mutex.Unlock ();
+                shared.m_Mutex.Unlock ( EActionWho::SYNC, EActionWhere::ThreadProc3 );
 
                 // Process command
                 ProcessCommand ( pJobData );
 
                 // Store result
-                shared.m_Mutex.Lock ();
+                shared.m_Mutex.Lock ( EActionWho::SYNC, EActionWhere::ThreadProc3 );
                 // Check command has not been cancelled (this should not be possible)
                 assert ( pJobData == shared.m_OutCommandQueue.front () );
 
@@ -1100,15 +994,13 @@ void* CNetServerBuffer::ThreadProc ( void )
                 else
                     shared.m_OutResultQueue.push_back ( pJobData );
 
-                shared.m_Mutex.Signal ();
+                shared.m_Mutex.Signal ( EActionWho::SYNC, EActionWhere::ThreadProc );
             }
         }
-
-        UpdateStatsFinish();
     }
 
     shared.m_bThreadTerminated = true;
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Unlock ( EActionWho::SYNC, EActionWhere::ThreadProc );
 
     return NULL;
 }
@@ -1138,7 +1030,6 @@ void CNetServerBuffer::ProcessCommand ( CNetJobData* pJobData )
 #define CALLREALNET1(func,t1,n1)                                          CALLPRE(func) m_pRealNetServer->func ( a.n1 ); CALLPOST
 #define CALLREALNET2(func,t1,n1,t2,n2)                                    CALLPRE(func) m_pRealNetServer->func ( a.n1, a.n2 ); CALLPOST
 #define CALLREALNET3(func,t1,n1,t2,n2,t3,n3)                              CALLPRE(func) m_pRealNetServer->func ( a.n1, a.n2, a.n3 ); CALLPOST
-#define CALLREALNET4(func,t1,n1,t2,n2,t3,n3,t4,n4)                        CALLPRE(func) m_pRealNetServer->func ( a.n1, a.n2, a.n3, a.n4 ); CALLPOST
 #define CALLREALNET5(func,t1,n1,t2,n2,t3,n3,t4,n4,t5,n5)                  CALLPRE(func) m_pRealNetServer->func ( a.n1, a.n2, a.n3, a.n4, a.n5 ); CALLPOST
 
 #define CALLREALNET0R(ret,func)                                           CALLPRE(func) a.result = m_pRealNetServer->func (); CALLPOST
@@ -1163,8 +1054,6 @@ void CNetServerBuffer::ProcessCommand ( CNetJobData* pJobData )
         CALLREALNET2R( bool,                GetNetworkStatistics            , NetStatistics*, pDest, NetServerPlayerID&, PlayerID )
         CALLREALNET0R( const SPacketStat*,  GetPacketStats                  )
         CALLREALNET1R( bool,                GetBandwidthStatistics          , SBandwidthStatistics*, pDest )
-        CALLREALNET2R( bool,                GetNetPerformanceStatistics     , SNetPerformanceStatistics*, pDest, bool, bResetCounters )
-        CALLREALNET2R( bool,                GetSyncThreadStatistics         , SSyncThreadStatistics*, pDest, bool, bResetCounters )
         CALLREALNET1 (                      GetPingStatus                   , SFixedString < 32 >*, pstrStatus )
         CALLREALNET7R( bool,                SendPacket                      , unsigned char, ucPacketID, const NetServerPlayerID&, playerID, NetBitStreamInterface*, bitStream, bool, bBroadcast, NetServerPacketPriority, packetPriority, NetServerPacketReliability, packetReliability, ePacketOrdering, packetOrdering )
         CALLREALNET3 (                      GetPlayerIP                     , const NetServerPlayerID&, playerID, char*, strIP, unsigned short*, usPort )
@@ -1177,8 +1066,9 @@ void CNetServerBuffer::ProcessCommand ( CNetJobData* pJobData )
         CALLREALNET0R( unsigned int,        GetPendingPacketCount           )
         CALLREALNET1 (                      GetNetRoute                     , SFixedString < 32 >*, pstrRoute )
         CALLREALNET1R( bool,                InitServerId                    , const char*, szPath )
+        CALLREALNET1 (                      SetEncryptionEnabled            , bool, bEncryptionEnabled )
         CALLREALNET1 (                      ResendModPackets                , const NetServerPlayerID&, playerID )
-        CALLREALNET4 (                      GetClientSerialAndVersion       , const NetServerPlayerID&, playerID, SFixedString < 32 >&, strSerial, SFixedString < 64 >&, strExtra, SFixedString < 32 >&, strVersion )
+        CALLREALNET3 (                      GetClientSerialAndVersion       , const NetServerPlayerID&, playerID, SFixedString < 32 >&, strSerial, SFixedString < 32 >&, strVersion )
         CALLREALNET1 (                      SetNetOptions                   , const SNetOptions&, options )
         CALLREALNET2 (                      GenerateRandomData              , void*, pOutData, uint, uiLength )
 
@@ -1263,17 +1153,6 @@ void CNetServerBuffer::ProcessPacket ( unsigned char ucPacketID, const NetServer
         // Reset bitstream pointer so game can also read the packet data
         BitStream->ResetReadPointer ();
     }
-    else
-    if ( ucPacketID == PACKET_ID_PED_TASK )
-    {
-        // See about handling the packet relaying here
-        m_pSimPlayerManager->HandlePedTaskPacket ( Socket, BitStream );
-
-        // Reset bitstream pointer so game can also read the packet data
-        BitStream->ResetReadPointer ();
-    }
-
-    ms_StatsRecvNumMessages++;
 
     if ( !CNetBufferWatchDog::CanReceivePacket ( ucPacketID ) )
        return;
@@ -1284,9 +1163,9 @@ void CNetServerBuffer::ProcessPacket ( unsigned char ucPacketID, const NetServer
     SProcessPacketArgs* pArgs = new SProcessPacketArgs ( ucPacketID, Socket, BitStream, pNetExtraInfo );
 
     // Store result
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::SYNC, EActionWhere::ProcessPacket );
     shared.m_InResultQueue.push_back ( pArgs );
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Unlock ( EActionWho::SYNC, EActionWhere::ProcessPacket );
 }
 
 
@@ -1299,7 +1178,7 @@ void CNetServerBuffer::ProcessPacket ( unsigned char ucPacketID, const NetServer
 ///////////////////////////////////////////////////////////////
 void CNetServerBuffer::GetQueueSizes ( uint& uiFinishedList, uint& uiOutCommandQueue, uint& uiOutResultQueue, uint& uiInResultQueue, uint& uiGamePlayerCount )
 {
-    shared.m_Mutex.Lock ();
+    shared.m_Mutex.Lock ( EActionWho::WATCHDOG, EActionWhere::GetQueueSizes );
 
     uiFinishedList = shared.m_FinishedList.size ();
     uiOutCommandQueue = shared.m_OutCommandQueue.size ();
@@ -1307,7 +1186,7 @@ void CNetServerBuffer::GetQueueSizes ( uint& uiFinishedList, uint& uiOutCommandQ
     uiInResultQueue = shared.m_InResultQueue.size ();
     uiGamePlayerCount = shared.m_iuGamePlayerCount;
 
-    shared.m_Mutex.Unlock ();
+    shared.m_Mutex.Unlock ( EActionWho::WATCHDOG, EActionWhere::GetQueueSizes );
 }
 
 

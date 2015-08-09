@@ -19,15 +19,16 @@
 #endif
 
 struct ISyncStructure;
-class NetBitStreamInterface;
 
-class NetBitStreamInterfaceNoVersion : public CRefCountable
+class NetBitStreamInterface : public CRefCountable
 {
+    NetBitStreamInterface      ( const NetBitStreamInterface& );
+    const NetBitStreamInterface& operator= ( const NetBitStreamInterface& );
+protected:
+                        NetBitStreamInterface       ( void ) { DEBUG_CREATE_COUNT( "NetBitStreamInterface" ); }
+    virtual             ~NetBitStreamInterface      ( void ) { DEBUG_DESTROY_COUNT( "NetBitStreamInterface" ); }
 public:
-    virtual operator NetBitStreamInterface&         ( void ) = 0;
-
     virtual int         GetReadOffsetAsBits         ( void ) = 0;
-    virtual void        SetReadOffsetAsBits         ( int iOffset ) = 0;
 
     virtual void        Reset                       ( void ) = 0;
     virtual void        ResetReadPointer            ( void ) = 0;
@@ -39,6 +40,8 @@ public:
     virtual void        Write                       ( const short& input ) = 0;
     virtual void        Write                       ( const unsigned int& input ) = 0;
     virtual void        Write                       ( const int& input ) = 0;
+    virtual void        Write                       ( const unsigned long& input ) = 0;
+    virtual void        Write                       ( const long& input ) = 0;
     virtual void        Write                       ( const float& input ) = 0;
     virtual void        Write                       ( const double& input ) = 0;
     virtual void        Write                       ( const char* input, int numberOfBytes ) = 0;
@@ -52,6 +55,8 @@ public:
     virtual void        WriteCompressed             ( const short& input ) = 0;
     virtual void        WriteCompressed             ( const unsigned int& input ) = 0;
     virtual void        WriteCompressed             ( const int& input ) = 0;
+    virtual void        WriteCompressed             ( const unsigned long& input ) = 0;
+    virtual void        WriteCompressed             ( const long& input ) = 0;
 private:    // Float functions not used because they only cover -1 to +1 and are lossy
     virtual void        WriteCompressed             ( const float& input ) = 0;
     virtual void        WriteCompressed             ( const double& input ) = 0;
@@ -81,6 +86,8 @@ public:
     virtual bool        Read                        ( short& output ) = 0;
     virtual bool        Read                        ( unsigned int& output ) = 0;
     virtual bool        Read                        ( int& output ) = 0;
+    virtual bool        Read                        ( unsigned long& output ) = 0;
+    virtual bool        Read                        ( long& output ) = 0;
     virtual bool        Read                        ( float& output ) = 0;
     virtual bool        Read                        ( double& output ) = 0;
     virtual bool        Read                        ( char* output, int numberOfBytes ) = 0;
@@ -94,6 +101,8 @@ public:
     virtual bool        ReadCompressed              ( short& output ) = 0;
     virtual bool        ReadCompressed              ( unsigned int& output ) = 0;
     virtual bool        ReadCompressed              ( int& output ) = 0;
+    virtual bool        ReadCompressed              ( unsigned long& output ) = 0;
+    virtual bool        ReadCompressed              ( long& output ) = 0;
 private:    // Float functions not used because they only cover -1 to +1 and are lossy
     virtual bool        ReadCompressed              ( float& output ) = 0;
     virtual bool        ReadCompressed              ( double& output ) = 0;
@@ -117,60 +126,6 @@ public:
 
     virtual void        AlignWriteToByteBoundary    ( void ) const = 0;
     virtual void        AlignReadToByteBoundary     ( void ) const = 0;
-
-    // Force long types to use 4 bytes
-    bool Read( unsigned long& e )
-    {
-        uint temp;
-        bool bResult = Read( temp );
-        e = temp;
-        return bResult;
-    }
-    bool Read( long& e )
-    {
-        int temp;
-        bool bResult = Read( temp );
-        e = temp;
-        return bResult;
-    }
-    bool ReadCompressed( unsigned long& e )
-    {
-        uint temp;
-        bool bResult = ReadCompressed( temp );
-        e = temp;
-        return bResult;
-    }
-    bool ReadCompressed( long& e )
-    {
-        int temp;
-        bool bResult = ReadCompressed( temp );
-        e = temp;
-        return bResult;
-    }
-
-    void Write( unsigned long e )
-    {
-        Write( (uint)e );
-    }
-    void Write( long e )
-    {
-        Write( (int)e );
-    }
-    void WriteCompressed( unsigned long e )
-    {
-        WriteCompressed( (uint)e );
-    }
-    void WriteCompressed( long e )
-    {
-        WriteCompressed( (int)e );
-    }
-
-#ifdef WIN_x64
-    void        Write                       ( const size_t& input );
-    void        WriteCompressed             ( const size_t& input );
-    bool        Read                        ( size_t& output );
-    bool        ReadCompressed              ( size_t& output );
-#endif
 
     // Helper template methods that are not actually part
     // of the interface but get inline compiled.
@@ -199,36 +154,28 @@ public:
         return false;
     }
 
-    // Return true if enough bytes left in the bitstream
-    bool CanReadNumberOfBytes( int iLength ) const
-    {
-        return iLength >= 0 && iLength <= ( GetNumberOfUnreadBits() + 7 ) / 8;
-    }
 
     // Write characters from a std::string
-    void WriteStringCharacters ( const std::string& value, uint uiLength )
+    void WriteStringCharacters ( const std::string& value, unsigned short usLength )
     {
-        dassert ( uiLength <= value.length () );
+        dassert ( usLength <= value.length () );
         // Send the data
-        if ( uiLength )
-            Write ( &value.at ( 0 ), uiLength );
+        if ( usLength )
+            Write ( &value.at ( 0 ), usLength );
     }
 
     // Read characters into a std::string
-    bool ReadStringCharacters ( std::string& result, uint uiLength )
+    bool ReadStringCharacters ( std::string& result, unsigned short usLength )
     {
         result = "";
-        if ( uiLength )
+        if ( usLength )
         {
-            if ( !CanReadNumberOfBytes( uiLength ) )
-                return false;
             // Read the data
-            std::vector < char > bufferArray;
-            bufferArray.resize( uiLength );
-            char* buffer = &bufferArray[0];
-            if ( !Read ( buffer, uiLength ) )
+            char* buffer = static_cast < char* > ( alloca ( usLength ) );
+            if ( !Read ( buffer, usLength ) )
                 return false;
-            result = std::string ( buffer, uiLength );
+
+            result = std::string ( buffer, usLength );
         }
         return true;
     }
@@ -258,73 +205,6 @@ public:
         // Read the characters
         return ReadStringCharacters ( result, usLength );
     }
-
-
-    // Write variable size length
-    void WriteLength( uint uiLength )
-    {
-        if ( uiLength <= 0x7F )         // One byte for length up to 127
-            Write( (uchar)uiLength );
-        else
-        if ( uiLength <= 0x7FFF )
-        {                               // Two bytes for length from 128 to 32767
-            Write( (uchar)( ( uiLength >> 8 ) + 128 ) );
-            Write( (uchar)( uiLength & 0xFF ) );
-        }
-        else
-        {                               // Five bytes for length 32768 and up
-            Write( (uchar)255 );
-            Write( uiLength );
-        }
-    }
-
-    // Read variable size length
-    bool ReadLength( uint& uiOutLength )
-    {
-        uiOutLength = 0;
-        // Read the length
-        uchar ucValue = 0;
-        if ( !Read ( ucValue ) )
-            return false;
-
-        if ( ucValue <= 0x7F )
-        {                           // One byte for length up to 127
-            uiOutLength = ucValue;
-        }
-        else
-        if ( ucValue != 255 )
-        {                           // Two bytes for length from 128 to 32767
-            uchar ucValue2 = 0;
-            if ( !Read ( ucValue2 ) )
-                return false;
-            uiOutLength = ( ( ucValue - 128 ) << 8 ) + ucValue2;
-        }
-        else
-        {                           // Five bytes for length 32768 and up
-            if ( !Read( uiOutLength ) )
-                return false;
-        }
-        return true;
-    }
-
-
-    // Write a string (incl. variable size header)
-    void WriteStr( const std::string& value )
-    {
-        WriteLength( value.length() );
-        return WriteStringCharacters( value, value.length() );
-    }
-
-    // Read a string (incl. variable size header)
-    bool ReadStr( std::string& result )
-    {
-        result = "";
-        uint uiLength = 0;
-        if ( !ReadLength ( uiLength ) )
-            return false;
-        return ReadStringCharacters ( result, uiLength );
-    }
-
 
     #ifdef MTA_CLIENT
         #define MAX_ELEMENTS    MAX_CLIENT_ELEMENTS
@@ -364,17 +244,7 @@ public:
 
         return bResult;
     }
-};
 
-class NetBitStreamInterface : public NetBitStreamInterfaceNoVersion
-{
-    NetBitStreamInterface      ( const NetBitStreamInterface& );
-    const NetBitStreamInterface& operator= ( const NetBitStreamInterface& );
-protected:
-                        NetBitStreamInterface       ( void ) { DEBUG_CREATE_COUNT( "NetBitStreamInterface" ); }
-    virtual             ~NetBitStreamInterface      ( void ) { DEBUG_DESTROY_COUNT( "NetBitStreamInterface" ); }
-public:
-    virtual operator NetBitStreamInterface&         ( void ) { return *this; }
     virtual unsigned short Version                  ( void ) const = 0;
 };
 

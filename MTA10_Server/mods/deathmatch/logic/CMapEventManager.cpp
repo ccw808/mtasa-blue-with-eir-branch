@@ -14,6 +14,8 @@
 
 #include "StdInc.h"
 
+extern CGame* g_pGame;
+
 
 CMapEventManager::CMapEventManager ( void )
 {
@@ -27,8 +29,8 @@ CMapEventManager::~CMapEventManager ( void )
     // If this happens while we're iterating the list, we're screwed
     assert ( !m_bIteratingList );
 
-    // This should always be empty when m_bIteratingList is false
-    assert ( m_TrashCan.empty () );
+    // These should always be empty when m_bIteratingList is false
+    assert ( m_TrashCan.empty () && m_PendingAddList.empty () );
 
     // Delete all eventhandlers
     DeleteAll ();
@@ -43,8 +45,11 @@ bool CMapEventManager::Add ( CLuaMain* pLuaMain, const char* szName, const CLuaF
         // Make a new event
         CMapEvent* pEvent = new CMapEvent ( pLuaMain, szName, iLuaFunction, bPropagated, eventPriority, fPriorityMod );
 
-        // Add now
-        AddInternal ( pEvent );
+        // Add now, or when finished iterating list
+        if ( m_bIteratingList )
+            m_PendingAddList.push_back ( pEvent );
+        else
+            AddInternal ( pEvent );
 
         m_bHasEvents = true;
         return true;
@@ -100,6 +105,38 @@ bool CMapEventManager::Delete ( CLuaMain* pLuaMain, const char* szName, const CL
         ++iter;
     }
 
+    // Also check pending adds
+    std::list < CMapEvent* >::iterator iterPend = m_PendingAddList.begin ();
+    while ( iterPend != m_PendingAddList.end () )
+    {
+        CMapEvent* pMapEvent = *iterPend;
+
+        // Matching VM?
+        if ( pLuaMain == pMapEvent->GetVM () )
+        {
+            // If name supplied, check name and function
+            if ( !szName || ( ( strcmp ( pMapEvent->GetName (), szName ) == 0 ) && ( pMapEvent->GetLuaFunction () == iLuaFunction ) ) )
+            {
+                // Not alredy being destroyed?
+                if ( !pMapEvent->IsBeingDestroyed () )
+                {
+                    pMapEvent->SetBeingDestroyed ( true );
+
+                    // Move into m_TrashCan ( m_bIteratingList is always true if m_PendingAddList has items )
+                    iterPend = m_PendingAddList.erase ( iterPend );
+                    m_TrashCan.push_back ( pMapEvent );
+
+                     // Remember that we deleted something
+                    bRemovedSomeone = true;
+                    continue;
+                }
+            }
+        }
+
+        // Increment iterator
+        iterPend++;
+    }
+
     m_bHasEvents = !m_EventsMap.empty ();
 
     // Return whether we actually destroyed someone or not
@@ -144,29 +181,21 @@ bool CMapEventManager::Call ( const char* szName, const CLuaArguments& Arguments
     bool bIsAlreadyIterating = m_bIteratingList;
     m_bIteratingList = true;
 
-    // Copy the results into a array in case m_EventsMap is modified during the call
-    std::vector< CMapEvent* > matchingEvents;
     for ( EventsIter iter = itPair.first ; iter != itPair.second ; ++iter )
-        matchingEvents.push_back(iter->second);
-
-    for ( std::vector< CMapEvent* >::iterator iter = matchingEvents.begin() ; iter != matchingEvents.end() ; ++iter )
     {
-        CMapEvent* pMapEvent = *iter;
+        CMapEvent* pMapEvent = iter->second;
 
         // If it's not being destroyed
         if ( !pMapEvent->IsBeingDestroyed () )
         {
             // Compare the names
-            dassert ( strcmp ( pMapEvent->GetName (), szName ) == 0 );
+            assert ( strcmp ( pMapEvent->GetName (), szName ) == 0 );
             {
                 // Call if propagated?
                 if ( pSource == pThis || pMapEvent->IsPropagated () )
                 {
                     // Grab the current VM
                     lua_State* pState = pMapEvent->GetVM ()->GetVM ();
-
-                    LUA_CHECKSTACK ( pState, 1 );   // Ensure some room
-
                     #if MTA_DEBUG
                         int luaStackPointer = lua_gettop ( pState );
                     #endif
@@ -205,24 +234,11 @@ bool CMapEventManager::Call ( const char* szName, const CLuaArguments& Arguments
                     lua_pushelement ( pState, pThis );
                     lua_setglobal ( pState, "this" );
 
-                    CLuaMain* pLuaMain = g_pGame->GetScriptDebugging()->GetTopLuaMain();
-                    CResource* pSourceResource = pLuaMain ? pLuaMain->GetResource() : NULL;
-                    if ( pSourceResource )
-                    {
-                        lua_pushresource ( pState, pSourceResource );
-                        lua_setglobal ( pState, "sourceResource" );
+                    lua_pushresource ( pState, pMapEvent->GetVM()->GetResource() );     // This is not correct
+                    lua_setglobal ( pState, "sourceResource" );
 
-                        lua_pushelement ( pState, pSourceResource->GetResourceRootElement() );
-                        lua_setglobal ( pState, "sourceResourceRoot" );
-                    }
-                    else
-                    {
-                        lua_pushnil ( pState );
-                        lua_setglobal ( pState, "sourceResource" );
-
-                        lua_pushnil ( pState );
-                        lua_setglobal ( pState, "sourceResourceRoot" );
-                    }
+                    lua_pushelement ( pState, pMapEvent->GetVM()->GetResource()->GetResourceRootElement() );     // This is not correct
+                    lua_setglobal ( pState, "sourceResourceRoot" );
 
                     lua_pushstring ( pState, szName );
                     lua_setglobal ( pState, "eventName" );
@@ -288,7 +304,7 @@ bool CMapEventManager::Call ( const char* szName, const CLuaArguments& Arguments
 void CMapEventManager::TakeOutTheTrash ( void )
 {
     // Loop through our trashcan deleting every item
-    std::list < CMapEvent* > ::const_iterator iterTrash = m_TrashCan.begin ();
+    list < CMapEvent* > ::const_iterator iterTrash = m_TrashCan.begin ();
     for ( ; iterTrash != m_TrashCan.end (); iterTrash++ )
     {
         CMapEvent* pMapEvent = *iterTrash;
@@ -307,18 +323,25 @@ void CMapEventManager::TakeOutTheTrash ( void )
         delete pMapEvent;
     }
 
+    // Also apply pending adds
+    list < CMapEvent* > ::const_iterator iterPend = m_PendingAddList.begin ();
+    for ( ; iterPend != m_PendingAddList.end (); iterPend++ )
+    {
+        AddInternal ( *iterPend );
+    }
+
     m_bHasEvents = !m_EventsMap.empty ();
 
     // Clear the trashcan
     m_TrashCan.clear ();
+    m_PendingAddList.clear ();
 }
 
 
 bool CMapEventManager::HandleExists ( CLuaMain* pLuaMain, const char* szName, const CLuaFunctionRef& iLuaFunction )
 {
     // Return true if we find an event which matches the handle
-    EventsIterPair itPair = m_EventsMap.equal_range ( szName );
-    for ( EventsIter iter = itPair.first ; iter != itPair.second ; ++iter )
+    for ( EventsConstIter iter = m_EventsMap.begin () ; iter != m_EventsMap.end (); iter++ )
     {
         CMapEvent* pMapEvent = iter->second;
 
@@ -329,7 +352,32 @@ bool CMapEventManager::HandleExists ( CLuaMain* pLuaMain, const char* szName, co
             if ( pMapEvent->GetVM () == pLuaMain )
             {
                 // Same name?
-                dassert ( strcmp ( pMapEvent->GetName (), szName ) == 0 );
+                if ( strcmp ( pMapEvent->GetName (), szName ) == 0 )
+                {
+                    // Same lua function?
+                    if ( pMapEvent->GetLuaFunction () == iLuaFunction )
+                    {
+                        // It exists
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
+    // Also check pending adds
+    for ( std::list < CMapEvent* >::const_iterator iterPend = m_PendingAddList.begin () ; iterPend != m_PendingAddList.end (); iterPend++ )
+    {
+        CMapEvent* pMapEvent = *iterPend;
+
+        // Is it not being destroyed?
+        if ( !pMapEvent->IsBeingDestroyed () )
+        {
+            // Same lua main?
+            if ( pMapEvent->GetVM () == pLuaMain )
+            {
+                // Same name?
+                if ( strcmp ( pMapEvent->GetName (), szName ) == 0 )
                 {
                     // Same lua function?
                     if ( pMapEvent->GetLuaFunction () == iLuaFunction )
@@ -358,32 +406,5 @@ void CMapEventManager::AddInternal ( CMapEvent* pEvent )
             break;
     }
     // Do insert
-    m_EventsMap.insert ( iter, std::pair < SString, CMapEvent* > ( pEvent->GetName (), pEvent ) );
-}
-
-
-void CMapEventManager::GetHandles ( CLuaMain* pLuaMain, const char* szName, lua_State* luaVM )
-{
-    unsigned int uiIndex = 0;
-    EventsIterPair itPair = m_EventsMap.equal_range ( szName );
-    for ( EventsIter iter = itPair.first ; iter != itPair.second ; ++iter )
-    {
-        CMapEvent* pMapEvent = iter->second;
-
-        // Is it not being destroyed?
-        if ( !pMapEvent->IsBeingDestroyed () )
-        {
-            // Same lua main?
-            if ( pMapEvent->GetVM () == pLuaMain )
-            {
-                // Same name?
-                dassert ( strcmp ( pMapEvent->GetName (), szName ) == 0 );
-                {
-                    lua_pushnumber ( luaVM, ++uiIndex );
-                    lua_getref ( luaVM, pMapEvent->GetLuaFunction ().ToInt() );
-                    lua_settable ( luaVM, -3 );
-                }
-            }
-        }
-    }
+    m_EventsMap.insert ( iter, std::pair < SString, CMapEvent* > ( SStringX(pEvent->GetName ()), pEvent ) );
 }

@@ -20,21 +20,27 @@ CBulletsyncPacket::CBulletsyncPacket ( CPlayer * pPlayer )
 
 bool CBulletsyncPacket::Read ( NetBitStreamInterface& BitStream )
 {
+    // Ignore old bullet sync stuff
+    if ( BitStream.Version () < 0x2E )
+        return false;
+
     // Got a player?
     if ( m_pSourceElement )
     {
+        bool bOk = true;
+
         char cWeaponType;
-        BitStream.Read ( cWeaponType );
+        bOk |= BitStream.Read ( cWeaponType );
         m_WeaponType = (eWeaponType)cWeaponType;
 
-        BitStream.Read ( (char *)&m_vecStart, sizeof ( CVector ) );
-        BitStream.Read ( (char *)&m_vecEnd, sizeof ( CVector ) );
+        bOk |= BitStream.Read ( (char *)&m_vecStart, sizeof ( CVector ) );
+        bOk |= BitStream.Read ( (char *)&m_vecEnd, sizeof ( CVector ) );
 
         // Duplicate packet protection
-        if ( !BitStream.Read ( m_ucOrderCounter ) )
-            return false;
+        if ( BitStream.Version () >= 0x34 )
+            bOk |= BitStream.Read ( m_ucOrderCounter );
 
-        return true;
+        return bOk;
     }
 
     return false;
@@ -44,6 +50,10 @@ bool CBulletsyncPacket::Read ( NetBitStreamInterface& BitStream )
 // Note: Relays a previous Read()
 bool CBulletsyncPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
+    // Don't send to older clients
+    if ( BitStream.Version () < 0x2E )
+        return false;
+
     // Got a player to write?
     if ( m_pSourceElement )
     {
@@ -59,7 +69,8 @@ bool CBulletsyncPacket::Write ( NetBitStreamInterface& BitStream ) const
         BitStream.Write ( (const char *)&m_vecEnd, sizeof ( CVector ) );
 
         // Duplicate packet protection
-        BitStream.Write ( m_ucOrderCounter );
+        if ( BitStream.Version () >= 0x34 )
+            BitStream.Write ( m_ucOrderCounter );
         return true;
     }
 

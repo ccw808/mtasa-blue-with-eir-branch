@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<Project DefaultTargets="Build" ToolsVersion="12.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
       <Configuration>Debug</Configuration>
@@ -13,6 +13,10 @@
       <Configuration>Release</Configuration>
       <Platform>Win32</Platform>
     </ProjectConfiguration>
+    <ProjectConfiguration Include="Template|Win32">
+      <Configuration>Template</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
     <ProjectName>Client - Deathmatch</ProjectName>
@@ -23,19 +27,16 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120_xp</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120_xp</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
     <WholeProgramOptimization>true</WholeProgramOptimization>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
-    <PlatformToolset>v120_xp</PlatformToolset>
     <CharacterSet>MultiByte</CharacterSet>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -44,47 +45,50 @@
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
-    <Import Project="..\..\..\Shared\MTAPropertySheet.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
-    <Import Project="..\..\..\Shared\MTAPropertySheet.props" />
   </ImportGroup>
   <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
     <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
     <Import Project="$(VCTargetsPath)Microsoft.CPP.UpgradeFromVC71.props" />
-    <Import Project="..\..\..\Shared\MTAPropertySheet.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup>
-    <_ProjectFileVersion>12.0.21005.1</_ProjectFileVersion>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <OutDir>$(MyTargetDir)\mods\deathmatch\</OutDir>
-    <IntDir>$(PlatformTarget)\$(Configuration)\</IntDir>
-    <IgnoreImportLibrary>false</IgnoreImportLibrary>
-    <LinkIncremental>true</LinkIncremental>
-    <TargetName>client_d</TargetName>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
-    <OutDir>$(MyTargetDir)\mods\deathmatch\</OutDir>
-    <IntDir>$(PlatformTarget)\$(Configuration)\</IntDir>
-    <IgnoreImportLibrary>false</IgnoreImportLibrary>
-    <LinkIncremental>false</LinkIncremental>
-    <TargetName>client</TargetName>
-  </PropertyGroup>
-  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">
-    <OutDir>$(SolutionDir)..\output\MTA San Andreas\mods\deathmatch\</OutDir>
-    <IgnoreImportLibrary>false</IgnoreImportLibrary>
-    <LinkIncremental>false</LinkIncremental>
-    <TargetName>client</TargetName>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">C:\Program Files\MTA San Andreas 1.4\mods\deathmatch\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Debug\</IntDir>
+    <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</IgnoreImportLibrary>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">C:\Program Files\MTA San Andreas 1.4\mods\deathmatch\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Release\</IntDir>
+    <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</IgnoreImportLibrary>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</LinkIncremental>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">..\..\..\obj\client\deathmatch\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">..\..\..\obj\client\deathmatch\</IntDir>
+    <IgnoreImportLibrary Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">false</IgnoreImportLibrary>
+    <LinkIncremental Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">false</LinkIncremental>
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" />
+    <CodeAnalysisRuleSet Condition="'$(Configuration)|$(Platform)'=='Template|Win32'">AllRules.ruleset</CodeAnalysisRuleSet>
+    <CodeAnalysisRules Condition="'$(Configuration)|$(Platform)'=='Template|Win32'" />
+    <CodeAnalysisRuleAssemblies Condition="'$(Configuration)|$(Platform)'=='Template|Win32'" />
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Client_d</TargetName>
+    <TargetName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Client</TargetName>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <Optimization>Disabled</Optimization>
-      <AdditionalIncludeDirectories>../../../vendor/libv2;../../../vendor/libspeex;../../../vendor/portaudio;../../../vendor/bass;../../../Shared/publicsdk/include;../../Voice;./;../shared_logic;../../../Shared/XML/interface;../../../vendor;../../../vendor/lua/src;../../../vendor/zlib;../../../vendor/json-c;../../sdk/;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../Shared/mods/deathmatch/logic;../../../vendor/pcre;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;PA_WDMKS_NO_KSGUID_LIB;_DEBUG;MTA_DEBUG;_CRT_SECURE_NO_WARNINGS;LUA_USE_APICHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../../../vendor/libv2;../../../vendor/libspeex;../../../vendor/portaudio;../../../vendor/bass;../../../Shared/publicsdk/include;../../Voice;./;../shared_logic;../../../Shared/XML/interface;../../../vendor;../../../vendor/lua/src;../../../vendor/zlib;../../../vendor/json-c;../../sdk/;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../Shared/mods/deathmatch/logic;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;MTA_DEBUG;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <MinimalRebuild>false</MinimalRebuild>
       <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
@@ -101,19 +105,20 @@
     </ClCompile>
     <Link>
       <RegisterOutput>false</RegisterOutput>
-      <AdditionalDependencies>libv2.lib;libspeexd2013.lib;bass.lib;bass_fx.lib;bassmix.lib;tags.lib;Psapi.lib;Winmm.lib;kernel32.lib;ws2_32.lib;zlib_d.lib;Iphlpapi.lib;json_d.lib;pcre3_d.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libv2.lib;lua5.1d.lib;libspeexd.lib;bass.lib;bass_fx.lib;bassmix.lib;tags.lib;Psapi.lib;Winmm.lib;kernel32.lib;ws2_32.lib;zlibd_2008.lib;Iphlpapi.lib;jsonD2008.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <ShowProgress>NotSet</ShowProgress>
+      <OutputFile>C:\Program Files\MTA San Andreas 1.4\mods\deathmatch\Client_d.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>../../../vendor/libspeex;../../../vendor/bass/lib;../../../vendor/libv2/lib;../../../vendor/zlib/$(PlatformTarget)/$(Configuration);../../../vendor/json-c/$(PlatformTarget)/$(Configuration);../../../vendor/pcre/$(PlatformTarget)/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../../vendor/libspeex;../../../vendor/bass/lib;../../../vendor/lua/lib;../../../vendor/libv2/lib;../../../vendor/zlib/lib;../../../vendor/json-c/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>$(IntDir)$(TargetName).pdb</ProgramDatabaseFile>
+      <ProgramDatabaseFile>.\Debug/Client_d.pdb</ProgramDatabaseFile>
       <SubSystem>Windows</SubSystem>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <DataExecutionPrevention />
-      <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Debug/Client.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
-      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
     <ProjectReference>
       <LinkLibraryDependencies>false</LinkLibraryDependencies>
@@ -126,8 +131,8 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
-      <AdditionalIncludeDirectories>../../../vendor/libv2;../../../vendor/libspeex;../../../vendor/portaudio;../../../vendor/bass;../../../Shared/publicsdk/include;../../Voice;./;../shared_logic;../../../Shared/XML/interface;../../../vendor;../../../vendor/lua/src;../../../vendor/zlib;../../../vendor/json-c;../../sdk/;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../Shared/mods/deathmatch/logic;../../../vendor/pcre;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;PA_WDMKS_NO_KSGUID_LIB;_CRT_SECURE_NO_WARNINGS;LUA_USE_APICHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../../../vendor/libv2;../../../vendor/libspeex/speex/include;../../../vendor/portaudio;../../../vendor/bass;../../../Shared/publicsdk/include;../../Voice;./;../shared_logic;../../../Shared/XML/interface;../../../vendor;../../../vendor/lua/src;../../../vendor/zlib;../../../vendor/json-c;../../sdk/;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../Shared/mods/deathmatch/logic;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -142,22 +147,25 @@
     </ProjectReference>
     <Link>
       <AdditionalOptions>/FIXED:NO %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libv2.lib;libspeex2013.lib;bass.lib;bass_fx.lib;bassmix.lib;tags.lib;Psapi.lib;Winmm.lib;kernel32.lib;wsock32.lib;zlib.lib;json.lib;pcre3.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libv2.lib;lua5.1.lib;libspeex.lib;bass.lib;bass_fx.lib;bassmix.lib;tags.lib;Psapi.lib;Winmm.lib;kernel32.lib;wsock32.lib;zlib_2008.lib;json2008.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>C:\Program Files\MTA San Andreas 1.4\mods\deathmatch\Client.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>../../../vendor/libspeex;../../../vendor/bass/lib;../../../vendor/libv2/lib;../../../vendor/zlib/$(PlatformTarget)/$(Configuration);../../../vendor/json-c/$(PlatformTarget)/$(Configuration);../../../vendor/pcre/$(PlatformTarget)/$(Configuration);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../../vendor/libspeex;../../../vendor/bass/lib;../../../vendor/lua/lib;../../../vendor/libv2/lib;../../../vendor/zlib/lib;../../../vendor/json-c/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <ProgramDatabaseFile>../../../symbols/$(Configuration)_$(SafeParentName).pdb</ProgramDatabaseFile>
-      <MapFileName />
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>../../../symbols/$(Configuration)_$(SafeParentName).map</MapFileName>
+      <MapExports>true</MapExports>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <DataExecutionPrevention />
-      <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Release/Client.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
-      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">
@@ -167,8 +175,8 @@
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <FavorSizeOrSpeed>Speed</FavorSizeOrSpeed>
       <OmitFramePointers>true</OmitFramePointers>
-      <AdditionalIncludeDirectories>../../../vendor/libv2;../../../vendor/libspeex;../../../vendor/portaudio;../../../vendor/bass;../../../Shared/publicsdk/include;../../Voice;./;../shared_logic;../../../Shared/XML/interface;../../../vendor;../../../vendor/lua/src;../../../vendor/zlib;../../../vendor/json-c;../../sdk/;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../Shared/mods/deathmatch/logic;../../../vendor/pcre;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
-      <PreprocessorDefinitions>WIN32;PA_WDMKS_NO_KSGUID_LIB;_CRT_SECURE_NO_WARNINGS;LUA_USE_APICHECK;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>../../../vendor/libv2;../../../vendor/libspeex;../../../vendor/portaudio;../../../vendor/bass;../../../Shared/publicsdk/include;../../Voice;./;../shared_logic;../../../Shared/XML/interface;../../../vendor;../../../vendor/lua/src;../../../vendor/zlib;../../../vendor/json-c;../../sdk/;../../../Shared/sdk;../../../vendor/sparsehash/current/src;../../../vendor/sparsehash/current/src/windows;../../../Shared/animation;../../../vendor/bochs;../../../vendor/bob_withers;../../../Shared/mods/deathmatch/logic;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <StringPooling>true</StringPooling>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
@@ -179,200 +187,35 @@
       <DisableSpecificWarnings>4996;4482;%(DisableSpecificWarnings)</DisableSpecificWarnings>
     </ClCompile>
     <ProjectReference>
-      <LinkLibraryDependencies>true</LinkLibraryDependencies>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
     </ProjectReference>
     <Link>
       <AdditionalOptions>/FIXED:NO %(AdditionalOptions)</AdditionalOptions>
-      <AdditionalDependencies>libv2.lib;libspeex2013.lib;bass.lib;bass_fx.lib;bassmix.lib;tags.lib;Psapi.lib;Winmm.lib;kernel32.lib;wsock32.lib;zlib.lib;json.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>libv2.lib;lua5.1.lib;libspeex.lib;bass.lib;bass_fx.lib;bassmix.lib;tags.lib;Psapi.lib;Winmm.lib;kernel32.lib;wsock32.lib;zlib_2008.lib;json2008.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <OutputFile>..\..\..\output\MTA San Andreas\mods\deathmatch\client.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
-      <AdditionalLibraryDirectories>$(SolutionDir)..\vendor\libspeex;$(SolutionDir)..\vendor\bass\lib;$(SolutionDir)..\vendor\libv2\lib;$(SolutionDir)..\obj\$(PlatformTarget)\$(Configuration)\zlib;$(SolutionDir)..\obj\$(PlatformTarget)\$(Configuration)\json;$(SolutionDir)..\obj\$(PlatformTarget)\$(Configuration)\pcre;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>../../../vendor/libspeex;../../../vendor/bass/lib;../../../vendor/lua/lib;../../../vendor/libv2/lib;../../../vendor/zlib/lib;../../../vendor/json-c/lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreAllDefaultLibraries>false</IgnoreAllDefaultLibraries>
       <IgnoreSpecificDefaultLibraries>LIBCMT;%(IgnoreSpecificDefaultLibraries)</IgnoreSpecificDefaultLibraries>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <ProgramDatabaseFile>$(SolutionDir)..\symbols\$(Configuration)_$(SafeRootNamespace).pdb</ProgramDatabaseFile>
-      <MapFileName />
+      <ProgramDatabaseFile>../../../symbols/$(Configuration)_$(SafeParentName).pdb</ProgramDatabaseFile>
+      <GenerateMapFile>true</GenerateMapFile>
+      <MapFileName>../../../symbols/$(Configuration)_$(SafeParentName).map</MapFileName>
+      <MapExports>true</MapExports>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
-      <DataExecutionPrevention />
-      <ImportLibrary>$(IntDir)$(TargetName).lib</ImportLibrary>
+      <DataExecutionPrevention>
+      </DataExecutionPrevention>
+      <ImportLibrary>.\Release/Client.lib</ImportLibrary>
       <TargetMachine>MachineX86</TargetMachine>
-      <ImageHasSafeExceptionHandlers>false</ImageHasSafeExceptionHandlers>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\..\vendor\lua\src\lapi.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lauxlib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lbaselib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lcode.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\ldblib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\ldebug.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\ldo.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\ldump.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lfunc.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lgc.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\linit.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\liolib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\llex.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lmathlib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lmem.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\loadlib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lobject.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lopcodes.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\loslib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lparser.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lstate.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lstring.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lstrlib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\ltable.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\ltablib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\ltm.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lundump.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lutf8lib.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lvm.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\lzio.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\..\..\vendor\lua\src\print.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">NotUsing</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">NotUsing</PrecompiledHeader>
-    </ClCompile>
-    <ClCompile Include="..\shared_logic\CClientEffect.cpp" />
-    <ClCompile Include="..\shared_logic\CClientEffectManager.cpp" />
-    <ClCompile Include="..\shared_logic\CClientPointLights.cpp" />
-    <ClCompile Include="..\shared_logic\CClientPointLightsManager.cpp" />
-    <ClCompile Include="..\shared_logic\luadefs\CLuaVector2Defs.cpp" />
-    <ClCompile Include="..\shared_logic\luadefs\CLuaVector3Defs.cpp" />
-    <ClCompile Include="..\shared_logic\luadefs\CLuaVector4Defs.cpp" />
-    <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.PointLights.cpp" />
-    <ClCompile Include="..\shared_logic\lua\CLuaVector2.cpp" />
-    <ClCompile Include="..\shared_logic\lua\CLuaVector3.cpp" />
-    <ClCompile Include="..\shared_logic\lua\CLuaVector4.cpp" />
-    <ClCompile Include="..\shared_logic\lua\oopdefs\CLuaOOPFunctionDefs.Drawing.cpp" />
-    <ClCompile Include="..\shared_logic\lua\oopdefs\CLuaOOPFunctionDefs.Marker.cpp" />
-    <ClCompile Include="..\shared_logic\lua\oopdefs\CLuaOOPFunctionDefs.RadarArea.cpp" />
-    <ClCompile Include="..\shared_logic\CClientWebBrowser.cpp" />
-    <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Browser.cpp" />
+    <ClCompile Include="..\shared_logic\CClientWeapon.cpp" />
+    <ClCompile Include="..\shared_logic\CClientWeaponManager.cpp" />
+    <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Voice.cpp" />
     <ClCompile Include="CClient.cpp" />
     <ClCompile Include="Client.cpp" />
     <ClCompile Include="ClientCommands.cpp" />
@@ -420,7 +263,6 @@
     <ClCompile Include="logic\CPacketHandler.cpp" />
     <ClCompile Include="logic\CPedSync.cpp" />
     <ClCompile Include="logic\CRadarMap.cpp" />
-    <ClCompile Include="..\shared_logic\CRemoteCalls.cpp" />
     <ClCompile Include="logic\CResource.cpp" />
     <ClCompile Include="logic\CResourceConfigItem.cpp" />
     <ClCompile Include="logic\CResourceManager.cpp" />
@@ -479,6 +321,11 @@
     <ClCompile Include="..\shared_logic\CClientDxFont.cpp" />
     <ClCompile Include="..\shared_logic\CClientEntity.cpp" />
     <ClCompile Include="..\shared_logic\CClientExplosionManager.cpp" />
+    <ClCompile Include="..\shared_logic\CClientFxEmitter.cpp" />
+    <ClCompile Include="..\shared_logic\CClientFxEmitterBP.cpp" />
+    <ClCompile Include="..\shared_logic\CClientFxManager.cpp" />
+    <ClCompile Include="..\shared_logic\CClientFxSystem.cpp" />
+    <ClCompile Include="..\shared_logic\CClientFxSystemBP.cpp" />
     <ClCompile Include="..\shared_logic\CClientGroups.cpp" />
     <ClCompile Include="..\shared_logic\CClientGUIElement.cpp" />
     <ClCompile Include="..\shared_logic\CClientGuiFont.cpp" />
@@ -493,6 +340,7 @@
     <ClCompile Include="..\shared_logic\CClientObjectManager.cpp" />
     <ClCompile Include="..\shared_logic\CClientPacketRecorder.cpp" />
     <ClCompile Include="..\shared_logic\CClientPad.cpp" />
+    <ClCompile Include="..\shared_logic\CClientParticle.cpp" />
     <ClCompile Include="..\shared_logic\CClientPathManager.cpp" />
     <ClCompile Include="..\shared_logic\CClientPathNode.cpp" />
     <ClCompile Include="..\shared_logic\CClientPed.cpp" />
@@ -529,8 +377,6 @@
     <ClCompile Include="..\shared_logic\CClientVehicleManager.cpp" />
     <ClCompile Include="..\shared_logic\CClientWater.cpp" />
     <ClCompile Include="..\shared_logic\CClientWaterManager.cpp" />
-    <ClCompile Include="..\shared_logic\CClientWeapon.cpp" />
-    <ClCompile Include="..\shared_logic\CClientWeaponManager.cpp" />
     <ClCompile Include="..\shared_logic\CCustomData.cpp" />
     <ClCompile Include="..\shared_logic\CElementArray.cpp" />
     <ClCompile Include="..\shared_logic\CEvents.cpp" />
@@ -538,7 +384,6 @@
     <ClCompile Include="..\shared_logic\CMapEvent.cpp" />
     <ClCompile Include="..\shared_logic\CMapEventManager.cpp" />
     <ClCompile Include="..\shared_logic\CModelNames.cpp" />
-    <ClCompile Include="..\shared_logic\CObjectRespawner.cpp" />
     <ClCompile Include="..\shared_logic\CRegisteredCommands.cpp" />
     <ClCompile Include="..\shared_logic\CScriptDebugging.cpp">
       <ObjectFileName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(IntDir)%(Filename)1.obj</ObjectFileName>
@@ -554,7 +399,6 @@
     <ClCompile Include="..\shared_logic\lua\CLuaArguments.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaCFunctions.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Audio.cpp" />
-    <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Bit.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Blip.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.BodyClothes.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Camera.cpp" />
@@ -579,7 +423,6 @@
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Team.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Util.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Vehicle.cpp" />
-    <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Voice.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.Weapon.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.World.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionDefs.XML.cpp" />
@@ -587,22 +430,21 @@
     <ClCompile Include="..\shared_logic\lua\CLuaFunctionRef.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaMain.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaManager.cpp" />
-    <ClCompile Include="..\shared_logic\lua\CLuaMatrix.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaTimer.cpp" />
     <ClCompile Include="..\shared_logic\lua\CLuaTimerManager.cpp" />
     <ClCompile Include="..\shared_logic\lua\LuaCommon.cpp" />
-    <ClCompile Include="..\shared_logic\lua\oopdefs\CLuaOOPFunctionDefs.Camera.cpp" />
-    <ClCompile Include="..\shared_logic\lua\oopdefs\CLuaOOPFunctionDefs.Element.cpp" />
-    <ClCompile Include="..\shared_logic\lua\oopdefs\CLuaOOPFunctionDefs.Ped.cpp" />
-    <ClCompile Include="..\shared_logic\lua\oopdefs\CLuaOOPFunctionDefs.Vehicle.cpp" />
-    <ClCompile Include="..\..\..\vendor\bochs\bochs_internal\crc32.cpp" />
-    <ClCompile Include="..\shared_logic\luadefs\CLuaClassDefs.cpp" />
+    <ClCompile Include="..\..\..\vendor\bochs\bochs_internal\crc32.cpp">
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">
+      </PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+      </PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="..\shared_logic\luadefs\CLuaDefs.cpp" />
     <ClCompile Include="..\shared_logic\luadefs\CLuaFileDefs.cpp" />
     <ClCompile Include="..\shared_logic\luadefs\CLuaFxDefs.cpp" />
-    <ClCompile Include="..\shared_logic\luadefs\CLuaMatrixDefs.cpp" />
     <ClCompile Include="..\shared_logic\luadefs\CLuaTaskDefs.cpp" />
-    <ClCompile Include="..\..\..\vendor\bob_withers\base64.cpp" />
     <ClCompile Include="..\..\..\vendor\portaudio\pa_allocation.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </PrecompiledHeader>
@@ -731,7 +573,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\..\..\vendor\portaudio\pa_$(PlatformTarget)_plain_converters.c">
+    <ClCompile Include="..\..\..\vendor\portaudio\pa_x86_plain_converters.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
       </PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Nightly|Win32'">
@@ -739,30 +581,20 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
       </PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="..\..\..\Shared\mods\deathmatch\logic\CDebugHookManager.cpp" />
     <ClCompile Include="..\..\..\Shared\mods\deathmatch\logic\CIdArray.cpp" />
     <ClCompile Include="..\..\..\Shared\mods\deathmatch\logic\CLatentReceiver.cpp" />
     <ClCompile Include="..\..\..\Shared\mods\deathmatch\logic\CLatentSendQueue.cpp" />
     <ClCompile Include="..\..\..\Shared\mods\deathmatch\logic\CLatentTransferManager.cpp" />
-    <ClCompile Include="..\..\..\Shared\mods\deathmatch\logic\CLuaShared.cpp" />
     <ClCompile Include="..\..\..\Shared\mods\deathmatch\logic\CZoneNames.cpp" />
     <ClCompile Include="..\..\..\Shared\mods\deathmatch\logic\Enums.cpp" />
     <ClCompile Include="..\..\..\Shared\animation\CEasingCurve.cpp" />
     <ClCompile Include="..\..\..\Shared\animation\CPositionRotationAnimation.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\shared_logic\CClientEffect.h" />
-    <ClInclude Include="..\shared_logic\CClientEffectManager.h" />
-    <ClInclude Include="..\shared_logic\CClientPointLights.h" />
-    <ClInclude Include="..\shared_logic\CClientPointLightsManager.h" />
-    <ClInclude Include="..\shared_logic\luadefs\CLuaVector2Defs.h" />
-    <ClInclude Include="..\shared_logic\luadefs\CLuaVector3Defs.h" />
-    <ClInclude Include="..\shared_logic\luadefs\CLuaVector4Defs.h" />
-    <ClInclude Include="..\shared_logic\lua\CLuaVector2.h" />
-    <ClInclude Include="..\shared_logic\lua\CLuaVector3.h" />
-    <ClInclude Include="..\shared_logic\lua\CLuaVector4.h" />
-    <ClInclude Include="..\shared_logic\CClientWebBrowser.h" />
+    <ClInclude Include="..\shared_logic\CClientWeapon.h" />
+    <ClInclude Include="..\shared_logic\CClientWeaponManager.h" />
     <ClInclude Include="CClient.h" />
+    <ClInclude Include="Client.h" />
     <ClInclude Include="ClientCommands.h" />
     <ClInclude Include="CVoiceRecorder.h" />
     <ClInclude Include="HeapTrace.h" />
@@ -794,7 +626,6 @@
     <ClInclude Include="logic\CPacketHandler.h" />
     <ClInclude Include="logic\CPedSync.h" />
     <ClInclude Include="logic\CRadarMap.h" />
-    <ClInclude Include="..\shared_logic\CRemoteCalls.h" />
     <ClInclude Include="logic\CResource.h" />
     <ClInclude Include="logic\CResourceConfigItem.h" />
     <ClInclude Include="logic\CResourceFile.h" />
@@ -856,7 +687,7 @@
     <ClInclude Include="..\..\..\vendor\portaudio\pa_win_waveformat.h" />
     <ClInclude Include="..\..\..\vendor\portaudio\pa_win_wdmks_utils.h" />
     <ClInclude Include="..\..\..\vendor\portaudio\pa_win_wmme.h" />
-    <ClInclude Include="..\..\..\vendor\portaudio\pa_$(PlatformTarget)_plain_converters.h" />
+    <ClInclude Include="..\..\..\vendor\portaudio\pa_x86_plain_converters.h" />
     <ClInclude Include="..\..\..\vendor\portaudio\portaudio.h" />
     <ClInclude Include="..\shared_logic\CAntiCheat.h" />
     <ClInclude Include="..\shared_logic\CAntiCheatModule.h" />
@@ -888,6 +719,11 @@
     <ClInclude Include="..\shared_logic\CClientDxFont.h" />
     <ClInclude Include="..\shared_logic\CClientEntity.h" />
     <ClInclude Include="..\shared_logic\CClientExplosionManager.h" />
+    <ClInclude Include="..\shared_logic\CClientFxEmitter.h" />
+    <ClInclude Include="..\shared_logic\CClientFxEmitterBP.h" />
+    <ClInclude Include="..\shared_logic\CClientFxManager.h" />
+    <ClInclude Include="..\shared_logic\CClientFxSystem.h" />
+    <ClInclude Include="..\shared_logic\CClientFxSystemBP.h" />
     <ClInclude Include="..\shared_logic\CClientGroups.h" />
     <ClInclude Include="..\shared_logic\CClientGUIElement.h" />
     <ClInclude Include="..\shared_logic\CClientGuiFont.h" />
@@ -902,6 +738,7 @@
     <ClInclude Include="..\shared_logic\CClientObjectManager.h" />
     <ClInclude Include="..\shared_logic\CClientPacketRecorder.h" />
     <ClInclude Include="..\shared_logic\CClientPad.h" />
+    <ClInclude Include="..\shared_logic\CClientParticle.h" />
     <ClInclude Include="..\shared_logic\CClientPathManager.h" />
     <ClInclude Include="..\shared_logic\CClientPathNode.h" />
     <ClInclude Include="..\shared_logic\CClientPed.h" />
@@ -939,8 +776,6 @@
     <ClInclude Include="..\shared_logic\CClientVehicleManager.h" />
     <ClInclude Include="..\shared_logic\CClientWater.h" />
     <ClInclude Include="..\shared_logic\CClientWaterManager.h" />
-    <ClInclude Include="..\shared_logic\CClientWeapon.h" />
-    <ClInclude Include="..\shared_logic\CClientWeaponManager.h" />
     <ClInclude Include="..\shared_logic\CCustomData.h" />
     <ClInclude Include="..\shared_logic\CElementArray.h" />
     <ClInclude Include="..\shared_logic\CEvents.h" />
@@ -948,7 +783,6 @@
     <ClInclude Include="..\shared_logic\CMapEvent.h" />
     <ClInclude Include="..\shared_logic\CMapEventManager.h" />
     <ClInclude Include="..\shared_logic\CModelNames.h" />
-    <ClInclude Include="..\shared_logic\CObjectRespawner.h" />
     <ClInclude Include="..\shared_logic\CRegisteredCommands.h" />
     <ClInclude Include="..\shared_logic\CScriptDebugging.h" />
     <ClInclude Include="..\shared_logic\CScriptFile.h" />
@@ -966,23 +800,17 @@
     <ClInclude Include="..\shared_logic\lua\CLuaFunctionRef.h" />
     <ClInclude Include="..\shared_logic\lua\CLuaMain.h" />
     <ClInclude Include="..\shared_logic\lua\CLuaManager.h" />
-    <ClInclude Include="..\shared_logic\lua\CLuaMatrix.h" />
     <ClInclude Include="..\shared_logic\lua\CLuaModuleManager.h" />
     <ClInclude Include="..\shared_logic\lua\CLuaTimer.h" />
     <ClInclude Include="..\shared_logic\lua\CLuaTimerManager.h" />
     <ClInclude Include="..\shared_logic\lua\LuaCommon.h" />
     <ClInclude Include="..\..\..\vendor\bochs\bochs_internal\crc32.h" />
-    <ClInclude Include="..\shared_logic\luadefs\CLuaClassDefs.h" />
     <ClInclude Include="..\shared_logic\luadefs\CLuaDefs.h" />
     <ClInclude Include="..\shared_logic\luadefs\CLuaFileDefs.h" />
     <ClInclude Include="..\shared_logic\luadefs\CLuaFxDefs.h" />
-    <ClInclude Include="..\shared_logic\luadefs\CLuaMatrixDefs.h" />
     <ClInclude Include="..\shared_logic\luadefs\CLuaTaskDefs.h" />
-    <ClInclude Include="..\shared_logic\lua\oopdefs\CLuaOOPDefs.h" />
-    <ClInclude Include="..\..\..\Shared\mods\deathmatch\logic\CDebugHookManager.h" />
     <ClInclude Include="..\..\..\Shared\mods\deathmatch\logic\CIdArray.h" />
     <ClInclude Include="..\..\..\Shared\mods\deathmatch\logic\CLatentTransferManager.h" />
-    <ClInclude Include="..\..\..\Shared\mods\deathmatch\logic\CLuaShared.h" />
     <ClInclude Include="..\..\..\Shared\mods\deathmatch\logic\CTickRateSettings.h" />
     <ClInclude Include="..\..\..\Shared\mods\deathmatch\logic\CZoneNames.h" />
     <ClInclude Include="..\..\..\Shared\mods\deathmatch\logic\Enums.h" />
@@ -991,8 +819,8 @@
     <ClInclude Include="..\..\..\Shared\animation\TInterpolation.h" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\vendor\pcre\pcre 2008.vcxproj">
-      <Project>{39452acc-ff12-488d-94b6-301b4efbb606}</Project>
+    <ProjectReference Include="..\..\..\vendor\lua\mak.vs2008\lua5.1_dll.vcxproj">
+      <Project>{8eeecee6-a6ec-bc48-8e76-22b87825444b}</Project>
       <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
     </ProjectReference>
     <ProjectReference Include="..\..\..\vendor\zlib\zlib 2008.vcxproj">

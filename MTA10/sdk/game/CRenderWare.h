@@ -62,19 +62,17 @@ typedef void (*PFN_WATCH_CALLBACK) ( CSHADERDUMMY* pContext, CD3DDUMMY* pD3DData
 
 class CRenderWare {
     public:
-    virtual bool                ModelInfoTXDLoadTextures    ( SReplacementTextures* pReplacementTextures, const CBuffer& fileData, bool bFilteringEnabled ) = 0;
+    virtual bool                ModelInfoTXDLoadTextures    ( SReplacementTextures* pReplacementTextures, const SString& szFilename, bool bFilteringEnabled ) = 0;
     virtual bool                ModelInfoTXDAddTextures     ( SReplacementTextures* pReplacementTextures, ushort usModelId ) = 0;
     virtual void                ModelInfoTXDRemoveTextures  ( SReplacementTextures* pReplacementTextures ) = 0;
-    virtual void                ClothesAddReplacementTxd    ( char* pFileData, ushort usFileId ) = 0;
-    virtual void                ClothesRemoveReplacementTxd ( char* pFileData ) = 0;
-    virtual bool                HasClothesReplacementChanged( void ) = 0;
-    virtual RwTexDictionary *   ReadTXD                     ( const CBuffer& fileData ) = 0;
-    virtual RpClump *           ReadDFF                     ( const CBuffer& fileData, unsigned short usModelID, bool bLoadEmbeddedCollisions ) = 0;
-    virtual CColModel *         ReadCOL                     ( const CBuffer& fileData ) = 0;
+    virtual RwTexDictionary *   ReadTXD                     ( const char *szTXD ) = 0;
+    virtual RpClump *           ReadDFF                     ( const char *szDFF, unsigned short usModelID, bool bLoadEmbeddedCollisions ) = 0;
+    virtual CColModel *         ReadCOL                     ( const char * szCOLFile ) = 0;
     virtual void                DestroyDFF                  ( RpClump * pClump ) = 0;
     virtual void                DestroyTXD                  ( RwTexDictionary * pTXD ) = 0;
     virtual void                DestroyTexture              ( RwTexture * pTex ) = 0;
     virtual void                ReplaceCollisions           ( CColModel * pColModel, unsigned short usModelID ) = 0;
+    virtual bool                PositionFrontSeat           ( RpClump *pClump, unsigned short usModelID ) = 0;
     virtual unsigned int        LoadAtomics                 ( RpClump * pClump, RpAtomicContainer * pAtomics ) = 0;
     virtual void                ReplaceAllAtomicsInModel    ( RpClump * pSrc, unsigned short usModelID ) = 0;
     virtual void                ReplaceAllAtomicsInClump    ( RpClump * pDst, RpAtomicContainer * pAtomics, unsigned int uiAtomics ) = 0;
@@ -87,9 +85,9 @@ class CRenderWare {
     virtual bool                ReplacePartModels           ( RpClump * pClump, RpAtomicContainer * pAtomics, unsigned int uiAtomics, const char * szName ) = 0;
     virtual void                PulseWorldTextureWatch      ( void ) = 0;
     virtual void                GetModelTextureNames        ( std::vector < SString >& outNameList, ushort usModelID ) = 0;
-    virtual const char*         GetTextureName              ( CD3DDUMMY* pD3DData ) = 0;
+    virtual const SString&      GetTextureName              ( CD3DDUMMY* pD3DData ) = 0;
 
-    virtual void                SetRenderingClientEntity    ( CClientEntityBase* pClientEntity, ushort usModelId, int iTypeMask ) = 0;
+    virtual void                SetRenderingClientEntity    ( CClientEntityBase* pClientEntity, int iTypeMask ) = 0;
     virtual SShaderItemLayers*  GetAppliedShaderForD3DData  ( CD3DDUMMY* pD3DData ) = 0;
     virtual void                AppendAdditiveMatch         ( CSHADERDUMMY* pShaderData, CClientEntityBase* pClientEntity, const char* strTextureNameMatch, float fShaderPriority, bool bShaderLayered, int iTypeMask, uint uiShaderCreateTime, bool bShaderUsesVertexShader, bool bAppendLayers ) = 0;
     virtual void                AppendSubtractiveMatch      ( CSHADERDUMMY* pShaderData, CClientEntityBase* pClientEntity, const char* strTextureNameMatch ) = 0;

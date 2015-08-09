@@ -38,7 +38,9 @@ CAutomobileSA::CAutomobileSA( eVehicleTypes dwModelID, unsigned char ucVariation
 */
         // create our mirror classes
         for(int i =0;i<MAX_DOORS;i++)
-            this->door[i] = new CDoorSA(&((CAutomobileSAInterface *)this->GetInterface())->doors[i]);
+            ;
+#pragma message(__FILE__" JoeBullet NOTICE: __FIX__")
+//            this->door[i] = new CDoorSA(&((CAutomobileSAInterface *)this->GetInterface())->doors[i]);
     /*}
     else
         _asm int 3*/
@@ -620,6 +622,23 @@ CPhysical* CAutomobileSA::SpawnFlyingComponent ( int iCarNodeIndex, int iUnknown
     }
 
     return pReturn;
+}
+
+CVector CAutomobileSA::GetWheelPosition(eWheels wheel)
+{
+    CAutomobileSAInterface
+        *pInterface = static_cast < CAutomobileSAInterface* > ( GetVehicleInterface ( ) ); 
+	switch (wheel)
+	{
+		case FRONT_LEFT_WHEEL:
+            return pInterface->WheelFrontLeftColPoint.Position;
+		case FRONT_RIGHT_WHEEL:
+			return pInterface->WheelFrontRightColPoint.Position;
+		case REAR_LEFT_WHEEL:
+			return pInterface->WheelRearLeftColPoint.Position;
+		case REAR_RIGHT_WHEEL:
+			return pInterface->WheelRearRightColPoint.Position;
+	}
 }
 
 CDoor * CAutomobileSA::GetDoor(eDoors doorID)

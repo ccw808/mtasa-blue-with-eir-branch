@@ -55,26 +55,17 @@
 #include "CLocalServer.h"
 #include "CVoiceRecorder.h"
 #include "CSingularFileDownloadManager.h"
-#include "CObjectRespawner.h"
 #define HeliKill_List_Clear_Rate 500
 #define MIN_PUSH_ANTISPAM_RATE 1500
 class CGameEntityXRefManager;
 class CClientModelCacheManager;
-class CDebugHookManager;
 
 struct SVehExtrapolateSettings
 {
+    bool bEnabled;
     int iBaseMs;
     int iScalePercent;
     int iMaxMs;
-    bool bEnabled;
-};
-
-struct SMiscGameSettings
-{
-    bool bUseAltPulseOrder;
-    bool bAllowFastSprintFix;
-    bool bAllowBadDrivebyHitboxFix;
 };
 
 class CClientGame
@@ -87,13 +78,6 @@ public:
         STATUS_CONNECTING,
         STATUS_JOINING,
         STATUS_JOINED,
-    };
-
-    enum eServerType
-    {
-        SERVER_TYPE_NORMAL,
-        SERVER_TYPE_LOCAL,
-        SERVER_TYPE_EDITOR,
     };
 
     enum
@@ -123,8 +107,6 @@ public:
         COLSHAPE,
         SCRIPTFILE,
         WATER,
-        WEAPON,
-        POINTLIGHTS,
         UNKNOWN,
     };
 
@@ -190,9 +172,6 @@ public:
         GLITCH_FASTMOVE,
         GLITCH_CROUCHBUG,
         GLITCH_CLOSEDAMAGE,
-        GLITCH_HITANIM,
-        GLITCH_FASTSPRINT,
-        GLITCH_BADDRIVEBYHITBOX,
         NUM_GLITCHES
     };
     class CStoredWeaponSlot
@@ -208,7 +187,7 @@ public:
         uint uiMaxBandwidth;
         uint uiMaxPacketSize;
         uint uiServerSentTime;
-        ushort usResourceNetId;
+        SString strResourceName;
         SString strTag;
     };
     struct SDelayedPacketInfo
@@ -226,19 +205,18 @@ public:
                                         CClientGame                     ( bool bLocalPlay = false );
                                         ~CClientGame                    ( void );
 
-    bool                                StartGame                       ( const char* szNick, const char* szPassword, eServerType Type = SERVER_TYPE_NORMAL );
-    bool                                StartLocalGame                  ( eServerType Type, const char* szPassword = NULL );
-    void                                SetupLocalGame                  ( eServerType Type );
+    bool                                StartGame                       ( const char* szNick, const char* szPassword );
+    bool                                StartLocalGame                  ( const char* szConfig, const char* szPassword = NULL );
+    void                                SetupLocalGame                  ( const char* szConfig );
     //bool                                StartGame                       ( void );
-    inline bool                         IsLocalGame                     ( void ) const { return m_bLocalPlay; }
-    inline bool                         IsWaitingForLocalConnect        ( void ) const { return m_bWaitingForLocalConnect; }
+    inline bool                         IsLocalGame                     ( ) const { return m_bLocalPlay; }
     bool                                OnCancelLocalGameClick          ( CGUIElement* pElement );
 
     void                                DoPulsePreFrame                 ( void );
     void                                DoPulsePreHUDRender             ( bool bDidUnminimize, bool bDidRecreateRenderTargets );
     void                                DoPulsePostFrame                ( void );
     void                                DoPulses                        ( void );
-    void                                DoPulses2                       ( bool bCalledFromIdle );
+    void                                DoPulses2                       ( void );
 
     uint                                GetFrameTimeSlice               ( void ) { return m_uiFrameTimeSlice; }
     uint                                GetFrameCount                   ( void ) { return m_uiFrameCount; }
@@ -296,11 +274,8 @@ public:
     inline CLatentTransferManager*      GetLatentTransferManager        ( void )        { return m_pLatentTransferManager; }
     inline CGameEntityXRefManager*      GetGameEntityXRefManager        ( void )        { return m_pGameEntityXRefManager; }
     inline CClientModelCacheManager*    GetModelCacheManager            ( void )        { return m_pModelCacheManager; }
-    inline CDebugHookManager*           GetDebugHookManager             ( void )        { return m_pDebugHookManager; }
 
     inline CElementDeleter*             GetElementDeleter               ( void )        { return &m_ElementDeleter; }
-    inline CObjectRespawner*            GetObjectRespawner              ( void )        { return &m_ObjectRespawner; }
-    CRemoteCalls*                       GetRemoteCalls                  ( void )        { return m_pRemoteCalls; }
 
     // Status toggles
     void                                ShowNetstat                     ( int iCmd );
@@ -344,8 +319,8 @@ public:
 
     void                                SetAllDimensions                ( unsigned short usDimension );
 
-    static bool                         StaticKeyStrokeHandler          ( const SString& strKey, bool bState, bool bIsConsoleInputKey );
-    bool                                KeyStrokeHandler                ( const SString& strKey, bool bState, bool bIsConsoleInputKey );
+    static void                         StaticKeyStrokeHandler          ( const SBindableKey * pKey, bool bState );
+    void                                KeyStrokeHandler                ( const SBindableKey * pKey, bool bState );
     static bool                         StaticCharacterKeyHandler       ( WPARAM wChar );
     bool                                CharacterKeyHandler             ( WPARAM wChar );
 
@@ -373,7 +348,7 @@ public:
     void                                SetGameSpeed                    ( float fSpeed );
     void                                SetMinuteDuration               ( unsigned long ulDelay );
     inline long                         GetMoney                        ( void )                        { return m_lMoney; }
-    void                                SetMoney                        ( long lMoney, bool bInstant = false );
+    void                                SetMoney                        ( long lMoney );
     void                                SetWanted                       ( DWORD dwWanted );
 
     void                                ResetAmmoInClip                 ( void );
@@ -417,9 +392,9 @@ public:
     void                                SetShowSound                    ( bool bEnable )                { m_bShowSound = bEnable; } 
     bool                                GetShowSound                    ( void )                        { return m_bShowSound; } 
 
-    void                                TakePlayerScreenShot            ( uint uiSizeX, uint uiSizeY, const SString& strTag, uint uiQuality, uint uiMaxBandwidth, uint uiMaxPacketSize, CResource* pResource, uint uiServerSentTime );
-    static void                         StaticGottenPlayerScreenShot    ( const CBuffer* pBuffer, uint uiTimeSpentInQueue, const SString& strError );
-    void                                GottenPlayerScreenShot          ( const CBuffer* pBuffer, uint uiTimeSpentInQueue, const SString& strError );
+    void                                TakePlayerScreenShot            ( uint uiSizeX, uint uiSizeY, const SString& strTag, uint uiQuality, uint uiMaxBandwidth, uint uiMaxPacketSize, const SString& strResourceName, uint uiServerSentTime );
+    static void                         StaticGottenPlayerScreenShot    ( const CBuffer& buffer, uint uiTimeSpentInQueue );
+    void                                GottenPlayerScreenShot          ( const CBuffer& buffer, uint uiTimeSpentInQueue );
     void                                ProcessDelayedSendList          ( void );
 
     void                                SetWeaponTypesUsingBulletSync   ( const std::set < eWeaponType >& weaponTypesUsingBulletSync );
@@ -427,14 +402,6 @@ public:
 
     SString                             GetHTTPURL                      ( void ) { return m_strHTTPDownloadURL; };
     void                                ProjectileInitiateHandler       ( CClientProjectile * pProjectile );
-    void                                IdleHandler                     ( void );
-    void                                OutputServerInfo                ( void );
-    bool                                IsUsingExternalHTTPServer       ( void )                        { return m_ucHTTPDownloadType == HTTP_DOWNLOAD_ENABLED_URL; }
-    void                                TellServerSomethingImportant    ( uint uiId, const SString& strMessage, bool bOnlyOnceForThisId );
-    void                                ChangeFloatPrecision            ( bool bHigh );
-    bool                                IsHighFloatPrecision            ( void ) const;
-
-    bool                                TriggerBrowserRequestResultEvent( const std::vector<SString>& newPages );
 
 private:
 
@@ -486,69 +453,53 @@ private:
     void                                QuitPlayer                      ( CClientPlayer* pPlayer, eQuitReason Reason );
 
     void                                Event_OnIngame                  ( void );
+    void                                Event_OnIngameAndReady          ( void );
     void                                Event_OnIngameAndConnected      ( void );
 
     static bool                         StaticDamageHandler             ( CPed* pDamagePed, CEventDamage * pEvent );
-    static void                         StaticDeathHandler              ( CPed* pKilledPed, unsigned char ucDeathReason, unsigned char ucBodyPart);
     static void                         StaticFireHandler               ( CFire* pFire );
     static bool                         StaticBreakTowLinkHandler       ( CVehicle* pTowedVehicle );
     static void                         StaticDrawRadarAreasHandler     ( void );
     static void                         StaticRender3DStuffHandler      ( void );
-    static void                         StaticPreRenderSkyHandler       ( void );
     static bool                         StaticChokingHandler            ( unsigned char ucWeaponType );
     static void                         StaticPreWorldProcessHandler    ( void );
     static void                         StaticPostWorldProcessHandler   ( void );
+    static void                         StaticIdleHandler               ( void );
     static void                         StaticPreFxRenderHandler        ( void );
     static void                         StaticPreHudRenderHandler       ( void );
     static void                         StaticAddAnimationHandler       ( RpClump * pClump, AssocGroupId animGroup, AnimationId animID );
     static void                         StaticBlendAnimationHandler     ( RpClump * pClump, AssocGroupId animGroup, AnimationId animID, float fBlendDelta );
     static bool                         StaticProcessCollisionHandler   ( CEntitySAInterface* pThisInterface, CEntitySAInterface* pOtherInterface );
     static bool                         StaticVehicleCollisionHandler   ( CVehicleSAInterface* pThisInterface, CEntitySAInterface* pOtherInterface, int iModelIndex, float fDamageImpulseMag, float fCollidingDamageImpulseMag, uint16 usPieceType, CVector vecCollisionPos, CVector vecCollisionVelocity  );
-    static bool                         StaticVehicleDamageHandler      ( CEntitySAInterface* pVehicleInterface, float fLoss, CEntitySAInterface* pAttackerInterface, eWeaponType weaponType, const CVector& vecDamagePos, uchar ucTyre );
-    static bool                         StaticHeliKillHandler           ( CVehicleSAInterface* pHeli, CEntitySAInterface* pHitInterface );
-    static bool                         StaticObjectDamageHandler       ( CObjectSAInterface* pObjectInterface, float fLoss, CEntitySAInterface* pAttackerInterface );
-    static bool                         StaticObjectBreakHandler        ( CObjectSAInterface* pObjectInterface, CEntitySAInterface* pAttackerInterface );
-    static bool                         StaticWaterCannonHandler ( CVehicleSAInterface* pCannonVehicle, CPedSAInterface* pHitPed );
-    static bool                         StaticVehicleFellThroughMapHandler  ( CVehicleSAInterface* pVehicle );
+    static bool                         StaticHeliKillHandler           ( CVehicleSAInterface* pHeli, CPedSAInterface* pPed );
+    static bool                         StaticWaterCannonHandler        ( CVehicleSAInterface* pCannonVehicle, CPedSAInterface* pHitPed );
     static void                         StaticGameObjectDestructHandler     ( CEntitySAInterface* pObject );
     static void                         StaticGameVehicleDestructHandler    ( CEntitySAInterface* pVehicle );
     static void                         StaticGamePlayerDestructHandler     ( CEntitySAInterface* pPlayer );
-    static void                         StaticGameProjectileDestructHandler ( CEntitySAInterface* pProjectile );
     static void                         StaticGameModelRemoveHandler        ( ushort usModelId );
     static void                         StaticWorldSoundHandler         ( uint uiGroup, uint uiIndex );
     static void                         StaticGameEntityRenderHandler   ( CEntitySAInterface* pEntity );
-    static void                         StaticTaskSimpleBeHitHandler    ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
-    static void                         StaticFxSystemDestructionHandler ( void * pFxSAInterface );
-    static AnimationId                  StaticDrivebyAnimationHandler   ( AnimationId animGroup, AssocGroupId animId );
 
     bool                                DamageHandler                   ( CPed* pDamagePed, CEventDamage * pEvent );
-    void                                DeathHandler                    ( CPed* pKilledPed, unsigned char ucDeathReason, unsigned char ucBodyPart );
     void                                FireHandler                     ( CFire* pFire );
     bool                                BreakTowLinkHandler             ( CVehicle* pTowedVehicle );
     void                                DrawRadarAreasHandler           ( void );
     void                                Render3DStuffHandler            ( void );
-    void                                PreRenderSkyHandler             ( void );
     bool                                ChokingHandler                  ( unsigned char ucWeaponType );
     void                                PreWorldProcessHandler          ( void );
     void                                PostWorldProcessHandler         ( void );
+    void                                IdleHandler                     ( void );
     void                                AddAnimationHandler             ( RpClump * pClump, AssocGroupId animGroup, AnimationId animID );
     void                                BlendAnimationHandler           ( RpClump * pClump, AssocGroupId animGroup, AnimationId animID, float fBlendDelta );
     bool                                ProcessCollisionHandler         ( CEntitySAInterface* pThisInterface, CEntitySAInterface* pOtherInterface );
     bool                                VehicleCollisionHandler         ( CVehicleSAInterface* pCollidingVehicle, CEntitySAInterface* pCollidedVehicle, int iModelIndex, float fDamageImpulseMag, float fCollidingDamageImpulseMag, uint16 usPieceType, CVector vecCollisionPos, CVector vecCollisionVelocity  );
-    bool                                VehicleDamageHandler            ( CEntitySAInterface* pVehicleInterface, float fLoss, CEntitySAInterface* pAttackerInterface, eWeaponType weaponType, const CVector& vecDamagePos, uchar ucTyre );
-    bool                                HeliKillHandler                 ( CVehicleSAInterface* pHeli, CEntitySAInterface* pHitInterface );
-    bool                                ObjectDamageHandler             ( CObjectSAInterface* pObjectInterface, float fLoss, CEntitySAInterface* pAttackerInterface );
-    bool                                ObjectBreakHandler              ( CObjectSAInterface* pObjectInterface, CEntitySAInterface* pAttackerInterface );
+    bool                                HeliKillHandler                 ( CVehicleSAInterface* pHeli, CPedSAInterface* pPed );
     bool                                WaterCannonHitHandler           ( CVehicleSAInterface* pCannonVehicle, CPedSAInterface* pHitPed );
-    bool                                VehicleFellThroughMapHandler    ( CVehicleSAInterface* pVehicle );
     void                                GameObjectDestructHandler       ( CEntitySAInterface* pObject );
     void                                GameVehicleDestructHandler      ( CEntitySAInterface* pVehicle );
     void                                GamePlayerDestructHandler       ( CEntitySAInterface* pPlayer );
-    void                                GameProjectileDestructHandler   ( CEntitySAInterface* pProjectile );
     void                                GameModelRemoveHandler          ( ushort usModelId );
     void                                WorldSoundHandler               ( uint uiGroup, uint uiIndex );
-    void                                TaskSimpleBeHitHandler          ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
-    AnimationId                         DrivebyAnimationHandler         ( AnimationId animGroup, AssocGroupId animId );
 
     static bool                         StaticProcessMessage            ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
     bool                                ProcessMessage                  ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
@@ -577,15 +528,13 @@ public:
 
     void                                SetVehExtrapolateSettings       ( const SVehExtrapolateSettings& settings ) { m_VehExtrapolateSettings = settings; }
     const SVehExtrapolateSettings&      GetVehExtrapolateSettings       ( void )                                    { return m_VehExtrapolateSettings; }
-    void                                SetMiscGameSettings             ( const SMiscGameSettings& settings )       { m_MiscGameSettings = settings; }
-    const SMiscGameSettings&            GetMiscGameSettings             ( void )                                    { return m_MiscGameSettings; }
+
+    void                                SetVehicleOnlyGameMode          ( bool bOn );
+    bool                                IsVehicleOnlyGameMode           ( void );
     bool                                IsUsingAlternatePulseOrder      ( bool bAdvanceDelayCounter = false );
-    void                                SetFileCacheRoot                ( void );
-    const char*                         GetFileCacheRoot                ( void )                                    { return m_strFileCacheRoot; }
 
 private:
     eStatus                             m_Status;
-    eServerType                         m_ServerType;
     unsigned long                       m_ulTimeStart;
     unsigned long                       m_ulVerifyTimeStart;
     unsigned long                       m_ulLastClickTick;
@@ -611,7 +560,6 @@ private:
     CClientPathManager*                 m_pPathManager;
     CClientTeamManager*                 m_pTeamManager;
     CClientPedManager*                  m_pPedManager;
-    CClientPointLightsManager*          m_pPointLightsManager;
     CClientProjectileManager*           m_pProjectileManager;
     CRPCFunctions*                      m_pRPCFunctions;
     CUnoccupiedVehicleSync*             m_pUnoccupiedVehicleSync;
@@ -630,7 +578,6 @@ private:
     CResourceManager*                   m_pResourceManager;
     CScriptKeyBinds*                    m_pScriptKeyBinds;
     CElementDeleter                     m_ElementDeleter;
-    CObjectRespawner                    m_ObjectRespawner;
     CZoneNames*                         m_pZoneNames;
     CPacketHandler*                     m_pPacketHandler;
     CLocalServer*                       m_pLocalServer;
@@ -640,8 +587,6 @@ private:
     CSingularFileDownloadManager*       m_pSingularFileDownloadManager;
     CGameEntityXRefManager*             m_pGameEntityXRefManager;
     CClientModelCacheManager*           m_pModelCacheManager;
-    CDebugHookManager*                  m_pDebugHookManager;
-    CRemoteCalls*                       m_pRemoteCalls;
 
     // Revised facilities
     CServer                             m_Server;
@@ -786,15 +731,8 @@ private:
     GUI_CALLBACK                        m_OnCancelLocalGameClick;
 
     SVehExtrapolateSettings             m_VehExtrapolateSettings;
-    SMiscGameSettings                   m_MiscGameSettings;
+    bool                                m_bVehicleOnlyGameMode;
     uint                                m_uiAltPulseOrderCounter;
-    SString                             m_strACInfo;
-    std::set < uint >                   m_SentMessageIds;
-
-    bool                                m_bLastKeyWasEscapeCancelled;
-    std::set < SString >                m_AllowKeyUpMap;
-    uint                                m_uiPrecisionCallDepth;
-    SString                             m_strFileCacheRoot;
 };
 
 extern CClientGame* g_pClientGame;

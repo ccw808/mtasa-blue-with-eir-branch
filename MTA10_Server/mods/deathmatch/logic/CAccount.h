@@ -61,23 +61,14 @@ public:
     inline int                  GetID                   ( void )                    { return m_iUserID; }
     void                        SetID                   ( int iUserID );
 
-    CClient*                    GetClient               ( void )                    { return m_pClient; }
-    void                        SetClient               ( CClient* pClient );
+    inline class CClient*       GetClient               ( void )                    { return m_pClient; }
+    inline void                 SetClient               ( class CClient* pClient )  { m_pClient = pClient; }
 
     inline void                 SetChanged              ( bool bChanged )           { m_bChanged = bChanged; }
     inline bool                 HasChanged              ( void )                    { return m_bChanged; }
     uint                        GetScriptID             ( void ) const              { return m_uiScriptID; }
 
-    CLuaArgument*               GetData                 ( const std::string& strKey );
-    bool                        SetData                 ( const std::string& strKey, const std::string& strValue, int iType );
-    bool                        HasData                 ( const std::string& strKey );
-    void                        RemoveData              ( const std::string& strKey );
-    std::map < SString, CAccountData >::iterator DataBegin  ( void )                { return m_Data.begin (); }
-    std::map < SString, CAccountData >::iterator DataEnd    ( void )                { return m_Data.end (); }
-
- protected:
-    CAccountData*               GetDataPointer ( const std::string& strKey );
-
+protected:
     CAccountManager*            m_pManager;
 
     bool                        m_bRegistered;
@@ -93,27 +84,6 @@ public:
 
     class CClient*              m_pClient;
     uint                        m_uiScriptID;
-
-    std::map < SString, CAccountData >  m_Data;
-};
-
-
-class CAccountData
-{
-public:
-                            CAccountData ( const std::string& strKey = "", const std::string& strValue = "", int iType = 0 )
-                                                                         { m_strKey = strKey; m_strValue = strValue; m_iType = iType; }
-
-    const std::string&      GetKey       ( void )                        { return m_strKey; }
-    const std::string&      GetStrValue  ( void )                        { return m_strValue; }
-    int                     GetType      ( void )                        { return m_iType; }
-    void                    SetStrValue  ( const std::string& strValue ) { m_strValue = strValue; }
-    void                    SetType      ( int iType )                   { m_iType = iType; }
-
-private:
-    std::string              m_strKey;
-    std::string              m_strValue;
-    int                      m_iType;
 };
 
 #endif

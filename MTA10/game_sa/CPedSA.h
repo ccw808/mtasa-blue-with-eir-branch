@@ -107,23 +107,9 @@ class CPedIntelligenceSAInterface;
 #define FUNC_WarpPedIntoCar             0x4EF8B0
 #define FUNC_DetachPedFromEntity        0x5E7EC0
 #define FUNC_CPed_RemoveBodyPart        0x5f0140
-#define FUNC_PreRenderAfterTest         0x5E65A0
 
 #define VAR_LocalPlayer                 0x94AD28
 
-/*
-#ifndef CVehicleSA_DEFINED
-#define CVehicleSA void
-#endif
-
-#ifdef CPedSA
-#undef CPedSA
-#endif
-
-#ifdef CPedSAInterface
-#undef CPedSAInterface
-#endif
-*/
 
 //+1328 = Ped state
 //+1344 = ped health
@@ -332,8 +318,6 @@ private:
 
     DWORD               m_dwType;
     unsigned char       m_ucOccupiedSeat;
-protected:
-    int                 m_iCustomMoveAnim;
 public:
                         CPedSA(  );
                         CPedSA( CPedSAInterface * pedInterface );
@@ -387,7 +371,6 @@ public:
 
     CVector *           GetBonePosition ( eBone bone, CVector * vecPosition );
     CVector *           GetTransformedBonePosition ( eBone bone, CVector * vecPosition );
-    void                ApplySwimAndSlopeRotations ( void );
 
     bool                IsDucking ( void );
     void                SetDucking ( bool bDuck );
@@ -444,10 +427,6 @@ public:
     CWeaponStat*        GetCurrentWeaponStat    ( void );
     float               GetCurrentWeaponRange   ( void );
     void                AddWeaponAudioEvent     ( EPedWeaponAudioEventType audioEventType );
-
-    virtual int         GetCustomMoveAnim       ( void );
-
-    static void         StaticSetHooks          ( void );
 };
 
 #endif

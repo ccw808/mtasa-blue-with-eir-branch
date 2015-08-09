@@ -20,10 +20,8 @@
 //
 #include <stdarg.h>
 
-#ifdef WIN32 
-#ifndef va_copy
+#ifdef WIN32
     #define va_copy(dest, orig) (dest) = (orig)
-#endif
 #endif
 
 class SString : public std::string
@@ -68,8 +66,6 @@ public:
     }
 
     SString& vFormat ( const char* szFormat, va_list vl );
-    void OnFormatException ( const char* szFormat );
-    void OnInvalidParameter ( const char* szFormat );
 
     // Access
     char& operator[]( int iOffset )
@@ -78,7 +74,7 @@ public:
     }
 
     // Operators  
-    SString operator+( const char* other ) const
+    /*SString operator+( const char* other ) const
     {
         return std::string ( *this ) + other;
     }
@@ -86,11 +82,7 @@ public:
     {
         return std::string ( *this ) + other;
     }
-	SString operator+( const SString& other ) const
-    {
-        return std::string ( *this ) + other;
-    }
-
+    */
     // Assignment  
     operator const char*() const    { return c_str (); }        // Auto assign to const char* without using c_str()
     const char* operator*( void ) const
@@ -146,7 +138,7 @@ struct SCharStringRef
 {
     SCharStringRef ( void ) : pData ( NULL ),  uiSize ( 0 ) {}
     char* pData;
-    size_t uiSize;
+    uint uiSize;
 };
 
 
@@ -176,10 +168,10 @@ public:
         this->reserve ( 16U < uiMaxAmount ? 16U : uiMaxAmount );
 
         // Split into pointers
-        size_t ulCurrentPoint = 0;
+        unsigned long ulCurrentPoint = 0;
         while ( true )
         {
-            size_t ulPos = strInput.find ( strDelim, ulCurrentPoint );
+            unsigned long ulPos = strInput.find ( strDelim, ulCurrentPoint );
             if ( ulPos == STRING_TYPE::npos || ( uiMaxAmount > 0 && uiMaxAmount <= this->size () + 1 ) )
             {
                 if ( ulCurrentPoint <= strInput.length () )

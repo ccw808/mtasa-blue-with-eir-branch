@@ -35,8 +35,6 @@ void CLuaElementDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "isElementInWater", CLuaElementDefs::isElementInWater );
     CLuaCFunctions::AddFunction ( "isElementFrozen", CLuaElementDefs::isElementFrozen );
     CLuaCFunctions::AddFunction ( "isElementLowLOD", CLuaElementDefs::isElementLowLOD );
-    CLuaCFunctions::AddFunction ( "setElementCallPropagationEnabled", CLuaElementDefs::setElementCallPropagationEnabled );
-    CLuaCFunctions::AddFunction ( "isElementCallPropagationEnabled", CLuaElementDefs::isElementCallPropagationEnabled );
 
     CLuaCFunctions::AddFunction ( "getElementByID", CLuaElementDefs::getElementByID );
     CLuaCFunctions::AddFunction ( "getElementByIndex", CLuaElementDefs::getElementByIndex );
@@ -46,7 +44,6 @@ void CLuaElementDefs::LoadFunctions ( void )
     CLuaCFunctions::AddFunction ( "getAllElementData", CLuaElementDefs::getAllElementData );
     CLuaCFunctions::AddFunction ( "getElementID", CLuaElementDefs::getElementID );
     CLuaCFunctions::AddFunction ( "getElementParent", CLuaElementDefs::getElementParent );
-    CLuaCFunctions::AddFunction ( "getElementMatrix", CLuaElementDefs::getElementMatrix );
     CLuaCFunctions::AddFunction ( "getElementPosition", CLuaElementDefs::getElementPosition );
     CLuaCFunctions::AddFunction ( "getElementRotation", CLuaElementDefs::getElementRotation );
     CLuaCFunctions::AddFunction ( "getElementVelocity", CLuaElementDefs::getElementVelocity );
@@ -82,7 +79,6 @@ void CLuaElementDefs::LoadFunctions ( void )
     // Set
     CLuaCFunctions::AddFunction ( "setElementID", CLuaElementDefs::setElementID );
     CLuaCFunctions::AddFunction ( "setElementParent", CLuaElementDefs::setElementParent );
-    CLuaCFunctions::AddFunction ( "setElementMatrix", CLuaElementDefs::setElementMatrix );
     CLuaCFunctions::AddFunction ( "setElementPosition", CLuaElementDefs::setElementPosition );
     CLuaCFunctions::AddFunction ( "setElementRotation", CLuaElementDefs::setElementRotation );
     CLuaCFunctions::AddFunction ( "setElementVelocity", CLuaElementDefs::setElementVelocity );
@@ -179,7 +175,9 @@ int CLuaElementDefs::cloneElement ( lua_State* luaVM )
     argStream.ReadUserData ( pElement );
     if ( !argStream.HasErrors () )
     {
-        argStream.ReadVector3D ( vecPosition, pElement->GetPosition ( ) );
+        argStream.ReadNumber ( vecPosition.fX, pElement->GetPosition ().fX );
+        argStream.ReadNumber ( vecPosition.fY, pElement->GetPosition ().fY );
+        argStream.ReadNumber ( vecPosition.fZ, pElement->GetPosition ().fZ );
         argStream.ReadBool ( bCloneChildren, false );
     }
 
@@ -456,7 +454,7 @@ int CLuaElementDefs::getElementParent ( lua_State* luaVM )
     if ( !argStream.HasErrors () )
     {
         CElement* pParent = CStaticFunctionDefinitions::GetElementParent ( pElement );
-        if ( pParent && !pParent->IsBeingDeleted() )
+        if ( pParent )
         {
             lua_pushelement ( luaVM, pParent );
             return 1;
@@ -499,102 +497,20 @@ int CLuaElementDefs::getElementPosition ( lua_State* luaVM )
 }
 
 
-int CLuaElementDefs::getElementMatrix ( lua_State* luaVM )
-{
-    CElement* pElement = NULL;
-    bool bBadSyntax;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-    argStream.ReadBool ( bBadSyntax, true );
-
-    // Verify the arguments
-    if ( !argStream.HasErrors ( ) )
-    {
-        // Grab the position
-        CMatrix matrix;
-        if ( CStaticFunctionDefinitions::GetElementMatrix ( pElement, matrix ) )
-        {
-            // Apparently some scripts like the dirty syntax... should be 0.0f but was 1.0f post 1.3.2
-            float fData = bBadSyntax == true ? 1.0f : 0.0f;
-
-            // Return it
-            lua_createtable ( luaVM, 4, 0 );
-
-            // First row
-            lua_createtable ( luaVM, 4, 0 );
-            lua_pushnumber ( luaVM, matrix.vRight.fX );
-            lua_rawseti ( luaVM, -2, 1 );
-            lua_pushnumber ( luaVM, matrix.vRight.fY );
-            lua_rawseti ( luaVM, -2, 2 );
-            lua_pushnumber ( luaVM, matrix.vRight.fZ );
-            lua_rawseti ( luaVM, -2, 3 );
-            lua_pushnumber ( luaVM, fData );
-            lua_rawseti ( luaVM, -2, 4 );
-            lua_rawseti ( luaVM, -2, 1 );
-
-            // Second row
-            lua_createtable ( luaVM, 4, 0 );
-            lua_pushnumber ( luaVM, matrix.vFront.fX );
-            lua_rawseti ( luaVM, -2, 1 );
-            lua_pushnumber ( luaVM, matrix.vFront.fY );
-            lua_rawseti ( luaVM, -2, 2 );
-            lua_pushnumber ( luaVM, matrix.vFront.fZ );
-            lua_rawseti ( luaVM, -2, 3 );
-            lua_pushnumber ( luaVM, fData );
-            lua_rawseti ( luaVM, -2, 4 );
-            lua_rawseti ( luaVM, -2, 2 );
-
-            // Third row
-            lua_createtable ( luaVM, 4, 0 );
-            lua_pushnumber ( luaVM, matrix.vUp.fX );
-            lua_rawseti ( luaVM, -2, 1 );
-            lua_pushnumber ( luaVM, matrix.vUp.fY );
-            lua_rawseti ( luaVM, -2, 2 );
-            lua_pushnumber ( luaVM, matrix.vUp.fZ );
-            lua_rawseti ( luaVM, -2, 3 );
-            lua_pushnumber ( luaVM, fData );
-            lua_rawseti ( luaVM, -2, 4 );
-            lua_rawseti ( luaVM, -2, 3 );
-
-            // Fourth row
-            lua_createtable ( luaVM, 4, 0 );
-            lua_pushnumber ( luaVM, matrix.vPos.fX );
-            lua_rawseti ( luaVM, -2, 1 );
-            lua_pushnumber ( luaVM, matrix.vPos.fY );
-            lua_rawseti ( luaVM, -2, 2 );
-            lua_pushnumber ( luaVM, matrix.vPos.fZ );
-            lua_rawseti ( luaVM, -2, 3 );
-            lua_pushnumber ( luaVM, 1.0f );
-            lua_rawseti ( luaVM, -2, 4 );
-            lua_rawseti ( luaVM, -2, 4 );
-
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    // Failed
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
 int CLuaElementDefs::getElementRotation ( lua_State* luaVM )
 {
 //  float float float getElementRotation ( element theElement [, string rotOrder = "default" ] )
-    CElement* pElement; eEulerRotationOrder rotationOrder;
+    CElement* pElement; SString strRotationOrder;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pElement );
-    argStream.ReadEnumString ( rotationOrder, EULER_DEFAULT );
+    argStream.ReadString ( strRotationOrder, "default" );
 
     if ( !argStream.HasErrors () )
     {
         // Grab the rotation
         CVector vecRotation;
-        if ( CStaticFunctionDefinitions::GetElementRotation ( pElement, vecRotation, rotationOrder ) )
+        if ( CStaticFunctionDefinitions::GetElementRotation ( pElement, vecRotation, strRotationOrder ) )
         {
             // Return it
             lua_pushnumber ( luaVM, vecRotation.fX );
@@ -780,9 +696,9 @@ int CLuaElementDefs::getElementsWithinColShape ( lua_State* luaVM )
         // Add all the elements within the shape to it
         unsigned int uiIndex = 0;
         list < CElement* > ::iterator iter = pColShape->CollidersBegin ();
-        for ( ; iter != pColShape->CollidersEnd (); ++iter )
+        for ( ; iter != pColShape->CollidersEnd (); iter++ )
         {
-            if ( (strType.empty () || strType == (*iter)->GetTypeName ()) && !(*iter)->IsBeingDeleted() )
+            if ( strType.empty () || strType == (*iter)->GetTypeName () )
             {
                 lua_pushnumber ( luaVM, ++uiIndex );
                 lua_pushelement ( luaVM, *iter );
@@ -920,7 +836,7 @@ int CLuaElementDefs::getAttachedElements ( lua_State* luaVM )
         // Add All Attached Elements
         unsigned int uiIndex = 0;
         list < CElement* > ::const_iterator iter = pElement->AttachedElementsBegin ();
-        for ( ; iter != pElement->AttachedElementsEnd () ; ++iter )
+        for ( ; iter != pElement->AttachedElementsEnd () ; iter++ )
         {
             if ( ( *iter )->GetAttachedToElement() == pElement )
             {
@@ -946,8 +862,12 @@ int CLuaElementDefs::setElementAttachedOffsets ( lua_State* luaVM )
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pElement );
-    argStream.ReadVector3D( vecPosition, vecPosition );
-    argStream.ReadVector3D( vecRotation, vecRotation );
+    argStream.ReadNumber ( vecPosition.fX, 0 );
+    argStream.ReadNumber ( vecPosition.fY, 0  );
+    argStream.ReadNumber ( vecPosition.fZ, 0  );
+    argStream.ReadNumber ( vecRotation.fX, 0  );
+    argStream.ReadNumber ( vecRotation.fY, 0  );
+    argStream.ReadNumber ( vecRotation.fZ, 0  );
 
     if ( !argStream.HasErrors () )
     {
@@ -1375,44 +1295,6 @@ int CLuaElementDefs::removeElementData ( lua_State* luaVM )
 }
 
 
-int CLuaElementDefs::setElementMatrix ( lua_State* luaVM )
-{
-//  setElementMatrix ( element theElement, table matrix )
-    CElement* pElement; CMatrix matrix;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pElement );
-
-    if ( argStream.NextIsTable ( ) )
-    {
-        if ( !ReadMatrix ( luaVM, argStream.m_iIndex, matrix ) )
-        {
-            argStream.SetCustomError ( "Matrix is not 4 x 4" );
-        }
-    }
-    else
-    {
-        argStream.ReadMatrix ( matrix );
-    }
-
-    // Verify the arguments
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( CStaticFunctionDefinitions::SetElementMatrix ( pElement, matrix ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    // Failed
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
 int CLuaElementDefs::setElementParent ( lua_State* luaVM )
 {
 //  bool setElementParent ( element theElement, element parent )
@@ -1445,17 +1327,13 @@ int CLuaElementDefs::setElementPosition ( lua_State* luaVM )
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pElement );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    // (we don't need the third argument if it's a radar area)
     if ( !argStream.HasErrors () && pElement->GetType () == CElement::RADAR_AREA )
-    {
-        // radar areas only take x and y
-        argStream.ReadNumber ( vecPosition.fX );
-        argStream.ReadNumber ( vecPosition.fY );
-    }
+        argStream.ReadNumber ( vecPosition.fZ, 0 );
     else
-    {
-        argStream.ReadVector3D ( vecPosition );
-    }
-
+        argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadBool ( bWarp, true );
 
     if ( !argStream.HasErrors () )
@@ -1478,18 +1356,20 @@ int CLuaElementDefs::setElementPosition ( lua_State* luaVM )
 int CLuaElementDefs::setElementRotation ( lua_State* luaVM )
 {
 //  bool setElementRotation ( element theElement, float rotX, float rotY, float rotZ [, string rotOrder = "default", bool fixPedRotation = false ] )
-    CElement* pElement; CVector vecRotation; eEulerRotationOrder rotationOrder; bool bNewWay;
+    CElement* pElement; CVector vecRotation; SString strRotationOrder; bool bNewWay;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pElement );
-    argStream.ReadVector3D ( vecRotation );
-    argStream.ReadEnumString ( rotationOrder, EULER_DEFAULT );
+    argStream.ReadNumber ( vecRotation.fX );
+    argStream.ReadNumber ( vecRotation.fY );
+    argStream.ReadNumber ( vecRotation.fZ );
+    argStream.ReadString ( strRotationOrder, "default" );
     argStream.ReadBool ( bNewWay, false );
 
     if ( !argStream.HasErrors () )
     {
         // Set the rotation
-        if ( CStaticFunctionDefinitions::SetElementRotation ( pElement, vecRotation, rotationOrder, bNewWay ) )
+        if ( CStaticFunctionDefinitions::SetElementRotation ( pElement, vecRotation, strRotationOrder, bNewWay ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
@@ -1510,7 +1390,9 @@ int CLuaElementDefs::setElementVelocity ( lua_State* luaVM )
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pElement );
-    argStream.ReadVector3D ( vecVelocity );
+    argStream.ReadNumber ( vecVelocity.fX );
+    argStream.ReadNumber ( vecVelocity.fY );
+    argStream.ReadNumber ( vecVelocity.fZ );
 
     if ( !argStream.HasErrors () )
     {
@@ -1563,8 +1445,10 @@ int CLuaElementDefs::setElementInterior ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pElement );
     argStream.ReadNumber ( uiInterior );
-    bool bSetPosition = argStream.NextIsVector3D ();
-    argStream.ReadVector3D ( vecPosition, vecPosition );
+    argStream.ReadNumber ( vecPosition.fX, 0 );
+    argStream.ReadNumber ( vecPosition.fY, 0 );
+    bool bSetPosition = argStream.NextCouldBeNumber ();
+    argStream.ReadNumber ( vecPosition.fZ, 0 );
 
     if ( !argStream.HasErrors () )
     {
@@ -1594,11 +1478,11 @@ int CLuaElementDefs::setElementDimension ( lua_State* luaVM )
 
     if ( !argStream.HasErrors () )
     {
-        if ( CStaticFunctionDefinitions::SetElementDimension ( pElement, usDimension ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
+            if ( CStaticFunctionDefinitions::SetElementDimension ( pElement, usDimension ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
@@ -1616,8 +1500,12 @@ int CLuaElementDefs::attachElements ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pElement );
     argStream.ReadUserData ( pAttachedToElement );
-    argStream.ReadVector3D ( vecPosition, vecPosition );
-    argStream.ReadVector3D ( vecRotation, vecRotation );
+    argStream.ReadNumber ( vecPosition.fX, 0 );
+    argStream.ReadNumber ( vecPosition.fY, 0 );
+    argStream.ReadNumber ( vecPosition.fZ, 0 );
+    argStream.ReadNumber ( vecRotation.fX, 0 );
+    argStream.ReadNumber ( vecRotation.fY, 0 );
+    argStream.ReadNumber ( vecRotation.fZ, 0 );
 
     if ( !argStream.HasErrors () )
     {
@@ -1896,56 +1784,6 @@ int CLuaElementDefs::isElementLowLOD ( lua_State* luaVM )
         if ( CStaticFunctionDefinitions::IsElementLowLod ( pEntity, bIsLowLod ) )
         {
             lua_pushboolean ( luaVM, bIsLowLod );
-            return 1;
-        }        
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::setElementCallPropagationEnabled ( lua_State* luaVM )
-{
-//  bool setElementCallPropagationEnabled ( element theElement, bool enable )
-    CElement* pEntity; bool bEnable;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadBool ( bEnable );
-
-    if ( !argStream.HasErrors () )
-    {
-        if ( CStaticFunctionDefinitions::SetElementCallPropagationEnabled ( pEntity, bEnable ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
-int CLuaElementDefs::isElementCallPropagationEnabled ( lua_State* luaVM )
-{
-//  bool isElementCallPropagationEnabled ( element theElement )
-    CElement* pEntity;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
-    {
-        bool bEnabled;
-        if ( CStaticFunctionDefinitions::IsElementCallPropagationEnabled ( pEntity, bEnabled ) )
-        {
-            lua_pushboolean ( luaVM, bEnabled );
             return 1;
         }        
     }

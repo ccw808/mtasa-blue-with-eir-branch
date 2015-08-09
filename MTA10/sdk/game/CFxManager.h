@@ -2,27 +2,23 @@
 *
 *  PROJECT:     Multi Theft Auto v1.0
 *  LICENSE:     See LICENSE in the top level directory
-*  FILE:        sdk/game/CFxManager.h
+*  FILE:        sdk/game/CFx.h
 *  PURPOSE:     Game effects interface
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *
 *****************************************************************************/
 
-#ifndef __CFxManager
-#define __CFxManager
+#pragma once
 
-#include "RenderWare.h"
-
-class CFxSystem;
-class CFxSystemSAInterface;
+class CFxSystemSA;
+class CFxSystemBPSA;
 
 class CFxManager
 {
 public:
-    virtual CFxSystem* CreateFxSystem ( const char * szBlueprint, const CVector & vecPosition, RwMatrix * pRwMatrixTag, unsigned char bSkipCameraFrustumCheck ) = 0;
-    virtual void       DestroyFxSystem ( CFxSystem* pFxSystem ) = 0;
-    virtual void       OnFxSystemSAInterfaceDestroyed ( CFxSystemSAInterface* pFxSystemSAInterface ) = 0;
+    virtual void SetWindData(const CVector& vecWindDirection, float fWindStrength) = 0;
+    virtual void DestroyFxSystem(CFxSystemSA* pFxSystem) = 0;
+    virtual CFxSystemSA* InitialiseFxSystem(CFxSystemBPSA* pFxSystemBP, CVector& vecPos, RwMatrix* pMatrix, bool bUnknown) = 0;
+    virtual CFxSystemSA* InitialiseFxSystem(CFxSystemBPSA* pFxSystemBP, RwMatrix* pMatrix1, RwMatrix* pMatrix2, bool bUnknown) = 0;
 };
-
-#endif

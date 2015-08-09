@@ -20,7 +20,6 @@ void    SharedUtil_ClassIdent_Tests     ( void );
 void 	SharedUtil_WildcardMatch_Tests  ( void );
 void    SharedUtil_Collection_Tests     ( void );
 void    SharedUtil_String_Tests         ( void );
-void    SharedUtil_Hash_Tests           ( void );
 
 ///////////////////////////////////////////////////////////////
 //
@@ -37,7 +36,6 @@ void SharedUtil_Tests ( void )
     SharedUtil_WildcardMatch_Tests ();
     SharedUtil_Collection_Tests ();
     SharedUtil_String_Tests ();
-    SharedUtil_Hash_Tests ();
 }
 
 
@@ -313,7 +311,6 @@ void SharedUtil_File_Tests ( void )
             { "file:///blah\\/",  "//fleeeb/",    "file:\\\\blah\\fleeeb\\" },
             { "fil:e///blah\\/",  "//fleeeb/",    "fil:e\\blah\\fleeeb\\" },
             { "fi/le:///blah\\/",  "//fleeeb/",    "fi\\le:\\blah\\fleeeb\\" },
-            { "c:///blah\\/",      "//fleeeb/",    "c:\\blah\\fleeeb\\" },
         TEST_END
     }
 
@@ -652,6 +649,7 @@ void SharedUtil_String_Tests ( void )
             SStringX strInputA( (const char*)a, sizeof( a ) );
             SString strEscaped = EscapeURLArgument( strInputA );
             SString strUnescaped = UnescapeString ( strEscaped, '%' );
+            //OutputDebugLine( aa );
             assert ( strEscaped == result );
             assert ( strInputA == strUnescaped );
         TEST_VARS
@@ -668,6 +666,7 @@ void SharedUtil_String_Tests ( void )
             SStringX strInputA( a );
             SString strEscaped = EscapeURLArgument( strInputA );
             SString strUnescaped = UnescapeString ( strEscaped, '%' );
+            //OutputDebugLine( aa );
             assert ( strEscaped == result );
             assert ( strInputA == strUnescaped );
         TEST_VARS
@@ -681,191 +680,4 @@ void SharedUtil_String_Tests ( void )
             { "AZaz09-_.~",         "AZaz09-_.~" },
         TEST_END
     }
-
-    // RemoveColorCodes
-    {
-        TEST_FUNCTION
-            SString strRemoved = RemoveColorCodes( a );
-            assert ( strRemoved == result );
-        TEST_VARS
-            const char* a;
-            const char* result;
-        TEST_DATA
-            { "aa #0f0F34 bb",                          "aa  bb" },
-            { "aa #0f0F34#AABBBB bb",                   "aa  bb" },
-            { "aa #0f0F3G#AABBBB bb",                   "aa #0f0F3G bb" },
-            { "aa #0f0F34#AABBB bb",                    "aa #AABBB bb" },
-            { "#0f0F34#AABBB1",                         "" },
-            { "#0f0F34 x #AABBB1",                      " x " },
-            { "#0f0F34#0f0F34 x #AABBB1#AABBB1",        " x " },
-            { "#123456#12345G#123456#12345G",           "#12345G#12345G" },
-            { "#123456#12345#123456#125G",              "#12345#125G" },
-            { "##123456#125G##123456#12345",            "##125G##12345" },
-        TEST_END
-    }
-
-    // RemoveColorCodesInPlaceW
-    {
-        TEST_FUNCTION
-            WString wstrString = a;
-            RemoveColorCodesInPlaceW( wstrString );
-            assert ( wstrString == result );
-        TEST_VARS
-            const wchar_t* a;
-            const wchar_t* result;
-        TEST_DATA
-            { L"aa #0f0F34 bb",                          L"aa  bb" },
-            { L"aa #0f0F34#AABBBB bb",                   L"aa  bb" },
-            { L"aa #0f0F3G#AABBBB bb",                   L"aa #0f0F3G bb" },
-            { L"aa #0f0F34#AABBB bb",                    L"aa #AABBB bb" },
-            { L"#0f0F34#AABBB1",                         L"" },
-            { L"#0f0F34 x #AABBB1",                      L" x " },
-            { L"#0f0F34#0f0F34 x #AABBB1#AABBB1",        L" x " },
-            { L"#123456#12345G#123456#12345G",           L"#12345G#12345G" },
-            { L"#123456#12345#123456#125G",              L"#12345#125G" },
-            { L"##123456#125G##123456#12345",            L"##125G##12345" },
-        TEST_END
-    }
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// SharedUtil_Hash_Tests
-//
-// Test behaviour of hashing/crypt related functions
-//
-///////////////////////////////////////////////////////////////
-void SharedUtil_Hash_Tests ( void )
-{
-    // ConvertHexStringToData/ConvertDataToHexString
-    {
-        TEST_FUNCTION
-            char buffer[256];
-            uint length = a.length() / 2;
-            ConvertHexStringToData( a, buffer, length );
-            SString strResult = ConvertDataToHexString( buffer, length );
-            assert ( strResult == b );
-        TEST_VARS
-            const SString a;
-            const char* b;
-        TEST_DATA
-            { "66B9139D8C424BE2BCF224706B48FEB8", "66B9139D8C424BE2BCF224706B48FEB8" },
-            { "E7C7253C74275F2DC2DC8C6828816C18301636949369F3bad87666C81E71B309", "E7C7253C74275F2DC2DC8C6828816C18301636949369F3BAD87666C81E71B309" },
-            { "61", "61" },
-            { "\x01""A""\x1F\x80""BC""\xFE\xFF", "0A00BC00" },
-        TEST_END
-    }
-
-    // TeaEncode/TeaDecode
-    {
-        TEST_FUNCTION
-            SString strEncoded;
-            TeaEncode( a, b, &strEncoded );
-            if ( !result.empty() )
-                assert ( strEncoded == result );
-            SString strDecoded;
-            TeaDecode( strEncoded, b, &strDecoded );
-            assert ( a == *strDecoded );
-        TEST_VARS
-            const SString a;
-            const SString b;
-            const SString result;
-        TEST_DATA
-            { "1234", "AB12£$_ ", "\xD2\xB4\x75\x5C\xDC\x15\x54\xC9" },
-            { "Hello thereHello there", "78111E998C42243285635E39AFDD614B\0 AB12£$_ ", "" },
-            { "78111E998C42243285635E39AFD\0D614B AB12£$_ ", "Hello thereHello there", "" },
-        TEST_END
-    }
-
-    // MD5
-    {
-        TEST_FUNCTION
-            SString strResult = CMD5Hasher::CalculateHexString( a.c_str(), a.length() );
-            assert ( strResult == result );
-        TEST_VARS
-            const SString a;
-            const char* result;
-        TEST_DATA
-            { "",               "D41D8CD98F00B204E9800998ECF8427E" },
-            { "Hello there",    "E8EA7A8D1E93E8764A84A0F3DF4644DE" },
-            { "AB12£$_\0 ",     "78111E998C42243285635E39AFDD614B" },
-        TEST_END
-    }
-
-    // SHA256
-    {
-        TEST_FUNCTION
-            SString strResult = GenerateSha256HexString( a );
-            assert ( strResult == result );
-        TEST_VARS
-            const SString a;
-            const char* result;
-        TEST_DATA
-            { "",               "E3B0C44298FC1C149AFBF4C8996FB92427AE41E4649B934CA495991B7852B855" },
-            { "Hello there",    "4E47826698BB4630FB4451010062FADBF85D61427CBDFAED7AD0F23F239BED89" },
-            { "AB12£$_\0 ",     "A427AEDD32E652FED23901406BCC49BF78B906E69699A68932638502E8C1138B" },
-        TEST_END
-    }
-
-    // SHA1
-    {
-        TEST_FUNCTION
-            SString strResult = GenerateHashHexString( EHashFunction::SHA1, a );
-            assert ( strResult == result );
-        TEST_VARS
-            const SString a;
-            const char* result;
-        TEST_DATA
-            { "",               "DA39A3EE5E6B4B0D3255BFEF95601890AFD80709" },
-            { "Hello there",    "726C76553E1A3FDEA29134F36E6AF2EA05EC5CCE" },
-            { "AB12£$_\0 ",     "CA7B95DF48B83232FCA0FE3FAE7A787784F54225" },
-        TEST_END
-    }
-
-    // SHA224
-    {
-        TEST_FUNCTION
-            SString strResult = GenerateHashHexString( EHashFunction::SHA224, a );
-            assert ( strResult == result );
-        TEST_VARS
-            const SString a;
-            const char* result;
-        TEST_DATA
-            { "",               "D14A028C2A3A2BC9476102BB288234C415A2B01F828EA62AC5B3E42F" },
-            { "Hello there",    "40AACC4967ECA7730A1A069539D78AE7782480802E481F1ECC26927D" },
-            { "AB12£$_\0 ",     "73420F2E80A236DD7C836C68177E282BC8E86CD8BB497E5F443F1FAE" },
-        TEST_END
-    }
-
-    // SHA384
-    {
-        TEST_FUNCTION
-            SString strResult = GenerateHashHexString( EHashFunction::SHA384, a );
-            assert ( strResult == result );
-        TEST_VARS
-            const SString a;
-            const char* result;
-        TEST_DATA
-            { "",               "38B060A751AC96384CD9327EB1B1E36A21FDB71114BE07434C0CC7BF63F6E1DA274EDEBFE76F65FBD51AD2F14898B95B" },
-            { "Hello there",    "7438E0294C534D6CA6CC2EFB04A60DB488C86B66C4CBD3C00D11D58C8020274AB0A2A720C88986968D894F26B16C461F" },
-            { "AB12£$_\0 ",     "DFCAF84C21F93CC88DE6CB54D838FEE5ACF592DCF392883708BAD1CFF7B847DEA9A175C5E87014D5829E66E17571F7E6" },
-        TEST_END
-    }
-
-    // SHA512
-    {
-        TEST_FUNCTION
-            SString strResult = GenerateHashHexString( EHashFunction::SHA512, a );
-            assert ( strResult == result );
-        TEST_VARS
-            const SString a;
-            const char* result;
-        TEST_DATA
-            { "",               "CF83E1357EEFB8BDF1542850D66D8007D620E4050B5715DC83F4A921D36CE9CE47D0D13C5D85F2B0FF8318D2877EEC2F63B931BD47417A81A538327AF927DA3E" },
-            { "Hello there",    "567683DDBA1F5A576B68EC26F41FFBCC7E718D646839AC6C2EF746FE952CEF4CBE6DEA635BC2F098B92B65CAACF482333BB9D1D9A3089BC4F01CB86F7A2FBC18" },
-            { "AB12£$_\0 ",     "EE57E02866026848F988E793E9B099931CBCA8773B13EA5055ABA462885E8B044CE5C72CB528712CE2A442707F2BC25A52CC91F8C09DD1C6A6A5C9A63D52F320" },
-        TEST_END
-    }
-
 }

@@ -14,7 +14,6 @@
 
 CProjectileSyncPacket::CProjectileSyncPacket ( void )
 {
-    m_usModel = 0;
 }
 
 
@@ -37,12 +36,6 @@ bool CProjectileSyncPacket::Read ( NetBitStreamInterface& BitStream )
     if ( !BitStream.Read ( &weaponType ) )
         return false;
     m_ucWeaponType = weaponType.data.ucWeaponType;
-
-    if ( BitStream.Version () >= 0x4F )
-    {
-        if ( !BitStream.Read ( m_usModel ) )
-            return false;
-    }
 
     switch ( m_ucWeaponType )
     {
@@ -127,11 +120,6 @@ bool CProjectileSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
     SWeaponTypeSync weaponType;
     weaponType.data.ucWeaponType = m_ucWeaponType;
     BitStream.Write ( &weaponType );
-
-    if ( BitStream.Version () >= 0x4F )
-    {
-        BitStream.Write ( m_usModel );
-    }
 
     switch ( m_ucWeaponType )
     {

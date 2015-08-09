@@ -186,12 +186,9 @@ void DirectX9Renderer::NotifyImageInvalid ( Image* const image )
 /*************************************************************************
 	perform final rendering for all queued renderable quads.
 *************************************************************************/
-bool DirectX9Renderer::doRender(void)
+void DirectX9Renderer::doRender(void)
 {
 	d_currTexture = NULL;
-
-    if ( !d_buffer )
-        return false;
 
 	initPerFrameStates();
 
@@ -223,14 +220,9 @@ bool DirectX9Renderer::doRender(void)
 
 		if (!locked)
 		{
-            buffmem = NULL;
 			if (FAILED(d_buffer->Lock(0, 0, (void**)&buffmem, D3DLOCK_DISCARD)))
 			{
-				return false;
-			}
-            if ( buffmem == NULL )
-			{
-				return false;
+				return;
 			}
 
 			locked = true;
@@ -365,7 +357,6 @@ bool DirectX9Renderer::doRender(void)
 	}
 
 	renderVBuffer();
-    return true;
 }
 
 
@@ -516,19 +507,16 @@ void DirectX9Renderer::sortQuads(void)
 *************************************************************************/
 void DirectX9Renderer::renderQuadDirect(const Rect& dest_rect, float z, const Texture* tex, const Rect& texture_rect, const ColourRect& colours, QuadSplitMode quad_split_mode)
 {
-    if ( !d_buffer )
-        return;
-
 	// ensure offset destination to ensure proper texel to pixel mapping from D3D.
 	Rect final_rect(dest_rect);
 	final_rect.offset(Point(-0.5f, -0.5f));
 
-	QuadVertex*	buffmem = NULL;
+	QuadVertex*	buffmem;
 
 	initPerFrameStates();
 	d_device->SetTexture(0, ((DirectX9Texture*)tex)->getD3DTexture());
 
-	if (SUCCEEDED(d_buffer->Lock(0, VERTEX_PER_QUAD * sizeof(QuadVertex), (void**)&buffmem, D3DLOCK_DISCARD)) && buffmem )
+	if (SUCCEEDED(d_buffer->Lock(0, VERTEX_PER_QUAD * sizeof(QuadVertex), (void**)&buffmem, D3DLOCK_DISCARD)))
 	{
 		// setup Vertex 1...
 		buffmem->x = final_rect.d_left;
@@ -637,15 +625,12 @@ void DirectX9Renderer::renderQuadDirect(const Rect& dest_rect, float z, const Te
 void DirectX9Renderer::preD3DReset(void)
 {
 	// release the buffer prior to the reset call (will be re-created later)
-    if ( d_buffer )
-    {
-        if (FAILED(d_buffer->Release()))
-        {
-            throw RendererException("DirectX9Renderer::preD3DReset - Failed to release the VertexBuffer used by the DirectX9Renderer object.");
-        }
+	if (FAILED(d_buffer->Release()))
+	{
+		throw RendererException("DirectX9Renderer::preD3DReset - Failed to release the VertexBuffer used by the DirectX9Renderer object.");
+	}
 
-        d_buffer = 0;
-    }
+	d_buffer = 0;
 
 	// perform pre-reset operations on all textures
 	std::list<DirectX9Texture*>::iterator ctex = d_texturelist.begin();

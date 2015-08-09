@@ -51,7 +51,7 @@ public:
 
 protected:
 
-    CFastHashMap < CEGUI::ListboxItem*, CGUIListItem_Impl* > m_Items;
+    google::dense_hash_map < CEGUI::ListboxItem*, CGUIListItem_Impl* > m_Items;
 
     bool                                Event_OnSelectionAccepted  ( const CEGUI::EventArgs& e );
     bool                                Event_OnDropListRemoved    ( const CEGUI::EventArgs& e );

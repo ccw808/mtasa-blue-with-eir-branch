@@ -83,9 +83,11 @@ void CNetworkStats::Draw ( void )
                 "Packet rate in/out: %u / %u\n"
                 "BPS limit by CC: %llu\n"
                 "BPS limit by OB: %llu\n"
+                "Encryption: %s\n"
                 "Current wep bullet sync: %s\n"
                 "Veh. Extrapolate amount: %d%%\n"
                 "Veh. Extrapolate max: %dms\n"
+                "Veh. only gamemode: %s\n"
                 "Alternate pulse order: %s\n"
                 "Client: %s\n"
                 "Server: %s\n",
@@ -104,9 +106,11 @@ void CNetworkStats::Draw ( void )
                 (unsigned int)floor(m_fPacketSendRate + 0.5f),                   
                 stats.isLimitedByCongestionControl ? 1ULL : 0ULL,
                 stats.isLimitedByOutgoingBandwidthLimit ? 1ULL : 0ULL,
+                stats.encryptionStatus ? stats.encryptionStatus == 1 ? "On" : "Unknown" : "Off",
                 bBulletSync ? "On" : "Off",
                 vehExtrapolateSettings.iScalePercent,
                 vehExtrapolateSettings.iMaxMs,
+                g_pClientGame->IsVehicleOnlyGameMode() ? "Yes" : "No",
                 g_pClientGame->IsUsingAlternatePulseOrder() ? "Yes" : "No",
                 *CStaticFunctionDefinitions::GetVersionSortable(),
                 *g_pClientGame->GetServerVersionSortable ()

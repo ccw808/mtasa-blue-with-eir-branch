@@ -15,7 +15,6 @@
 //* Reformated by James W. Anderson.  Added isPrintable method.
 //*********************************************************************
 
-#include "StdInc.h"
 #include <ctype.h>
 
 #include "base64.h"

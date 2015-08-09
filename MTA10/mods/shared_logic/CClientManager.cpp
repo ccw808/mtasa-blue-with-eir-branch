@@ -18,8 +18,14 @@ using SharedUtil::CalcMTASAPath;
 
 extern CClientGame* g_pClientGame;
 
+#define CGUI_ICON_NETWORK_TROUBLE       "mta\\cgui\\images\\16-message-warn.png"
+
 CClientManager::CClientManager ( void )
 {
+    // Load the connection trouble texture
+    m_pConnectionTroubleTexture = g_pCore->GetGUI ()->CreateTexture ();
+    m_pConnectionTroubleTexture->LoadFromFile ( CalcMTASAPath( CGUI_ICON_NETWORK_TROUBLE ) );
+
     m_pMarkerStreamer = new CClientStreamer ( CClientMarker::IsLimitReached, 600.0f, 300, 300 );
     m_pObjectStreamer = new CClientStreamer ( CClientObjectManager::IsObjectLimitReached, 500.0f, 300, 300 );
     m_pObjectLodStreamer = new CClientStreamer ( CClientObjectManager::IsObjectLimitReached, 1700.0f, 1500, 1500 );
@@ -53,15 +59,12 @@ CClientManager::CClientManager ( void )
     m_pExplosionManager = new CClientExplosionManager ( this );
     m_pWaterManager = new CClientWaterManager ( this );
     m_pWeaponManager = new CClientWeaponManager ( this );
-    m_pEffectManager = new CClientEffectManager ( this );
-    m_pPointLightsManager = new CClientPointLightsManager ( this );
     m_pPacketRecorder = new CClientPacketRecorder ( this );
 
     m_bBeingDeleted = false;
     m_bGameUnloadedFlag = false;
 
     g_pCore->GetMultiplayer ()->SetLODSystemEnabled ( false );
-    m_pCamera->MakeSystemEntity();
 }
 
 
@@ -172,50 +175,35 @@ CClientManager::~CClientManager ( void )
     delete m_pWeaponManager;
     m_pWeaponManager = NULL;
 
-    delete m_pPointLightsManager;
-    m_pPointLightsManager = NULL;
+    // Delete the connection trouble texture
+    delete m_pConnectionTroubleTexture;
+    m_pConnectionTroubleTexture = NULL;
 }
 
-//
-// This function gets called twice per game loop
-//
-void CClientManager::DoPulse ( bool bDoStandardPulses, bool bDoVehicleManagerPulse )
+
+void CClientManager::DoPulse ( void )
 {
-    if ( bDoStandardPulses )
-        m_pPacketRecorder->DoPulse ();
+    m_pPacketRecorder->DoPulse ();
 
     if ( IsGameLoaded () )
     {
-        if ( bDoStandardPulses )
-        {
-            m_pModelRequestManager->DoPulse ();
-            m_pCamera->DoPulse ();
-            /* now called from CClientGame::PostWorldProcessHandler so marker positions
-            are no longer a frame behind when attached to other entities.
-            m_pMarkerManager->DoPulse (); */ 
-            m_pRadarAreaManager->DoPulse ( false ); // DoPulse, but do not render (we render them from a hook to avoid render issues - the mask not blocking the edges)
-        }
-
-        if ( bDoVehicleManagerPulse )
-            m_pVehicleManager->DoPulse ();
-
-        if ( bDoStandardPulses )
-        {
-            m_pPathManager->DoPulse ();
-            m_pRadarMarkerManager->DoPulse ();
-            m_pPedManager->DoPulse ( true );
-            m_pObjectManager->DoPulse ();
-            m_pProjectileManager->DoPulse ();
-            m_pSoundManager->DoPulse ();
-            m_pPlayerManager->DoPulse ();
-            m_pColManager->DoPulse ();
-            m_pGUIManager->DoPulse ();
-            m_pWeaponManager->DoPulse ();
-        }
-        else
-        {
-            m_pPedManager->DoPulse ( false );
-        }
+        m_pModelRequestManager->DoPulse ();
+        m_pCamera->DoPulse ();
+        /* now called from CClientGame::PostWorldProcessHandler so marker positions
+           are no longer a frame behind when attached to other entities.
+        m_pMarkerManager->DoPulse (); */ 
+        m_pRadarAreaManager->DoPulse ( false ); // DoPulse, but do not render (we render them from a hook to avoid render issues - the mask not blocking the edges)
+        m_pVehicleManager->DoPulse ();
+        m_pPathManager->DoPulse ();
+        m_pRadarMarkerManager->DoPulse ();
+        m_pPedManager->DoPulse ();
+        m_pObjectManager->DoPulse ();
+        m_pProjectileManager->DoPulse ();
+        m_pSoundManager->DoPulse ();
+        m_pPlayerManager->DoPulse ();
+        m_pColManager->DoPulse ();
+        m_pGUIManager->DoPulse ();
+        m_pWeaponManager->DoPulse ();
     }
 }
 

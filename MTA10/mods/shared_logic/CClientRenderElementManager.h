@@ -17,7 +17,6 @@ class CClientTexture;
 class CClientShader;
 class CClientRenderTarget;
 class CClientScreenSource;
-class CClientWebBrowser;
 
 
 class CClientRenderElementManager
@@ -32,7 +31,6 @@ public:
     CClientShader*          CreateShader                ( const SString& strFullFilePath, const SString& strRootPath, SString& strOutStatus, float fPriority, float fMaxDistance, bool bLayered, bool bDebug, int iTypeMask );
     CClientRenderTarget*    CreateRenderTarget          ( uint uiSizeX, uint uiSizeY, bool bWithAlphaChannel );
     CClientScreenSource*    CreateScreenSource          ( uint uiSizeX, uint uiSizeY );
-    CClientWebBrowser*      CreateWebBrowser            ( uint uiSizeX, uint uiSizeY, bool bIsLocal, bool bTransparent );
     CClientTexture*         FindAutoTexture             ( const SString& strFullFilePath, const SString& strUniqueName );
     void                    Remove                      ( CClientRenderElement* pElement );
 
@@ -42,7 +40,6 @@ public:
     uint                    GetShaderCount              ( void )    { return m_uiStatsShaderCount; }
     uint                    GetRenderTargetCount        ( void )    { return m_uiStatsRenderTargetCount; }
     uint                    GetScreenSourceCount        ( void )    { return m_uiStatsScreenSourceCount; }
-    uint                    GetWebBrowserCount          ( void )    { return m_uiStatsWebBrowserCount; }
 protected:
     CClientManager*                                     m_pClientManager;
     CRenderItemManagerInterface*                        m_pRenderItemManager;
@@ -54,5 +51,4 @@ protected:
     uint                                                m_uiStatsShaderCount;
     uint                                                m_uiStatsRenderTargetCount;
     uint                                                m_uiStatsScreenSourceCount;
-    uint                                                m_uiStatsWebBrowserCount;
 };

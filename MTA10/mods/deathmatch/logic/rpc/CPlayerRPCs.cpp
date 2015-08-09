@@ -33,14 +33,10 @@ void CPlayerRPCs::SetPlayerMoney ( NetBitStreamInterface& bitStream )
 {
     // Read out the new money amount
     long lMoney;
-    bool bInstant = false;
     if ( bitStream.Read ( lMoney ) )
     {
-        if (bitStream.GetNumberOfUnreadBits() > 0)
-            bitStream.ReadBit(bInstant);
-
         // Set it
-        m_pClientGame->SetMoney ( lMoney, bInstant );
+        m_pClientGame->SetMoney ( lMoney );
     }
 }
 
@@ -154,30 +150,17 @@ void CPlayerRPCs::TakePlayerScreenShot ( NetBitStreamInterface& bitStream )
     uchar ucQuality;
     uint uiMaxBandwidth;
     ushort usMaxPacketSize;
-    CResource* pResource;
+    SString strResourceName;
     uint uiServerSentTime;
-
-    bitStream.Read ( usSizeX );
-    bitStream.Read ( usSizeY );
-    bitStream.ReadString ( strTag );
-    bitStream.Read ( ucQuality );
-    bitStream.Read ( uiMaxBandwidth );
-    bitStream.Read ( usMaxPacketSize );
-    if ( bitStream.Version() >= 0x53 )
+    if ( bitStream.Read ( usSizeX ) &&
+         bitStream.Read ( usSizeY ) &&
+         bitStream.ReadString ( strTag ) &&
+         bitStream.Read ( ucQuality ) &&
+         bitStream.Read ( uiMaxBandwidth ) &&
+         bitStream.Read ( usMaxPacketSize ) &&
+         bitStream.ReadString ( strResourceName ) &&
+         bitStream.Read ( uiServerSentTime ) )
     {
-        ushort usResourceNetId;
-        bitStream.Read ( usResourceNetId );
-        pResource = g_pClientGame->GetResourceManager ()->GetResourceFromNetID ( usResourceNetId );
+        m_pClientGame->TakePlayerScreenShot ( usSizeX, usSizeY, strTag, ucQuality, uiMaxBandwidth, usMaxPacketSize, strResourceName, uiServerSentTime );        
     }
-    else
-    {
-        SString strResourceName;
-        bitStream.ReadString ( strResourceName );
-        pResource = g_pClientGame->GetResourceManager ()->GetResource ( strResourceName );
-    }
-
-    if ( !bitStream.Read ( uiServerSentTime ) )
-        return;
-
-    m_pClientGame->TakePlayerScreenShot ( usSizeX, usSizeY, strTag, ucQuality, uiMaxBandwidth, usMaxPacketSize, pResource, uiServerSentTime );        
 }

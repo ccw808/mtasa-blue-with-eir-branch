@@ -57,7 +57,7 @@ private:
     void                                    SetExpDistances             ( std::list < CClientStreamElement * > * pList );
     void                                    AddToSortedList             ( std::list < CClientStreamElement * > * pList, CClientStreamElement * pElement );
     
-    void                                    Restream                    ( bool bMovedFar );
+    void                                    Restream                    ( void );
     bool                                    ReachedLimit                ( void )    { return m_pLimitReachedFunc (); }
 
     void                                    OnEnterSector               ( CClientStreamSector * pSector );

@@ -706,7 +706,7 @@ void MultiColumnList::insertColumn(const String& text, uint col_id, float width,
 	// Insert a blank entry at the appropriate position in each row.
 	for (uint i = 0; i < getRowCount(); ++i)
 	{
-		d_grid[i].d_items.insert(d_grid[i].d_items.begin() + position, reinterpret_cast < CEGUI::ListboxItem * > ( NULL ) );
+		d_grid[i].d_items.insert(d_grid[i].d_items.begin() + position, reinterpret_cast<ListboxItem*>(NULL));
 	}
 
 	// update stored nominated selection column if that has changed.
@@ -758,10 +758,6 @@ void MultiColumnList::removeColumn(uint col_idx)
 
 		// remove header segment
 		d_header->removeColumn(col_idx);
-
-        // remove all rows entirely if no column is remaining (mta fix)
-        if (getColumnCount() == 0)
-            d_grid.clear();
 
 		// signal a change to the list contents
 		WindowEventArgs args(this);
@@ -1320,25 +1316,6 @@ void MultiColumnList::setColumnHeaderWidth(uint col_idx, float width, bool relat
 	d_header->setColumnPixelWidth(col_idx, width);
 }
 
-
-/*************************************************************************
-	Set the title of the specified column header (and therefore the
-	column itself).	
-*************************************************************************/
-void MultiColumnList::setColumnHeaderTitle(uint col_idx, const char* szTitle)
-{
-    d_header->setColumnTitle(col_idx, szTitle);
-}
-
-
-/*************************************************************************
-	Get the title of the specified column header (and therefore the
-	column itself).	
-*************************************************************************/
-const char* MultiColumnList::getColumnHeaderTitle(uint col_idx)
-{
-	return d_header->getColumnTitle(col_idx);
-}
 
 /*************************************************************************
 	Add multi column list box specific events	

@@ -14,11 +14,13 @@
 
 #include "StdInc.h"
 
-
 CAccessControlListGroup::CAccessControlListGroup ( const char* szGroupName )
+: m_ObjectsById ( 512 )
 {
     m_uiScriptID = CIdArray::PopUniqueId ( this, EIdClass::ACL_GROUP );
     m_strGroupName = szGroupName;
+    m_ObjectsById.set_empty_key ( (unsigned int)0xFB170551 );
+    m_ObjectsById.set_deleted_key ( (unsigned int)0xF15AF001 );
 }
 
 
@@ -39,8 +41,8 @@ CAccessControlListGroup::~CAccessControlListGroup ( void )
 
 CAccessControlListGroupObject* CAccessControlListGroup::AddObject ( const char* szObjectName, CAccessControlListGroupObject::EObjectType eObjectType )
 {
-    const SString strKey = CAccessControlListGroupObject::GenerateKey ( szObjectName, eObjectType );
-    ObjectMap::const_iterator iter = m_ObjectsById.find ( strKey );
+    unsigned int uiHash = CAccessControlListGroupObject::GenerateHashId ( szObjectName, eObjectType );
+    ObjectMap::const_iterator iter = m_ObjectsById.find ( uiHash );
 
     if ( iter != m_ObjectsById.end() )
     {
@@ -49,7 +51,7 @@ CAccessControlListGroupObject* CAccessControlListGroup::AddObject ( const char* 
 
     CAccessControlListGroupObject* pObject = new CAccessControlListGroupObject ( szObjectName, eObjectType );
     m_Objects.push_back ( pObject );
-    m_ObjectsById.insert ( ObjectMap::value_type ( pObject->GetObjectKey(), pObject ) );
+    m_ObjectsById.insert ( ObjectMap::value_type ( pObject->GetObjectHashId(), pObject ) );
 
     OnChange ();
     return pObject;
@@ -58,10 +60,10 @@ CAccessControlListGroupObject* CAccessControlListGroup::AddObject ( const char* 
 
 bool CAccessControlListGroup::FindObjectMatch ( const char* szObjectName, CAccessControlListGroupObject::EObjectType eObjectType )
 {
-    const SString strKey = CAccessControlListGroupObject::GenerateKey ( szObjectName, eObjectType );
+    unsigned int uiHash = CAccessControlListGroupObject::GenerateHashId ( szObjectName, eObjectType );
 
     // Look through the list for a matching name. If we find one, return true.
-    ObjectMap::const_iterator iterFind = m_ObjectsById.find ( strKey );
+    ObjectMap::const_iterator iterFind = m_ObjectsById.find ( uiHash );
     if ( iterFind != m_ObjectsById.end() )
     {
         return true;
@@ -102,10 +104,10 @@ bool CAccessControlListGroup::FindObjectMatch ( const char* szObjectName, CAcces
 
 bool CAccessControlListGroup::RemoveObject ( const char* szObjectName, CAccessControlListGroupObject::EObjectType eObjectType )
 {
-    const SString strKey = CAccessControlListGroupObject::GenerateKey ( szObjectName, eObjectType );
+    unsigned int uiHash = CAccessControlListGroupObject::GenerateHashId ( szObjectName, eObjectType );
 
     // Try to find a match and delete it
-    ObjectMap::iterator iter = m_ObjectsById.find ( strKey );
+    ObjectMap::iterator iter = m_ObjectsById.find ( uiHash );
     if ( iter != m_ObjectsById.end() )
     {
         // Delete, remove from list and return true
@@ -220,7 +222,7 @@ void CAccessControlListGroup::WriteToXMLNode ( CXMLNode* pNode )
 
         // Append a dot append the name of the node
         strcat ( szObjectType, "." );
-        strncat ( szObjectType, pObject->GetObjectName (), NUMELMS( szObjectType ) - 1 );
+        strncat ( szObjectType, pObject->GetObjectName (), 255 );
 
         // Create the subnode for this object and write the name attribute we generated
         CXMLNode* pObjectNode = pSubNode->CreateSubNode ( "object" );

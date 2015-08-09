@@ -101,11 +101,16 @@ class CChatLine
 public:
                                 CChatLine               ( void );
 
+    static bool                 IsColorCode             ( const char* szColorCode );
+    static bool                 IsColorCodeW            ( const wchar_t* wszColorCode );
+
     virtual const char*         Format                  ( const char* szText, float fWidth, CColor& color, bool bColorCoded );
     virtual void                Draw                    ( const CVector2D& vecPosition, unsigned char ucAlpha, bool bShadow, const CRect2D& RenderBounds );    
     virtual float               GetWidth                ( void );
     bool                        IsActive                ( void )    { return m_bActive; }
     void                        SetActive               ( bool bActive )    { m_bActive = bActive; }
+    
+    static void                 RemoveColorCode         ( const char* szText, std::string& strOut );
 
     inline unsigned long        GetCreationTime         ( void )    { return m_ulCreationTime; }
     inline void                 UpdateCreationTime      ( void );
@@ -196,7 +201,6 @@ public:
     void                        Clear                   ( void );
     void                        ClearInput              ( void );
     bool                        CharacterKeyHandler     ( CGUIKeyEventArgs KeyboardArgs );
-    void                        SetDxFont               ( LPD3DXFONT pDXFont );
 
     inline bool                 IsVisible               ( void )            { return m_bVisible; }
     void                        SetVisible              ( bool bVisible );
@@ -283,7 +287,6 @@ protected:
     bool                        m_bUseCEGUI;
     CVector2D                   m_vecScale;
     float                       m_fNativeWidth;
-    float                       m_fRcpUsingDxFontScale;
 
     bool                        m_bCanChangeWidth;
     int                         m_iCVarsRevision;

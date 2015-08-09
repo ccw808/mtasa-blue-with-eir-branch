@@ -85,7 +85,6 @@ namespace SharedUtil
     void            AddReportLog                    ( uint uiId, const SString& strText, uint uiAmountLimit = UINT_MAX );
     void            SetReportLogContents            ( const SString& strText );
     SString         GetReportLogContents            ( void );
-    SString         GetReportLogProcessTag          ( void );
     void            WriteDebugEvent                 ( const SString& strText );
     void            WriteErrorEvent                 ( const SString& strText );
     void            BeginEventLog                   ( void );
@@ -151,17 +150,13 @@ namespace SharedUtil
         float fUserPercent;
         float fKernelPercent;
         float fTotalCPUPercent;
-        float fUserPercentAvg;
-        float fKernelPercentAvg;
-        float fTotalCPUPercentAvg;
     };
     struct SThreadCPUTimesStore : SThreadCPUTimes
     {
-        SThreadCPUTimesStore( void ) { ZERO_POD_STRUCT( this ); fAvgTimeSeconds = 5; }
+        SThreadCPUTimesStore( void ) { ZERO_POD_STRUCT( this ); }
         uint64 ullPrevCPUMeasureTimeMs;
         uint64 ullPrevUserTimeUs;
         uint64 ullPrevKernelTimeUs;
-        float fAvgTimeSeconds;
     };
     DWORD           _GetCurrentProcessorNumber      ( void );
     void            GetThreadCPUTimes               ( uint64& outUserTime, uint64& outKernelTime );
@@ -300,6 +295,29 @@ namespace SharedUtil
     // std:: container helpers
     //
 
+    template < class TL, class T >
+    void ListRemove ( TL& itemList, const T& item )
+    {
+        typename TL ::iterator it = itemList.begin ();
+        for ( ; it != itemList.end () ; ++it )
+            if ( item == *it )
+            {
+                itemList.erase ( it );
+                break;
+            }
+    }
+
+    template < class TL, class T >
+    bool ListContains ( const TL& itemList, const T& item );
+
+    // Add item if it does not aleady exist in itemList
+    template < class TL, class T >
+    void ListAddUnique ( TL& itemList, const T& item )
+    {
+        if ( !ListContains ( itemList, item ) )
+            itemList.push_back ( item );
+    }
+
     // Returns true if the item is in the itemList
     template < class TL, class T >
     bool ListContains ( const TL& itemList, const T& item )
@@ -311,33 +329,12 @@ namespace SharedUtil
         return false;
     }
 
-    // Add item if it does not aleady exist in itemList
-    template < class TL, class T >
-    void ListAddUnique ( TL& itemList, const T& item )
-    {
-        if ( !ListContains ( itemList, item ) )
-            itemList.push_back ( item );
-    }
-
 
     //
     // std::list helpers
     //
 
     // Remove first occurrence of item from itemList
-    template < class T >
-    void ListRemoveFirst ( std::list < T >& itemList, const T& item )
-    {
-        typename std::list < T >::iterator it = itemList.begin ();
-        for ( ; it != itemList.end () ; ++it )
-            if ( item == *it )
-            {
-                itemList.erase ( it );
-                break;
-            }
-    }
-
-    // Remove all occurrences of item from itemList
     template < class T >
     void ListRemove ( std::list < T >& itemList, const T& item )
     {
@@ -348,33 +345,6 @@ namespace SharedUtil
     //
     // std::vector helpers
     //
-
-    // Remove first occurrence of item from itemList
-    template < class T >
-    void ListRemoveFirst ( std::vector < T >& itemList, const T& item )
-    {
-        typename std::vector < T >::iterator it = itemList.begin ();
-        for ( ; it != itemList.end () ; ++it )
-            if ( item == *it )
-            {
-                itemList.erase ( it );
-                break;
-            }
-    }
-
-    // Remove all occurrences of item from itemList
-    template < class T >
-    void ListRemove ( std::vector < T >& itemList, const T& item )
-    {
-        typename std::vector < T >::iterator it = itemList.begin ();
-        while ( it != itemList.end () )
-        {
-            if ( item == *it )
-                it = itemList.erase ( it );
-            else
-                ++it;
-        }
-    }
 
     // Remove item at index from itemList
     template < class T >
@@ -400,24 +370,6 @@ namespace SharedUtil
         itemList.reserve ( prevSize );
     }
 
-
-    //
-    // std::deque helpers
-    //
-
-    // Remove all occurrences of item from itemList
-    template < class T >
-    void ListRemove ( std::deque < T >& itemList, const T& item )
-    {
-        typename std::deque < T >::iterator it = itemList.begin ();
-        while ( it != itemList.end () )
-        {
-            if ( item == *it )
-                it = itemList.erase ( it );
-            else
-                ++it;
-        }
-    }
 
 
     //
@@ -823,7 +775,6 @@ namespace SharedUtil
             m_List.pop_front ();
         }
 
-        // Remove all occurrences of item
         void remove ( const T& item )
         {
             if ( Contains ( item ) )
@@ -909,14 +860,14 @@ namespace SharedUtil
     }
 
 
-    // Remove all occurrences of item from itemList
+    // Remove first occurrence of item from itemList
     template < class U, class T >
     void ListRemove ( CMappedList < U >& itemList, const T& item )
     {
         itemList.remove ( item );
     }
 
-    // Remove all occurrences of item from itemList
+    // Remove first occurrence of item from itemList
     template < class U, class T >
     void ListRemove ( CMappedArray < U >& itemList, const T& item )
     {
@@ -1194,7 +1145,7 @@ namespace SharedUtil
     // tolower / toupper
     // Implemented here so it can be inlined.
     //
-    static const char ms_ucTolowerTab [ 256 ] = {
+    static const unsigned char ms_ucTolowerTab [ 256 ] = {
         '\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07',
         '\x08', '\x09', '\x0a', '\x0b', '\x0c', '\x0d', '\x0e', '\x0f',
         '\x10', '\x11', '\x12', '\x13', '\x14', '\x15', '\x16', '\x17',
@@ -1228,7 +1179,7 @@ namespace SharedUtil
         '\xf0', '\xf1', '\xf2', '\xf3', '\xf4', '\xf5', '\xf6', '\xf7',
         '\xf8', '\xf9', '\xfa', '\xfb', '\xfc', '\xfd', '\xfe', '\xff'
     };
-    static const char ms_ucToupperTab [ 256 ] = {
+    static const unsigned char ms_ucToupperTab [ 256 ] = {
         '\x00', '\x01', '\x02', '\x03', '\x04', '\x05', '\x06', '\x07', 
         '\x08', '\x09', '\x0a', '\x0b', '\x0c', '\x0d', '\x0e', '\x0f', 
         '\x10', '\x11', '\x12', '\x13', '\x14', '\x15', '\x16', '\x17', 
@@ -1747,8 +1698,3 @@ namespace SharedUtil
 
 using namespace SharedUtil;
 
-//
-// For checking MTA library module versions
-//
-typedef void (FUNC_GetMtaVersion)( char* pBuffer, uint uiMaxSize );
-MTAEXPORT void GetLibMtaVersion( char* pBuffer, uint uiMaxSize );

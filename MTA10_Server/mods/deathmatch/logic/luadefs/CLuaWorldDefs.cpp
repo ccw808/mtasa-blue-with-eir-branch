@@ -137,8 +137,10 @@ int CLuaWorldDefs::getZoneName ( lua_State* luaVM )
     bool bCitiesOnly;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecPosition );
-    argStream.ReadBool ( bCitiesOnly, false );
+    argStream.ReadNumber(vecPosition.fX);
+    argStream.ReadNumber(vecPosition.fY);
+    argStream.ReadNumber(vecPosition.fZ);
+    argStream.ReadBool(bCitiesOnly, false);
 
     if ( !argStream.HasErrors ( ) )
     {
@@ -1083,16 +1085,17 @@ int CLuaWorldDefs::RemoveWorldModel ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
 
     unsigned short usModel = 0;
-    float fRadius = 0.0f;
+    float fRadius = 0.0f, fX = 0.0f, fY = 0.0f, fZ = 0.0f;
     char cInterior = -1;
-    CVector vecPosition;
     argStream.ReadNumber ( usModel );
     argStream.ReadNumber ( fRadius );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( fX );
+    argStream.ReadNumber ( fY );
+    argStream.ReadNumber ( fZ );
     argStream.ReadNumber ( cInterior, -1 );
     if ( !argStream.HasErrors ( ) )
     {
-        if ( CStaticFunctionDefinitions::RemoveWorldModel ( usModel, fRadius, vecPosition, cInterior ) )
+        if ( CStaticFunctionDefinitions::RemoveWorldModel ( usModel, fRadius, fX, fY, fZ, cInterior ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
@@ -1110,16 +1113,17 @@ int CLuaWorldDefs::RestoreWorldModel ( lua_State* luaVM )
     CScriptArgReader argStream ( luaVM );
 
     unsigned short usModel = 0;
-    float fRadius = 0.0f;
+    float fRadius = 0.0f, fX = 0.0f, fY = 0.0f, fZ = 0.0f;
     char cInterior = -1;
-    CVector vecPosition;
     argStream.ReadNumber ( usModel );
     argStream.ReadNumber ( fRadius );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( fX );
+    argStream.ReadNumber ( fY );
+    argStream.ReadNumber ( fZ );
     argStream.ReadNumber ( cInterior, -1 );
     if ( !argStream.HasErrors ( ) )
     {
-        if ( CStaticFunctionDefinitions::RestoreWorldModel ( usModel, fRadius, vecPosition, cInterior ) )
+        if ( CStaticFunctionDefinitions::RestoreWorldModel ( usModel, fRadius, fX, fY, fZ, cInterior ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;

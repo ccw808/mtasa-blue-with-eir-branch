@@ -15,11 +15,9 @@
 
 using namespace std;
 
-CClientColCircle::CClientColCircle ( CClientManager* pManager, ElementID ID, const CVector2D& vecPosition, float fRadius ) : ClassInit ( this ), CClientColShape ( pManager, ID )
+CClientColCircle::CClientColCircle ( CClientManager* pManager, ElementID ID, const CVector& vecPosition, float fRadius ) : ClassInit ( this ), CClientColShape ( pManager, ID )
 {
-    m_vecPosition.fX = vecPosition.fX;
-    m_vecPosition.fY = vecPosition.fY;
-    m_vecPosition.fZ = SPATIAL_2D_Z;
+    m_vecPosition = vecPosition;
     m_fRadius = fRadius;
     UpdateSpatialData ();
 }

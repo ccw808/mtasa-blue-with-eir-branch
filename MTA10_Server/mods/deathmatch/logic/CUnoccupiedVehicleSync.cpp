@@ -19,16 +19,18 @@ CUnoccupiedVehicleSync::CUnoccupiedVehicleSync ( CPlayerManager* pPlayerManager,
 {
     m_pPlayerManager = pPlayerManager;
     m_pVehicleManager = pVehicleManager;
+    m_ulLastSweepTime = 0;
 }
 
 
 void CUnoccupiedVehicleSync::DoPulse ( void )
 {
     // Time to check for players that should no longer be syncing a vehicle or vehicles that should be synced?
-    if ( m_UpdateTimer.Get() > 500 )
+    unsigned long ulCurrentTime = GetTime ();
+    if ( ulCurrentTime >= m_ulLastSweepTime + 500 )
     {
-        m_UpdateTimer.Reset();
-        Update ();
+        m_ulLastSweepTime = ulCurrentTime;
+        Update ( ulCurrentTime );
     }
 }
 
@@ -66,8 +68,10 @@ void CUnoccupiedVehicleSync::OverrideSyncer ( CVehicle* pVehicle, CPlayer* pPlay
 }
 
 
-void CUnoccupiedVehicleSync::Update ( void )
+void CUnoccupiedVehicleSync::Update ( unsigned long ulCurrentTime )
 {
+    // TODO: needs speeding up (no good looping through thousands of vehicles each frame)
+
     // Update all the vehicle's sync states
     list < CVehicle* > ::const_iterator iter = m_pVehicleManager->IterBegin ();
     for ( ; iter != m_pVehicleManager->IterEnd (); )
@@ -98,15 +102,11 @@ void CUnoccupiedVehicleSync::UpdateVehicle ( CVehicle* pVehicle )
     // If someones driving it, or its being towed by someone driving (and not just entering/exiting)
     if ( pController && IS_PLAYER ( pController ) && pController->GetVehicleAction () == CPlayer::VEHICLEACTION_NONE )
     {
-        // if we need to change syncer to the controller
-        if ( pSyncer != pController )
+        // Got a syncer too?
+        if ( pSyncer )
         {
-            // Tell old syncer to stop syncing
-            if ( pSyncer )
-                StopSync ( pVehicle );
-
-            // Set the controlling player as syncer (for 'ElementSyncer' scripting functions/events)
-            StartSync ( static_cast < CPlayer* > ( pController ), pVehicle );
+            // Tell the syncer to stop syncing
+            StopSync ( pVehicle );
         }
     }
     else
@@ -132,26 +132,6 @@ void CUnoccupiedVehicleSync::UpdateVehicle ( CVehicle* pVehicle )
         {
             // Try to find a syncer for it
             FindSyncer ( pVehicle );
-        }
-    }
-
-    pVehicle->HandleDimensionResync();
-}
-
-
-// Resync all unoccupied vehicles with same dimension as player
-// Called when a player changes dimension
-void CUnoccupiedVehicleSync::ResyncForPlayer ( CPlayer* pPlayer )
-{
-    list < CVehicle* > ::const_iterator iter = m_pVehicleManager->IterBegin ();
-    for ( ; iter != m_pVehicleManager->IterEnd (); ++iter )
-    {
-        CVehicle* pVehicle = *iter;
-        if ( pVehicle->GetDimension() == pPlayer->GetDimension()
-          && !pVehicle->GetFirstOccupant()
-          && pVehicle->IsUnoccupiedSyncable() )
-        {
-            pPlayer->Send ( CVehicleResyncPacket( pVehicle ) );
         }
     }
 }
@@ -449,22 +429,15 @@ void CUnoccupiedVehicleSync::Packet_UnoccupiedVehicleSync ( CUnoccupiedVehicleSy
 
                         // Send this sync if something important changed or one of the flags has changed since last sync.
                         data.bSend = vehicle.HasChanged ( ) || ( bEngineOn != vehicle.data.bEngineOn || bDerailed != vehicle.data.bDerailed || bInWater != vehicle.data.bIsInWater );
-
-                        if ( data.bSend )
-                        {
-                            pVehicle->OnRelayUnoccupiedSync();
-                        }
                     }
                 }
             }
         }
 
-        // Tell everyone in the same dimension
-       m_pPlayerManager->BroadcastDimensionOnlyJoined ( Packet, pPlayer->GetDimension(), pPlayer );
+        // Tell everyone
+        m_pPlayerManager->BroadcastOnlyJoined ( Packet, pPlayer );
     }
 }
-
-
 void CUnoccupiedVehicleSync::Packet_UnoccupiedVehiclePushSync ( CUnoccupiedVehiclePushPacket& Packet )
 {
     // Grab the player

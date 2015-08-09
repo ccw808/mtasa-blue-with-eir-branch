@@ -5,13 +5,12 @@
     <DirectXIncludePath>$(DXSDK_DIR)\Include</DirectXIncludePath>
     <DirectXLibPath>$(DXSDK_DIR)\Lib\x86</DirectXLibPath>
     <SafeRootNamespace>$(RootNamespace)</SafeRootNamespace>
-    <MyTargetDir>C:\Program Files\MTA San Andreas 1.5</MyTargetDir>
+    <MyTargetDir>C:\Program Files\MTA San Andreas 1.4</MyTargetDir>
   </PropertyGroup>
   <PropertyGroup>
-    <IncludePath>$(IncludePath);$(DirectXIncludePath)</IncludePath>
-    <LibraryPath>$(LibraryPath);$(DirectXLibPath)</LibraryPath>
-    <IntDir>$(SolutionDir)..\obj\$(PlatformTarget)\$(Configuration)\$(SafeRootNamespace)\</IntDir>
-    <OutDir>$(SolutionDir)..\obj\$(PlatformTarget)\$(Configuration)\$(SafeRootNamespace)\</OutDir>
+    <IncludePath>$(DirectXIncludePath);$(IncludePath)</IncludePath>
+    <LibraryPath>$(DirectXLibPath);$(LibraryPath)</LibraryPath>
+    <IntDir>$(SolutionDir)\..\obj\$(PlatformTarget)\$(Configuration)\$(SafeRootNamespace)\</IntDir>
   </PropertyGroup>
   <ItemDefinitionGroup>
     <Bscmake>

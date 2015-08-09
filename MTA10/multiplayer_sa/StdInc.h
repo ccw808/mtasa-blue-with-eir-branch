@@ -3,6 +3,7 @@
 // Pragmas
 #pragma warning (disable:4250)
 
+#define NOMINMAX
 #include <windows.h>
 #define MTA_CLIENT
 #define SHARED_UTIL_WITH_HASH_MAP
@@ -21,9 +22,12 @@
 // SDK includes
 #include <core/CCoreInterface.h>
 #include <net/CNet.h>
+#include <game/Common.h>
+#include "../game_sa/RenderWare.h"
 #include <game/CGame.h>
 #include <CMatrix_Pad.h>
 #include <../version.h>
+#include "../game_sa/Common.h"
 
 // Multiplayer includes
 #include "multiplayersa_init.h"

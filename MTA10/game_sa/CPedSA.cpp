@@ -18,11 +18,19 @@
 extern CGameSA* pGame;
 int g_bOnlyUpdateRotations = false;
 
-CPedSA::CPedSA (  ) :
-    m_pPedIntelligence ( NULL ),
-    m_pPedInterface ( NULL ),
-    m_pPedSound ( NULL ),
-    m_iCustomMoveAnim( 0 )
+bool __thiscall CPedSAInterface::IsPlayer( void )
+{
+    CPedSA *ped = Pools::GetPed( this );
+
+    if ( ped )
+    {
+        return ( dynamic_cast <CPlayerPedSA*> ( ped ) != NULL );
+    }
+
+    return false;
+}
+
+CPedSA::CPedSA (  ): m_pPedIntelligence ( NULL ), m_pPedInterface ( NULL ), m_pPedSound ( NULL ), m_iCustomMoveAnim( 0 ), m_iAlpha( 255 )
 {
     DEBUG_TRACE("CPedSA::CPedSA(  )");
 
@@ -33,16 +41,27 @@ CPedSA::CPedSA( CPedSAInterface * pPedInterface ) :
     m_pPedIntelligence ( NULL ),
     m_pPedInterface ( pPedInterface ),
     m_pPedSound ( NULL ),
-    m_iCustomMoveAnim( 0 )
+    m_iCustomMoveAnim( 0 ),
+    m_iAlpha( 255 )
 {
     DEBUG_TRACE("CPedSA::CPedSA( CPedSAInterface * pedInterface )");
+
+    SetInterface( pPedInterface );
 
     MemSetFast ( this->m_pWeapons, 0, sizeof ( CWeaponSA* ) * WEAPONSLOT_MAX );
 }
 
 VOID CPedSA::SetInterface( CEntitySAInterface * intInterface )
 {
+    if ( m_pInterface )
+        mtaPeds[m_poolIndex] = NULL;
+
+    if ( !intInterface )
+        return;
+
     m_pInterface = intInterface;
+    m_poolIndex = (*ppPedPool)->GetIndex( (CPedSAInterface*)intInterface );
+    mtaPeds[m_poolIndex] = this;
 }
 
 CPedSA::~CPedSA ( void )
@@ -67,6 +86,9 @@ CPedSA::~CPedSA ( void )
         }
         pInfo++;
     }
+
+    if ( m_pInterface )
+        mtaPeds[m_poolIndex] = NULL;
 }
 
 // used to init weapons at the moment, called by CPlayerPedSA when its been constructed
@@ -262,13 +284,17 @@ CVehicle * CPedSA::GetVehicle()
 
 void CPedSA::Respawn(CVector * position, bool bCameraCut)
 {
-    CPed * pLocalPlayer = pGame->GetPools()->GetPedFromRef ( (DWORD)1 );
+    CPed * pLocalPlayer = pGame->GetPools()->GetPedFromRef ( (DWORD)0 );
 
     if ( !bCameraCut )
     {
          // DISABLE call to CCamera__RestoreWithJumpCut when respawning
         MemSet ( (void*)0x4422EA, 0x90, 20 );
     }
+
+    CModelLoadInfoSA& loadInfo = Streaming::GetModelLoadInfo( GetInterface()->GetModelIndex() );
+
+    CBaseModelInfoSAInterface *modelInfo = GetInterface()->GetModelInfo();
 
     DEBUG_TRACE("void CPedSA::Respawn(CVector * position)");
     FLOAT fX = position->fX;
@@ -373,6 +399,18 @@ DWORD * CPedSA::GetMemoryValue ( DWORD dwOffset )
         return (DWORD *)((DWORD)(this->GetInterface()) + dwOffset);
     else
         return NULL;
+}
+
+void CPedSA::SetAlpha( int iAlpha )
+{
+    pGame->GetVisibilityPlugins()->SetClumpAlpha( (RpClump*)GetInterface()->GetRwObject(), iAlpha );
+
+    m_iAlpha = iAlpha;
+}
+
+int CPedSA::GetAlpha( void ) const
+{
+    return m_iAlpha;
 }
 
 void CPedSA::RemoveWeaponModel ( int iModel )
@@ -540,7 +578,7 @@ void CPedSA::SetCurrentWeaponSlot ( eWeaponSlot weaponSlot )
             thisPed->bCurrentWeaponSlot = weaponSlot;
 
             // is the player the local player?
-            CPed * pPed = pGame->GetPools()->GetPedFromRef ( (DWORD)1 );
+            CPed * pPed = pGame->GetPools()->GetPedFromRef ( (DWORD)0 );
             //if ( pPed == this && thisPed->pPlayerInfo )
             //{
             

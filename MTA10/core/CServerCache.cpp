@@ -333,8 +333,6 @@ void CServerCache::GetServerCachedInfo ( CServerListItem* pItem )
             // Allow cache to fill in certain missing data if query not done yet
             if ( pItem->strGameMode.empty () )      pItem->strGameMode  = pInfo->strGameMode;
             if ( pItem->strMap.empty () )           pItem->strMap       = pInfo->strMap;
-            if ( pItem->strVersion.empty () )       pItem->strVersion   = pInfo->strVersion;
-            if ( pItem->nPing == 9999 )             pItem->nPing        = pInfo->nPing;
         }
     }
 }
@@ -363,7 +361,7 @@ void CServerCache::SetServerCachedInfo ( const CServerListItem* pItem )
     // Check if changed
     if ( pInfo->nPlayers                == pItem->nPlayers
          && pInfo->nMaxPlayers          == pItem->nMaxPlayers
-         && pInfo->nPing                == pItem->nPing
+         //&& pInfo->nPing                == pItem->nPing
          && ( pInfo->bPassworded != 0 ) == pItem->bPassworded
          && ( pInfo->bKeepFlag != 0 )   == pItem->bKeepFlag
          && pInfo->strName              == pItem->strName

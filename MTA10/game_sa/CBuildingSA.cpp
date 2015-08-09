@@ -12,6 +12,31 @@
 
 #include "StdInc.h"
 
+CBuildingSAInterface::CBuildingSAInterface( void )
+{
+    nType = ENTITY_TYPE_BUILDING;
+    bUsesCollision = true;
+
+    // overwrite vtbl
+    *(DWORD**)this = (DWORD*)0x008585C8;
+}
+
+void* CBuildingSAInterface::operator new ( size_t )
+{
+    return Pools::GetBuildingPool()->Allocate();
+}
+
+void CBuildingSAInterface::operator delete ( void *ptr )
+{
+    Pools::GetBuildingPool()->Free( (CBuildingSAInterface*)ptr );
+}
+
+CNoCOLBuildingSAInterface::CNoCOLBuildingSAInterface( void )
+{
+    // overwrite vtbl
+    *(DWORD**)this = (DWORD*)0x008639B0;
+}
+
 CBuildingSA::CBuildingSA(CBuildingSAInterface * objectInterface)
 {
     DEBUG_TRACE("CBuildingSA::CBuildingSA(CBuildingSAInterface * objectInterface)");
@@ -168,14 +193,7 @@ CBuildingSA::~CBuildingSA( )
         CWorldSA * world = (CWorldSA *)pGame->GetWorld();
         world->Remove(this->GetInterface(), CBuilding_Destructor);
     
-        DWORD dwThis = (DWORD)this->GetInterface();
-        DWORD dwFunc = this->GetInterface()->vtbl->SCALAR_DELETING_DESTRUCTOR; // we use the vtbl so we can be type independent
-        _asm    
-        {
-            mov     ecx, dwThis
-            push    1           //delete too
-            call    dwFunc
-        }
+        delete m_pInterface;
 
         this->BeingDeleted = true;
         //((CPoolsSA *)pGame->GetPools())->RemoveBuilding((CBuilding *)(CBuildingSA *)this);

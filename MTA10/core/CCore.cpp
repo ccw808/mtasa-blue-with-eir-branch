@@ -88,6 +88,12 @@ template<> CCore * CSingleton< CCore >::m_pSingleton = NULL;
 
 CCore::CCore ( void )
 {
+    // Enable this to debug the core initialization.
+#if defined(_DEBUG) && 0
+    while ( !IsDebuggerPresent() )
+        Sleep( 1 );
+#endif
+
     // Initialize the global pointer
     g_pCore = this;
 
@@ -111,6 +117,9 @@ CCore::CCore ( void )
     };
     ParseCommandLine ( m_CommandLineOptions, m_szCommandLineArgs, pszNoValOptions );
 
+    // Filesystem.
+    m_fileSystem                = new CFileSystem;
+
     // Load our settings and localization as early as possible
     CreateXML ( );
     g_pLocalization = new CLocalization;
@@ -127,12 +136,9 @@ CCore::CCore ( void )
     m_pGraphics                 = new CGraphics ( m_pLocalGUI );
     g_pGraphics                 = m_pGraphics;
     m_pGUI                      = NULL;
-    m_pWebCore                  = NULL;
 
     // Create the mod manager
     m_pModManager               = new CModManager;
-
-    CCrashDumpWriter::SetHandlers();
 
     m_pfnMessageProcessor       = NULL;
     m_pMessageBox = NULL;
@@ -154,6 +160,9 @@ CCore::CCore ( void )
     m_pKeyBinds = new CKeyBinds ( this );
 
     m_pMouseControl = new CMouseControl();
+
+    // Pointer that holds the FileSystem link to the currently loaded modification.
+    m_modRoot = NULL;
 
     // Create our hook objects.
     //m_pFileSystemHook           = new CFileSystemHook ( );
@@ -187,6 +196,10 @@ CCore::CCore ( void )
     m_fMaxStreamingMemory = 0;
     m_bGettingIdleCallsFromMultiplayer = false;
     m_bWindowsTimerEnabled = false;
+
+    // We require pre initialization to hook API before GTA:SA uses it
+    CCore::GetSingleton ( ).CreateGame ( );
+    CCore::GetSingleton ( ).CreateMultiplayer ( );
 }
 
 CCore::~CCore ( void )
@@ -229,9 +242,6 @@ CCore::~CCore ( void )
     delete m_pLocalGUI;
     delete m_pGraphics;
 
-    // Delete the web
-    delete m_pWebCore;
-
     // Delete lazy subsystems
     DestroyGUI ();
     DestroyXML ();
@@ -250,6 +260,9 @@ CCore::~CCore ( void )
 
     // Delete last so calls to GetHookedWindowHandle do not crash
     delete m_pMessageLoopHook;
+
+    // Delete the FileSystem
+    delete m_fileSystem;
 }
 
 
@@ -616,7 +629,6 @@ void CCore::ApplyGameSettings ( void )
     CVARS_GET ( "grass",            bval ); m_pGame->GetSettings ()->SetGrassEnabled ( bval );
     CVARS_GET ( "heat_haze",        bval ); m_pMultiplayer->SetHeatHazeEnabled ( bval );
     CVARS_GET ( "fast_clothes_loading", iVal ); m_pMultiplayer->SetFastClothesLoading ( (CMultiplayer::EFastClothesLoading)iVal );
-    CVARS_GET ( "tyre_smoke_enabled", bval ); m_pMultiplayer->SetTyreSmokeEnabled ( bval );
     pController->SetVerticalAimSensitivityRawValue( CVARS_GET_VALUE < float > ( "vertical_aim_sensitivity" ) );
 }
 
@@ -751,7 +763,6 @@ void CCore::ShowNetErrorMessageBox( const SString& strTitle, SString strMessage,
     if ( bLinkRequiresErrorCode )
         strTroubleLink = "";        // No link if no error code
 
-    AddReportLog( 7100, SString( "Core - NetError (%s) (%s)", *strTitle, *strMessage ) );
     ShowErrorMessageBox( strTitle, strMessage, strTroubleLink );
 }
 
@@ -844,12 +855,12 @@ void CCore::ApplyHooks2 ( )
         // executable into memory...
         if ( !CCore::GetSingleton ( ).AreModulesLoaded ( ) )
         {
-            CCore::GetSingleton ( ).SetModulesLoaded ( true );
             CCore::GetSingleton ( ).CreateNetwork ( );
             CCore::GetSingleton ( ).CreateGame ( );
             CCore::GetSingleton ( ).CreateMultiplayer ( );
             CCore::GetSingleton ( ).CreateXML ( );
             CCore::GetSingleton ( ).CreateGUI ( );
+            CCore::GetSingleton ( ).SetModulesLoaded ( true );
         }
     }
 }
@@ -973,6 +984,10 @@ void CCore::CreateGame ( )
     {
         BrowseToSolution ( "downgrade", TERMINATE_PROCESS, "Only GTA:SA version 1.0 is supported!\n\nYou are now being redirected to a page where you can patch your version." );
     }
+
+    // Apply hiding device selection dialog
+    bool bDeviceSelectionDialogEnabled = GetApplicationSettingInt ( "device-selection-disabled" ) ? false : true;
+    m_pGame->GetSettings ()->SetSelectDeviceDialogEnabled ( bDeviceSelectionDialogEnabled );
 }
 
 
@@ -1052,7 +1067,7 @@ void CCore::CreateNetwork ( )
 void CCore::CreateXML ( )
 {
     if ( !m_pXML )
-        m_pXML = CreateModule < CXML > ( m_XMLModule, "XML", "xmll", "InitXMLInterface", *CalcMTASAPath ( "MTA" ) );
+        m_pXML = CreateModule < CXML > ( m_XMLModule, "XML", "xmll", "InitXMLInterface", this );
 
     if ( !m_pConfigFile )
     {
@@ -1139,23 +1154,16 @@ void CCore::DestroyNetwork ( )
 }
 
 
-void CCore::InitialiseWeb ()
-{
-    // Don't initialise webcore twice
-    if ( m_pWebCore )
-        return;
-
-    m_pWebCore = new CWebCore;
-    m_pWebCore->Initialise ();
-}
-
-
 void CCore::UpdateIsWindowMinimized ( void )
 {
     m_bIsWindowMinimized = IsIconic ( GetHookedWindow () ) ? true : false;
-    // Update CPU saver for when minimized and not connected
-    g_pCore->GetMultiplayer ()->SetIsMinimizedAndNotConnected ( m_bIsWindowMinimized && !IsConnected () );
-    g_pCore->GetMultiplayer ()->SetMirrorsEnabled ( !m_bIsWindowMinimized );
+
+    if ( g_pCore->GetMultiplayer() )
+    {
+        // Update CPU saver for when minimized and not connected
+        g_pCore->GetGame ()->SetIsMinimizedAndNotConnected ( m_bIsWindowMinimized && !IsConnected () );
+    }
+    g_pCore->GetGame ()->SetMirrorsEnabled ( !m_bIsWindowMinimized );
 
     // Enable timer if not connected at least once
     bool bEnableTimer = !m_bGettingIdleCallsFromMultiplayer;
@@ -1182,13 +1190,13 @@ void CCore::DoPreFramePulse ( )
 
     m_pKeyBinds->DoPreFramePulse ();
 
+    // Pulse game.
+    m_pGame->OnPreFrame ();
+
     // Notify the mod manager
     m_pModManager->DoPulsePreFrame ();  
 
     m_pLocalGUI->DoPulse ();
-
-    CCrashDumpWriter::UpdateCounters();
-
     TIMING_CHECKPOINT( "-CorePreFrame" );
 }
 
@@ -1315,8 +1323,8 @@ void CCore::DoPostFramePulse ( )
     GetJoystickManager ()->DoPulse ();      // Note: This may indirectly call CMessageLoopHook::ProcessMessage
     m_pKeyBinds->DoPostFramePulse ();
 
-    if ( m_pWebCore )
-        m_pWebCore->DoPulse ();
+    // Pulse game.
+    m_pGame->OnFrame ();
 
     // Notify the mod manager and the connect manager
     TIMING_CHECKPOINT( "-CorePostFrame1" );
@@ -1376,9 +1384,6 @@ void CCore::OnModUnload ( )
 
     // Reset client script frame rate limit
     m_uiClientScriptFrameRateLimit = 0;
-
-    // Clear web whitelist
-    m_pWebCore->ResetFilter ();
 }
 
 
@@ -1484,7 +1489,6 @@ void CCore::Quit ( bool bInstantly )
 {
     if ( bInstantly )
     {
-        AddReportLog( 7101, "Core - Quit" );
         // Show that we are quiting (for the crash dump filename)
         SetApplicationSettingInt ( "last-server-ip", 1 );
 
@@ -2154,15 +2158,6 @@ void CCore::OnCrashAverted ( uint uiId )
 
 
 //
-// OnEnterCrashZone
-// 
-void CCore::OnEnterCrashZone ( uint uiId )
-{
-    CCrashDumpWriter::OnEnterCrashZone ( uiId );
-}
-
-
-//
 // LogEvent
 // 
 void CCore::LogEvent ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody, uint uiAddReportLogId )
@@ -2381,23 +2376,6 @@ void CCore::UpdateDummyProgress( int iValue, const char* szType )
 //
 void CCore::CallSetCursorPos( int X, int Y )
 {
-    if ( CCore::GetSingleton ( ).IsFocused ( ) && !CLocalGUI::GetSingleton ( ).IsMainMenuVisible ( ) )
-        m_pLocalGUI->SetCursorPos ( X, Y );
-}
-
-bool CCore::GetRequiredDisplayResolution( int& iOutWidth, int& iOutHeight, int& iOutColorBits, int& iOutAdapterIndex, bool& bOutAllowUnsafeResolutions )
-{
-    CVARS_GET( "show_unsafe_resolutions", bOutAllowUnsafeResolutions );
-    return GetVideoModeManager()->GetRequiredDisplayResolution( iOutWidth, iOutHeight, iOutColorBits, iOutAdapterIndex );
-}
-
-bool CCore::GetDeviceSelectionEnabled( void )
-{
-    return GetApplicationSettingInt ( "device-selection-disabled" ) ? false : true;
-}
-
-void CCore::NotifyRenderingGrass( bool bIsRenderingGrass )
-{
-    m_bIsRenderingGrass = bIsRenderingGrass;
-    CDirect3DEvents9::CloseActiveShader();
+    if ( CCore::GetSingleton ().IsFocused () && !CLocalGUI::GetSingleton ().IsMainMenuVisible () )
+        m_pSetCursorPosHook->CallSetCursorPos(X,Y);
 }

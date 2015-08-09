@@ -44,7 +44,6 @@ class CClientVehicle;
 class CClientWater;
 class CClientWeapon;
 class CClientRadarArea;
-class CClientPointLights;
 class CLuaTimer;
 class CResource;
 class CXMLNode;
@@ -62,10 +61,8 @@ void                    lua_pushuserdata        ( lua_State* luaVM, void* pData 
 
 void                    lua_pushobject          ( lua_State* luaVM, const char* szClass, void* pObject );
 
-void                    lua_pushvector          ( lua_State* luaVM, const CVector4D& vector );
-void                    lua_pushvector          ( lua_State* luaVM, const CVector& vector );
-void                    lua_pushvector          ( lua_State* luaVM, const CVector2D& vector );
-void                    lua_pushmatrix          ( lua_State* luaVM, const CMatrix& matrix );
+void                    lua_pushvector          ( lua_State* luaVM, CVector& vector );
+void                    lua_pushmatrix          ( lua_State* luaVM, CMatrix& matrix );
 
 // Internal use
 void                    lua_initclasses         ( lua_State* luaVM );
@@ -81,25 +78,5 @@ void                    lua_classvariable       ( lua_State* luaVM, const char* 
 void                    lua_classmetamethod     ( lua_State* luaVM, const char* szName, lua_CFunction fn );
 
 const char*             lua_makestring          ( lua_State* luaVM, int iArgument );
-
-// Lua debug info for logging
-enum
-{
-    DEBUG_INFO_NONE,
-    DEBUG_INFO_FILE_AND_LINE,
-    DEBUG_INFO_SHORT_SRC,
-};
-
-#define INVALID_LINE_NUMBER (-1)
-
-struct SLuaDebugInfo
-{
-    SLuaDebugInfo( void ) : iLine( INVALID_LINE_NUMBER ), infoType( DEBUG_INFO_NONE ) {}
-    SLuaDebugInfo( const SString& strFile, int iLine ) : strFile( strFile ), iLine( iLine ), infoType( DEBUG_INFO_FILE_AND_LINE ) {}
-    SString     strFile;
-    SString     strShortSrc;
-    int         iLine;
-    int         infoType;
-};
 
 #endif

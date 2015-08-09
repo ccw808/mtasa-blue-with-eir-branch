@@ -176,7 +176,7 @@ void CClientWeapon::DoPulse ( void )
             }
         }
     }
-    if ( m_nAmmoInClip > 0 && ( IsLocalEntity ( ) || m_pOwner == g_pClientGame->GetLocalPlayer ( ) ) )
+    if ( m_nAmmoInClip > 0 && ( !IsLocalEntity ( ) && m_pOwner == g_pClientGame->GetLocalPlayer ( ) ) )
     {
         if ( m_State == WEAPONSTATE_FIRING && m_fireTimer.Get() >= m_iWeaponFireRate ) 
         {
@@ -236,9 +236,21 @@ void CClientWeapon::Fire ( bool bServerFire )
         case WEAPONTYPE_SNIPERRIFLE:
         case WEAPONTYPE_MINIGUN:
         {
-            CMatrix matOrigin;
-            GetMatrix ( matOrigin );
+            CVector vecOrigin, vecRotation;
+            GetPosition ( vecOrigin );
 
+            if ( m_pAttachedToEntity )
+            {
+
+                GetRotationRadians ( vecRotation );
+
+            }
+            else
+            {
+                GetRotationRadians ( vecRotation );
+
+                vecRotation = -vecRotation;
+            }
             CVector vecTarget;
             float fDistance = m_pWeaponInfo->GetWeaponRange ();
             if ( m_targetType == TARGET_TYPE_ENTITY )
@@ -265,7 +277,7 @@ void CClientWeapon::Fire ( bool bServerFire )
                         else
                             m_pTarget->GetPosition( vecTarget );
                     }
-                    if ( m_weaponConfig.bShootIfTargetOutOfRange == false && (matOrigin.GetPosition() - vecTarget).Length() >= fDistance )
+                    if ( m_weaponConfig.bShootIfTargetOutOfRange == false && (vecOrigin - vecTarget).Length() >= fDistance )
                     {
                         return;
                     }
@@ -278,20 +290,22 @@ void CClientWeapon::Fire ( bool bServerFire )
             else if ( m_targetType == TARGET_TYPE_VECTOR )
             {
                 vecTarget = m_vecTarget;
-                if ( m_weaponConfig.bShootIfTargetOutOfRange == false && (matOrigin.GetPosition() - vecTarget).Length() >= fDistance )
+                if ( m_weaponConfig.bShootIfTargetOutOfRange == false && (vecOrigin - vecTarget).Length() >= fDistance )
                 {
                     return;
                 }
             }
             else
             {
-#ifndef SHOTGUN_TEST
                 CVector vecFireOffset = *m_pWeaponInfo->GetFireOffset ();
-                matOrigin = CMatrix( vecFireOffset, m_vecFireRotationNoTarget ) * matOrigin;
+                RotateVector ( vecFireOffset, vecRotation );
+#ifndef SHOTGUN_TEST
+                vecOrigin += vecFireOffset;
 #endif
                 CVector vecDirection ( 1, 0, 0 );
                 vecDirection *= fDistance;
-                vecTarget = matOrigin.TransformVector( vecDirection );
+                RotateVector ( vecDirection, vecRotation );
+                vecTarget = vecOrigin + vecDirection;
             }
 
 
@@ -308,21 +322,24 @@ void CClientWeapon::Fire ( bool bServerFire )
             m_pWeaponInfo->SetWeaponRange ( m_pWeaponStat->GetWeaponRange ( ) );
 
 #ifdef SHOTGUN_TEST
+            CVector vecTemp;
             CVector vecFireOffset = *m_pWeaponInfo->GetFireOffset ();
-            CMatrix matTemp = CMatrix( vecFireOffset ) * matOrigin;
+            RotateVector ( vecFireOffset, vecRotation );
+            vecTemp = vecFireOffset;
+            vecTemp += vecOrigin;
 #ifdef MARKER_DEBUG
             // Process
-            m_pMarker->SetPosition ( matOrigin.GetPosition() );
+            m_pMarker->SetPosition ( vecOrigin );
 #endif
             CVector vecTemp2;
             GetRotationDegrees(vecTemp2);
             vecTemp2.fZ -= 84.6f;
             SetRotationDegrees(vecTemp2);
-            FireInstantHit ( matOrigin.GetPosition(), vecTarget-matOrigin.GetPosition(), matTemp.GetPosition() );
+            FireInstantHit ( vecOrigin, vecTarget-vecOrigin, vecTemp );
             vecTemp2.fZ += 84.6f;
             SetRotationDegrees(vecTemp2);
 #else
-            FireInstantHit ( matOrigin.GetPosition(), vecTarget, bServerFire );
+            FireInstantHit ( vecOrigin, vecTarget, bServerFire );
 #endif
             // Restore
             m_pWeaponInfo->SetDamagePerHit ( sDamage );
@@ -340,7 +357,7 @@ void CClientWeapon::Fire ( bool bServerFire )
 #ifdef SHOTGUN_TEST
 void CClientWeapon::FireInstantHit ( CVector & vecOrigin, CVector & vecTarget, CVector & vecRotation, bool bRemote )
 #else
-void CClientWeapon::FireInstantHit ( CVector vecOrigin, CVector vecTarget, bool bServerFire, bool bRemote )
+void CClientWeapon::FireInstantHit ( CVector & vecOrigin, CVector & vecTarget, bool bServerFire, bool bRemote )
 #endif
 {
     CVector vecDirection = vecTarget - vecOrigin;
@@ -381,12 +398,12 @@ void CClientWeapon::FireInstantHit ( CVector vecOrigin, CVector vecTarget, bool 
                         if ( pVehicle )
                         {
                             pVehicle->GetPosition ( vecWeaponFirePosition );
-                            pVehicle->SetPosition ( vecPosition, false, false );
+                            pVehicle->SetPosition ( vecPosition );
                         }
                         else
                         {
                             pLocalPlayer->GetPosition ( vecWeaponFirePosition );
-                            pLocalPlayer->SetPosition ( vecPosition, false, false );
+                            pLocalPlayer->SetPosition ( vecPosition );
                         }
                     }
                 }
@@ -405,12 +422,8 @@ void CClientWeapon::FireInstantHit ( CVector vecOrigin, CVector vecTarget, bool 
 
         // return if shoot if target is blocked is false and we aren't pointing at our target
         if ( ( m_pTarget != NULL && m_pTarget->GetGameEntity ( ) != NULL && m_pTarget->GetGameEntity()->GetInterface ( ) != pEntity ) && m_weaponConfig.bShootIfTargetBlocked == false && bRemote == false )
-        {
-            if ( pColPoint )
-                pColPoint->Destroy ();
-
             return;
-        }
+
         // Execute our weapon fire event
         CClientEntity * pClientEntity = m_pManager->FindEntitySafe ( pColEntity );
         CLuaArguments Arguments;
@@ -429,8 +442,6 @@ void CClientWeapon::FireInstantHit ( CVector vecOrigin, CVector vecTarget, bool 
         Arguments.PushNumber ( pColPoint->GetPieceTypeB ( ) ); // Piece
         if ( !CallEvent ( "onClientWeaponFire", Arguments, true ) )
         {
-            if ( pColPoint )
-                pColPoint->Destroy ();
             return;
         }
 
@@ -446,7 +457,12 @@ void CClientWeapon::FireInstantHit ( CVector vecOrigin, CVector vecTarget, bool 
         m_pMarker2->SetPosition ( vecTarget );
 #endif
         m_pWeapon->DoBulletImpact ( m_pObject, pEntity, &vecOrigin, &vecTarget, pColPoint, 0 );
-
+        if ( pColEntity && pColEntity->GetEntityType () == ENTITY_TYPE_PED )
+        {
+            ePedPieceTypes hitZone = ( ePedPieceTypes ) pColPoint->GetPieceTypeB ();
+            short sDamage = m_pWeaponInfo->GetDamagePerHit ();
+            m_pWeapon->GenerateDamageEvent ( dynamic_cast < CPed * > ( pColEntity ), m_pObject, m_Type, sDamage, hitZone, 0 );
+        }
         if ( !IsLocalEntity ( ) && m_pOwner )
         {
             CClientPed * pPed = m_pOwner;
@@ -459,11 +475,11 @@ void CClientWeapon::FireInstantHit ( CVector vecOrigin, CVector vecTarget, bool 
                     CClientVehicle* pVehicle = pLocalPlayer->GetRealOccupiedVehicle ();
                     if ( !pVehicle )
                     {
-                        pLocalPlayer->SetPosition ( vecWeaponFirePosition, false, false );
+                        pLocalPlayer->SetPosition ( vecWeaponFirePosition );
                     }
                     else if ( pLocalPlayer->GetOccupiedVehicleSeat() == 0 )
                     {
-                        pVehicle->SetPosition ( vecWeaponFirePosition, false, false );
+                        pVehicle->SetPosition ( vecWeaponFirePosition );
                     }
                 }
             }
@@ -675,7 +691,7 @@ void CClientWeapon::DoGunShells ( CVector vecOrigin, CVector vecDirection )
     {
         if ( !m_weaponConfig.bDisableWeaponModel )
         {
-            g_pGame->GetPointLights ()->AddLight ( PLTYPE_POINTLIGHT, vecOrigin, CVector (), 3.0f, SColorRGBA ( 220, 255, 0, 0 ), 0, 0, 0 );
+            g_pGame->GetPointLights ()->AddLight ( PLTYPE_POINTLIGHT, vecOrigin, CVector (), 3.0f, 0.22f, 0.25f, 0, 0, 0, 0 );
 
             // Note: Nozzle flare lags behind attached object if it is moving, but we can't set attached entity here as it will crash if not a ped
             g_pGame->GetFx ()->TriggerGunshot ( NULL, vecOrigin, vecDirection, true );

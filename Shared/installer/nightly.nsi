@@ -20,7 +20,6 @@ Var CreateDesktopIcon
 Var RegisterProtocol
 Var AddToGameExplorer
 Var RedistInstalled
-Var RedistVC12Installed
 Var ExeMD5
 Var PatchInstalled
 Var DEFAULT_INSTDIR
@@ -216,7 +215,6 @@ Function .onInstFailed
 FunctionEnd
 
 Function .onInit
-
 	${IfNot} ${UAC_IsInnerInstance}
 		!insertmacro MUI_LANGDLL_DISPLAY  # Only display our language selection in the outer (non-admin) instance
 	${Else}
@@ -248,17 +246,6 @@ Function .onInit
 DontInstallVC9Redist:
 	StrCpy $RedistInstalled "1"
 PostVC90Check:
-
-	; Check if we must install the Microsoft Visual Studio 2013 redistributable
-	ClearErrors
-	ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\DevDiv\vc\Servicing\12.0\RuntimeMinimum" "Install"
-	StrCmp "$0" "1" DontInstallVC12Redist
-	StrCpy $RedistVC12Installed "0"
-	Goto PostVC12Check
-DontInstallVC12Redist:
-	StrCpy $RedistVC12Installed "1"
-PostVC12Check:
-
 	
 	; Try to find previously saved MTA:SA install path
 	ReadRegStr $Install_Dir HKLM "SOFTWARE\Multi Theft Auto: San Andreas All\${0.0}" "Last Install Location"
@@ -278,20 +265,10 @@ PostVC12Check:
         StrCpy $WhichRadio "default"
         StrCpy $ShowLastUsed "0"
 	${Else}
-        Push $LAST_INSTDIR 
-        Call GetInstallType
-        Pop $0
-        Pop $1
-        ${If} $0 == "overwrite"
-            # Ignore last used if it contains different major MTA version
-            StrCpy $WhichRadio "default"
-            StrCpy $ShowLastUsed "0"
-        ${Else}
-            StrCpy $WhichRadio "last"
-            StrCpy $ShowLastUsed "1"
-        ${EndIf}
+        StrCpy $WhichRadio "last"
+        StrCpy $ShowLastUsed "1"
 	${EndIf}
-    
+
 	; Try to find previously saved GTA:SA install path
 	ReadRegStr $2 HKLM "SOFTWARE\Multi Theft Auto: San Andreas All\Common" "GTA:SA Path"
 	${If} $2 == "" 
@@ -453,13 +430,6 @@ SectionGroup /e "$(INST_SEC_CLIENT)" SECGCLIENT
 		StrCmp "$RedistInstalled" "1" DontInstallRedist
 		Abort
 DontInstallRedist:
-
-		StrCmp "$RedistVC12Installed" "1" DontInstallRedistVC12
-		Call InstallVC12Redistributable
-		StrCmp "$RedistVC12Installed" "1" DontInstallRedistVC12
-		Abort
-DontInstallRedistVC12:
-
 		SetShellVarContext all
 
 		#############################################################
@@ -554,7 +524,6 @@ DontInstallRedistVC12:
 				${Case} "9effcaf66b59b9f8fb8dff920b3f6e63" #DE 2.00
 				${Case} "fa490564cd9811978085a7a8f8ed7b2a" #DE 1.01
 				${Case} "49dd417760484a18017805df46b308b8" #DE 1.00
-				${Case} "185f0970f5913d0912a89789af175ffe" #?? ?.?? 4,496,063 bytes
 					#Create a backup of the GTA exe before patching
 					CopyFiles "$GTA_DIR\gta_sa.exe" "$GTA_DIR\gta_sa.exe.bak"
 					Call InstallPatch
@@ -576,8 +545,6 @@ DontInstallRedistVC12:
                 DetailPrint "$1 successfully detected ($ExeMD5)"
                 ${Switch} $ExeMD5
                     ${Case} "0fd315d1af41e26e536a78b4d4556488" #EU 3.00 Steam
-                    ${Case} "2ed36a3cee7b77da86a343838e3516b6" #EU 3.01 Steam (2014 Nov update)
-                    ${Case} "5bfd4dd83989a8264de4b8e771f237fd" #EU 3.02 Steam (2014 Dec update)
                         #Copy gta-sa.exe to gta_sa.exe and commence patching process
                         CopyFiles "$GTA_DIR\$1" "$GTA_DIR\gta_sa.exe.bak"
                         Call InstallPatch
@@ -606,17 +573,16 @@ DontInstallRedistVC12:
 		SetOutPath "$INSTDIR\MTA"
 		File "${FILES_ROOT}\MTA San Andreas\mta\cgui.dll"
 		File "${FILES_ROOT}\MTA San Andreas\mta\core.dll"
-		File "${FILES_ROOT}\MTA San Andreas\mta\xmll.dll"
+		File "${SERVER_FILES_ROOT}\xmll.dll"
 		File "${FILES_ROOT}\MTA San Andreas\mta\game_sa.dll"
 		File "${FILES_ROOT}\MTA San Andreas\mta\multiplayer_sa.dll"
 		File "${FILES_ROOT}\MTA San Andreas\mta\netc.dll"
-		File "${FILES_ROOT}\MTA San Andreas\mta\libcurl.dll"
+		File "${SERVER_FILES_ROOT}\libcurl.dll"
 		File "${FILES_ROOT}\MTA San Andreas\mta\loader.dll"
-        File "${FILES_ROOT}\MTA San Andreas\mta\pthread.dll"
         ; The files below can be moved out of the LIGHTBUILD zone at some point
         File "${FILES_ROOT}\MTA San Andreas\mta\bass_fx.dll"
-        File "${FILES_ROOT}\MTA San Andreas\mta\bassopus.dll"
         File "${FILES_ROOT}\MTA San Andreas\mta\tags.dll"
+		File "${SERVER_FILES_ROOT}\pthreadVC2.dll"
         File "${FILES_ROOT}\MTA San Andreas\mta\XInput9_1_0_mta.dll"
         File "${FILES_ROOT}\MTA San Andreas\mta\vea.dll"
         File "${FILES_ROOT}\MTA San Andreas\mta\vog.dll"
@@ -624,17 +590,6 @@ DontInstallRedistVC12:
         File "${FILES_ROOT}\MTA San Andreas\mta\vvof.dll"
         SetOutPath "$INSTDIR\MTA\cgui\images"
         File "${FILES_ROOT}\MTA San Andreas\mta\cgui\images\busy_spinner.png"
-        File "${FILES_ROOT}\MTA San Andreas\mta\cgui\images\rect_edge.png"
-		
-		SetOutPath "$INSTDIR\MTA"
-		File "${FILES_ROOT}\MTA San Andreas\mta\libcef.dll"
-		File "${FILES_ROOT}\MTA San Andreas\mta\icudtl.dat"
-		
-		SetOutPath "$INSTDIR\MTA\CEF"
-		File "${FILES_ROOT}\MTA San Andreas\mta\CEF\CEFLauncher.exe"
-		File "${FILES_ROOT}\MTA San Andreas\mta\CEF\cef.pak"
-		File "${FILES_ROOT}\MTA San Andreas\mta\CEF\cef_100_percent.pak"
-		File "${FILES_ROOT}\MTA San Andreas\mta\CEF\cef_200_percent.pak"
 
 
 		${If} "$(LANGUAGE_CODE)" != ""
@@ -656,13 +611,6 @@ DontInstallRedistVC12:
 			File "${FILES_ROOT}\MTA San Andreas\mta\bassmix.dll"
 			File "${FILES_ROOT}\MTA San Andreas\mta\chatboxpresets.xml"
 			File "${FILES_ROOT}\MTA San Andreas\mta\sa.dat"
-
-			File "${FILES_ROOT}\MTA San Andreas\mta\d3dcompiler_43.dll"
-			File "${FILES_ROOT}\MTA San Andreas\mta\d3dcompiler_47.dll"
-			File "${FILES_ROOT}\MTA San Andreas\mta\ffmpegsumo.dll"
-			File "${FILES_ROOT}\MTA San Andreas\mta\libEGL.dll"
-			File "${FILES_ROOT}\MTA San Andreas\mta\libGLESv2.dll"
-			File "${FILES_ROOT}\MTA San Andreas\mta\wow_helper.exe"
 
             SetOutPath "$INSTDIR\skins\Classic"
             File "${FILES_ROOT}\MTA San Andreas\skins\Classic\CGUI.is.xml"
@@ -706,12 +654,12 @@ DontInstallRedistVC12:
 
             SetOutPath "$INSTDIR\MTA\cgui\images\serverbrowser"
             File "${FILES_ROOT}\MTA San Andreas\mta\cgui\images\serverbrowser\*.png"
+			
+			SetOutPath "$INSTDIR\MTA\locale\"
+			File /r "${FILES_ROOT}\MTA San Andreas\mta\locale\*.png"
+			File /r "${FILES_ROOT}\MTA San Andreas\mta\locale\*.po"
 
 		!endif
-			
-        SetOutPath "$INSTDIR\MTA\locale\"
-        File /r "${FILES_ROOT}\MTA San Andreas\mta\locale\*.png"
-        File /r "${FILES_ROOT}\MTA San Andreas\mta\locale\*.po"
 
 		SetOutPath "$INSTDIR"
         File "${FILES_ROOT}\MTA San Andreas\Multi Theft Auto.exe"
@@ -735,7 +683,8 @@ DontInstallRedistVC12:
 		SectionIn 1 RO
 		SetOutPath "$INSTDIR\mods\deathmatch"
 		File "${FILES_ROOT}\MTA San Andreas\mods\deathmatch\Client.dll"
-		File "${FILES_ROOT}\MTA San Andreas\mods\deathmatch\pcre3.dll"
+		File "${FILES_ROOT}\MTA San Andreas\mods\deathmatch\lua5.1c.dll"
+		File "${SERVER_FILES_ROOT}\mods\deathmatch\pcre3.dll"
 		SetOutPath "$INSTDIR\mods\deathmatch\resources"
 	SectionEnd
 SectionGroupEnd
@@ -750,20 +699,14 @@ SectionGroup /e "$(INST_SEC_SERVER)" SECGSERVER
 		Abort
 	DontInstallRedist:
 
-		StrCmp "$RedistVC12Installed" "1" DontInstallRedistVC12
-		Call InstallVC12Redistributable
-		StrCmp "$RedistVC12Installed" "1" DontInstallRedistVC12
-		Abort
-    DontInstallRedistVC12:
-
 		SetOutPath "$INSTDIR\server"
 		SetOverwrite on
 		File "${SERVER_FILES_ROOT}\core.dll"
-		File "${FILES_ROOT}\MTA San Andreas\mta\xmll.dll"
+		File "${SERVER_FILES_ROOT}\xmll.dll"
 		File "${SERVER_FILES_ROOT}\MTA Server.exe"
 		File "${SERVER_FILES_ROOT}\net.dll"
-		File "${FILES_ROOT}\MTA San Andreas\mta\libcurl.dll"
-        File "${FILES_ROOT}\MTA San Andreas\mta\pthread.dll"
+		File "${SERVER_FILES_ROOT}\libcurl.dll"
+		File "${SERVER_FILES_ROOT}\pthreadVC2.dll"
 	SectionEnd
 
 	Section "$(INST_SEC_GAME)" SEC05
@@ -773,7 +716,7 @@ SectionGroup /e "$(INST_SEC_SERVER)" SECGSERVER
 		SetOverwrite on
 		File "${SERVER_FILES_ROOT}\mods\deathmatch\deathmatch.dll"
 		File "${SERVER_FILES_ROOT}\mods\deathmatch\lua5.1.dll"
-		File "${FILES_ROOT}\MTA San Andreas\mods\deathmatch\pcre3.dll"
+		File "${SERVER_FILES_ROOT}\mods\deathmatch\pcre3.dll"
 		File "${SERVER_FILES_ROOT}\mods\deathmatch\dbconmy.dll"
 		!ifndef LIGHTBUILD
             File "${SERVER_FILES_ROOT}\mods\deathmatch\libmysql.dll"
@@ -811,8 +754,6 @@ SectionGroup /e "$(INST_SEC_SERVER)" SECGSERVER
 			SetOverwrite ifnewer
 			File /r "${SERVER_FILES_ROOT}\mods\deathmatch\resources\[admin]\admin.zip"
 			File /r "${SERVER_FILES_ROOT}\mods\deathmatch\resources\[admin]\runcode.zip"
-			File /r "${SERVER_FILES_ROOT}\mods\deathmatch\resources\[admin]\acpanel.zip"
-			File /r "${SERVER_FILES_ROOT}\mods\deathmatch\resources\[admin]\ipb.zip"
 			SetOutPath "$INSTDIR\server\mods\deathmatch\resources\[gamemodes]\[play]"
 			File /r "${SERVER_FILES_ROOT}\mods\deathmatch\resources\[gamemodes]\[play]\*.zip"
 			SetOutPath "$INSTDIR\server\mods\deathmatch\resources\[gameplay]"
@@ -1014,6 +955,8 @@ Section Uninstall
 	Delete "$INSTDIR\server\xmll.dll"
 	Delete "$INSTDIR\server\MTA Server.exe"
 	Delete "$INSTDIR\server\net.dll"
+	Delete "$INSTDIR\server\msvcp71.dll"
+	Delete "$INSTDIR\server\msvcr71.dll"
 	Delete "$INSTDIR\server\libcurl.dll"
 
 	; server files
@@ -1021,7 +964,6 @@ Section Uninstall
 	Delete "$INSTDIR\server\mods\deathmatch\lua5.1.dll"
 	Delete "$INSTDIR\server\mods\deathmatch\pcre3.dll"
 	Delete "$INSTDIR\server\mods\deathmatch\pthreadVC2.dll"
-	Delete "$INSTDIR\server\mods\deathmatch\pthread.dll"
 	Delete "$INSTDIR\server\mods\deathmatch\sqlite3.dll"
 	Delete "$INSTDIR\server\mods\deathmatch\dbconmy.dll"
 	Delete "$INSTDIR\server\mods\deathmatch\libmysql.dll"
@@ -1076,9 +1018,6 @@ Function SkipDirectoryPage
 	Abort
 FunctionEnd
 
-;====================================================================================
-; Download and install Microsoft Visual Studio 2008 SP1 redistributable
-;====================================================================================
 Var REDIST
 
 LangString MSGBOX_VSRED_ERROR1 ${LANG_ENGLISH}	"Unable to download Microsoft Visual Studio 2008 SP1 redistributable"
@@ -1088,7 +1027,7 @@ $\r$\nHowever installation will continue.\
 $\r$\nPlease reinstall if there are problems later."
 Function InstallVC90Redistributable
 	DetailPrint "Installing Microsoft Visual Studio 2008 SP1 redistributable ..."
-	StrCpy $REDIST "$TEMP\vcredist9_x86.exe"
+	StrCpy $REDIST "$TEMP\vcredist_x86.exe"
 	NSISdl::download "http://download.microsoft.com/download/d/d/9/dd9a82d0-52ef-40db-8dab-795376989c03/vcredist_x86.exe" $REDIST
 	Pop $0
 	StrCmp "$0" "success" DownloadSuccessful
@@ -1100,8 +1039,7 @@ Function InstallVC90Redistributable
 	Goto InstallEnd
 	
 DownloadSuccessful:
-    ; /qb! = "Unattended install with no cancel button"
-	ExecWait '"$REDIST" /qb!'
+	ExecWait '"$REDIST"'
 	ClearErrors
 	ReadRegDWORD $R0 HKLM "SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{9A25302D-30C0-39D9-BD6F-21E6EC160475}" "Version"
 	IfErrors VC90RedistInstallFailed
@@ -1122,58 +1060,6 @@ InstallEnd:
 	StrCmp "$RedistInstalled" "1" InstallEnd2
 	MessageBox MB_ICONSTOP "$(MSGBOX_VSRED_ERROR3)"
 	StrCpy $RedistInstalled "1"
-
-InstallEnd2:
-FunctionEnd
-
-
-;====================================================================================
-; Download and install Microsoft Visual Studio 2013 redistributable
-;====================================================================================
-Var REDISTVC12
-
-LangString MSGBOX_VC12RED_ERROR1 ${LANG_ENGLISH}	"Unable to download Microsoft Visual Studio 2013 redistributable"
-LangString MSGBOX_VC12RED_ERROR2 ${LANG_ENGLISH}	"Unable to install Microsoft Visual Studio 2013 redistributable"
-LangString MSGBOX_VC12RED_ERROR3 ${LANG_ENGLISH}	"Unable to download Microsoft Visual Studio 2013 redistributable.\
-$\r$\nHowever installation will continue.\
-$\r$\nPlease reinstall if there are problems later."
-Function InstallVC12Redistributable
-	DetailPrint "Installing Microsoft Visual Studio 2013 redistributable ..."
-	StrCpy $REDISTVC12 "$TEMP\vcredist12_x86.exe"
-	NSISdl::download "http://download.microsoft.com/download/2/E/6/2E61CFA4-993B-4DD4-91DA-3737CD5CD6E3/vcredist_x86.exe" $REDISTVC12
-	Pop $0
-	StrCmp "$0" "success" DownloadSuccessful
-	
-	DetailPrint "* Download of Microsoft Visual Studio 2013 redistributable failed:"
-	DetailPrint "* $0"
-	DetailPrint "* Installation continuing anyway"
-	MessageBox MB_ICONSTOP "$(MSGBOX_VC12RED_ERROR1)"
-	Goto InstallEnd
-	
-DownloadSuccessful:
-    ; /passive = 'This option will display a progress dialog (but requires no user interaction) and perform an install.'
-    ; /quiet = 'This option will suppress all UI and perform an install.'
-	ExecWait '"$REDISTVC12" /quiet'
-	ClearErrors
-	ReadRegDWORD $0 HKLM "SOFTWARE\Microsoft\DevDiv\vc\Servicing\12.0\RuntimeMinimum" "Install"
-	StrCmp "$0" "1" 0 VC12RedistInstallFailed
-	
-	StrCpy $RedistVC12Installed "1"
-	Goto InstallEnd
-
-VC12RedistInstallFailed:
-	StrCpy $RedistVC12Installed "0"
-	DetailPrint "* Some error occured installing Microsoft Visual Studio 2013 redistributable"
-	DetailPrint "* It is required in order to run Multi Theft Auto : San Andreas"
-	DetailPrint "* Installation continuing anyway"
-	MessageBox MB_ICONSTOP "$(MSGBOX_VC12RED_ERROR2)"
-
-	
-InstallEnd:
-
-	StrCmp "$RedistVC12Installed" "1" InstallEnd2
-	MessageBox MB_ICONSTOP "$(MSGBOX_VC12RED_ERROR3)"
-	StrCpy $RedistVC12Installed "1"
 
 InstallEnd2:
 FunctionEnd
@@ -1757,9 +1643,6 @@ LangString INST_MTA_CONFLICT ${LANG_ENGLISH}	"A different major version of MTA (
 			MTA is designed for major versions to be installed in different paths.$\n \
             Are you sure you want to overwrite MTA $1 at \
             $INSTDIR ?"
-LangString INST_GTA_CONFLICT ${LANG_ENGLISH}	"MTA cannot be installed into the same directory as GTA:SA.$\n$\n\ 
-			Do you want to use the default install directory$\n\
-            $DEFAULT_INSTDIR ?"
 LangString INST_GTA_ERROR1 ${LANG_ENGLISH} "The selected directory does not exist.$\n$\n\
             Please select the GTA:SA install directory"
 LangString INST_GTA_ERROR2 ${LANG_ENGLISH} "Could not find GTA:SA installed at $GTA_DIR $\n$\n\
@@ -1767,29 +1650,6 @@ LangString INST_GTA_ERROR2 ${LANG_ENGLISH} "Could not find GTA:SA installed at $
 			
 Function "DirectoryLeaveProc"
     Call CustomDirectoryPageUpdateINSTDIR
-
-    # Check if user is trying to install MTA into GTA directory
-	Push $INSTDIR 
-	Call IsGtaDirectory
-	Pop $0
-	${If} $0 == "gta"
-
-        # Don't allow install into GTA directory unless MTA is already there
-        Push $INSTDIR 
-        Call GetInstallType
-        Pop $0
-        Pop $1
-        ${If} $0 != "upgrade"
-            MessageBox MB_OKCANCEL|MB_ICONQUESTION|MB_TOPMOST|MB_SETFOREGROUND \
-                "$(INST_GTA_CONFLICT)" \
-                IDOK cont2
-                Abort
-            cont2:
-            StrCpy $INSTDIR $DEFAULT_INSTDIR
-        ${Endif}
-    ${Endif}
-
-    # Check if user is trying to install over a different major version of MTA
 	Push $INSTDIR 
 	Call GetInstallType
 	Pop $0
@@ -1824,32 +1684,6 @@ Function "GTADirectoryLeaveProc"
 
 FunctionEnd
 
-;****************************************************************
-;
-; Determine if gta is installed at supplied directory path
-;
-;****************************************************************
-
-; In <stack> = directory path
-; Out <stack> = "" - gta not detected at path
-;               "gta" - gta detected at path
-Function IsGtaDirectory
-    Pop $0
-    StrCpy $1 "gta"
-
-    ; gta_sa.exe or gta-sa.exe should exist
-    IfFileExists "$0\gta_sa.exe" cont1
-        IfFileExists "$0\gta-sa.exe" cont1
-            StrCpy $1 ""
-    cont1:
-
-    ; data subdirectory should exist
-    IfFileExists "$0\data\*.*" cont2
-        StrCpy $1 ""
-    cont2:
-
-    Push $1
-FunctionEnd
 
 ;****************************************************************
 ;
@@ -1876,8 +1710,7 @@ Var PosY
 !define LT_GREY "0xf0f0f0"
 !define MID_GREY "0xb0b0b0"
 !define BLACK "0x000000"
-!define MID_GREY2K "0x808080"
-!define LT_GREY2K "0xD1CEC9"
+!define WHITE "0xF0F0F0"
 
 LangString INST_CHOOSE_LOC_TOP ${LANG_ENGLISH}	"Choose Install Location"
 LangString INST_CHOOSE_LOC ${LANG_ENGLISH}	"Choose the folder in which to install ${PRODUCT_NAME_NO_VER} ${PRODUCT_VERSION}"
@@ -1999,18 +1832,9 @@ FunctionEnd
 # Ensure GUI reflects $WhichRadio
 Function CustomDirectoryPageShowWhichRadio
     # Set all options as not selected
-	Call IsWindowsClassicTheme
-	Pop $0
-	${If} $0 == 1
-        SetCtlColors $LabelDefault ${MID_GREY2K} ${LT_GREY2K}
-        SetCtlColors $LabelLastUsed ${MID_GREY2K} ${LT_GREY2K}
-        SetCtlColors $DirRequest ${MID_GREY2K} ${LT_GREY2K}
-    ${Else}
-        SetCtlColors $LabelDefault ${MID_GREY} ${LT_GREY}
-        SetCtlColors $LabelLastUsed ${MID_GREY} ${LT_GREY}
-        SetCtlColors $DirRequest ${MID_GREY} ${LT_GREY}
-	${EndIf}
-
+    SetCtlColors $LabelDefault ${MID_GREY} ${LT_GREY}
+    SetCtlColors $LabelLastUsed ${MID_GREY} ${LT_GREY}
+    SetCtlColors $DirRequest ${MID_GREY} ${WHITE}
     SendMessage $DirRequest ${EM_SETREADONLY} 1 0
     EnableWindow $BrowseButton 0
 
@@ -2019,17 +1843,17 @@ Function CustomDirectoryPageShowWhichRadio
         ${Case} "default"
             StrCpy $INSTDIR $DEFAULT_INSTDIR
             ${NSD_SetState} $RadioDefault ${BST_CHECKED}
-            SetCtlColors $LabelDefault ${BLACK}
+            SetCtlColors $LabelDefault ${BLACK} ${LT_GREY}
             ${Break}
         ${Case} "last"
             StrCpy $INSTDIR $LAST_INSTDIR
             ${NSD_SetState} $RadioLastUsed ${BST_CHECKED}
-            SetCtlColors $LabelLastUsed ${BLACK}
+            SetCtlColors $LabelLastUsed ${BLACK} ${LT_GREY}
             ${Break}
         ${Case} "custom"
             StrCpy $INSTDIR $CUSTOM_INSTDIR
             ${NSD_SetState} $RadioCustom ${BST_CHECKED}
-            SetCtlColors $DirRequest ${BLACK}
+            SetCtlColors $DirRequest ${WHITE}
             SendMessage $DirRequest ${EM_SETREADONLY} 0 0
             EnableWindow $BrowseButton 1
             ${Break}
@@ -2087,7 +1911,7 @@ Function CustomDirectoryPageSetUpgradeMessage
 
     ${NSD_SetText} $UpgradeLabel ""
 	${If} $0 == "overwrite"
-        ${NSD_SetText} $UpgradeLabel "$(INST_LOC_OW)"
+        ${NSD_SetText} $UpgradeLabel "Warning: A different major version of MTA ($1) already exists at that path."
 	${Endif}
 	${If} $0 == "upgrade"
         ${NSD_SetText} $UpgradeLabel "$(INST_LOC_UPGRADE)"
@@ -2109,15 +1933,6 @@ Function CustomDirectoryPageUpdateINSTDIR
     ${EndSwitch}
 FunctionEnd
 
-; Out <stack> = "1" - Is Windows Classic
-Function IsWindowsClassicTheme
-	System::Call "UxTheme::IsThemeActive() i .r3"
-    StrCpy $1 "1"
-    ${If} $3 == 1
-        StrCpy $1 "0"
-    ${EndIf}
-    Push $1
-FunctionEnd
 
 ;****************************************************************
 ;

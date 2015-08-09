@@ -38,9 +38,6 @@ DECLARE_ENUM( eVehicleComponent );
 DECLARE_ENUM( eFontType );
 DECLARE_ENUM( eAudioLookupIndex );
 DECLARE_ENUM( eAspectRatio );
-DECLARE_ENUM( eRadioStreamIndex );
-DECLARE_ENUM( EComponentBase::EComponentBaseType );
-DECLARE_ENUM( eWebBrowserMouseButton );
 
 enum eDXHorizontalAlign
 {
@@ -109,7 +106,6 @@ inline SString GetClassTypeName ( CClientMaterial* )        { return "material";
 inline SString GetClassTypeName ( CClientTexture* )         { return "texture"; }
 inline SString GetClassTypeName ( CClientWeapon* )          { return "weapon"; }
 inline SString GetClassTypeName ( CClientEffect* )          { return "effect"; }
-inline SString GetClassTypeName ( CClientPointLights* )     { return "light"; }
 
 inline SString GetClassTypeName ( CGUIButton* )      { return "gui-button"; }
 inline SString GetClassTypeName ( CGUICheckBox* )    { return "gui-checkbox"; }
@@ -131,9 +127,7 @@ inline SString GetClassTypeName ( CResource* )              { return "resource-d
 inline SString GetClassTypeName ( CXMLNode* )               { return "xml-node"; }
 inline SString GetClassTypeName ( CLuaTimer* )              { return "lua-timer"; }
 inline SString GetClassTypeName ( CEntity* )                { return "entity"; }
-inline SString GetClassTypeName ( CLuaVector2D* )           { return "vector2"; }
 inline SString GetClassTypeName ( CLuaVector3D* )           { return "vector3"; }
-inline SString GetClassTypeName ( CLuaVector4D* )           { return "vector4"; }
 inline SString GetClassTypeName ( CLuaMatrix* )             { return "matrix"; }
 
 
@@ -172,15 +166,6 @@ CLuaTimer* UserDataCast ( CLuaTimer*, void* ptr, lua_State* luaVM )
     return NULL;
 }
 
-//
-// CLuaVector2D from userdata
-//
-template < class T >
-CLuaVector2D* UserDataCast ( CLuaVector2D*, void* ptr, lua_State* luaVM )
-{
-    return CLuaVector2D::GetFromScriptID ( reinterpret_cast < unsigned int > ( ptr ) );
-}
-
 
 //
 // CLuaVector3D from userdata
@@ -189,16 +174,6 @@ template < class T >
 CLuaVector3D* UserDataCast ( CLuaVector3D*, void* ptr, lua_State* luaVM )
 {
     return CLuaVector3D::GetFromScriptID ( reinterpret_cast < unsigned int > ( ptr ) );
-}
-
-
-//
-// CLuaVector4D from userdata
-//
-template < class T >
-CLuaVector4D* UserDataCast ( CLuaVector4D*, void* ptr, lua_State* luaVM )
-{
-    return CLuaVector4D::GetFromScriptID ( reinterpret_cast < unsigned int > ( ptr ) );
 }
 
 

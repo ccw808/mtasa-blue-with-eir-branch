@@ -22,7 +22,6 @@ template<> CMessageLoopHook * CSingleton< CMessageLoopHook >::m_pSingleton = NUL
 WPARAM  CMessageLoopHook::m_LastVirtualKeyCode = NULL;
 UCHAR   CMessageLoopHook::m_LastScanCode = NULL;
 BYTE*   CMessageLoopHook::m_LastKeyboardState = new BYTE[256];
-bool    ms_bIgnoreNextEscapeCharacter = false;
 
 CMessageLoopHook::CMessageLoopHook ( )
 {
@@ -30,7 +29,6 @@ CMessageLoopHook::CMessageLoopHook ( )
     m_HookedWindowProc      = NULL;
     m_HookedWindowHandle    = NULL;
     m_bRefreshMsgQueueEnabled = true;
-    m_MovementDummyWindow   = NULL;
 }
 
 
@@ -54,23 +52,6 @@ void CMessageLoopHook::ApplyHook ( HWND hFocusWindow )
 
         // Enable Unicode (UTF-16) characters in WM_CHAR messages
         SetWindowLongW ( hFocusWindow, GWL_WNDPROC, GetWindowLong ( hFocusWindow, GWL_WNDPROC ) );
-
-
-        // Register window class for dummy movement window
-        WNDCLASSEX wcDummy;
-        wcDummy.cbSize        = sizeof(WNDCLASSEX);
-        wcDummy.style         = 0;
-        wcDummy.lpfnWndProc   = ProcessDummyWindowMessage;
-        wcDummy.cbClsExtra    = 0;
-        wcDummy.cbWndExtra    = 0;
-        wcDummy.hInstance     = GetModuleHandle(NULL);
-        wcDummy.hIcon         = LoadIcon(NULL, IDI_APPLICATION);
-        wcDummy.hCursor       = LoadCursor(NULL, IDC_ARROW);
-        wcDummy.hbrBackground = (HBRUSH)(COLOR_WINDOW+1);
-        wcDummy.lpszMenuName  = NULL;
-        wcDummy.lpszClassName = "MovementDummy";
-        wcDummy.hIconSm       = LoadIcon(NULL, IDI_APPLICATION);
-        RegisterClassEx(&wcDummy);
     }
 }
 
@@ -137,7 +118,7 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
         pThis->m_ProcessMessageTimer.Reset();
 
     // Alternate alt-tab system
-    if ( pThis && hwnd == pThis->GetHookedWindowHandle () )
+    if ( hwnd == pThis->GetHookedWindowHandle () )
     {
         if ( uMsg == WM_ACTIVATE && LOWORD(wParam) == WA_ACTIVE )
         {
@@ -146,10 +127,6 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
         if ( uMsg == WM_ACTIVATE && LOWORD(wParam) == WA_INACTIVE )
         {
             GetVideoModeManager()->OnLoseFocus();
-        }
-        if ( uMsg == WM_PAINT )
-        {
-            GetVideoModeManager()->OnPaint();
         }
     }
 
@@ -194,57 +171,35 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
         }
     }
 
-    // Make sure our pointers are valid.
-    if ( pThis != NULL && hwnd == pThis->GetHookedWindowHandle () && g_pCore->AreModulesLoaded() )
+    if ( hwnd != pThis->GetHookedWindowHandle () ) return NULL;
+
+    g_pCore->UpdateIsWindowMinimized ();  // Force update of stuff
+
+    // Handle IME if input is not for the GUI
+    if ( !g_pCore->GetLocalGUI ()->InputGoesToGUI () )
     {
-        g_pCore->UpdateIsWindowMinimized ();  // Force update of stuff
-
-        if ( uMsg == WM_TIMER && wParam == IDT_TIMER1 )
-            g_pCore->WindowsTimerHandler();     // Used for 'minimized before first game' pulses
-
-        // Handle IME if input is not for the GUI
-        if ( !g_pCore->GetLocalGUI ()->InputGoesToGUI () )
+        if ( uMsg == WM_KEYDOWN )
         {
-            if ( uMsg == WM_KEYDOWN )
-            {
-                // Recover virtual key
-                if ( wParam == VK_PROCESSKEY )
-                    wParam = MapVirtualKey ( lParam >> 16, MAPVK_VSC_TO_VK_EX );
-            }
-
-            if ( uMsg == WM_IME_STARTCOMPOSITION || uMsg == WM_IME_ENDCOMPOSITION || uMsg == WM_IME_COMPOSITION )
-            {
-                // Cancel, stop, block and ignore
-                HIMC himc = ImmGetContext ( hwnd );
-                ImmNotifyIME ( himc, NI_COMPOSITIONSTR, CPS_CANCEL, 0 );
-                ImmReleaseContext ( hwnd, himc );
-                return true;
-            }
+            // Recover virtual key
+            if ( wParam == VK_PROCESSKEY )
+                wParam = MapVirtualKey ( lParam >> 16, MAPVK_VSC_TO_VK_EX );
         }
 
-        // Pass escape keyup to onClientKey
-        if ( uMsg == WM_KEYUP && wParam == VK_ESCAPE )
+        if ( uMsg == WM_IME_STARTCOMPOSITION || uMsg == WM_IME_ENDCOMPOSITION || uMsg == WM_IME_COMPOSITION )
         {
-            g_pCore->GetKeyBinds()->TriggerKeyStrokeHandler ( "escape", uMsg == WM_KEYDOWN, true );
+            // Cancel, stop, block and ignore
+            HIMC himc = ImmGetContext ( hwnd );
+            ImmNotifyIME ( himc, NI_COMPOSITIONSTR, CPS_CANCEL, 0 );
+            ImmReleaseContext ( hwnd, himc );
             return true;
         }
-
-        // Suppress auto repeat of escape and console toggle keys
-        if ( ( uMsg == WM_KEYDOWN || uMsg == WM_CHAR ) && ( wParam == VK_ESCAPE || wParam == VK_F8 || wParam == '`' ) )
-        {
-            bool bFirstHit = ( lParam & 0x40000000 ) ? false:true;
-            if ( !bFirstHit )
-                return true;
-        }
-
-        // Slightly hacky way of suppressing escape character when console is closed with escape key
-        if ( uMsg == WM_CHAR && wParam == VK_ESCAPE )
-        {
-            bool bTemp = ms_bIgnoreNextEscapeCharacter;
-            ms_bIgnoreNextEscapeCharacter = false;
-            if ( bTemp )
-                return true;
-        }
+    }
+   
+    // Make sure our pointers are valid.
+    if ( pThis != NULL && CLocalGUI::GetSingletonPtr ( ) != NULL && CCore::GetSingleton ().GetGame () )
+    {
+        if ( uMsg == WM_KEYUP && wParam == VK_ESCAPE ) 
+            return true;
 
         if ( CKeyBinds::IsFakeCtrl_L ( uMsg, wParam, lParam ) )
             return true;
@@ -279,7 +234,6 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
                         CConsoleInterface* pConsole = g_pCore->GetConsole ();
                         if ( pConsole->IsVisible () )
                         {
-                            ms_bIgnoreNextEscapeCharacter = true;
                             pConsole->SetVisible ( false );
                             return true;
                         }
@@ -287,17 +241,14 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
                         // The mainmenu makes sure it isn't hidden if UseIngameButtons == false
                         if ( !CCore::GetSingleton().IsOfflineMod () )
                         {
-                            if ( g_pCore->GetKeyBinds()->TriggerKeyStrokeHandler ( "escape", uMsg == WM_KEYDOWN, true ) )
+                            // Stop chat input
+                            if ( CLocalGUI::GetSingleton ().IsChatBoxInputEnabled () )
                             {
-                                // Stop chat input
-                                if ( CLocalGUI::GetSingleton ().IsChatBoxInputEnabled () )
-                                {
-                                    CLocalGUI::GetSingleton ().SetChatBoxInputEnabled ( false );
-                                    return true;
-                                }
-
-                                CLocalGUI::GetSingleton ().SetMainMenuVisible ( !CLocalGUI::GetSingleton ().IsMainMenuVisible () );
+                                CLocalGUI::GetSingleton ().SetChatBoxInputEnabled ( false );
+                                return true;
                             }
+
+                            CLocalGUI::GetSingleton ().SetMainMenuVisible ( !CLocalGUI::GetSingleton ().IsMainMenuVisible () );
                             return true;
                         }
                     }
@@ -306,53 +257,6 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
                     {
                         // If Escape is pressed and we're not playing ingame, hide certain windows
                         CLocalGUI::GetSingleton ().GetMainMenu ()->OnEscapePressedOffLine ();
-                    }
-
-                    // If CTRL and Tab are pressed, Trigger a skip
-                    if ( ( uMsg == WM_KEYDOWN && wParam == VK_TAB ) )
-                    {
-                        eSystemState systemState = g_pCore->GetGame ()->GetSystemState ();
-                        if ( systemState == 7 || systemState == 8 || systemState == 9 )
-                        {
-                            short sCtrlState = GetKeyState ( VK_CONTROL );
-                            short sShiftState = GetKeyState ( VK_SHIFT );
-                            if ( sCtrlState & 0x8000 )
-                            {
-                                CSettings * pSettings = CLocalGUI::GetSingleton ().GetMainMenu ()->GetSettingsWindow ();
-                                CServerBrowser * pServerBrowser = CLocalGUI::GetSingleton ().GetMainMenu ()->GetServerBrowser ();
-
-                                if ( pSettings && pSettings->IsVisible ( ) && pSettings->IsActive ( ) )
-                                {
-                                    pSettings->TabSkip ( ( sShiftState & 0x8000 ) ? true : false );
-                                }
-                                else if ( pServerBrowser && pServerBrowser->IsVisible ( ) && pServerBrowser->IsActive ( ) )
-                                {
-                                    pServerBrowser->TabSkip ( ( sShiftState & 0x8000 ) ? true : false );
-                                }
-                            }
-                        }
-                    }
-                    if ( ( uMsg == WM_KEYDOWN && ( wParam >= VK_1 && wParam <= VK_9 ) ) )
-                    {
-                        eSystemState systemState = g_pCore->GetGame ()->GetSystemState ();
-                        if ( systemState == 7 || systemState == 8 || systemState == 9 )
-                        {
-                            short sCtrlState = GetKeyState ( VK_CONTROL );
-                            if ( sCtrlState & 0x8000 )
-                            {
-                                CSettings * pSettings = CLocalGUI::GetSingleton ().GetMainMenu ()->GetSettingsWindow ();
-                                CServerBrowser * pServerBrowser = CLocalGUI::GetSingleton ().GetMainMenu ()->GetServerBrowser ();
-
-                                if ( pSettings && pSettings->IsVisible ( ) && pSettings->IsActive ( ) )
-                                {
-                                    pSettings->SetSelectedIndex ( ( wParam - VK_1 ) - 1 );
-                                }
-                                else if ( pServerBrowser && pServerBrowser->IsVisible ( ) && pServerBrowser->IsActive ( ) )
-                                {
-                                    pServerBrowser->SetSelectedIndex ( ( wParam - VK_1 ) - 1 );
-                                }
-                            }
-                        }
                     }
 
                     // If F8 is pressed, we show/hide the console
@@ -366,9 +270,9 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
                         return true;
                     }
 
-                    // If the console is accepting input, and we pressed down/up, scroll the console history
+                    // If the console is visible, and we pressed down/up, scroll the console history
                     //                          or if we pressed tab, step through possible autocomplete matches
-                    if ( CLocalGUI::GetSingleton ().GetConsole()->IsInputActive() )
+                    if ( CLocalGUI::GetSingleton ().IsConsoleVisible () )
                     {
                         if ( uMsg == WM_KEYDOWN )
                         {
@@ -487,12 +391,6 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
                 }
                 */
 
-                if ( uMsg == WM_SYSCOMMAND && wParam == 0xF012 ) // SC_DRAGMOVE
-                {
-                    CMessageLoopHook::GetSingleton().StartWindowMovement ();
-                    return true;
-                }
-
 
                 // If we handled mouse steering, don't let GTA.
                 //if ( !CCore::GetSingleton ().GetMouseControl()->ProcessMouseMove ( uMsg, wParam, lParam ) )
@@ -509,94 +407,6 @@ LRESULT CALLBACK CMessageLoopHook::ProcessMessage ( HWND hwnd,
     return DefWindowProcW ( hwnd, uMsg, wParam, lParam );
 }
 
-void CMessageLoopHook::StartWindowMovement()
-{
-    RECT ClientRect;
-    GetWindowRect ( m_HookedWindowHandle, &ClientRect );
-    POINT CursorPos;
-    GetCursorPos ( &CursorPos );
-
-    m_MoveOffset.x = ClientRect.left - CursorPos.x;
-    m_MoveOffset.y = ClientRect.top - CursorPos.y;
-
-    m_MovementDummyWindow = CreateWindowEx ( 0, "MovementDummy", "", 0, CW_USEDEFAULT, CW_USEDEFAULT,
-        ClientRect.right - ClientRect.left, ClientRect.bottom - ClientRect.top, NULL, NULL, GetModuleHandle(NULL), NULL);
-
-    LONG lStyle = GetWindowLong ( m_MovementDummyWindow, GWL_STYLE );
-    lStyle &= ~(WS_CAPTION | WS_THICKFRAME | WS_SYSMENU);
-    SetWindowLong ( m_MovementDummyWindow, GWL_STYLE, lStyle );
-
-    LONG lExStyle = GetWindowLong ( m_MovementDummyWindow, GWL_EXSTYLE );
-    lExStyle &= ~(WS_EX_DLGMODALFRAME | WS_EX_CLIENTEDGE | WS_EX_STATICEDGE);
-    lExStyle |= WS_EX_LAYERED;
-    SetWindowLong ( m_MovementDummyWindow, GWL_EXSTYLE, lExStyle );
-    SetLayeredWindowAttributes ( m_MovementDummyWindow, 0, 140, LWA_ALPHA );
-
-    SetWindowPos ( m_MovementDummyWindow, NULL, ClientRect.left, ClientRect.top, 0, 0, SWP_DRAWFRAME | SWP_NOZORDER | SWP_NOSIZE );
-    //ShowWindow ( m_HookedWindowHandle, SW_HIDE );
-    ShowWindow ( m_MovementDummyWindow, SW_SHOW );
-    UpdateWindow ( m_MovementDummyWindow );
-
-    // Set mouse capture to handle mouse event also if the cursor is not on the window (due to a too fast mouse)
-    SetCapture ( m_MovementDummyWindow );
-}
-
-LRESULT CALLBACK CMessageLoopHook::ProcessDummyWindowMessage(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
-{
-    CMessageLoopHook* pThis = CMessageLoopHook::GetSingletonPtr ();
-
-    switch (uMsg)
-    {
-        case WM_NCMOUSEMOVE:
-        case WM_MOUSEMOVE:
-        {
-            POINT CursorPos;
-            GetCursorPos ( &CursorPos );
-            SetWindowPos ( hwnd, NULL, CursorPos.x + pThis->m_MoveOffset.x, CursorPos.y + pThis->m_MoveOffset.y, 0, 0, SWP_NOZORDER | SWP_NOSIZE );
-            break;
-        }
-        case WM_LBUTTONUP:
-        {
-            // Destroy the dummy window
-            DestroyWindow ( hwnd );
-            pThis->m_MovementDummyWindow = NULL;
-
-            POINT CursorPos;
-            GetCursorPos ( &CursorPos );
-            
-            // Move the main window to the last position of the dummy window
-            SetWindowPos ( pThis->m_HookedWindowHandle, NULL, CursorPos.x + pThis->m_MoveOffset.x, CursorPos.y + pThis->m_MoveOffset.y, 0, 0, SWP_NOZORDER | SWP_NOSIZE );
-            //ShowWindow ( pThis->m_HookedWindowHandle, SW_SHOW );
-
-            // Release mouse capture
-            ReleaseCapture ();
-
-            break;
-        }
-        case WM_PAINT:
-        {
-            PAINTSTRUCT PS;
-            BeginPaint ( hwnd, &PS );
-            RECT ClientRect;
-            GetClientRect ( hwnd, &ClientRect );
-            RECT BorderRect = { 5, 5, ClientRect.right - 5, ClientRect.bottom - 5 };
-
-            // Give it some color
-            HBRUSH BorderBrush = CreateSolidBrush ( 0x00000000 );
-            HBRUSH FillBrush = CreateSolidBrush ( RGB(255,255,255) );
-            FillRect ( PS.hdc, &ClientRect, BorderBrush );
-            FillRect ( PS.hdc, &BorderRect, FillBrush );
-            DeleteObject ( BorderBrush );
-            DeleteObject ( FillBrush );
-            EndPaint ( hwnd, &PS );
-
-            break;
-        }
-        default:
-            return DefWindowProc(hwnd, uMsg, wParam, lParam);
-    }
-    return 0;
-}
 
 HWND CMessageLoopHook::GetHookedWindowHandle ( ) const
 {

@@ -30,7 +30,7 @@ void CLuaCameraDefs::LoadFunctions ( void )
 
 int CLuaCameraDefs::getCameraMatrix ( lua_State* luaVM )
 {
-//  float cameraX, float cameraY, float cameraZ, float targetX, float targetY, float targetZ, float roll, float fov getCameraMatrix ( player thePlayer )
+//  float cameraX, float cameraY, float cameraZ, float targetX, float targetY, float targetZ, float roll, float fov setCameraMatrix ( player thePlayer )
     CPlayer* pPlayer;
 
     CScriptArgReader argStream ( luaVM );
@@ -114,24 +114,22 @@ int CLuaCameraDefs::getCameraInterior ( lua_State* luaVM )
 int CLuaCameraDefs::setCameraMatrix ( lua_State* luaVM )
 {
 //  bool setCameraMatrix ( player thePlayer, float positionX, float positionY, float positionZ [, float lookAtX, float lookAtY, float lookAtZ, float roll = 0, float fov = 70 ] )
-    CElement* pPlayer; CVector vecPosition; CVector vecLookAt; float fRoll; float fFOV;
+    CElement* pPlayer; CVector vecPosition; CVector vecLookAt; CVector* pvecLookAt = NULL; float fRoll; float fFOV;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pPlayer );
-    
-    if ( argStream.NextIsUserDataOfType <CLuaMatrix> () ) {
-        CLuaMatrix* pMatrix;
-        argStream.ReadUserData( pMatrix );
-
-        vecPosition = pMatrix->GetPosition ();
-        vecLookAt = pMatrix->GetRotation ();
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
+    if ( argStream.NextIsNumber () && argStream.NextIsNumber ( 1 ) && argStream.NextIsNumber ( 2 ) )
+    {
+        argStream.ReadNumber ( vecLookAt.fX );
+        argStream.ReadNumber ( vecLookAt.fY );
+        argStream.ReadNumber ( vecLookAt.fZ );
+        pvecLookAt = &vecLookAt;
     }
     else
-    {
-        argStream.ReadVector3D ( vecPosition );
-        argStream.ReadVector3D ( vecLookAt, CVector () );
-    }
-    
+        argStream.m_iIndex += 3;
     argStream.ReadNumber ( fRoll, 0.0f );
     argStream.ReadNumber ( fFOV, 70.0f );
 
@@ -140,7 +138,7 @@ int CLuaCameraDefs::setCameraMatrix ( lua_State* luaVM )
         if ( fFOV <= 0.0f || fFOV >= 180.0f )
             fFOV = 70.0f;
 
-        if ( CStaticFunctionDefinitions::SetCameraMatrix ( pPlayer, vecPosition, &vecLookAt, fRoll, fFOV ) )
+        if ( CStaticFunctionDefinitions::SetCameraMatrix ( pPlayer, vecPosition, pvecLookAt, fRoll, fFOV ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;

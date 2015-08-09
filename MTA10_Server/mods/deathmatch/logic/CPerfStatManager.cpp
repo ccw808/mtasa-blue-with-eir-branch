@@ -73,7 +73,6 @@ CPerfStatManagerImpl::CPerfStatManagerImpl ( void )
     AddModule ( CPerfStatPacketUsage::GetSingleton () );
     AddModule ( CPerfStatRPCPacketUsage::GetSingleton () );
     AddModule ( CPerfStatEventPacketUsage::GetSingleton () );
-    AddModule ( CPerfStatPlayerPacketUsage::GetSingleton () );
     AddModule ( CPerfStatSqliteTiming::GetSingleton () );
     AddModule ( CPerfStatBandwidthReduction::GetSingleton () );
     AddModule ( CPerfStatBandwidthUsage::GetSingleton () );
@@ -324,7 +323,6 @@ SString CPerfStatManager::GetScaledFloatString ( float fValue )
 ///////////////////////////////////////////////////////////////
 long long CPerfStatManager::GetPerSecond ( long long llValue, long long llDeltaTickCount )
 {
-    llDeltaTickCount = Max( 1LL, llDeltaTickCount );
     return ( llValue * 1000LL + ( llDeltaTickCount / 2 ) ) / llDeltaTickCount;
 }
 
@@ -338,7 +336,6 @@ long long CPerfStatManager::GetPerSecond ( long long llValue, long long llDeltaT
 ///////////////////////////////////////////////////////////////
 void CPerfStatManager::ToPerSecond ( long long& llValue, long long llDeltaTickCount )
 {
-    llDeltaTickCount = Max( 1LL, llDeltaTickCount );
     llValue = ( llValue * 1000LL + ( llDeltaTickCount / 2 ) ) / llDeltaTickCount;
 }
 
@@ -352,7 +349,6 @@ void CPerfStatManager::ToPerSecond ( long long& llValue, long long llDeltaTickCo
 ///////////////////////////////////////////////////////////////
 SString CPerfStatManager::GetPerSecondString ( long long llValue, double dDeltaTickCount )
 {
-    dDeltaTickCount = Max( 1.0, dDeltaTickCount );
     double dValue = llValue * 1000 / dDeltaTickCount;
     return SString ( dValue < 5 ? "%1.1f" : "%1.0f", dValue );
 }

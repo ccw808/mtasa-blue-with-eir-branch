@@ -152,7 +152,6 @@ void RaiseFatalError ( unsigned int uiCode )
     g_pCore->ShowErrorMessageBox ( _("Fatal error")+_E("CD62"), strBuffer, strTroubleLink );
 
     // Request the mod unload
-    AddReportLog( 7108, SString( "Game - RaiseFatalError %d", uiCode ) );
     g_pCore->GetModManager ()->RequestUnload ();
 }
 
@@ -170,7 +169,6 @@ void RaiseProtocolError ( unsigned int uiCode )
 
     // Request the mod unload
     g_pCore->GetModManager ()->RequestUnload ();
-    AddReportLog( 7109, SString( "Game - RaiseProtocolError %d", uiCode ) );
 }
 
 
@@ -206,13 +204,13 @@ void RotateVector ( CVector& vecLine, const CVector& vecRotation )
 
 void AttachedMatrix ( const CMatrix& matrix, CMatrix& returnMatrix, const CVector& vecPosition, const CVector& vecRotation )
 {
-    returnMatrix = CMatrix( vecPosition, vecRotation ) * matrix;
+    returnMatrix = CRotationMatrix( vecRotation ) * CTranslationMatrix( vecPosition ) * matrix;
 }
 
 void LongToDottedIP ( unsigned long ulIP, char* szDottedIP )
 {
     in_addr in;
-    in.s_addr = ulIP;
+    in.s_addr = ulIP;;
     char* szTemp = inet_ntoa ( in );
     if ( szTemp )
     {
@@ -550,6 +548,26 @@ bool BitStreamReadUsString( class NetBitStreamInterface& bitStream, SString& str
     return bResult;
 }
 
+eEulerRotationOrder	EulerRotationOrderFromString(const char* szString)
+{
+    // We don't provide a conversion for EULER_MINUS_ZYZ since it's only meant to be used internally, not via scripts
+    if ( stricmp ( szString, "default" ) == 0)
+    {
+        return EULER_DEFAULT;
+    }
+    else if ( stricmp ( szString, "ZXY" ) == 0 )
+    {
+        return EULER_ZXY;
+    }
+    else if ( stricmp ( szString, "ZYX" ) == 0 )
+    {
+        return EULER_ZYX;
+    }
+    else
+    {
+        return EULER_INVALID;
+    }
+}
 
 // RX(theta)
 // | 1              0               0       |
@@ -643,7 +661,9 @@ CVector    ConvertEulerRotationOrder    ( const CVector& a_vRotation, eEulerRota
 {
     if (a_eSrcOrder == a_eDstOrder      ||
         a_eSrcOrder == EULER_DEFAULT    ||
-        a_eDstOrder == EULER_DEFAULT)
+        a_eSrcOrder == EULER_INVALID    ||
+        a_eDstOrder == EULER_DEFAULT    ||
+        a_eDstOrder == EULER_INVALID)
     {
         return a_vRotation;
     }

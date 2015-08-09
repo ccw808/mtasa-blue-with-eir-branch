@@ -21,15 +21,17 @@ CObjectSync::CObjectSync ( CPlayerManager* pPlayerManager, CObjectManager* pObje
 {
     m_pPlayerManager = pPlayerManager;
     m_pObjectManager = pObjectManager;
+    m_ulLastSweepTime = 0;
 }
 
 
 void CObjectSync::DoPulse ( void )
 {
     // Time to check for players that should no longer be syncing a object or objects that should be synced?
-    if ( m_UpdateTimer.Get() > SYNC_RATE )
+    unsigned long ulCurrentTime = GetTime ();
+    if ( ulCurrentTime >= m_ulLastSweepTime + SYNC_RATE )
     {
-        m_UpdateTimer.Reset();
+        m_ulLastSweepTime = ulCurrentTime;
         Update ();
     }
 }

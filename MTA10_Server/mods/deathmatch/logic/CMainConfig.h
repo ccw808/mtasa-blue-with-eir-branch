@@ -84,7 +84,6 @@ public:
     inline int                      GetHTTPMaxConnectionsPerClient  ( void )        { return m_iHTTPMaxConnectionsPerClient; };
     inline int                      GetHTTPThreadCount              ( void )        { return m_iHTTPThreadCount; };
     inline int                      GetHTTPDosThreshold             ( void )        { return m_iHTTPDosThreshold; };
-    inline const SString&           GetHTTPDosExclude               ( void )        { return m_strHTTPDosExclude; };
     inline int                      GetEnableClientChecks           ( void )        { return m_iEnableClientChecks; };
     inline const std::string&       GetLogFile                      ( void )        { return m_strLogFile; };
     inline const std::string&       GetAuthFile                     ( void )        { return m_strAuthFile; };
@@ -102,6 +101,7 @@ public:
     int                             GetMinClientVersionAutoUpdate   ( void )                    { return m_iMinClientVersionAutoUpdate; }
     inline bool                     IsAutoLoginEnabled              ( )                         { return m_bAutoLogin; }
     const SString&                  GetIdFile                       ( void )                    { return m_strIdFile; }
+    bool                            GetNetworkEncryptionEnabled     ( void )                    { return m_bNetworkEncryptionEnabled; }
     bool                            GetThreadNetEnabled             ( void )                    { return m_bThreadNetEnabled; }
     const SString&                  GetGlobalDatabasesPath          ( void )                    { return m_strGlobalDatabasesPath; }
     const SString&                  GetSystemDatabasesPath          ( void )                    { return m_strSystemDatabasesPath; }
@@ -114,7 +114,6 @@ public:
     bool                            SetFPSLimit                     ( unsigned short usFPS, bool bSave );
     int                             GetPendingWorkToDoSleepTime     ( void );
     int                             GetNoWorkToDoSleepTime          ( void );
-    int                             GetServerLogicFpsLimit          ( void )                    { return m_iServerLogicFpsLimit; };
     const SString&                  GetDbLogFilename                ( void )                    { return m_strDbLogFilename; }
     bool                            GetSyncMapElementData           ( void ) const              { return m_bSyncMapElementData; }
     void                            SetSyncMapElementData           ( bool bOn )                { m_bSyncMapElementData = bOn; }
@@ -171,7 +170,6 @@ private:
     int                             m_iHTTPMaxConnectionsPerClient;
     int                             m_iHTTPThreadCount;
     int                             m_iHTTPDosThreshold;
-    SString                         m_strHTTPDosExclude;
     int                             m_iEnableClientChecks;
     std::string                     m_strLogFile;
     std::string                     m_strAuthFile;
@@ -198,6 +196,7 @@ private:
     int                             m_iBackupAmount;
     int                             m_iCompactInternalDatabases;
     bool                            m_bDidBackup;
+    bool                            m_bNetworkEncryptionEnabled;
     SString                         m_strBandwidthReductionMode;
     int                             m_iPendingWorkToDoSleepTime;
     int                             m_iNoWorkToDoSleepTime;
@@ -212,7 +211,6 @@ private:
     int                             m_bNetAutoFilter;
     SString                         m_strLoadstringLogFilename;
     int                             m_iMinClientVersionAutoUpdate;
-    int                             m_iServerLogicFpsLimit;
 };
 
 #endif

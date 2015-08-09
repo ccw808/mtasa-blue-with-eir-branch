@@ -80,8 +80,6 @@ public:
     SString                     GetFont                     ( class CClientGuiFont** ppFontElement );
     bool                        SetFont                     ( const SString& strFontName, CClientGuiFont* pFontElement );
 
-    virtual void                SetCallPropagationEnabled   ( bool bEnabled );
-
 private:
     bool                        _CallbackEvent1             ( CGUIElement *pCGUIElement );
     bool                        _CallbackEvent2             ( CGUIElement *pCGUIElement );

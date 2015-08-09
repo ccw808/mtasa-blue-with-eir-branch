@@ -90,14 +90,6 @@ float DistanceBetweenPoints2D ( const CVector& vecPosition1, const CVector& vecP
     return sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY );
 }
 
-float DistanceBetweenPoints2D ( const CVector2D& vecPosition1, const CVector2D& vecPosition2 )
-{
-    float fDistanceX = vecPosition2.fX - vecPosition1.fX;
-    float fDistanceY = vecPosition2.fY - vecPosition1.fY;
-
-    return sqrt ( fDistanceX * fDistanceX + fDistanceY * fDistanceY );
-}
-
 
 float DistanceBetweenPoints3D ( const CVector& vecPosition1, const CVector& vecPosition2 )
 {
@@ -793,11 +785,19 @@ void RotateVector ( CVector& vecLine, const CVector& vecRotation )
 }
 
 
-SString LongToDottedIP ( unsigned long ulIP )
+void LongToDottedIP ( unsigned long ulIP, char* szDottedIP )
 {
     in_addr in;
-    in.s_addr = ulIP;
-    return inet_ntoa ( in );
+    in.s_addr = ulIP;;
+    char* szTemp = inet_ntoa ( in );
+    if ( szTemp )
+    {
+        strncpy ( szDottedIP, szTemp, 22 );
+    }
+    else
+    {
+        szDottedIP [0] = 0;
+    }
 }
 
 const char* HTMLEscapeString ( const char *szSource )
@@ -836,6 +836,27 @@ const char* HTMLEscapeString ( const char *szSource )
     return szBuffer;
 }
 
+
+eEulerRotationOrder    EulerRotationOrderFromString(const char* szString)
+{
+    // We don't provide a conversion for EULER_MINUS_ZYZ since it's only meant to be used internally, not via scripts
+    if ( stricmp ( szString, "default" ) == 0)
+    {
+        return EULER_DEFAULT;
+    }
+    else if ( stricmp ( szString, "ZXY" ) == 0 )
+    {
+        return EULER_ZXY;
+    }
+    else if ( stricmp ( szString, "ZYX" ) == 0 )
+    {
+        return EULER_ZYX;
+    }
+    else
+    {
+        return EULER_INVALID;
+    }
+}
 
 // RX(theta)
 // | 1              0               0       |
@@ -929,7 +950,9 @@ CVector    ConvertEulerRotationOrder    ( const CVector& a_vRotation, eEulerRota
 {
     if (a_eSrcOrder == a_eDstOrder      ||
         a_eSrcOrder == EULER_DEFAULT    ||
-        a_eDstOrder == EULER_DEFAULT)
+        a_eSrcOrder == EULER_INVALID    ||
+        a_eDstOrder == EULER_DEFAULT    ||
+        a_eDstOrder == EULER_INVALID)
     {
         return a_vRotation;
     }

@@ -4,6 +4,10 @@
 #pragma warning (disable:4409)
 #pragma warning (disable:4250)
 
+// To make the code know we compile for MTA:BLUE Eir fork.
+#define _MTA_BLUE
+
+#define NOMINMAX
 #include <windows.h>
 #define MTA_CLIENT
 #define SHARED_UTIL_WITH_HASH_MAP
@@ -12,12 +16,22 @@
 #include "SharedUtil.MemAccess.h"
 #include <stdio.h>
 
+// Screw the windows header.
+#undef GetObject
+
 #include <algorithm>
 #include <list>
 #include <map>
 #include <set>
 #include <string>
 #include <vector>
+
+// Define these if you are experiencing heap trouble.
+//#define USE_HEAP_DEBUGGING
+//#define USE_FULL_PAGE_HEAP
+//#define PAGE_HEAP_INTEGRITY_CHECK
+//#define PAGE_HEAP_MEMORY_STATS
+#include <debugsdk/dbgheap.h>
 
 // SDK includes
 #include <core/CCoreInterface.h>
@@ -28,19 +42,28 @@
 #include <ijsify.h>
 
 // Game includes
+#include "RenderWare.h"
+#include "CFileUtilsSA.h"
+#include "CQuadTreeSA.h"
+#include "CExecutiveManagerSA.h"
+#include "CRecordingsSA.h"
+#include "CTransformationSA.h"
+#include "CModelInfoSA.h"
 #include "CEntitySA.h"
 #include "gamesa_init.h"
 #include "Common.h"
-#include "CGameSA.h"
 #include "CWorldSA.h"
+#include "CIMGManagerSA.h"
 #include "CPoolsSA.h"
+#include "CRenderWareSA.h"
+#include "CModelManagerSA.h"
+#include "CTextureManagerSA.h"
 #include "CClockSA.h"
 #include "CFontSA.h"
 #include "CRadarSA.h"
 #include "CMenuManagerSA.h"
 #include "CCameraSA.h"
 #include "CCheckpointsSA.h"
-#include "CRenderWareSA.h"
 #include "CCoronasSA.h"
 #include "CPickupsSA.h"
 #include "CPathFindSA.h"
@@ -73,7 +96,6 @@
 #include "CEventDamageSA.h"
 #include "CEventGunShotSA.h"
 #include "CAnimManagerSA.h"
-#include "CStreamingSA.h"
 #include "CVisibilityPluginsSA.h"
 #include "CKeyGenSA.h"
 #include "CRopesSA.h"
@@ -82,8 +104,10 @@
 #include "CFxSystemSA.h"
 #include "CFxManagerSA.h"
 #include "HookSystem.h"
-#include "CModelInfoSA.h"
+#include "CAtomicModelInfoSA.h"
+#include "CClumpModelInfoSA.h"
 #include "CPedModelInfoSA.h"
+#include "CVehicleModelInfoSA.h"
 #include "CColPointSA.h"
 #include "CCivilianPedSA.h"
 #include "CAnimBlendAssociationSA.h"
@@ -113,3 +137,7 @@
 #include "CWeaponStatManagerSA.h"
 #include "CShadowDataSA.h"
 #include "CBuoyancySA.h"
+#include "CCacheSA.h"
+#include "CStreamingSA.h"
+#include "CStreamerSA.h"
+#include "CGameSA.h"

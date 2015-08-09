@@ -266,16 +266,6 @@ SDefaultCommandBind g_dcbDefaultCommands[] =
 // HACK: our current shift key states
 bool bPreLeftShift = false, bPreRightShift = false;
 
-// Ensure zero length strings are NULL
-static void NullEmptyStrings( const char*& a, const char*& b = *(const char**)NULL, const char*& c = *(const char**)NULL, const char*& d = *(const char**)NULL, const char*& e = *(const char**)NULL )
-{
-    if ( &a && a && a[0] == 0 ) a = NULL;
-    if ( &b && b && b[0] == 0 ) b = NULL;
-    if ( &c && c && c[0] == 0 ) c = NULL;
-    if ( &d && d && d[0] == 0 ) d = NULL;
-    if ( &e && e && e[0] == 0 ) e = NULL;
-}
-
 
 CKeyBinds::CKeyBinds ( CCore* pCore )
 {
@@ -301,9 +291,6 @@ CKeyBinds::~CKeyBinds ( void )
 
 bool CKeyBinds::ProcessMessage ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam )
 {
-    if ( g_pCore->GetWebCore () && !m_pCore->IsMenuVisible() && !m_pCore->GetConsole()->IsVisible() && !m_pCore->IsChatInputEnabled() )
-        g_pCore->GetWebCore ()->ProcessInputMessage ( uMsg, wParam, lParam );
-
     // Don't process Shift keys here, we have a hack for that
     if ( wParam == 0x10 &&
         ( uMsg == WM_KEYDOWN || uMsg == WM_KEYUP || uMsg == WM_SYSKEYDOWN || uMsg == WM_SYSKEYUP ) )
@@ -374,7 +361,7 @@ bool CKeyBinds::ProcessKeyStroke ( const SBindableKey * pKey, bool bState )
     // Search through binds
     bool bFound = false;
     CKeyBind* pBind = NULL;
-    list < CCommandBind* > processedList;
+    list < CCommandBind* > *processedList = new list < CCommandBind* >;
     list < CKeyBind* > cloneList = *m_pList;
     list < CKeyBind* > ::const_iterator iter = cloneList.begin ();
     for ( ; iter != cloneList.end (); ++iter )
@@ -432,8 +419,8 @@ bool CKeyBinds::ProcessKeyStroke ( const SBindableKey * pKey, bool bState )
                                             else
                                             {
                                                 bool bAlreadyProcessed = false;
-                                                list < CCommandBind* > ::iterator iter = processedList.begin ();
-                                                for ( ; iter != processedList.end (); iter++ )
+                                                list < CCommandBind* > ::iterator iter = processedList->begin ();
+                                                for ( ; iter != processedList->end (); iter++ )
                                                 {
                                                     if ( strcmp ( ( *iter )->szCommand, pCommandBind->szCommand ) == 0 )
                                                     {
@@ -452,7 +439,7 @@ bool CKeyBinds::ProcessKeyStroke ( const SBindableKey * pKey, bool bState )
                                                 if ( !bAlreadyProcessed )
                                                 {
                                                     Call ( pCommandBind );
-                                                    processedList.push_back ( pCommandBind );
+                                                    processedList->push_back ( pCommandBind );
                                                 }
                                             }
                                         }
@@ -590,31 +577,14 @@ bool CKeyBinds::Call ( CKeyBind* pKeyBind )
 }
 
 
-bool CKeyBinds::AddCommand ( const char* szKey, const char* szCommand, const char* szArguments, bool bState, const char* szResource, bool bScriptCreated, const char* szOriginalScriptKey )
+bool CKeyBinds::AddCommand ( const char* szKey, const char* szCommand, const char* szArguments, bool bState, const char* szResource, bool bAltKey )
 {
-    NullEmptyStrings( szCommand, szArguments, szResource );
-
-    if ( szKey == NULL || szCommand == NULL )
-        return false;
+    if ( szKey == NULL || szCommand == NULL ) return false;
 
     const SBindableKey* boundKey = GetBindableFromKey ( szKey );
     
     if ( boundKey )
     {
-        if ( szResource && bScriptCreated )
-        {
-            // Check if there is a waiting replacement
-            CCommandBind* pUserAddedBind = FindCommandMatch( NULL, szCommand, szArguments, szResource, szKey, true, bState, true, false );
-            if ( pUserAddedBind )
-            {
-                // Upgrade
-                pUserAddedBind->bScriptCreated = true;
-                pUserAddedBind->bIsReplacingScriptKey = true;
-                assert( pUserAddedBind->strOriginalScriptKey == szKey );
-                return true;
-            }
-        }
-
         CCommandBind* bind = new CCommandBind;
         bind->boundKey = boundKey;
         bind->szCommand = new char [ strlen ( szCommand ) + 1 ];
@@ -629,11 +599,10 @@ bool CKeyBinds::AddCommand ( const char* szKey, const char* szCommand, const cha
             bind->szResource = new char [ strlen ( szResource ) + 1 ];
             strcpy ( bind->szResource, szResource );
 
-            bind->bScriptCreated = bScriptCreated;
-            if ( bind->bScriptCreated )
-                bind->strOriginalScriptKey = szKey;
+            if ( bAltKey )
+                bind->strDefaultKey = "";
             else
-                bind->strOriginalScriptKey = szOriginalScriptKey;  // Will wait for script to addcommand before doing replace
+                bind->strDefaultKey = szKey;
         }
         bind->bHitState = bState;
         bind->bState = false;
@@ -648,8 +617,6 @@ bool CKeyBinds::AddCommand ( const char* szKey, const char* szCommand, const cha
 
 bool CKeyBinds::AddCommand ( const SBindableKey* pKey, const char* szCommand, const char* szArguments, bool bState )
 {
-    NullEmptyStrings( szCommand, szArguments );
-
     if ( pKey == NULL || szCommand == NULL ) return false;
     
     CCommandBind* bind = new CCommandBind;
@@ -762,32 +729,44 @@ bool CKeyBinds::RemoveAllCommands ( void )
 }
 
 
-bool CKeyBinds::CommandExists ( const char* szKey, const char* szCommand, bool bCheckState, bool bState, const char* szArguments, const char* szResource, bool bCheckScriptCreated, bool bScriptCreated )
+bool CKeyBinds::CommandExists ( const char* szKey, const char* szCommand, bool bCheckState, bool bState, const char* szArguments, const char* szResource )
 {
-    const char* szOriginalScriptKey = NULL;
-    if ( bCheckScriptCreated && bScriptCreated )
-    {
-        // If looking for script created command, check original key instead of current key
-        szOriginalScriptKey = szKey;
-        szKey = NULL;
-    }
-
-    if ( FindCommandMatch( szKey, szCommand, szArguments, szResource, szOriginalScriptKey, bCheckState, bState, bCheckScriptCreated, bScriptCreated ) )
-        return true;
-
-    return false;
-}
-
-bool CKeyBinds::SetCommandActive ( const char* szKey, const char* szCommand, bool bState, const char* szArguments, const char* szResource, bool bActive, bool checkHitState )
-{
-    NullEmptyStrings( szKey, szCommand, szArguments );
-
     list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
     for ( ; iter != m_pList->end (); iter++ )
     {
         if ( (*iter)->GetType () == KEY_BIND_COMMAND )
         {
-            if ( !szKey || ( stricmp ( (*iter)->boundKey->szKey, szKey ) == 0 ) )
+            CCommandBind* pBind = static_cast < CCommandBind* > ( *iter );
+            if ( !szKey || ( stricmp ( pBind->boundKey->szKey, szKey ) == 0 ) )
+            {
+                if ( strcmp ( pBind->szCommand, szCommand ) == 0 )
+                {
+                    if ( !bCheckState || pBind->bHitState == bState )
+                    {
+                        if ( !szArguments || ( pBind->szArguments && strcmp ( pBind->szArguments, szArguments ) == 0 ) )
+                        {
+                            if ( !szResource || ( pBind->szResource && strcmp ( pBind->szResource, szResource ) == 0 ) )
+                            {
+                                return true;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    return false;
+}
+
+bool CKeyBinds::SetCommandActive ( const char* szKey, const char* szCommand, bool bState, const char* szArguments, const char* szResource, bool bActive, bool checkHitState )
+{
+    list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
+    for ( ; iter != m_pList->end (); iter++ )
+    {
+        if ( (*iter)->GetType () == KEY_BIND_COMMAND )
+        {
+            if ( !szKey || ( strcmp ( (*iter)->boundKey->szKey, szKey ) == 0 ) )
             {
                 CCommandBind* pBind = static_cast < CCommandBind* > ( *iter );
                 if ( pBind->szResource && ( strcmp ( pBind->szResource, szResource ) == 0 ) )
@@ -812,8 +791,6 @@ bool CKeyBinds::SetCommandActive ( const char* szKey, const char* szCommand, boo
 
 void CKeyBinds::SetAllCommandsActive ( const char* szResource, bool bActive, const char* szCommand, bool bState, const char* szArguments, bool checkHitState )
 {
-    NullEmptyStrings( szCommand, szArguments );
-
     list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
     for ( ; iter != m_pList->end (); iter++ )
     {
@@ -840,8 +817,6 @@ void CKeyBinds::SetAllCommandsActive ( const char* szResource, bool bActive, con
 
 CCommandBind* CKeyBinds::GetBindFromCommand ( const char* szCommand, const char* szArguments, bool bMatchCase, const char* szKey, bool bCheckHitState, bool bState )
 {
-    NullEmptyStrings( szKey, szArguments );
-
     list < CKeyBind* > ::const_iterator iter = m_pList->begin ();
     for ( ; iter != m_pList->end (); iter++ )
     {
@@ -874,140 +849,6 @@ CCommandBind* CKeyBinds::GetBindFromCommand ( const char* szCommand, const char*
 
     return NULL;
 }        
-
-
-CCommandBind* CKeyBinds::FindCommandMatch( const char* szKey, const char* szCommand, const char* szArguments, const char* szResource, const char* szOriginalScriptKey, bool bCheckState, bool bState, bool bCheckScriptCreated, bool bScriptCreated )
-{
-    NullEmptyStrings( szKey, szArguments, szResource, szOriginalScriptKey );
-
-    list < CKeyBind* > ::const_iterator iter = m_pList->begin();
-    for ( ; iter != m_pList->end(); iter++ )
-    {
-        if ( (*iter)->GetType() == KEY_BIND_COMMAND )
-        {
-            CCommandBind* pBind = static_cast < CCommandBind* > ( *iter );
-            if ( !szKey || ( stricmp( pBind->boundKey->szKey, szKey ) == 0 ) )
-            {
-                if ( strcmp( pBind->szCommand, szCommand ) == 0 )
-                {
-                    if ( !bCheckState || ( pBind->bHitState == bState ) )
-                    {
-                        if ( !szArguments || ( pBind->szArguments && strcmp( pBind->szArguments, szArguments ) == 0 ) )
-                        {
-                            if ( !szResource || ( pBind->szResource && strcmp( pBind->szResource, szResource ) == 0 ) )
-                            {
-                                if ( !bCheckScriptCreated || ( pBind->bScriptCreated == bScriptCreated ) )
-                                {
-                                    if ( !szOriginalScriptKey || ( pBind->strOriginalScriptKey == szOriginalScriptKey ) )
-                                    {
-                                        return pBind;
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-    return NULL;
-}
-
-
-//
-// Get up-bind version of down-bind
-//
-CCommandBind* CKeyBinds::FindMatchingUpBind( CCommandBind* pBind )
-{
-    return FindCommandMatch( pBind->boundKey->szKey, pBind->szCommand, NULL, pBind->szResource, pBind->strOriginalScriptKey, true, false, true, pBind->bScriptCreated );
-}
-
-
-//
-// Called when the user removes an existing command bind
-//
-void CKeyBinds::UserRemoveCommandBoundKey( CCommandBind* pBind )
-{
-    if ( pBind->bScriptCreated )
-    {
-        if ( pBind->bIsReplacingScriptKey )
-        {
-            // Remove user added key change
-            pBind->bIsReplacingScriptKey = false;
-            const SBindableKey* boundKey = GetBindableFromKey( pBind->strOriginalScriptKey );
-            if ( boundKey )
-                pBind->boundKey = boundKey; 
-        }
-        // Can't manually remove script added command binds, as they will reappear when the resource re-starts
-        return;
-    }
-    Remove( pBind );
-}
-
-
-//
-// Called when the user changes the key of an existing command bind
-//
-void CKeyBinds::UserChangeCommandBoundKey( CCommandBind* pBind, const SBindableKey* pNewBoundKey )
-{
-    if ( pBind->bScriptCreated )
-    {
-        // Set replacing flag if was script bind (and key is different)
-        if ( pBind->strOriginalScriptKey != pNewBoundKey->szKey )
-            pBind->bIsReplacingScriptKey = true;
-        else
-            pBind->bIsReplacingScriptKey = false;
-    }
-    // Do change
-    pBind->boundKey = pNewBoundKey;
-}
-
-
-//
-// Sort command binds for consistency in settings gui
-//
-void CKeyBinds::SortCommandBinds( void )
-{
-    struct Sorter
-    {
-        bool operator()( CKeyBind* t1, CKeyBind* t2)
-        {
-            // Group command binds last
-            if ( t1->GetType() != KEY_BIND_COMMAND && t2->GetType() == KEY_BIND_COMMAND )
-                return true;
-            if ( t1->GetType() == KEY_BIND_COMMAND && t2->GetType() == KEY_BIND_COMMAND )
-            {
-                CCommandBind* pBind1 = static_cast < CCommandBind* > ( t1 );
-                CCommandBind* pBind2 = static_cast < CCommandBind* > ( t2 );
-
-                // Command binds with resource name last
-                if ( !pBind1->szResource && pBind2->szResource )
-                    return true;
-                if ( pBind1->szResource && pBind2->szResource )
-                {
-                    // Alpha sort by resource name
-                    int cmpResult = stricmp( pBind1->szResource, pBind2->szResource );
-                    if ( cmpResult < 0 )
-                        return true;
-                    if ( cmpResult == 0 )
-                    {
-                        // Script added before user added
-                        if ( pBind1->bScriptCreated && !pBind2->bScriptCreated )
-                            return true;
-                        if ( !pBind1->bScriptCreated && !pBind2->bScriptCreated )
-                        {
-                            // Replacers before norms
-                            if ( !pBind1->strOriginalScriptKey.empty() && pBind2->strOriginalScriptKey.empty() )
-                                return true;
-                        }
-                    }
-                }
-            }
-            return false; 
-        }
-    };
-    m_pList->sort( Sorter() );
-}
 
 
 bool CKeyBinds::GetBoundCommands ( const char * szCommand, list < CCommandBind * > & commandsList )
@@ -2132,7 +1973,7 @@ void CKeyBinds::DoPostFramePulse ( void )
     if ( SystemState != 9 /* GS_PLAYING_GAME */ ) return;
 
     bool bInVehicle = false, bHasDetonator = false, bIsDead = false, bEnteringVehicle = false;
-    CPed* pPed = m_pCore->GetGame ()->GetPools ()->GetPedFromRef ( (DWORD)1 );
+    CPed* pPed = m_pCore->GetGame ()->GetPools ()->GetPedFromRef ( (DWORD)0 );
     // Don't set any controller states if the local player isnt alive
     if ( !pPed )
         return;
@@ -2339,11 +2180,7 @@ bool CKeyBinds::LoadFromXML ( CXMLNode* pMainNode )
                                 if ( pAttribute )
                                 {
                                     strResource = pAttribute->GetValue ();
-
-                                    pAttribute = pNode->GetAttributes ().Find ( "default" );
-                                    SString strOriginalScriptKey = pAttribute ? pAttribute->GetValue () : "";
-
-                                    AddCommand ( strKey.c_str (), strCommand.c_str (), strArguments.c_str (), bState, strResource.c_str(), false, strOriginalScriptKey );
+                                    AddCommand ( strKey.c_str (), strCommand.c_str (), strArguments.c_str (), bState, strResource.c_str() );
                                     SetCommandActive ( strKey.c_str (), strCommand.c_str(), bState, strArguments.c_str(), strResource.c_str(), false, true );
                                 }
                                 else if ( !CommandExists ( strKey.c_str (), strCommand.c_str (), true, bState ) )
@@ -2451,14 +2288,8 @@ bool CKeyBinds::SaveToXML ( CXMLNode* pMainNode )
                         pA = pAttributes->Create ( "resource" );                        
                         pA->SetValue ( szResource );
 
-                        if ( !pBind->strOriginalScriptKey.empty() )
-                        {
-                            pA = pAttributes->Create ( "default" );                        
-                            pA->SetValue ( pBind->strOriginalScriptKey );
-                        }
-
-                        // Don't save script added binds
-                        if ( pBind->bScriptCreated && !pBind->bIsReplacingScriptKey )
+                        //If its still the default key dont bother saving it
+                        if ( !strcmp ( pBind->strDefaultKey, szKey ) )
                             pNode->GetParent()->DeleteSubNode(pNode);
                     }
                 }
@@ -2479,11 +2310,6 @@ bool CKeyBinds::SaveToXML ( CXMLNode* pMainNode )
                         pA = pAttributes->Create ( "control" );
                         pA->SetValue ( szControl );
                     }
-                }
-                else
-                {
-                    // Type doesn't require saving
-                    pNode->GetParent()->DeleteSubNode( pNode );
                 }
             }
         }

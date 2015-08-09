@@ -484,12 +484,6 @@ public:
         D3DPRESENT_PARAMETERS           PresentationParameters;
     };
 
-    struct SFrameStats
-    {
-        int                         iNumShadersFullSetup;
-        int                         iNumShadersReuseSetup;
-    };
-
     struct SD3DDeviceState
     {
         SD3DDeviceState ()
@@ -518,7 +512,6 @@ public:
         SStreamSourceState              VertexStreams[16];
         SMainSceneState                 MainSceneState;
         SCreationState                  CreationState;
-        SFrameStats                     FrameStats;
     };
 
     SD3DDeviceState     DeviceState;

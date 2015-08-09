@@ -5,6 +5,7 @@
 *  FILE:        game_sa/CRenderWareSA.h
 *  PURPOSE:     Header file for RenderWare game engine class
 *  DEVELOPERS:  Cecill Etheredge <ijsf@gmx.net>
+*               Martin Turski <quiret@gmx.de>
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *
@@ -24,6 +25,8 @@
 #include <stdio.h>
 #include "CRenderWareSA.ShaderSupport.h"
 
+#include "RenderWare/include.h"
+
 class CModelTexturesInfo;
 
 class CRenderWareSA : public CRenderWare
@@ -32,19 +35,38 @@ public:
     ZERO_ON_NEW
                         CRenderWareSA               ( enum eGameVersion version );
                         ~CRenderWareSA              ( void );
+
     void                Initialize                  ( void );
-    bool                ModelInfoTXDLoadTextures    ( SReplacementTextures* pReplacementTextures, const CBuffer& fileData, bool bFilteringEnabled );
+    bool                ModelInfoTXDLoadTextures    ( SReplacementTextures* pReplacementTextures, const SString& szFilename, bool bFilteringEnabled );
     bool                ModelInfoTXDAddTextures     ( SReplacementTextures* pReplacementTextures, ushort usModelId );
     void                ModelInfoTXDRemoveTextures  ( SReplacementTextures* pReplacementTextures );
     void                ClothesAddReplacementTxd    ( char* pFileData, ushort usFileId );
     void                ClothesRemoveReplacementTxd ( char* pFileData );
     bool                HasClothesReplacementChanged( void );
 
+    void                EnableEnvMapRendering           ( bool enabled );
+    bool                IsEnvMapRenderingEnabled        ( void ) const;
+
+    // Lighting utilities.
+    void                SetGlobalLightingAlwaysEnabled  ( bool enabled );
+    bool                IsGlobalLightingAlwaysEnabled   ( void ) const;
+
+    void                SetLocalLightingAlwaysEnabled   ( bool enabled );
+    bool                IsLocalLightingAlwaysEnabled    ( void ) const;
+
+    // Shader lighting management.
+    void                SetShaderLightingMode           ( eShaderLightingMode mode );
+    eShaderLightingMode GetShaderLightingMode           ( void ) const;
+
+    // Rendering modes.
+    void                SetWorldRenderMode              ( eWorldRenderMode mode );
+    eWorldRenderMode    GetWorldRenderMode              ( void ) const;
+
     // Reads and parses a TXD file specified by a path (szTXD)
-    RwTexDictionary *   ReadTXD                     ( const CBuffer& fileData );
+    RwTexDictionary *   ReadTXD                     ( const char *szTXD );
 
     // Reads and parses a DFF file specified by a path (szDFF) into a CModelInfo identified by the object id (usModelID)
-    RpClump *           ReadDFF                     ( const CBuffer& fileData, unsigned short usModelID, bool bLoadEmbeddedCollisions );
+    RpClump *           ReadDFF                     ( const char * szDFF, unsigned short usModelID, bool bLoadEmbeddedCollisions, CColModel*& colOut );
 
     // Destroys a DFF instance
     void                DestroyDFF                  ( RpClump * pClump );
@@ -56,10 +78,14 @@ public:
     void                DestroyTexture              ( RwTexture* pTex );
 
     // Reads and parses a COL3 file with an optional collision key name
-    CColModel *         ReadCOL                     ( const CBuffer& fileData );
+    CColModel *         ReadCOL                     ( const char * szCOLFile );
 
     // Replaces a CColModel for a specific object identified by the object id (usModelID)
     void                ReplaceCollisions           ( CColModel * pColModel, unsigned short usModelID );
+
+    // Positions the front seat by reading out the vector from the 'ped_frontseat' atomic in the clump (RpClump*)
+    // and changing the vector in the CModelInfo class identified by the model id (usModelID)
+    bool                PositionFrontSeat           ( RpClump * pClump, unsigned short usModelID );
 
     // Loads all atomics from a clump into a container struct and returns the number of atomics it loaded
     unsigned int        LoadAtomics                 ( RpClump * pClump, RpAtomicContainer * pAtomics );
@@ -79,15 +105,7 @@ public:
     // Adds the atomics from a source clump (pSrc) to a destination clump (pDst)
     void                AddAllAtomics               ( RpClump * pDst, RpClump * pSrc );
 
-    // Replaces a CClumpModelInfo (or CVehicleModelInfo, since its just for vehicles) clump with a new clump
-    void                ReplaceVehicleModel         ( RpClump * pNew, unsigned short usModelID );
-
-    // Replaces a CClumpModelInfo clump with a new clump
-    void                ReplaceWeaponModel         ( RpClump * pNew, unsigned short usModelID );
-
-    void                ReplacePedModel            ( RpClump * pNew, unsigned short usModelID );
-
-    void                ReplaceModel                ( RpClump* pNew, unsigned short usModelID, DWORD dwFunc );
+    void                ReplaceModel                ( RpClump* pNew, unsigned short usModelID );
 
     // Replaces dynamic parts of the vehicle (models that have two different versions: 'ok' and 'dam'), such as doors
     // szName should be without the part suffix (e.g. 'door_lf' or 'door_rf', and not 'door_lf_dummy')
@@ -98,7 +116,7 @@ public:
     void                GetModelTextureNames        ( std::vector < SString >& outNameList, ushort usModelID );
     void                GetTxdTextures              ( std::vector < RwTexture* >& outTextureList, ushort usTxdId );
     static void         GetTxdTextures              ( std::vector < RwTexture* >& outTextureList, RwTexDictionary* pTXD );
-    const char*         GetTextureName              ( CD3DDUMMY* pD3DData );
+    const SString&      GetTextureName              ( CD3DDUMMY* pD3DData );
     void                SetRenderingClientEntity    ( CClientEntityBase* pClientEntity, ushort usModelId, int iTypeMask );
     SShaderItemLayers*  GetAppliedShaderForD3DData  ( CD3DDUMMY* pD3DData );
     void                AppendAdditiveMatch         ( CSHADERDUMMY* pShaderData, CClientEntityBase* pClientEntity, const char* strTextureNameMatch, float fShaderPriority, bool bShaderLayered, int iTypeMask, uint uiShaderCreateTime, bool bShaderUsesVertexShader, bool bAppendLayers );
@@ -156,4 +174,38 @@ public:
     static int                              ms_iRenderingType;
 };
 
-#endif
+// Include sub modules
+#include "CRenderWareSA.mem.h"
+#include "CRenderWareSA.rwapi.h"
+#include "CRenderWareSA.pipeline.h"
+#include "CRenderWareSA.render.h"
+#include "CRenderWareSA.rwstats.h"
+#include "CRenderWareSA.lighting.h"
+#include "CRenderWareSA.rtcallback.h"
+#include "CRenderWareSA.rtbucket.h"
+
+namespace ClothesReplacing
+{
+    // a.k.a. CModelLoadInfoSA
+    struct SImgGTAItemInfo
+    {
+        ushort    usNext;
+        ushort    usPrev;
+
+        ushort  uiUnknown1;         // Parent ?
+        uchar   uiUnknown2;         // 0x12 when loading, 0x02 when finished loading
+        uchar   ucImgId;
+
+        int     iBlockOffset;
+        int     iBlockCount;
+        uint    uiLoadflag;         // 0-not loaded  2-requested  3-loaded  1-processed
+    };
+
+    extern int      iReturnFileId;
+    extern char*    pReturnBuffer;
+}
+
+// Exports (including from sub modules that have no headers).
+bool _cdecl OnCStreaming_RequestModel_Mid ( int flags, ClothesReplacing::SImgGTAItemInfo* pImgGTAInfo );
+
+#endif //__CRENDERWARESA

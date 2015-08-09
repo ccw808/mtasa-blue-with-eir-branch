@@ -5,11 +5,8 @@
 #pragma warning (disable:4244)
 
 //#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
 #include <windows.h>
-#define MTA_CLIENT
-#define SHARED_UTIL_WITH_FAST_HASH_MAP
-#define SHARED_UTIL_WITH_SYS_INFO
-#include "SharedUtil.h"
 
 #include <sys/stat.h>
 #include <d3d9.h>
@@ -32,8 +29,11 @@
 #include <sstream>
 #include <cstdlib>
 #include <iomanip>
-#include <functional>
 
+#define MTA_CLIENT
+#define SHARED_UTIL_WITH_FAST_HASH_MAP
+#define SHARED_UTIL_WITH_SYS_INFO
+#include <coresdk/Common.h>
 
 // Localization
 #include "../../vendor/tinygettext/tinygettext.hpp"
@@ -71,4 +71,3 @@
 #include "CMemStats.h"
 #include "CGraphStats.h"
 #include "CNickGen.h"
-#include "CWebView.h"

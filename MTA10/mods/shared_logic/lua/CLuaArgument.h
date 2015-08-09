@@ -50,7 +50,6 @@ public:
     void                    ReadElement         ( CClientEntity* pElement );
     void                    ReadScriptID        ( uint uiScriptID );
     void                    ReadElementID       ( ElementID ID );
-    void                    ReadTable           ( class CLuaArguments * table );
 
     void                    Push                ( lua_State* luaVM, CFastHashMap < CLuaArguments*, int > * pKnownTables = NULL ) const;
 
@@ -79,10 +78,8 @@ private:
     CLuaArguments*          m_pTableData;
     bool                    m_bWeakTableRef;
 
-#ifdef MTA_DEBUG
     std::string             m_strFilename;
     int                     m_iLine;
-#endif
 
     void                    CopyRecursive       ( const CLuaArgument& Argument, CFastHashMap < CLuaArguments*, CLuaArguments* > * pKnownTables = NULL );
     bool                    CompareRecursive    ( const CLuaArgument& Argument, std::set < CLuaArguments* > * pKnownTables = NULL );

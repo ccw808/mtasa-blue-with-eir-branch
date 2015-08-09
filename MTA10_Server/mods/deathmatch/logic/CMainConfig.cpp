@@ -90,6 +90,7 @@ CMainConfig::CMainConfig ( CConsole* pConsole, CLuaManager* pLuaMain ): CXMLConf
     m_ucVoiceQuality = 4;
     m_bVoiceEnabled = false;
     m_uiVoiceBitrate = 0;
+    m_bNetworkEncryptionEnabled = true;
     m_strBandwidthReductionMode = "medium";
     m_iPendingWorkToDoSleepTime = -1;
     m_iNoWorkToDoSleepTime = -1;
@@ -233,9 +234,6 @@ bool CMainConfig::Load ( void )
     // httpdosthreshold
     GetInteger ( m_pRootNode, "httpdosthreshold", m_iHTTPDosThreshold, 1, 10000 );
     m_iHTTPDosThreshold = Clamp ( 1, m_iHTTPDosThreshold, 10000 );
-
-    // http_dos_exclude
-    GetString ( m_pRootNode, "http_dos_exclude", m_strHTTPDosExclude );
 
     // verifyclientsettings
     GetInteger ( m_pRootNode, "verifyclientsettings", m_iEnableClientChecks );
@@ -478,6 +476,9 @@ bool CMainConfig::Load ( void )
     m_iBackupAmount = Clamp ( 0, m_iBackupAmount, 100 );
 
     GetBoolean ( m_pRootNode, "autologin", m_bAutoLogin );
+
+    // networkencryption - Encryption for Server <-> client communications
+    GetBoolean ( m_pRootNode, "networkencryption", m_bNetworkEncryptionEnabled );
 
     // bandwidth_reduction
     GetString ( m_pRootNode, "bandwidth_reduction", m_strBandwidthReductionMode );
@@ -807,7 +808,6 @@ bool CMainConfig::LoadExtended ( void )
 
     RegisterCommand ( "aclrequest", CConsoleCommands::AclRequest, false );
     RegisterCommand ( "debugjoinflood", CConsoleCommands::DebugJoinFlood, false );
-    RegisterCommand ( "debuguptime", CConsoleCommands::DebugUpTime, false );
 #if defined(MTA_DEBUG) || defined(MTA_BETA)
     RegisterCommand ( "sfakelag", CConsoleCommands::FakeLag, false );
 #endif
@@ -1118,8 +1118,7 @@ bool CMainConfig::GetSetting ( const SString& strName, SString& strValue )
     else
     if ( strName == "networkencryption" )
     {
-        // Deprecated
-        strValue = "1";
+        strValue = SString ( "%d", m_bNetworkEncryptionEnabled ? 1 : 0 );
         return true;
     }
     else
@@ -1239,7 +1238,13 @@ bool CMainConfig::SetSetting ( const SString& strName, const SString& strValue, 
     {
         if ( strValue == "0" || strValue == "1" )
         {
-            // Deprecated
+            m_bNetworkEncryptionEnabled = atoi ( strValue ) ? true : false;
+            if ( bSave )
+            {
+                SetBoolean ( m_pRootNode, "networkencryption", m_bNetworkEncryptionEnabled );
+                Save ();
+            }
+            g_pNetServer->SetEncryptionEnabled ( m_bNetworkEncryptionEnabled );
             return true;
         }
     }
@@ -1405,7 +1410,7 @@ const std::vector < SIntSetting >& CMainConfig::GetIntSettingList ( void )
             { true, true,   0,      150,    500,    "vehext_ping_limit",                    &m_iVehExtrapolatePingLimit,                &CMainConfig::OnTickRateChange },
             { true, true,   0,      0,      1,      "latency_reduction",                    &m_bUseAltPulseOrder,                       &CMainConfig::OnTickRateChange },
             { true, true,   0,      1,      2,      "ase",                                  &m_iAseMode,                                &CMainConfig::OnAseSettingChange },
-            { true, true,   0,      0,      1,      "donotbroadcastlan",                    &m_bDontBroadcastLan,                       &CMainConfig::OnAseSettingChange },
+            { true, true,   0,      1,      1,      "donotbroadcastlan",                    &m_bDontBroadcastLan,                       &CMainConfig::OnAseSettingChange },
             { true, true,   0,      1,      1,      "net_auto_filter",                      &m_bNetAutoFilter,                          &CMainConfig::ApplyNetOptions },
             { true, true,   1,      4,      100,    "update_cycle_datagrams_limit",         &m_iUpdateCycleDatagramsLimit,              &CMainConfig::ApplyNetOptions },
             { true, true,   10,     50,     1000,   "update_cycle_messages_limit",          &m_iUpdateCycleMessagesLimit,               &CMainConfig::ApplyNetOptions },
@@ -1413,7 +1418,7 @@ const std::vector < SIntSetting >& CMainConfig::GetIntSettingList ( void )
             { true, true,   50,     130,    400,    "unoccupied_vehicle_syncer_distance",   &g_TickRateSettings.iUnoccupiedVehicleSyncerDistance,   &CMainConfig::OnTickRateChange },
             { false, false, 0,      1,      2,      "compact_internal_databases",           &m_iCompactInternalDatabases,               NULL },
             { true, true,   0,      1,      2,      "minclientversion_auto_update",         &m_iMinClientVersionAutoUpdate,             NULL },
-            { true, true,   0,      0,      100,    "server_logic_fps_limit",               &m_iServerLogicFpsLimit,                    NULL },
+            { true, true,   0,      0,      1,      "alt_veh_parts_state_sync",             &g_TickRateSettings.bAltVehPartsStateSync,  NULL },
         };
 
     static std::vector < SIntSetting > settingsList;

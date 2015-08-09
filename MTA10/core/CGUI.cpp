@@ -671,16 +671,10 @@ bool CLocalGUI::ProcessMessage ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lPa
             break;
 
             case WM_IME_CHAR:
-                return true;
             case WM_IME_KEYDOWN:
             {
-                // Handle space/return seperately in this case
-                if ( wParam == VK_SPACE   )
-                    pGUI->ProcessCharacter ( MapVirtualKey( wParam, MAPVK_VK_TO_CHAR ) );
-
-                DWORD dwTemp = TranslateScanCodeToGUIKey ( wParam );
-                if ( dwTemp > 0 )
-                    pGUI->ProcessKeyboardInput ( dwTemp, true );
+                // Stop these here
+                return true;
             }
             break;
 
@@ -721,12 +715,13 @@ void CLocalGUI::UpdateCursor ( void )
 
     static DWORD dwWidth = CDirect3DData::GetSingleton().GetViewportWidth();
     static DWORD dwHeight = CDirect3DData::GetSingleton().GetViewportHeight();
+    static POINT pointStoredPosition;
     static bool bFirstRun = true;
 
     if ( bFirstRun )
     {
-        m_StoredMousePosition.x = dwWidth / 2;
-        m_StoredMousePosition.y = dwHeight / 2;
+        pointStoredPosition.x = dwWidth / 2;
+        pointStoredPosition.y = dwHeight / 2;
         bFirstRun = false;
     }
     // Called in each frame to make sure the mouse is only visible when a GUI control that uses the
@@ -741,7 +736,7 @@ void CLocalGUI::UpdateCursor ( void )
             CCore::GetSingleton ().GetGame ()->GetPad ()->Clear ();*/
 
             // Restore the mouse cursor to its old position
-            SetCursorPos ( m_StoredMousePosition.x, m_StoredMousePosition.y );
+            SetCursorPos ( pointStoredPosition.x, pointStoredPosition.y );
 
             // Enable our mouse cursor
             CSetCursorPosHook::GetSingleton ( ).DisableSetCursorPos ();
@@ -758,6 +753,9 @@ void CLocalGUI::UpdateCursor ( void )
             /* Restore the controller state
             CCore::GetSingleton ().GetGame ()->GetPad ()->Disable ( false );
             CCore::GetSingleton ().GetGame ()->GetPad ()->Clear ();*/
+
+            // Save the mouse cursor position
+            GetCursorPos ( &pointStoredPosition );
 
             // Set the mouse back to the center of the screen (to prevent the game from reacting to its movement)
             SetCursorPos ( dwWidth / 2, dwHeight / 2 );
@@ -802,14 +800,4 @@ DWORD CLocalGUI::TranslateScanCodeToGUIKey ( DWORD dwCharacter )
         case 0x41:          return DIK_A;           // A
         default:            return 0;
     }
-}
-
-void CLocalGUI::SetCursorPos ( int iX, int iY )
-{
-	// Update the stored position
-    m_StoredMousePosition.x = iX;
-    m_StoredMousePosition.y = iY;
-
-	// Apply the position
-    ::SetCursorPos ( iX, iY );
 }

@@ -30,8 +30,6 @@ class CSettings;
 #define CHAT_PRESETS_PATH             "mta/chatboxpresets.xml"
 #define CHAT_PRESETS_ROOT             "chatboxpresets"
 
-//#define SHOWALLSETTINGS
-
 struct SKeyBindSection
 {
     SKeyBindSection ( char * szTitle )
@@ -127,7 +125,6 @@ public:
     void                UpdateAudioTab          ();
 
     void                UpdateVideoTab          ( void );
-    void                PopulateResolutionComboBox( void );
 
     void                AddKeyBindSection       ( char * szSectionName );
     void                RemoveKeyBindSection    ( char * szSectionName );
@@ -138,13 +135,6 @@ public:
 
     void                RequestNewNickname      ( void );
     void                ShowRestartQuestion     ( void );
-    void                ShowDisconnectQuestion  ( void );
-
-    void                TabSkip                 ( bool bBackwards );
-
-    bool                IsActive                ( void );
-
-    void                SetSelectedIndex        ( unsigned int uiIndex );
 
 protected:
     const static int    SecKeyNum = 3;     // Number of secondary keys
@@ -175,12 +165,10 @@ protected:
     CGUILabel*          m_pAspectRatioLabel;
 	CGUICheckBox*       m_pCheckBoxVolumetricShadows;
 	CGUICheckBox*       m_pCheckBoxDeviceSelectionDialog;
-	CGUICheckBox*       m_pCheckBoxShowUnsafeResolutions;
 	CGUICheckBox*       m_pCheckBoxAllowScreenUpload;
 	CGUICheckBox*       m_pCheckBoxCustomizedSAFiles;
 	CGUICheckBox*       m_pCheckBoxGrass;
 	CGUICheckBox*       m_pCheckBoxHeatHaze;
-    CGUICheckBox*       m_pCheckBoxTyreSmokeParticles;
     CGUILabel*          m_pDrawDistanceLabel;
     CGUIScrollBar*      m_pDrawDistance;
     CGUILabel*          m_pDrawDistanceValueLabel;
@@ -215,19 +203,10 @@ protected:
     CGUIComboBox*       m_pBrowserSpeedCombo;
     CGUILabel*          m_pSingleDownloadLabel;
     CGUIComboBox*       m_pSingleDownloadCombo;
-    CGUILabel*          m_pPacketTagLabel;
-    CGUIComboBox*       m_pPacketTagCombo;
-    CGUILabel*          m_pProgressAnimationLabel;
-    CGUIComboBox*       m_pProgressAnimationCombo;
     CGUILabel*          m_pDebugSettingLabel;
     CGUIComboBox*       m_pDebugSettingCombo;
-    CGUILabel*          m_pWin8Label;
-    CGUICheckBox*       m_pWin8ColorCheckBox;
-    CGUICheckBox*       m_pWin8MouseCheckBox;
     CGUILabel*          m_pUpdateBuildTypeLabel;
     CGUIComboBox*       m_pUpdateBuildTypeCombo;
-    CGUILabel*          m_pUpdateAutoInstallLabel;
-    CGUIComboBox*       m_pUpdateAutoInstallCombo;
     CGUIButton*         m_pButtonUpdate;
     CGUILabel*          m_pAdvancedMiscLabel;
     CGUILabel*          m_pAdvancedUpdaterLabel;
@@ -322,22 +301,6 @@ protected:
     CGUIEdit*           m_pChatLineLife;
     CGUIEdit*           m_pChatLineFadeout;
 
-    CGUILabel*          m_pLabelBrowserGeneral;
-    CGUICheckBox*       m_pCheckBoxRemoteBrowser;
-    CGUICheckBox*       m_pCheckBoxRemoteJavascript;
-    CGUICheckBox*       m_pCheckBoxBrowserPluginsEnabled;
-    CGUILabel*          m_pLabelBrowserCustomBlacklist;
-    CGUIEdit*           m_pEditBrowserBlacklistAdd;
-    CGUIButton*         m_pButtonBrowserBlacklistAdd;
-    CGUIGridList*       m_pGridBrowserBlacklist;
-    CGUIButton*         m_pButtonBrowserBlacklistRemove;
-    CGUILabel*          m_pLabelBrowserCustomWhitelist;
-    CGUIEdit*           m_pEditBrowserWhitelistAdd;
-    CGUIButton*         m_pButtonBrowserWhitelistAdd;
-    CGUIGridList*       m_pGridBrowserWhitelist;
-    CGUIButton*         m_pButtonBrowserWhitelistRemove;
-    bool                m_bBrowserListsChanged;
-
     bool                OnJoypadTextChanged     ( CGUIElement* pElement );
     bool                OnAxisSelectClick       ( CGUIElement* pElement );
     bool                OnAudioDefaultClick     ( CGUIElement* pElement );
@@ -364,10 +327,6 @@ protected:
     bool                OnUpdateButtonClick     ( CGUIElement* pElement );
     bool                OnMouseSensitivityChanged ( CGUIElement* pElement );
     bool                OnVerticalAimSensitivityChanged ( CGUIElement* pElement );
-    bool                OnBrowserBlacklistAdd   ( CGUIElement* pElement );
-    bool                OnBrowserBlacklistRemove( CGUIElement* pElement );
-    bool                OnBrowserWhitelistAdd   ( CGUIElement* pElement );
-    bool                OnBrowserWhitelistRemove( CGUIElement* pElement );
 
     bool                OnMouseDoubleClick      ( CGUIMouseEventArgs Args );
 
@@ -379,7 +338,6 @@ protected:
     bool                OnVolumetricShadowsClick ( CGUIElement* pElement );
     bool                OnAllowScreenUploadClick ( CGUIElement* pElement );
     bool                OnCustomizedSAFilesClick ( CGUIElement* pElement );
-    bool                ShowUnsafeResolutionsClick ( CGUIElement* pElement );
     bool                OnShowAdvancedSettingDescription ( CGUIElement* pElement );
     bool                OnHideAdvancedSettingDescription ( CGUIElement* pElement );
 

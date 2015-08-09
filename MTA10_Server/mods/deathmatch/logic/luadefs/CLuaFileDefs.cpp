@@ -363,19 +363,19 @@ int CLuaFileDefs::fileGetSize ( lua_State* luaVM )
 int CLuaFileDefs::fileRead ( lua_State* luaVM )
 {
 //  string fileRead ( file theFile, int count )
-    CScriptFile* pFile; unsigned long ulCount;
+    CScriptFile* pFile; long lCount;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pFile );
-    argStream.ReadNumber ( ulCount );
+    argStream.ReadNumber ( lCount );
 
     if ( !argStream.HasErrors () )
     {
-        if ( ulCount > 0 )
+        if ( lCount > 0 )
         {
             // Allocate a buffer to read the stuff into and read some shit into it
-            char* pReadContent = new char [ulCount + 1];
-            long lBytesRead = pFile->Read ( ulCount, pReadContent );
+            char* pReadContent = new char [lCount + 1];
+            long lBytesRead = pFile->Read ( static_cast < unsigned long > ( lCount ), pReadContent );
 
             if ( lBytesRead != -1 )
             {
@@ -396,11 +396,7 @@ int CLuaFileDefs::fileRead ( lua_State* luaVM )
             return 1;
         }
         else
-        {
-            // Reading zero bytes from a file results in an empty string
-            lua_pushstring ( luaVM, "" );
-            return 1;
-        }
+            argStream.SetCustomError ( "Bad number of bytes" );
     }
     
     if ( argStream.HasErrors () )

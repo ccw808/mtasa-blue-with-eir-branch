@@ -143,14 +143,8 @@ void CSimPlayerManager::UpdateSimPlayer ( CPlayer* pPlayer )
     pSim->m_bVehicleHasHydraulics   = pVehicle ? pVehicle->GetUpgrades ()->HasUpgrade ( 1087 ) : false;
     pSim->m_bVehicleIsPlaneOrHeli   = pVehicle ? pVehicle->GetVehicleType () == VEHICLE_PLANE || pVehicle->GetVehicleType () == VEHICLE_HELI : false;
     pSim->m_sharedControllerState.Copy ( pPlayer->GetPad ()->GetCurrentControllerState () );
-    if ( pVehicle )
-    {
-        pSim->m_uiVehicleDamageInfoSendPhase = pVehicle->m_uiDamageInfoSendPhase;
-        pSim->m_VehicleDamageInfo.m_ucDoorStates = pVehicle->m_ucDoorStates;
-        pSim->m_VehicleDamageInfo.m_ucWheelStates = pVehicle->m_ucWheelStates;
-        pSim->m_VehicleDamageInfo.m_ucPanelStates = pVehicle->m_ucPanelStates;
-        pSim->m_VehicleDamageInfo.m_ucLightStates = pVehicle->m_ucLightStates;
-    }
+    pSim->m_fCameraRotation         = pPlayer->GetCameraRotation ();
+    pSim->m_fPlayerRotation         = pPlayer->GetRotation ();
 
     // Update Puresync send list
     if ( pPlayer->m_bPureSyncSimSendListDirty )
@@ -295,9 +289,7 @@ bool CSimPlayerManager::HandleVehiclePureSync ( const NetServerPlayerID& Socket,
                                                                              pSourceSimPlayer->m_ucOccupiedVehicleSeat,
                                                                              pSourceSimPlayer->m_ucWeaponType,
                                                                              pSourceSimPlayer->m_fWeaponRange,
-                                                                             pSourceSimPlayer->m_sharedControllerState,
-                                                                             pSourceSimPlayer->m_uiVehicleDamageInfoSendPhase,
-                                                                             pSourceSimPlayer->m_VehicleDamageInfo );
+                                                                             pSourceSimPlayer->m_sharedControllerState );
         if ( pPacket->Read ( *BitStream ) )
         {
             // Relay it to nearbyers
@@ -341,7 +333,9 @@ bool CSimPlayerManager::HandleKeySync ( const NetServerPlayerID& Socket, NetBitS
                                                              pSourceSimPlayer->m_fWeaponRange,
                                                              pSourceSimPlayer->m_bVehicleHasHydraulics,
                                                              pSourceSimPlayer->m_bVehicleIsPlaneOrHeli,
-                                                             pSourceSimPlayer->m_sharedControllerState );
+                                                             pSourceSimPlayer->m_sharedControllerState,
+                                                             pSourceSimPlayer->m_fCameraRotation,
+                                                             pSourceSimPlayer->m_fPlayerRotation );
 
         if ( pPacket->Read ( *BitStream ) )
         {

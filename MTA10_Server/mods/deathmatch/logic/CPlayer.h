@@ -101,7 +101,7 @@ public:
     inline void                                 SetDoNotSendEntities        ( bool bDont )      { m_bDoNotSendEntities = bDont; };
 
     inline int                                  GetClientType               ( void )                                { return CClient::CLIENT_PLAYER; };
-    inline unsigned long long                   GetTimeConnected            ( void ) const                          { return m_ullTimeConnected; };
+    inline unsigned long                        GetTimeConnected            ( void ) const                          { return m_ulTimeConnected; };
 
     inline const char*                          GetNick                     ( void )                                { return m_strNick; };
     void                                        SetNick                     ( const char* szNick );
@@ -341,6 +341,7 @@ public:
     int                                         GetApproxPuresyncPacketSize ( void );
     const CVector&                              GetCamPosition              ( void )            { return m_vecCamPosition; };
     const CVector&                              GetCamFwd                   ( void )            { return m_vecCamFwd; };
+    void                                        UpdateFarVehiclePartsStateSync ( void );
 
     CFastHashSet < CPlayer* >                   m_PureSyncSimSendList;
     bool                                        m_bPureSyncSimSendListDirty;
@@ -349,7 +350,10 @@ public:
     uint                                        m_uiD3d9Size;
     SString                                     m_strD3d9Md5;
     SString                                     m_strD3d9Sha256;
+    std::set < ElementID >                      m_VehiclesWithPartsStateSyncDirty;
 private:
+    CElapsedTime                                m_VehiclePartsStateSyncTimer;
+    CElapsedTime                                m_FarVehiclePartsStateSyncTimer;
     SLightweightSyncData                        m_lightweightSyncData;
 
     void                                        WriteCameraModePacket       ( void );
@@ -380,7 +384,7 @@ private:
     
     bool                                        m_bAkimboArmUp;
 
-    unsigned long long                          m_ullTimeConnected;
+    unsigned long                               m_ulTimeConnected;
 
     NetServerPlayerID                           m_PlayerSocket;
     uint                                        m_uiPing;
@@ -465,8 +469,6 @@ private:
     float                                       m_fWeaponRangeLastSkill;
     eWeaponType                                 m_eWeaponRangeLastWeapon;
     uint                                        m_uiWeaponRangeLastStatsRevision;
-
-    ushort                                      m_usPrevDimension;
 };
 
 #endif

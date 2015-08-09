@@ -137,12 +137,9 @@ void CTeam::GetPlayers ( lua_State* luaVM )
     list < CPlayer* > ::const_iterator iter = m_Players.begin ();
     for ( ; iter != m_Players.end (); ++iter )
     {
-        if ( !( *iter )->IsBeingDeleted ( ) )
-        {
-            lua_pushnumber ( luaVM, ++uiIndex );
-            lua_pushelement ( luaVM, *iter );
-            lua_settable ( luaVM, -3 );
-        }
+        lua_pushnumber ( luaVM, ++uiIndex );
+        lua_pushelement ( luaVM, *iter );
+        lua_settable ( luaVM, -3 );
     }
 }
 

@@ -12,6 +12,8 @@
 #ifndef __CCOREINTERFACE_H
 #define __CCOREINTERFACE_H
 
+#include <coresdk/interface.h>
+
 #include "CConsoleInterface.h"
 #include "CCommandsInterface.h"
 #include "CCommunityInterface.h"
@@ -22,7 +24,6 @@
 #include "CModManagerInterface.h"
 #include "CKeyBindsInterface.h"
 #include "CCVarsInterface.h"
-#include "CWebCoreInterface.h"
 #include "xml/CXML.h"
 #include <gui/CGUI.h>
 
@@ -76,12 +77,12 @@ public:
     virtual CMultiplayer*               GetMultiplayer                  ( void ) = 0;
     virtual CNet*                       GetNetwork                      ( void ) = 0;
     virtual CXML*                       GetXML                          ( void ) = 0;
+    virtual CFileSystemInterface*       GetFileSystem                   ( void ) = 0;
     virtual CKeyBindsInterface*         GetKeyBinds                     ( void ) = 0;
     virtual CXMLNode*                   GetConfig                       ( void ) = 0;
     virtual CCVarsInterface*            GetCVars                        ( void ) = 0;
     virtual CCommunityInterface*        GetCommunity                    ( void ) = 0;
     virtual CLocalizationInterface*     GetLocalization                 ( void ) = 0;
-    virtual CWebCoreInterface*          GetWebCore                      ( void ) = 0;
     
 
     // Temporary functions for r1
@@ -110,6 +111,8 @@ public:
     virtual void                    SetConnected                    ( bool bConnected ) = 0;
     virtual void                    SetOfflineMod                   ( bool bOffline ) = 0;
     virtual void                    ApplyHooks3                     ( bool bEnable ) = 0;
+
+    virtual CFileTranslator*        GetModRoot                      ( void ) = 0;
 
     virtual bool                    IsConnected                     ( void ) = 0;
     virtual bool                    Reconnect                       ( const char* szHost, unsigned short usPort, const char* szPassword, bool bSave = true, bool bForceInternalHTTPServer = false ) = 0;
@@ -156,7 +159,6 @@ public:
     virtual uint                    GetMinStreamingMemory           ( void ) = 0;
     virtual uint                    GetMaxStreamingMemory           ( void ) = 0;
     virtual void                    OnCrashAverted                  ( uint uiId ) = 0;
-    virtual void                    OnEnterCrashZone                ( uint uiId ) = 0;
     virtual void                    LogEvent                        ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody, uint uiAddReportLogId = 0 ) = 0;
     virtual bool                    GetDebugIdEnabled               ( uint uiDebugId ) = 0;
     virtual EDiagnosticDebugType    GetDiagnosticDebug              ( void ) = 0;
@@ -168,9 +170,6 @@ public:
 
     virtual void                    OnPreCreateDevice               ( IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD& BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters ) = 0;
     virtual HRESULT                 OnPostCreateDevice              ( HRESULT hResult, IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface ) = 0;
-    virtual bool                    GetDeviceSelectionEnabled       ( void ) = 0;
-    virtual bool                    GetRequiredDisplayResolution    ( int& iOutWidth, int& iOutHeight, int& iOutColorBits, int& iOutAdapterIndex, bool& bOutAllowUnsafeResolutions ) = 0;
-    virtual void                    NotifyRenderingGrass            ( bool bIsRenderingGrass ) = 0;
 };
 
 class CClientTime

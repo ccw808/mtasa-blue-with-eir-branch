@@ -447,23 +447,13 @@ void CClientStreamer::Restream ( bool bMovedFar )
             if ( IS_VEHICLE ( pElement ) )
             {
                 CClientVehicle* pVehicle = DynamicCast < CClientVehicle > ( pElement );
-                if ( pVehicle )
+                if ( pVehicle && pVehicle->GetOccupant ( ) && IS_PLAYER ( pVehicle->GetOccupant ( ) ))
                 {
-                    if ( pVehicle->GetOccupant ( ) && IS_PLAYER ( pVehicle->GetOccupant ( ) ) )
+                    CClientPlayer* pPlayer = DynamicCast < CClientPlayer > ( pVehicle->GetOccupant ( ) );
+                    if ( pPlayer->GetLastPuresyncType ( ) == PURESYNC_TYPE_LIGHTSYNC )
                     {
-                        CClientPlayer* pPlayer = DynamicCast < CClientPlayer > ( pVehicle->GetOccupant ( ) );
-                        if ( pPlayer->GetLastPuresyncType ( ) == PURESYNC_TYPE_LIGHTSYNC )
-                        {
-                            // if the last packet was ls he shouldn't be streamed in
-                            m_ToStreamOut.push_back ( pElement );
-                        }
-                    }
-
-                    // Is this a trailer?
-                    if ( pVehicle->GetTowedByVehicle ( ) != NULL )
-                    {
-                        // Don't stream it out (this is handled by the towing vehicle)
-                        continue;
+                        // if the last packet was ls he shouldn't be streamed in
+                        m_ToStreamOut.push_back ( pElement );
                     }
                 }
             }
@@ -472,7 +462,7 @@ void CClientStreamer::Restream ( bool bMovedFar )
                 CClientPlayer* pPlayer = DynamicCast < CClientPlayer > ( pElement );
                 if ( pPlayer->GetLastPuresyncType ( ) == PURESYNC_TYPE_LIGHTSYNC )
                 {
-                    // if the last packet was ls he isn't/shouldn't be streamed in
+                    // if the last packet was ls he isn'tshouldn't be streamed in
                     m_ToStreamOut.push_back ( pElement );
                 }
             }
@@ -522,12 +512,6 @@ void CClientStreamer::Restream ( bool bMovedFar )
                             // if the last packet was ls he isn't streaming in soon.
                             continue;
                         }
-                    }
-
-                    if ( pVehicle && pVehicle->GetTowedByVehicle ( ) )
-                    {
-                        // Streaming in of towed vehicles is done in CClientVehicle::StreamIn by the towing vehicle
-                        continue;
                     }
                 }
                 if ( IS_PLAYER ( pElement ) )

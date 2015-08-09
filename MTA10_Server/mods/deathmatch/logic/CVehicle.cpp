@@ -30,6 +30,7 @@ CVehicle::CVehicle ( CVehicleManager* pVehicleManager, CElement* pParent, CXMLNo
     m_eVehicleType = CVehicleManager::GetVehicleType ( m_usModel );
     m_fHealth = DEFAULT_VEHICLE_HEALTH;
     m_fLastSyncedHealthHealth = DEFAULT_VEHICLE_HEALTH;
+    m_ulHealthChangeTime = 0;
     m_llIdleTime = CTickCount::Now ();
     m_fTurretPositionX = 0;
     m_fTurretPositionY = 0;
@@ -117,35 +118,6 @@ CVehicle::~CVehicle ( void )
         m_pJackingPlayer->SetJackingVehicle ( NULL );
     }
 
-    // loop through players and fix their in out state
-    
-    for ( int i = 0; i < MAX_VEHICLE_SEATS; i++ )
-    {
-        CPed * pPed = m_pOccupants [i];
-        if ( pPed && pPed->IsPlayer ( ) )
-        {
-            CPlayer * pPlayer = static_cast < CPlayer * > ( pPed );
-            // Is he already getting out?
-            if ( pPlayer->GetVehicleAction () == CPlayer::VEHICLEACTION_EXITING )
-            {
-                // Does it have an occupant and is the occupant the requesting player?
-                unsigned char ucOccupiedSeat = pPlayer->GetOccupiedVehicleSeat ();
-                if ( pPlayer == GetOccupant ( ucOccupiedSeat ) )
-                {
-                    // Mark the player/vehicle as empty
-                    SetOccupant ( NULL, ucOccupiedSeat );
-                    pPlayer->SetOccupiedVehicle ( NULL, 0 );
-                    pPlayer->SetVehicleAction ( CPlayer::VEHICLEACTION_NONE );
-
-                    // Tell everyone he can start exiting the vehicle
-                    CVehicleInOutPacket Reply ( GetID ( ), ucOccupiedSeat, 4 );
-                    Reply.SetSourceElement ( pPlayer );
-                    g_pGame->GetPlayerManager ( )->BroadcastOnlyJoined ( Reply );
-                }
-            }
-        }
-    }
-
     // Unset any tow links
     if ( m_pTowedVehicle )
         m_pTowedVehicle->SetTowedByVehicle ( NULL );
@@ -169,10 +141,6 @@ CVehicle::~CVehicle ( void )
     delete m_pHandlingEntry;
 
     CElementRefManager::RemoveElementRefs ( ELEMENT_REF_DEBUG ( this, "CVehicle" ), &m_pTowedVehicle, &m_pTowedByVehicle, &m_pSyncer, &m_pJackingPlayer, NULL );
-
-    // Notify the vehicle manager that we are not to be respawned anymore if neccessary
-    if ( m_bRespawnEnabled )
-        m_pVehicleManager->GetRespawnEnabledVehicles ( ).remove ( this );
 
     // Remove us from the vehicle manager
     Unlink ();
@@ -383,25 +351,6 @@ bool CVehicle::ReadSpecialData ( void )
         m_bIsFrozen = bFrozen;
 
     return true;
-}
-
-
-void CVehicle::GetMatrix( CMatrix& matrix )
-{
-    CVector vecRotation;
-    GetRotation( vecRotation );
-    matrix.SetRotation( vecRotation );
-    matrix.vPos = GetPosition();
-}
-
-
-void CVehicle::SetMatrix( const CMatrix& matrix )
-{
-    // Set position and rotation from matrix
-    SetPosition( matrix.vPos );
-    CVector vecRotation = matrix.GetRotation();
-    ConvertRadiansToDegreesNoWrap( vecRotation );
-    SetRotationDegrees( vecRotation );
 }
 
 
@@ -953,37 +902,4 @@ void CVehicle::SetJackingPlayer ( CPlayer* pPlayer )
 
     if ( m_pJackingPlayer )
         m_pJackingPlayer->SetJackingVehicle ( this );
-}
-
-
-void CVehicle::OnRelayUnoccupiedSync ( void )
-{
-    // Detect dimension change
-    m_bNeedsDimensionResync |= ( GetDimension() != m_usLastUnoccupiedSyncDimension );
-    m_usLastUnoccupiedSyncDimension = GetDimension();
-}
-
-
-void CVehicle::HandleDimensionResync ( void )
-{
-    if ( m_bNeedsDimensionResync )
-    {
-        // Unoccupied vehicle might be desynced because of dimension optimizations, so resync to players in new dimension
-        g_pGame->GetPlayerManager()->BroadcastDimensionOnlyJoined( CVehicleResyncPacket( this ), GetDimension() );
-        m_bNeedsDimensionResync = false;
-    }
-}
-
-void CVehicle::SetRespawnEnabled ( bool bEnabled )
-{ 
-    // If we changed the state, update the internal var and notify the vehicle manager
-    if ( bEnabled != m_bRespawnEnabled )
-    {
-        if ( bEnabled ) 
-            m_pVehicleManager->GetRespawnEnabledVehicles ( ).push_back ( this );
-        else 
-            m_pVehicleManager->GetRespawnEnabledVehicles ( ).remove ( this );
-
-        m_bRespawnEnabled = bEnabled;
-    }
 }

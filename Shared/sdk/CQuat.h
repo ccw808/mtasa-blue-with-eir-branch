@@ -32,7 +32,7 @@ public:
     CQuat() {
         x = y = z = w = 0;
     };
-    CQuat(CMatrix* m) {
+    CQuat(const CMatrix* m) {
         w = sqrt( SharedUtil::Max( (float)0, 1.0f + m->vRight.fX + m->vFront.fY + m->vUp.fZ ) ) * 0.5f;
         x = sqrt( SharedUtil::Max( (float)0, 1.0f + m->vRight.fX - m->vFront.fY - m->vUp.fZ ) ) * 0.5f;
         y = sqrt( SharedUtil::Max( (float)0, 1.0f - m->vRight.fX + m->vFront.fY - m->vUp.fZ ) ) * 0.5f;
@@ -42,8 +42,21 @@ public:
         y = static_cast < float > ( _copysign( y, m->vRight.fZ - m->vUp.fX ) );
         z = static_cast < float > ( _copysign( z, m->vFront.fX - m->vRight.fY ) );
     };
+#ifdef MTA_CLIENT
+    CQuat(const RwMatrix& m) {
+        w = sqrt( SharedUtil::Max( (float)0, 1.0f + m.vRight.fX + m.vFront.fY + m.vUp.fZ ) ) * 0.5f;
+        x = sqrt( SharedUtil::Max( (float)0, 1.0f + m.vRight.fX - m.vFront.fY - m.vUp.fZ ) ) * 0.5f;
+        y = sqrt( SharedUtil::Max( (float)0, 1.0f - m.vRight.fX + m.vFront.fY - m.vUp.fZ ) ) * 0.5f;
+        z = sqrt( SharedUtil::Max( (float)0, 1.0f - m.vRight.fX - m.vFront.fY + m.vUp.fZ ) ) * 0.5f;
+        
+        x = static_cast < float > ( _copysign( x, m.vUp.fY - m.vFront.fZ ) );
+        y = static_cast < float > ( _copysign( y, m.vRight.fZ - m.vUp.fX ) );
+        z = static_cast < float > ( _copysign( z, m.vFront.fX - m.vRight.fY ) );
+    };
+#endif
 
-    static void ToMatrix(const CQuat& q, CMatrix& m){
+    template <typename matrixType>
+    static void ToMatrix(const CQuat& q, matrixType& m){
         float xx = q.x * q.x;
         float xy = q.x * q.y;
         float xz = q.x * q.z;
@@ -115,7 +128,7 @@ public:
         qm.y = (qa.y * ratioA + qb.y * ratioB);
         qm.z = (qa.z * ratioA + qb.z * ratioB);
     };
-private:
+
     float x, y, z, w;
 };
 

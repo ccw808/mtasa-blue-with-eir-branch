@@ -31,6 +31,7 @@ distribution.
 
 #include "tinyxml.h"
 
+
 bool TiXmlBase::condenseWhiteSpace = true;
 
 // Microsoft compiler security
@@ -949,7 +950,7 @@ bool TiXmlDocument::SaveFile() const
 	return SaveFile( Value() );
 }
 
-bool TiXmlDocument::LoadFile( const char* _filename, TiXmlEncoding encoding, FILE** pFile )
+bool TiXmlDocument::LoadFile( const char* _filename, TiXmlEncoding encoding )
 {
 	// There was a really terrifying little bug here. The code:
 	//		value = filename
@@ -967,13 +968,7 @@ bool TiXmlDocument::LoadFile( const char* _filename, TiXmlEncoding encoding, FIL
 	if ( file )
 	{
 		bool result = LoadFile( file, encoding );
-
-        // Return file handle instead of closing, if requested and no errors
-        if ( pFile && result )
-            *pFile = file;
-        else
-    		fclose( file );
-
+		fclose( file );
 		return result;
 	}
 	else

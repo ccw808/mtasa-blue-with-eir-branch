@@ -14,18 +14,7 @@
     #include "sys/time.h"
 #endif
 
-static CCriticalSection ms_criticalSection;
-static long long ms_llTickCountAdd = 0;
 unsigned long GetTickCountInternal ( void );
-
-// Debugging
-void SharedUtil::AddTickCount( long long llTickCountAdd )
-{
-    ms_criticalSection.Lock ();
-    ms_llTickCountAdd = llTickCountAdd;
-    ms_criticalSection.Unlock ();
-}
-
 
 //
 // Retrieves the number of milliseconds that have elapsed since the function was first called (plus a little bit to make it look good).
@@ -34,7 +23,9 @@ void SharedUtil::AddTickCount( long long llTickCountAdd )
 //
 uint SharedUtil::GetTickCount32 ( void )
 {
-    return (uint)GetTickCount64_();
+    static const uint ulInitial = GetTickCountInternal () - ( GetTickCountInternal () % 300000 + 200000 );
+    uint ulNow = GetTickCountInternal ();
+    return ulNow - ulInitial;
 }
 
 
@@ -47,32 +38,24 @@ uint SharedUtil::GetTickCount32 ( void )
 //
 long long SharedUtil::GetTickCount64_ ( void )
 {
-    ms_criticalSection.Lock ();
+    static CCriticalSection criticalSection;
+    criticalSection.Lock ();
 
-    static long long llCurrent = ( GetTickCountInternal () % 300000 + 200000 );
-    static uint uiWas      = GetTickCountInternal();
-    uint        uiNow      = GetTickCountInternal();
-    uint        uiDelta    = uiNow - uiWas;
-    uiWas = uiNow;
+    static long          lHightPart = 0;
+    static unsigned long ulWas      = GetTickCount32 ();
+    unsigned long        ulNow      = GetTickCount32 ();
+    unsigned long        ulDelta    = ulNow - ulWas;
 
-    // Ensure delta is not negative
-    if ( uiDelta > 0x80000000 )
-        uiDelta = 0;
+    // Detect wrap around
+    if( ulDelta > 0x80000000 )
+        lHightPart++;
 
-    // Or greater than 600 seconds
-    if ( uiDelta > 600 * 1000 )
-        uiDelta = 600 * 1000;
+    ulWas = ulNow;
 
-    // Add delta to accumulator
-    llCurrent += uiDelta;
+    long long Result = ( ( ( ( long long ) lHightPart ) << 32 ) | ( ( long long ) ulNow ) );
 
-    // Add debug value
-    llCurrent += ms_llTickCountAdd;
-    ms_llTickCountAdd = 0;
-
-    long long llResult = llCurrent;
-    ms_criticalSection.Unlock ();
-    return llResult;
+    criticalSection.Unlock ();
+    return Result;
 }
 
 
@@ -338,7 +321,9 @@ TIMEUS SharedUtil::GetTimeUs()
 
     LARGE_INTEGER lEnd;
     QueryPerformanceCounter(&lEnd);
-    LONGLONG llDuration = ( lEnd.QuadPart - lStart.QuadPart ) * 1000000LL / lFreq.QuadPart;
+	double duration = double(lEnd.QuadPart - lStart.QuadPart) / lFreq.QuadPart;
+    duration *= 1000000;
+    LONGLONG llDuration = static_cast < LONGLONG > ( duration );
     return llDuration & 0xffffffff;
 }
 #else
@@ -362,10 +347,11 @@ TIMEUS SharedUtil::GetTimeUs()
     gettimeofday(&t2, NULL);
 
     // compute elapsed time in us
-    LONGLONG llDuration;
-    llDuration = (t2.tv_sec - t1.tv_sec) * 1000000LL;    // sec to us
-    llDuration += (t2.tv_usec - t1.tv_usec);             // us to us
+    double elapsedTime;
+    elapsedTime =  (t2.tv_sec  - t1.tv_sec) * 1000000.0;    // sec to us
+    elapsedTime += (t2.tv_usec - t1.tv_usec);               // us to us
 
+    LONGLONG llDuration = static_cast < LONGLONG > ( elapsedTime );
     return llDuration & 0xffffffff;
 }
 #endif

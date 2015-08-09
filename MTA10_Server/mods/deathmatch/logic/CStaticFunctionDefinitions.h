@@ -59,9 +59,8 @@ public:
     static CLuaArgument*        GetElementData                      ( CElement* pElement, const char* szName, bool bInherit );
     static CLuaArguments*       GetAllElementData                   ( CElement* pElement, CLuaArguments * table );
     static CElement*            GetElementParent                    ( CElement* pElement );
-    static bool                 GetElementMatrix                    ( CElement* pElement, CMatrix& matrix );
     static bool                 GetElementPosition                  ( CElement* pElement, CVector& vecPosition );
-    static bool                 GetElementRotation                  ( CElement* pElement, CVector& vecRotation, eEulerRotationOrder rotationOrder );
+    static bool                 GetElementRotation                  ( CElement* pElement, CVector& vecRotation, const char* szRotationOrder );
     static bool                 GetElementVelocity                  ( CElement* pElement, CVector& vecVelocity );
     static bool                 GetElementInterior                  ( CElement* pElement, unsigned char& ucInterior );
     static bool                 IsElementWithinColShape             ( CElement* pElement, CColShape* pColShape, bool& bWithin );
@@ -90,9 +89,8 @@ public:
     static bool                 SetElementData                      ( CElement* pElement, const char* szName, const CLuaArgument& Variable, CLuaMain* pLuaMain, bool bSynchronize );
     static bool                 RemoveElementData                   ( CElement* pElement, const char* szName );
     static bool                 SetElementParent                    ( CElement* pElement, CElement* pParent );
-    static bool                 SetElementMatrix                    ( CElement* pElement, const CMatrix& matrix );
     static bool                 SetElementPosition                  ( CElement* pElement, const CVector& vecPosition, bool bWarp = true );
-    static bool                 SetElementRotation                  ( CElement* pElement, const CVector& vecRotation, eEulerRotationOrder rotationOrder, bool bNewWay );
+    static bool                 SetElementRotation                  ( CElement* pElement, const CVector& vecRotation, const char* szRotationOrder, bool bNewWay );
     static bool                 SetElementVelocity                  ( CElement* pElement, const CVector& vecVelocity );
     static bool                 SetElementVisibleTo                 ( CElement* pElement, CElement* pReference, bool bVisible );
     static bool                 SetElementInterior                  ( CElement* pElement, unsigned char ucInterior, bool bSetPosition, CVector& vecPosition );
@@ -141,7 +139,7 @@ public:
     static const SString&       GetPlayerVersion                    ( CPlayer* pPlayer );
 
     // Player set functions
-    static bool                 SetPlayerMoney                      ( CElement* pElement, long lMoney, bool bInstant );
+    static bool                 SetPlayerMoney                      ( CElement* pElement, long lMoney );
     static bool                 SetPlayerAmmo                       ( CElement* pElement, unsigned char ucSlot, unsigned short usAmmo, unsigned short usAmmoInClip );
     static bool                 GivePlayerMoney                     ( CElement* pElement, long lMoney );
     static bool                 TakePlayerMoney                     ( CElement* pElement, long lMoney );
@@ -440,10 +438,10 @@ public:
     static bool                 UsePickup                           ( CElement* pElement, CPlayer * pPlayer );
 
     // Shape create funcs
-    static CColCircle*          CreateColCircle                     ( CResource* pResource, const CVector2D& vecPosition, float fRadius );
+    static CColCircle*          CreateColCircle                     ( CResource* pResource, const CVector& vecPosition, float fRadius );
     static CColCuboid*          CreateColCuboid                     ( CResource* pResource, const CVector& vecPosition, const CVector& vecSize );
     static CColSphere*          CreateColSphere                     ( CResource* pResource, const CVector& vecPosition, float fRadius );
-    static CColRectangle*       CreateColRectangle                  ( CResource* pResource, const CVector2D& vecPosition, const CVector2D& vecSize );
+    static CColRectangle*       CreateColRectangle                  ( CResource* pResource, const CVector& vecPosition, const CVector2D& vecSize );
     static CColPolygon*         CreateColPolygon                    ( CResource* pResource, const std::vector < CVector2D >& vecPointList );
     static CColTube*            CreateColTube                       ( CResource* pResource, const CVector& vecPosition, float fRadius, float fHeight );
     static void                 RefreshColShapeColliders            ( CColShape *pColShape );
@@ -605,8 +603,8 @@ public:
     static bool                 ResetWindVelocity                   ( void );
     static bool                 ResetFarClipDistance                ( void );
     static bool                 ResetFogDistance                    ( void );
-    static bool                 RemoveWorldModel                    ( unsigned short usModel, float fRadius, const CVector& vecPosition, char cInterior );
-    static bool                 RestoreWorldModel                   ( unsigned short usModel, float fRadius, const CVector& vecPosition, char cInterior );
+    static bool                 RemoveWorldModel                    ( unsigned short usModel, float fRadius, float fX, float fY, float fZ, char cInterior );
+    static bool                 RestoreWorldModel                   ( unsigned short usModel, float fRadius, float fX, float fY, float fZ, char cInterior );
     static bool                 RestoreAllWorldModels               ( void );
     static bool                 SendSyncIntervals                   ( CPlayer* pPlayer = NULL );
     static bool                 SetPedTargetingMarkerEnabled        ( bool bEnabled );
@@ -678,11 +676,6 @@ public:
 
     static bool                 GetBanTime                          ( CBan* pBan, time_t& time );
     static bool                 GetUnbanTime                        ( CBan* pBan, time_t& time );
-
-    static bool                 SetUnbanTime                        ( CBan* pBan, time_t time);
-    static bool                 SetBanReason                        ( CBan* pBan, const SString& strReason );
-    static bool                 SetBanAdmin                         ( CBan* pBan, const SString& strAdminName );
-    static bool                 SetBanNick                          ( CBan* pBan, const SString& strNick );
 
     // Cursor get funcs
     static bool                 IsCursorShowing                     ( CPlayer* pPlayer, bool& bShowing );

@@ -42,15 +42,7 @@ CSettings::CSettings ( void )
 {
     m_iMaxAnisotropic = g_pDeviceState->AdapterState.MaxAnisotropicSetting;
     m_pWindow = NULL;
-    m_bBrowserListsChanged = false;
     CreateGUI ();
-
-    // Disable progress animation if required
-    if ( GetApplicationSettingInt( GENERAL_PROGRESS_ANIMATION_DISABLE ) )
-    {
-        SetApplicationSettingInt( GENERAL_PROGRESS_ANIMATION_DISABLE, 0 );
-        CVARS_SET ( "progress_animation", 0 );
-    }
 }
 
 
@@ -65,7 +57,7 @@ void CSettings::CreateGUI ( void )
     if ( m_pWindow )
         DestroyGUI ();
 
-    CGUITab *pTabMultiplayer, *pTabVideo, *pTabAudio, *pTabBinds, *pTabControls, *pTabCommunity, *pTabInterface, *pTabBrowser, *pTabAdvanced;
+    CGUITab *pTabMultiplayer, *pTabVideo, *pTabAudio, *pTabBinds, *pTabControls, *pTabCommunity, *pTabInterface, *pTabAdvanced;
     CGUI *pManager = g_pCore->GetGUI ();
 
     // Init
@@ -101,10 +93,9 @@ void CSettings::CreateGUI ( void )
     pTabAudio = m_pTabs->CreateTab ( _("Audio") );
     pTabBinds = m_pTabs->CreateTab ( _("Binds") );
     pTabControls = m_pTabs->CreateTab ( _("Controls") );
-    pTabInterface = m_pTabs->CreateTab ( _("Interface") );
-    pTabBrowser = m_pTabs->CreateTab ( _("Browser") );
-    pTabAdvanced = m_pTabs->CreateTab ( _("Advanced") );
     pTabCommunity = m_pTabs->CreateTab ( _("Community") );
+    pTabInterface = m_pTabs->CreateTab ( _("Interface") );
+    pTabAdvanced = m_pTabs->CreateTab ( _("Advanced") );
 
     // Create buttons
     //  OK button
@@ -421,30 +412,6 @@ void CSettings::CreateGUI ( void )
     m_pCheckBoxCustomizedSAFiles->GetPosition ( vecTemp, false );
     m_pCheckBoxCustomizedSAFiles->AutoSize ( NULL, 20.0f );
 
-    m_pMapRenderingLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabMultiplayer, _("Map rendering options") ) );
-    m_pMapRenderingLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 29.0f ) );
-    m_pMapRenderingLabel->GetPosition ( vecTemp, false );
-    m_pMapRenderingLabel->SetFont ( "default-bold-small" );
-    m_pMapRenderingLabel->AutoSize ( );
-
-    m_pMapAlphaLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabMultiplayer, _("Opacity:") ) );
-    m_pMapAlphaLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 24.0f ) );
-    m_pMapAlphaLabel->GetPosition ( vecTemp, false );
-    m_pMapAlphaLabel->AutoSize ( );
-
-    m_pMapAlpha = reinterpret_cast < CGUIScrollBar* > ( pManager->CreateScrollBar ( true, pTabMultiplayer ) );
-    m_pMapAlpha->SetPosition ( CVector2D ( vecTemp.fX + fIndentX + 5.0f, vecTemp.fY ) );
-    m_pMapAlpha->GetPosition ( vecTemp, false );
-    m_pMapAlpha->SetSize ( CVector2D ( 160.0f, 20.0f ) );
-    m_pMapAlpha->GetSize ( vecSize );
-    m_pMapAlpha->SetProperty ( "StepSize", "0.01" );
-
-    m_pMapAlphaValueLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabMultiplayer, "0%") );
-    m_pMapAlphaValueLabel->SetPosition ( CVector2D ( vecTemp.fX + vecSize.fX + 5.0f, vecTemp.fY ) );
-    m_pMapAlphaValueLabel->GetPosition ( vecTemp, false );
-    m_pMapAlphaValueLabel->AutoSize ( "100% " );
-
-
     /**
      *  Audio tab
      **/
@@ -748,9 +715,7 @@ void CSettings::CreateGUI ( void )
 
     m_pComboAspectRatio = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabVideo, "" ) );
     m_pComboAspectRatio->SetPosition ( CVector2D ( vecTemp.fX + fIndentX + 5.0f, vecTemp.fY - 1.0f ) );
-    m_pComboAspectRatio->GetPosition ( vecTemp, false );
     m_pComboAspectRatio->SetSize ( CVector2D ( 200.0f, 95.0f ) );
-    m_pComboAspectRatio->GetSize ( vecSize );
     m_pComboAspectRatio->AddItem ( _("Auto") )->SetData ( (void*)ASPECT_RATIO_AUTO );
     m_pComboAspectRatio->AddItem ( _("4:3") )->SetData ( (void*)ASPECT_RATIO_4_3 );
     m_pComboAspectRatio->AddItem ( _("16:10") )->SetData ( (void*)ASPECT_RATIO_16_10 );
@@ -758,10 +723,8 @@ void CSettings::CreateGUI ( void )
     m_pComboAspectRatio->SetReadOnly ( true );
 
     m_pCheckBoxHudMatchAspectRatio = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabVideo, _("HUD Match Aspect Ratio"), true ) );
-    m_pCheckBoxHudMatchAspectRatio->SetPosition ( CVector2D ( vecTemp.fX + vecSize.fX + 10.0f, vecTemp.fY + 3.0f ) );
+    m_pCheckBoxHudMatchAspectRatio->SetPosition ( CVector2D ( vecTemp.fX + 323.0f, vecTemp.fY + 3.0f ) );
     m_pCheckBoxHudMatchAspectRatio->AutoSize ( NULL, 20.0f );
-
-    vecTemp.fX = 11;
 
     m_pCheckBoxVolumetricShadows = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabVideo, _("Volumetric Shadows"), true ) );
     m_pCheckBoxVolumetricShadows->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 30.0f ) );
@@ -775,71 +738,65 @@ void CSettings::CreateGUI ( void )
     m_pCheckBoxHeatHaze->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 70.0f ) );
     m_pCheckBoxHeatHaze->AutoSize ( NULL, 20.0f );
 
-    m_pCheckBoxTyreSmokeParticles = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabVideo, _("Tyre Smoke etc"), true ) );
-    m_pCheckBoxTyreSmokeParticles->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 90.0f ) );
-    m_pCheckBoxTyreSmokeParticles->AutoSize ( NULL, 20.0f );
-
     float fPosY =  vecTemp.fY;
     m_pCheckBoxMinimize = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabVideo, _("Full Screen Minimize"), true ) );
     m_pCheckBoxMinimize->SetPosition ( CVector2D ( vecTemp.fX + 245.0f, fPosY + 30.0f ) );
     m_pCheckBoxMinimize->AutoSize ( NULL, 20.0f );
-
-#ifndef SHOWALLSETTINGS
     if ( !GetVideoModeManager ()->IsMultiMonitor () )
     {
         m_pCheckBoxMinimize->SetVisible ( false );
         fPosY -= 20.0f;
     }
-#endif
 
     m_pCheckBoxDisableAero = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabVideo, _("Disable Aero Desktop"), true ) );
     m_pCheckBoxDisableAero->SetPosition ( CVector2D ( vecTemp.fX + 245.0f, fPosY + 50.0f ) );
     m_pCheckBoxDisableAero->AutoSize ( NULL, 20.0f );
-
-#ifndef SHOWALLSETTINGS
     if ( GetApplicationSetting ( "os-version" ) < "6.1" || GetApplicationSettingInt ( "aero-changeable" ) == 0 )
     {
         m_pCheckBoxDisableAero->SetVisible ( false );
         fPosY -= 20.0f;
     }
-#endif
 
     m_pCheckBoxDisableDriverOverrides = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabVideo, _("Disable Driver Overrides"), true ) );
     m_pCheckBoxDisableDriverOverrides->SetPosition ( CVector2D ( vecTemp.fX + 245.0f, fPosY + 70.0f ) );
     m_pCheckBoxDisableDriverOverrides->AutoSize ( NULL, 20.0f );
-
-#ifndef SHOWALLSETTINGS
     if ( GetApplicationSettingInt ( "nvhacks", "optimus" ) )
     {
         m_pCheckBoxDisableDriverOverrides->SetVisible ( false );
         fPosY -= 20.0f;
     }
-#endif
 
     m_pCheckBoxDeviceSelectionDialog = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabVideo, _("Enable Device Selection Dialog"), true ) );
     m_pCheckBoxDeviceSelectionDialog->SetPosition ( CVector2D ( vecTemp.fX + 245.0f, fPosY + 90.0f ) );
     m_pCheckBoxDeviceSelectionDialog->AutoSize ( NULL, 20.0f );
-
-#ifndef SHOWALLSETTINGS
     if ( !GetVideoModeManager ()->IsMultiMonitor () )
     {
         m_pCheckBoxDeviceSelectionDialog->SetVisible ( false );
         fPosY -= 20.0f;
     }
-#endif
 
-    m_pCheckBoxShowUnsafeResolutions = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabVideo, _("Show unsafe resolutions"), true ) );
-    m_pCheckBoxShowUnsafeResolutions->SetPosition ( CVector2D ( vecTemp.fX + 245.0f, fPosY + 110.0f ) );
-    m_pCheckBoxShowUnsafeResolutions->AutoSize ( NULL, 20.0f );
+    m_pMapRenderingLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabVideo, _("Map rendering options") ) );
+    m_pMapRenderingLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 104.0f ) );
+    m_pMapRenderingLabel->GetPosition ( vecTemp, false );
+    m_pMapRenderingLabel->SetFont ( "default-bold-small" );
+    m_pMapRenderingLabel->AutoSize ( );
 
-#ifndef SHOWALLSETTINGS
-    if ( !CCore::GetSingleton ().GetGame ()->GetSettings ()->HasUnsafeResolutions () )
-    {
-        m_pCheckBoxShowUnsafeResolutions->SetVisible ( false );
-        fPosY -= 20.0f;
-    }
-#endif
-    vecTemp.fY += 10;
+    m_pMapAlphaLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabVideo, _("Opacity:") ) );
+    m_pMapAlphaLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 24.0f ) );
+    m_pMapAlphaLabel->GetPosition ( vecTemp, false );
+    m_pMapAlphaLabel->AutoSize ( );
+
+    m_pMapAlpha = reinterpret_cast < CGUIScrollBar* > ( pManager->CreateScrollBar ( true, pTabVideo ) );
+    m_pMapAlpha->SetPosition ( CVector2D ( vecTemp.fX + fIndentX + 5.0f, vecTemp.fY ) );
+    m_pMapAlpha->GetPosition ( vecTemp, false );
+    m_pMapAlpha->SetSize ( CVector2D ( 160.0f, 20.0f ) );
+    m_pMapAlpha->GetSize ( vecSize );
+    m_pMapAlpha->SetProperty ( "StepSize", "0.01" );
+
+    m_pMapAlphaValueLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabVideo, "0%") );
+    m_pMapAlphaValueLabel->SetPosition ( CVector2D ( vecTemp.fX + vecSize.fX + 5.0f, vecTemp.fY ) );
+    m_pMapAlphaValueLabel->GetPosition ( vecTemp, false );
+    m_pMapAlphaValueLabel->AutoSize ( "100% " );
 
     m_pTabs->GetSize ( vecTemp );
 
@@ -856,7 +813,7 @@ void CSettings::CreateGUI ( void )
     {
         CGUILabel* pLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabInterface, _("General") ) );
         pLabel->SetPosition ( CVector2D ( 10.0f, 12.0f ) );
-        pLabel->AutoSize ( NULL, 5.0f );
+        pLabel->AutoSize ( _("General  ") );
         pLabel->SetFont ( "default-bold-small" );
     }
 
@@ -875,7 +832,7 @@ void CSettings::CreateGUI ( void )
 
     m_pInterfaceLanguageSelector = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabInterface, "English" ) );
     m_pInterfaceLanguageSelector->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, 33.0f ) );
-    m_pInterfaceLanguageSelector->SetSize ( CVector2D ( 350.0f - ( vecTemp.fX + fIndentX ), 200.0f ) );
+    m_pInterfaceLanguageSelector->SetSize ( CVector2D ( 400.0f - ( vecTemp.fX + fIndentX ), 200.0f ) );
     m_pInterfaceLanguageSelector->SetReadOnly ( true );
 
     // Grab languages and populate
@@ -896,7 +853,7 @@ void CSettings::CreateGUI ( void )
 
     m_pInterfaceSkinSelector = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabInterface ) );
     m_pInterfaceSkinSelector->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, 63.0f ) );
-    m_pInterfaceSkinSelector->SetSize ( CVector2D ( 350.0f - ( vecTemp.fX + fIndentX ), 200.0f ) );
+    m_pInterfaceSkinSelector->SetSize ( CVector2D ( 400.0f - ( vecTemp.fX + fIndentX ), 200.0f ) );
     m_pInterfaceSkinSelector->SetReadOnly ( true );
 
     {
@@ -917,37 +874,23 @@ void CSettings::CreateGUI ( void )
 
     m_pChatPresets = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabInterface ) );
     m_pChatPresets->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, 110.0f ) );
-    m_pChatPresets->SetSize ( CVector2D ( 350.0f - ( vecTemp.fX + fIndentX ), 200.0f ) );
+    m_pChatPresets->SetSize ( CVector2D ( 400.0f - ( vecTemp.fX + fIndentX ), 200.0f ) );
     m_pChatPresets->SetReadOnly ( true );
 
     m_pChatLoadPreset = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( pTabInterface, _("Load") ) );
-    m_pChatLoadPreset->SetPosition ( CVector2D ( 360.0f, 110.0f ) );
+    m_pChatLoadPreset->SetPosition ( CVector2D ( 410.0f, 110.0f ) );
     m_pChatLoadPreset->SetSize ( CVector2D ( 100.0f, 24.0f ) );
     m_pChatLoadPreset->SetZOrderingEnabled ( false );
 
     // Color selection
-    SString strChatBG = _("Chat BG");
-    SString strChatText = _("Chat Text");
-    SString strInputBG = _("Input BG");
-    SString strInputText = _("Input Text");
-
-    float fColorTabsTextWidth = pManager->GetTextExtent( strChatBG )
-                                + pManager->GetTextExtent( strChatText )
-                                + pManager->GetTextExtent( strInputBG )
-                                + pManager->GetTextExtent( strInputText );
-
-    // Add 20 for each tab
-    fColorTabsTextWidth += 20 * 4;
-    float fColorTabPanelWidth = Max( 320.f, fColorTabsTextWidth );
-
     CGUITabPanel* pColorTabPanel = reinterpret_cast < CGUITabPanel* > ( pManager->CreateTabPanel ( pTabInterface ) );
     pColorTabPanel->SetPosition ( CVector2D ( 10.0f, 150.0f ) );
-    pColorTabPanel->SetSize ( CVector2D ( fColorTabPanelWidth, 150.0f ) );
+    pColorTabPanel->SetSize ( CVector2D ( 320.0f, 150.0f ) );
 
-    CreateChatColorTab ( ChatColorTypes::CHAT_COLOR_BG, strChatBG, pColorTabPanel );
-    CreateChatColorTab ( ChatColorTypes::CHAT_COLOR_TEXT, strChatText, pColorTabPanel );
-    CreateChatColorTab ( ChatColorTypes::CHAT_COLOR_INPUT_BG, strInputBG, pColorTabPanel );
-    CreateChatColorTab ( ChatColorTypes::CHAT_COLOR_INPUT_TEXT, strInputText, pColorTabPanel );
+    CreateChatColorTab ( ChatColorTypes::CHAT_COLOR_BG, _("Chat BG"), pColorTabPanel );
+    CreateChatColorTab ( ChatColorTypes::CHAT_COLOR_TEXT, _("Chat Text"), pColorTabPanel );
+    CreateChatColorTab ( ChatColorTypes::CHAT_COLOR_INPUT_BG, _("Input BG"), pColorTabPanel );
+    CreateChatColorTab ( ChatColorTypes::CHAT_COLOR_INPUT_TEXT, _("Input Text"), pColorTabPanel );
 
     // Font Selection
     m_pPaneChatFont = reinterpret_cast < CGUIScrollPane* > ( pManager->CreateScrollPane ( pTabInterface ) ); 
@@ -988,73 +931,41 @@ void CSettings::CreateGUI ( void )
             _("Width:")
         );
 
-        // Sizes of things
-        float fLabelsWidth = fIndentX;
-        float fEditsWidth = 80;
-        float fLineSizeY = 24;
-        float fLineGapY = 4;
-
-        // Position
-        vecTemp.fX = 522 - fEditsWidth - fLabelsWidth;
-        vecTemp.fY = 199;
-
-        // Background pane in case of overlap with the color panel
-        float fBGSizeX = fEditsWidth + fLabelsWidth;
-        float fBGSizeY = fLineSizeY * 3 + fLineGapY * 2;       
-        float fBGBorder = 10;
-        CGUITabPanel* pMiscOptionsBG = reinterpret_cast < CGUITabPanel* > ( pManager->CreateTabPanel ( pTabInterface ) );
-        pMiscOptionsBG->SetPosition( CVector2D( vecTemp.fX - fBGBorder, vecTemp.fY - fBGBorder - 5 ) );
-        pMiscOptionsBG->SetSize( CVector2D( fBGSizeX + fBGBorder * 2, fBGSizeY + fBGBorder * 2 + 2 ) );
-        pMiscOptionsBG->SetAlpha( 1 );
-        pMiscOptionsBG->SetZOrderingEnabled( false );
-        pMiscOptionsBG->SetAlwaysOnTop( true );
-
         pLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabInterface, _("Lines:") ) );
-        pLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY ) );
+        pLabel->SetPosition ( CVector2D ( 360.0f, 160.0f ) );
         pLabel->GetPosition ( vecTemp );
         pLabel->AutoSize ( );
-        pLabel->SetAlwaysOnTop ( true );
 
         m_pChatLines = reinterpret_cast < CGUIEdit* > ( pManager->CreateEdit ( pTabInterface, "" ) );
         m_pChatLines->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 2.0f ) );
         m_pChatLines->SetSize ( CVector2D ( 80.0f, 24.0f ) );
-        m_pChatLines->SetAlwaysOnTop ( true );
 
         pLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabInterface, _("Scale:") ) );
-        pLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + fLineSizeY + fLineGapY ) );
+        pLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 28.0f ) );
         pLabel->GetPosition ( vecTemp );
         pLabel->AutoSize ( );
-        pLabel->SetAlwaysOnTop ( true );
 
         m_pChatScaleX = reinterpret_cast < CGUIEdit* > ( pManager->CreateEdit ( pTabInterface, "" ) );
         m_pChatScaleX->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 2.0f ) );
         m_pChatScaleX->SetSize ( CVector2D ( 35.0f, 24.0f ) );
-        m_pChatScaleX->SetAlwaysOnTop ( true );
 
         pLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabInterface, "x" ) );
         pLabel->SetPosition ( CVector2D ( vecTemp.fX + fIndentX + 37.0f, vecTemp.fY + 2.0f ) );
         pLabel->AutoSize ( );
-        pLabel->SetAlwaysOnTop ( true );
 
         m_pChatScaleY = reinterpret_cast < CGUIEdit* > ( pManager->CreateEdit ( pTabInterface, "" ) );
         m_pChatScaleY->SetPosition ( CVector2D ( vecTemp.fX + fIndentX + 45.0f, vecTemp.fY - 2.0f ) );
         m_pChatScaleY->SetSize ( CVector2D ( 35.0f, 24.0f ) );
-        m_pChatScaleY->SetAlwaysOnTop ( true );
 
         pLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabInterface, _("Width:") ) );
-        pLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + fLineSizeY + fLineGapY ) );
+        pLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 28.0f ) );
         pLabel->GetPosition ( vecTemp );
         pLabel->AutoSize ( );
-        pLabel->SetAlwaysOnTop ( true );
 
         m_pChatWidth = reinterpret_cast < CGUIEdit* > ( pManager->CreateEdit ( pTabInterface, "" ) );
         m_pChatWidth->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 2.0f ) );
         m_pChatWidth->SetSize ( CVector2D ( 80.0f, 24.0f ) );
-        m_pChatWidth->SetAlwaysOnTop ( true );
 
-
-        vecTemp.fX = 360;
-        vecTemp.fY = 216;
         fIndentX = pManager->CGUI_GetMaxTextExtent( "default-normal",
             _("after"),
             _("for")
@@ -1105,112 +1016,27 @@ void CSettings::CreateGUI ( void )
     }
 
     /**
-     * Webbrowser tab
-     **/
-    m_pLabelBrowserGeneral = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabBrowser, _("General") ) );
-    m_pLabelBrowserGeneral->SetPosition ( CVector2D ( 10.0f, 12.0f ) );
-    m_pLabelBrowserGeneral->GetPosition ( vecTemp );
-    m_pLabelBrowserGeneral->AutoSize ( NULL, 5.0f );
-    m_pLabelBrowserGeneral->SetFont ( "default-bold-small" );
-
-    m_pCheckBoxRemoteBrowser = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabBrowser, _("Enable remote websites"), true ) );
-    m_pCheckBoxRemoteBrowser->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 29.0f ) );
-    m_pCheckBoxRemoteBrowser->GetPosition ( vecTemp );
-    m_pCheckBoxRemoteBrowser->AutoSize ( NULL, 20.0f );
-
-    m_pCheckBoxRemoteJavascript = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabBrowser, _("Enable Javascript on remote websites"), true ) );
-    m_pCheckBoxRemoteJavascript->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 25.0f ) );
-    m_pCheckBoxRemoteJavascript->GetPosition ( vecTemp );
-    m_pCheckBoxRemoteJavascript->AutoSize ( NULL, 20.0f );
-
-    m_pCheckBoxBrowserPluginsEnabled = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox(pTabBrowser, _("Enable plugins (like Flash, Silverlight; Java is disabled by default)"), true ) );
-    m_pCheckBoxBrowserPluginsEnabled->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 25.0f ) );
-    m_pCheckBoxBrowserPluginsEnabled->GetPosition ( vecTemp );
-    m_pCheckBoxBrowserPluginsEnabled->AutoSize ( NULL, 20.0f );
-
-    m_pLabelBrowserCustomBlacklist = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabBrowser, _("Custom blacklist") ) );
-    m_pLabelBrowserCustomBlacklist->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 30.0f ) );
-    m_pLabelBrowserCustomBlacklist->GetPosition ( vecTemp );
-    m_pLabelBrowserCustomBlacklist->AutoSize ( NULL, 5.0f );
-    m_pLabelBrowserCustomBlacklist->SetFont ( "default-bold-small" );
-
-    m_pEditBrowserBlacklistAdd = reinterpret_cast < CGUIEdit* > ( pManager->CreateEdit ( pTabBrowser ) );
-    m_pEditBrowserBlacklistAdd->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 25.0f ) );
-    m_pEditBrowserBlacklistAdd->GetPosition ( vecTemp );
-    m_pEditBrowserBlacklistAdd->SetSize ( CVector2D ( 191.0f, 22.0f ) );
-    m_pEditBrowserBlacklistAdd->SetText ( _("Enter a domain e.g. google.com") );
-
-    m_pButtonBrowserBlacklistAdd = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( pTabBrowser, _("Block") ) );
-    m_pButtonBrowserBlacklistAdd->SetPosition ( CVector2D ( vecTemp.fX + m_pEditBrowserBlacklistAdd->GetSize ().fX + 2.0f, vecTemp.fY ) );
-    m_pButtonBrowserBlacklistAdd->SetSize ( CVector2D ( 64.0f, 22.0f ) );
-
-    m_pGridBrowserBlacklist = reinterpret_cast < CGUIGridList* > ( pManager->CreateGridList ( pTabBrowser ) );
-    m_pGridBrowserBlacklist->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 32.0f ) );
-    m_pGridBrowserBlacklist->GetPosition ( vecTemp );
-    m_pGridBrowserBlacklist->SetSize ( CVector2D ( 256.0f, 150.0f ) );
-    m_pGridBrowserBlacklist->AddColumn ( _("Domain"), 0.9f );
-
-    m_pButtonBrowserBlacklistRemove = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( pTabBrowser, _("Remove domain") ) );
-    m_pButtonBrowserBlacklistRemove->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + m_pGridBrowserBlacklist->GetSize ().fY + 5.0f ) );
-    m_pButtonBrowserBlacklistRemove->SetSize ( CVector2D ( 140.0f, 22.0f ) );
-
-    m_pLabelBrowserCustomBlacklist->GetPosition ( vecTemp ); // Reset vecTemp
-
-    m_pLabelBrowserCustomWhitelist = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabBrowser, _("Custom whitelist") ) );
-    m_pLabelBrowserCustomWhitelist->SetPosition ( CVector2D ( 276.0f , vecTemp.fY ) );
-    m_pLabelBrowserCustomWhitelist->GetPosition ( vecTemp );
-    m_pLabelBrowserCustomWhitelist->AutoSize ( NULL, 5.0f );
-    m_pLabelBrowserCustomWhitelist->SetFont ( "default-bold-small" );
-
-    m_pEditBrowserWhitelistAdd = reinterpret_cast < CGUIEdit* > ( pManager->CreateEdit ( pTabBrowser ) );
-    m_pEditBrowserWhitelistAdd->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 25.0f ) );
-    m_pEditBrowserWhitelistAdd->GetPosition ( vecTemp );
-    m_pEditBrowserWhitelistAdd->SetSize ( CVector2D ( 191.0f, 22.0f ) );
-    m_pEditBrowserWhitelistAdd->SetText ( _("Enter a domain e.g. google.com") );
-
-    m_pButtonBrowserWhitelistAdd = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( pTabBrowser, _("Allow") ) );
-    m_pButtonBrowserWhitelistAdd->SetPosition ( CVector2D ( vecTemp.fX + m_pEditBrowserWhitelistAdd->GetSize ().fX + 2.0f, vecTemp.fY ) );
-    m_pButtonBrowserWhitelistAdd->SetSize ( CVector2D ( 64.0f, 22.0f ) );
-
-    m_pGridBrowserWhitelist = reinterpret_cast < CGUIGridList* > ( pManager->CreateGridList ( pTabBrowser ) );
-    m_pGridBrowserWhitelist->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + 32.0f ) );
-    m_pGridBrowserWhitelist->GetPosition ( vecTemp );
-    m_pGridBrowserWhitelist->SetSize ( CVector2D ( 256.0f, 150.0f ) );
-    m_pGridBrowserWhitelist->AddColumn ( _("Domain"), 0.9f );
-
-    m_pButtonBrowserWhitelistRemove = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( pTabBrowser, _("Remove domain") ) );
-    m_pButtonBrowserWhitelistRemove->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY + m_pGridBrowserWhitelist->GetSize ().fY + 5.0f ) );
-    m_pButtonBrowserWhitelistRemove->SetSize ( CVector2D ( 140.0f, 22.0f ) );
-
-    /**
      *  Advanced tab
      **/
     vecTemp = CVector2D ( 12.f, 12.f );
-    float fComboWidth = 170.f;
-    float fHeaderHeight = 20;
-    float fLineHeight = 27;
 
     // Misc section label
     m_pAdvancedMiscLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Misc") ) );
     m_pAdvancedMiscLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY ) );
     m_pAdvancedMiscLabel->SetFont ( "default-bold-small" );
     m_pAdvancedMiscLabel->AutoSize ( );
-    vecTemp.fY += fHeaderHeight;
+    vecTemp.fY += 20;
 
     fIndentX = pManager->CGUI_GetMaxTextExtent( "default-normal",
         _("Fast CJ clothes loading:"),
         _("Browser speed:"),
         _("Single connection:"),
-        _("Packet tag:"),
-        _("Progress animation:"),
         _("Fullscreen mode:"),
         _("Process priority:"),
         _("Debug setting:"),
         _("Streaming memory:"),
-        _("Update build type:"),
-        _("Install important updates:")
+        _("Update build type:")
     ) + 5.0f;
-
 
     vecTemp.fX += 10.0f;
     // Fast clothes loading
@@ -1220,12 +1046,12 @@ void CSettings::CreateGUI ( void )
 
     m_pFastClothesCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
     m_pFastClothesCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pFastClothesCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
+    m_pFastClothesCombo->SetSize ( CVector2D ( 148.0f, 95.0f ) );
     m_pFastClothesCombo->AddItem ( _("Off") )->SetData ( (void*)CMultiplayer::FAST_CLOTHES_OFF );
     m_pFastClothesCombo->AddItem ( _("On") )->SetData ( (void*)CMultiplayer::FAST_CLOTHES_ON );
     m_pFastClothesCombo->AddItem ( _("Auto") )->SetData ( (void*)CMultiplayer::FAST_CLOTHES_AUTO );
     m_pFastClothesCombo->SetReadOnly ( true );
-    vecTemp.fY += fLineHeight;
+    vecTemp.fY += 29;
 
     // Browser scan speed
     m_pBrowserSpeedLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Browser speed:") ) );
@@ -1234,9 +1060,9 @@ void CSettings::CreateGUI ( void )
 
     m_pBrowserSpeedCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
     m_pBrowserSpeedCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pBrowserSpeedCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
+    m_pBrowserSpeedCombo->SetSize ( CVector2D ( 148.0f, 95.0f ) );
     m_pBrowserSpeedCombo->AddItem ( _("Very slow") )->SetData ( (void*)0 );
-    m_pBrowserSpeedCombo->AddItem ( _("Default") )->SetData ( (void*)1 );
+    m_pBrowserSpeedCombo->AddItem ( _("Slow") )->SetData ( (void*)1 );
     m_pBrowserSpeedCombo->AddItem ( _("Fast") )->SetData ( (void*)2 );
     m_pBrowserSpeedCombo->SetReadOnly ( true );
     vecTemp.fY += 29;
@@ -1248,37 +1074,11 @@ void CSettings::CreateGUI ( void )
 
     m_pSingleDownloadCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
     m_pSingleDownloadCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pSingleDownloadCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
+    m_pSingleDownloadCombo->SetSize ( CVector2D ( 148.0f, 95.0f ) );
     m_pSingleDownloadCombo->AddItem ( _("Default") )->SetData ( (void*)0 );
     m_pSingleDownloadCombo->AddItem ( _("On") )->SetData ( (void*)1 );
     m_pSingleDownloadCombo->SetReadOnly ( true );
-    vecTemp.fY += fLineHeight;
-
-    // Packet tag
-    m_pPacketTagLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Packet tag:") ) );
-    m_pPacketTagLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY ) );
-    m_pPacketTagLabel->AutoSize ( );
-
-    m_pPacketTagCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
-    m_pPacketTagCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pPacketTagCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
-    m_pPacketTagCombo->AddItem ( _("Default") )->SetData ( (void*)0 );
-    m_pPacketTagCombo->AddItem ( _("On") )->SetData ( (void*)1 );
-    m_pPacketTagCombo->SetReadOnly ( true );
-    vecTemp.fY += fLineHeight;
-
-    // Progress animation
-    m_pProgressAnimationLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Progress animation:") ) );
-    m_pProgressAnimationLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY ) );
-    m_pProgressAnimationLabel->AutoSize ( );
-
-    m_pProgressAnimationCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
-    m_pProgressAnimationCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pProgressAnimationCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
-    m_pProgressAnimationCombo->AddItem ( _("Off") )->SetData ( (void*)0 );
-    m_pProgressAnimationCombo->AddItem ( _("Default") )->SetData ( (void*)1 );
-    m_pProgressAnimationCombo->SetReadOnly ( true );
-    vecTemp.fY += fLineHeight;
+    vecTemp.fY += 29;
 
     // Fullscreen mode
     m_pFullscreenStyleLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Fullscreen mode:") ) );
@@ -1287,12 +1087,13 @@ void CSettings::CreateGUI ( void )
 
     m_pFullscreenStyleCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
     m_pFullscreenStyleCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pFullscreenStyleCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
+    m_pFullscreenStyleCombo->SetSize ( CVector2D ( 148.0f, 95.0f ) );
     m_pFullscreenStyleCombo->AddItem ( _("Standard") )->SetData ( (void*)FULLSCREEN_STANDARD );
     m_pFullscreenStyleCombo->AddItem ( _("Borderless window") )->SetData ( (void*)FULLSCREEN_BORDERLESS );
     m_pFullscreenStyleCombo->AddItem ( _("Borderless keep res") )->SetData ( (void*)FULLSCREEN_BORDERLESS_KEEP_RES );
     m_pFullscreenStyleCombo->SetReadOnly ( true );
-    vecTemp.fY += fLineHeight;
+
+    vecTemp.fY += 29;
 
     // Process priority
     m_pPriorityLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, "Process priority:" ) );
@@ -1301,7 +1102,7 @@ void CSettings::CreateGUI ( void )
 
     m_pPriorityCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
     m_pPriorityCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pPriorityCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
+    m_pPriorityCombo->SetSize ( CVector2D ( 148.0f, 95.0f ) );
     m_pPriorityCombo->AddItem ( "Normal" )->SetData ( (void*)0 );
     m_pPriorityCombo->AddItem ( "Above normal" )->SetData ( (void*)1 );
     m_pPriorityCombo->AddItem ( "High" )->SetData ( (void*)2 );
@@ -1315,7 +1116,7 @@ void CSettings::CreateGUI ( void )
 
     m_pDebugSettingCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
     m_pDebugSettingCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pDebugSettingCombo->SetSize ( CVector2D ( fComboWidth, 20.0f * ( EDiagnosticDebug::MAX + 1 ) ) );
+    m_pDebugSettingCombo->SetSize ( CVector2D ( 148.0f, 20.0f * ( EDiagnosticDebug::MAX + 1 ) ) );
     m_pDebugSettingCombo->AddItem ( _("Default") )->SetData ( (void*)0 );
     m_pDebugSettingCombo->AddItem ( "#6734 Graphics" )->SetData ( (void*)EDiagnosticDebug::GRAPHICS_6734 );
     //m_pDebugSettingCombo->AddItem ( "#6778 BIDI" )->SetData ( (void*)EDiagnosticDebug::BIDI_6778 );
@@ -1324,7 +1125,7 @@ void CSettings::CreateGUI ( void )
     m_pDebugSettingCombo->AddItem ( "#0000 Joystick" )->SetData ( (void*)EDiagnosticDebug::JOYSTICK_0000 );
     m_pDebugSettingCombo->AddItem ( "#0000 Lua trace" )->SetData ( (void*)EDiagnosticDebug::LUA_TRACE_0000 );
     m_pDebugSettingCombo->SetReadOnly ( true );
-    vecTemp.fY += fLineHeight;
+    vecTemp.fY += 29;
 
     m_pDebugSettingCombo->SetText ( _("Default") );
     SetApplicationSetting ( "diagnostics", "debug-setting", "none" );
@@ -1354,62 +1155,14 @@ void CSettings::CreateGUI ( void )
     m_pStreamingMemoryMaxLabel->SetPosition ( CVector2D ( vecTemp.fX + vecSize.fX + 5.0f, vecTemp.fY ) );
     m_pStreamingMemoryMaxLabel->AutoSize ( );
     vecTemp.fX = 22.f;
-    vecTemp.fY += fLineHeight;
-
-    // Windows 8 compatibility
-    m_pWin8Label = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Windows 8 compatibility:") ) );
-    m_pWin8Label->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY ) );
-    m_pWin8Label->AutoSize ( );
-    vecTemp.fX += 20;
-
-    m_pWin8ColorCheckBox = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabAdvanced, _("16-bit color") ) );
-    m_pWin8ColorCheckBox->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pWin8ColorCheckBox->AutoSize ( NULL, 20.0f );
-    vecTemp.fX += 90;
-
-    m_pWin8MouseCheckBox = reinterpret_cast < CGUICheckBox* > ( pManager->CreateCheckBox ( pTabAdvanced, _("Mouse fix") ) );
-    m_pWin8MouseCheckBox->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pWin8MouseCheckBox->AutoSize ( NULL, 20.0f );
-    vecTemp.fY += fLineHeight;
-    vecTemp.fX -= 110;
-
-    if ( GetApplicationSetting ( "os-version" ) < "6.2" )
-    {
-#ifndef MTA_DEBUG   // Don't hide when debugging
-        m_pWin8Label->SetVisible ( false );
-        m_pWin8ColorCheckBox->SetVisible ( false );
-        m_pWin8MouseCheckBox->SetVisible ( false );
-        vecTemp.fY -= fLineHeight;
-#endif
-    }
+    vecTemp.fY += 29;
 
     // Auto updater section label
     m_pAdvancedUpdaterLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Auto updater") ) );
     m_pAdvancedUpdaterLabel->SetPosition ( CVector2D ( vecTemp.fX - 10.0f, vecTemp.fY ) );
     m_pAdvancedUpdaterLabel->SetFont ( "default-bold-small" );
     m_pAdvancedUpdaterLabel->AutoSize ( _("Auto updater") );
-    vecTemp.fY += fHeaderHeight;
-
-    // UpdateAutoInstall
-    m_pUpdateAutoInstallLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Install important updates:") ) );
-    m_pUpdateAutoInstallLabel->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY ) );
-    m_pUpdateAutoInstallLabel->AutoSize ( );
-
-    m_pUpdateAutoInstallCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
-    m_pUpdateAutoInstallCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pUpdateAutoInstallCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
-    m_pUpdateAutoInstallCombo->AddItem ( _("Off") )->SetData ( (void*)0 );
-    m_pUpdateAutoInstallCombo->AddItem ( _("Default") )->SetData ( (void*)1 );
-    m_pUpdateAutoInstallCombo->SetReadOnly ( true );
-    vecTemp.fY += fLineHeight;
-
-    if ( true )
-    {
-        // Always hide for now
-        m_pUpdateAutoInstallLabel->SetVisible ( false );
-        m_pUpdateAutoInstallCombo->SetVisible ( false );
-        vecTemp.fY -= fLineHeight;
-    }
+    vecTemp.fY += 20;
 
     // Update build type
     m_pUpdateBuildTypeLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, _("Update build type:") ) );
@@ -1418,24 +1171,22 @@ void CSettings::CreateGUI ( void )
 
     m_pUpdateBuildTypeCombo = reinterpret_cast < CGUIComboBox* > ( pManager->CreateComboBox ( pTabAdvanced, "" ) );
     m_pUpdateBuildTypeCombo->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY - 1.0f ) );
-    m_pUpdateBuildTypeCombo->SetSize ( CVector2D ( fComboWidth, 95.0f ) );
+    m_pUpdateBuildTypeCombo->SetSize ( CVector2D ( 148.0f, 95.0f ) );
     m_pUpdateBuildTypeCombo->AddItem ( _("Default") )->SetData ( (void*)0 );
     m_pUpdateBuildTypeCombo->AddItem ( "Beta" )->SetData ( (void*)1 );
     m_pUpdateBuildTypeCombo->AddItem ( "Nightly" )->SetData ( (void*)2 );
     m_pUpdateBuildTypeCombo->SetReadOnly ( true );
-    vecTemp.fX += fComboWidth + 15;
+    vecTemp.fY += 29;
 
     // Check for updates
     m_pButtonUpdate = reinterpret_cast < CGUIButton* > ( pManager->CreateButton ( pTabAdvanced, _("Check for update now") ) );
-    m_pButtonUpdate->SetPosition ( CVector2D ( vecTemp.fX + fIndentX, vecTemp.fY ) );
+    m_pButtonUpdate->SetPosition ( CVector2D ( vecTemp.fX, vecTemp.fY ) );
     m_pButtonUpdate->AutoSize ( NULL, 20.0f, 8.0f );
     m_pButtonUpdate->SetClickHandler ( GUI_CALLBACK ( &CSettings::OnUpdateButtonClick, this ) );
     m_pButtonUpdate->SetZOrderingEnabled ( false );
-    vecTemp.fY += fLineHeight;
-    vecTemp.fX -= fComboWidth + 15;
+    vecTemp.fY += 70;
 
     // Description label
-    vecTemp.fY = 354 + 10;
     m_pAdvancedSettingDescriptionLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( pTabAdvanced, "" ) );
     m_pAdvancedSettingDescriptionLabel->SetPosition ( CVector2D ( vecTemp.fX + 10.f, vecTemp.fY ) );
     m_pAdvancedSettingDescriptionLabel->SetFont ( "default-bold-small" );
@@ -1464,11 +1215,6 @@ void CSettings::CreateGUI ( void )
     m_pCheckBoxVolumetricShadows->SetClickHandler ( GUI_CALLBACK( &CSettings::OnVolumetricShadowsClick, this ) );
     m_pCheckBoxAllowScreenUpload->SetClickHandler ( GUI_CALLBACK( &CSettings::OnAllowScreenUploadClick, this ) );
     m_pCheckBoxCustomizedSAFiles->SetClickHandler ( GUI_CALLBACK( &CSettings::OnCustomizedSAFilesClick, this ) );
-    m_pCheckBoxShowUnsafeResolutions->SetClickHandler ( GUI_CALLBACK( &CSettings::ShowUnsafeResolutionsClick, this ) );
-    m_pButtonBrowserBlacklistAdd->SetClickHandler ( GUI_CALLBACK ( &CSettings::OnBrowserBlacklistAdd, this ) );
-    m_pButtonBrowserBlacklistRemove->SetClickHandler ( GUI_CALLBACK ( &CSettings::OnBrowserBlacklistRemove, this ) );
-    m_pButtonBrowserWhitelistAdd->SetClickHandler ( GUI_CALLBACK ( &CSettings::OnBrowserWhitelistAdd, this ) );
-    m_pButtonBrowserWhitelistRemove->SetClickHandler ( GUI_CALLBACK ( &CSettings::OnBrowserWhitelistRemove, this ) );
     /*
     // Give a warning if no community account settings were stored in config
     CCore::GetSingleton ().ShowMessageBox ( CORE_SETTINGS_COMMUNITY_WARNING, _("Multi Theft Auto: Community settings"), MB_ICON_WARNING );
@@ -1499,18 +1245,6 @@ void CSettings::CreateGUI ( void )
     m_pSingleDownloadCombo->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
     m_pSingleDownloadCombo->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
 
-    m_pPacketTagLabel->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
-    m_pPacketTagLabel->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
-
-    m_pPacketTagCombo->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
-    m_pPacketTagCombo->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
-
-    m_pProgressAnimationLabel->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
-    m_pProgressAnimationLabel->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
-
-    m_pProgressAnimationCombo->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
-    m_pProgressAnimationCombo->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
-
     m_pFullscreenStyleLabel->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
     m_pFullscreenStyleLabel->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
 
@@ -1535,17 +1269,6 @@ void CSettings::CreateGUI ( void )
     m_pUpdateBuildTypeCombo->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
     m_pUpdateBuildTypeCombo->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
 
-    m_pWin8ColorCheckBox->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
-    m_pWin8ColorCheckBox->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
-
-    m_pWin8MouseCheckBox->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
-    m_pWin8MouseCheckBox->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
-
-    m_pUpdateAutoInstallLabel->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
-    m_pUpdateAutoInstallLabel->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
-
-    m_pUpdateAutoInstallCombo->SetMouseEnterHandler ( GUI_CALLBACK ( &CSettings::OnShowAdvancedSettingDescription, this ) );
-    m_pUpdateAutoInstallCombo->SetMouseLeaveHandler ( GUI_CALLBACK ( &CSettings::OnHideAdvancedSettingDescription, this ) );
 
     // Load Chat presets
     LoadChatPresets ();
@@ -1588,32 +1311,6 @@ void CSettings::ShowRestartQuestion ( void )
     pQuestionBox->SetButton ( 0, _("No") );
     pQuestionBox->SetButton ( 1, _("Yes") );
     pQuestionBox->SetCallback ( RestartCallBack );
-    pQuestionBox->Show ();
-}
-
-
-void DisconnectCallback ( void* ptr, unsigned int uiButton )
-{
-    CCore::GetSingleton ().GetLocalGUI ()->GetMainMenu ()->GetQuestionWindow ()->Reset ();
-
-    if ( uiButton == 1 )
-    {
-        CCommands::GetSingleton ().Execute ( "disconnect", "" );
-    }
-}
-
-
-void CSettings::ShowDisconnectQuestion ( void )
-{
-    SString strMessage = _("Some settings will be changed when you disconnect the current server");
-    strMessage += _("\n\nDo you want to disconnect now?");
-    CQuestionBox* pQuestionBox = CCore::GetSingleton ().GetLocalGUI ()->GetMainMenu ()->GetQuestionWindow ();
-    pQuestionBox->Reset ();
-    pQuestionBox->SetTitle ( _("DISCONNECT REQUIRED") );
-    pQuestionBox->SetMessage ( strMessage );
-    pQuestionBox->SetButton ( 0, _("No") );
-    pQuestionBox->SetButton ( 1, _("Yes") );
-    pQuestionBox->SetCallback ( DisconnectCallback );
     pQuestionBox->Show ();
 }
 
@@ -1729,11 +1426,6 @@ void CSettings::UpdateVideoTab ( void )
     bool bDeviceSelectionDialogEnabled = GetApplicationSettingInt ( "device-selection-disabled" ) ? false : true;
     m_pCheckBoxDeviceSelectionDialog->SetSelected ( bDeviceSelectionDialogEnabled );
 
-    // Show unsafe resolutions
-    bool bShowUnsafeResolutions;
-    CVARS_GET("show_unsafe_resolutions", bShowUnsafeResolutions);
-    m_pCheckBoxShowUnsafeResolutions->SetSelected ( bShowUnsafeResolutions );
-
     // Allow screen upload
     bool bAllowScreenUploadEnabled;
     CVARS_GET("allow_screen_upload", bAllowScreenUploadEnabled);
@@ -1753,49 +1445,6 @@ void CSettings::UpdateVideoTab ( void )
     bool bHeatHazeEnabled;
     CVARS_GET ( "heat_haze", bHeatHazeEnabled );
     m_pCheckBoxHeatHaze->SetSelected ( bHeatHazeEnabled );
-
-    // Tyre smoke
-    bool bTyreSmokeEnabled;
-    CVARS_GET ( "tyre_smoke_enabled", bTyreSmokeEnabled );
-    m_pCheckBoxTyreSmokeParticles->SetSelected ( bTyreSmokeEnabled );
-
-    PopulateResolutionComboBox();
-    
-    // Fullscreen style
-    if ( iNextFullscreenStyle == FULLSCREEN_STANDARD ) m_pFullscreenStyleCombo->SetText ( _("Standard") );
-    else if ( iNextFullscreenStyle == FULLSCREEN_BORDERLESS ) m_pFullscreenStyleCombo->SetText ( _("Borderless window") );
-    else if ( iNextFullscreenStyle == FULLSCREEN_BORDERLESS_KEEP_RES ) m_pFullscreenStyleCombo->SetText ( _("Borderless keep res") );
-
-    // Streaming memory
-    unsigned int uiStreamingMemory = 0;
-    CVARS_GET ( "streaming_memory", uiStreamingMemory );
-    uiStreamingMemory = SharedUtil::Clamp ( g_pCore->GetMinStreamingMemory (), uiStreamingMemory, g_pCore->GetMaxStreamingMemory () );
-    float fPos = SharedUtil::Unlerp ( g_pCore->GetMinStreamingMemory (), uiStreamingMemory, g_pCore->GetMaxStreamingMemory () );
-    m_pStreamingMemory->SetScrollPosition ( fPos );
-
-    int iVar = 0;
-    CVARS_GET ( "mapalpha", iVar );
-    int iAlphaPercent = ceil( ( (float)Clamp ( 0, iVar, 255 ) / 255 ) * 100 );
-    m_pMapAlphaValueLabel->SetText ( SString("%i%%", iAlphaPercent).c_str() );
-    float sbPos = (float)iAlphaPercent / 100.0f;
-    m_pMapAlpha->SetScrollPosition ( sbPos );
-
-}
-
-
-//
-// PopulateResolutionComboBox
-//
-void CSettings::PopulateResolutionComboBox( void )
-{
-    bool bNextWindowed;
-    bool bNextFSMinimize;
-    int iNextVidMode;
-    int iNextFullscreenStyle;
-    GetVideoModeManager ()->GetNextVideoMode ( iNextVidMode, bNextWindowed, bNextFSMinimize, iNextFullscreenStyle );
-    bool bShowUnsafeResolutions = m_pCheckBoxShowUnsafeResolutions->GetSelected ();
-
-    CGameSettings * gameSettings = CCore::GetSingleton ().GetGame ()->GetSettings ();
 
     VideoMode           vidModemInfo;
     int                 vidMode, numVidModes;
@@ -1823,10 +1472,6 @@ void CSettings::PopulateResolutionComboBox( void )
         if ( bDuplicate )
             continue;
 
-        // Check resolution is below desktop res unless that is allowed
-        if ( gameSettings->IsUnsafeResolution( vidModemInfo.width, vidModemInfo.height ) && !bShowUnsafeResolutions )
-            continue;
-
         SString strMode ( "%lu x %lu x %lu", vidModemInfo.width, vidModemInfo.height, vidModemInfo.depth );
 
         if ( vidModemInfo.flags & rwVIDEOMODEEXCLUSIVE )
@@ -1838,6 +1483,26 @@ void CSettings::PopulateResolutionComboBox( void )
         if ( currentInfo.width == vidModemInfo.width && currentInfo.height == vidModemInfo.height && currentInfo.depth == vidModemInfo.depth )
             m_pComboResolution->SetText ( strMode );
     }    
+    
+    // Fullscreen style
+    if ( iNextFullscreenStyle == FULLSCREEN_STANDARD ) m_pFullscreenStyleCombo->SetText ( _("Standard") );
+    else if ( iNextFullscreenStyle == FULLSCREEN_BORDERLESS ) m_pFullscreenStyleCombo->SetText ( _("Borderless window") );
+    else if ( iNextFullscreenStyle == FULLSCREEN_BORDERLESS_KEEP_RES ) m_pFullscreenStyleCombo->SetText ( _("Borderless keep res") );
+
+    // Streaming memory
+    unsigned int uiStreamingMemory = 0;
+    CVARS_GET ( "streaming_memory", uiStreamingMemory );
+    uiStreamingMemory = SharedUtil::Clamp ( g_pCore->GetMinStreamingMemory (), uiStreamingMemory, g_pCore->GetMaxStreamingMemory () );
+    float fPos = SharedUtil::Unlerp ( g_pCore->GetMinStreamingMemory (), uiStreamingMemory, g_pCore->GetMaxStreamingMemory () );
+    m_pStreamingMemory->SetScrollPosition ( fPos );
+
+    int iVar = 0;
+    CVARS_GET ( "mapalpha", iVar );
+    int iAlphaPercent = ceil( ( (float)Clamp ( 0, iVar, 255 ) / 255 ) * 100 );
+    m_pMapAlphaValueLabel->SetText ( SString("%i%%", iAlphaPercent).c_str() );
+    float sbPos = (float)iAlphaPercent / 100.0f;
+    m_pMapAlpha->SetScrollPosition ( sbPos );
+
 }
 
 //
@@ -1969,7 +1634,6 @@ bool CSettings::OnVideoDefaultClick ( CGUIElement* pElement )
     CVARS_SET ("volumetric_shadows", false );
     CVARS_SET ( "grass", true );
     CVARS_SET ( "heat_haze", true );
-    CVARS_SET ( "tyre_smoke_enabled", true );
 
     // change
     bool bIsVideoModeChanged = GetVideoModeManager ()->SetVideoMode ( 0, false, false, FULLSCREEN_STANDARD );
@@ -2202,24 +1866,24 @@ void CSettings::ProcessKeyBinds ( void )
                     // If the primary key is different than the original one
                     if ( pPriKey != pBind->boundKey ) {
                         // Did we have any keys with the same "up" state?
-                        CCommandBind* pUpBind = pKeyBinds->FindMatchingUpBind( pBind );
+                        CCommandBind* pUpBind = pKeyBinds->GetBindFromCommand ( szCommand, NULL, true, pBind->boundKey->szKey, true, false );
                         if ( pUpBind )
                         {
-                            pKeyBinds->UserChangeCommandBoundKey( pUpBind, pPriKey );
+                            pUpBind->boundKey = pPriKey;
                         }
 
-                        pKeyBinds->UserChangeCommandBoundKey( pBind, pPriKey );
+                        pBind->boundKey = pPriKey;
                     }
                 }
                 // If the primary key field was empty, we can remove the keybind
                 else {
                     // Remove any matching "up" state binds we may have
-                    CCommandBind* pUpBind = pKeyBinds->FindMatchingUpBind( pBind );
+                    CCommandBind* pUpBind = pKeyBinds->GetBindFromCommand ( szCommand, NULL, true, pBind->boundKey->szKey, true, false );
                     if ( pUpBind )
                     {
-                        pKeyBinds->UserRemoveCommandBoundKey( pUpBind );
+                        pKeyBinds->Remove ( pUpBind );
                     }
-                    pKeyBinds->UserRemoveCommandBoundKey( pBind );
+                    pKeyBinds->Remove ( pBind );
                 }
             }
             // If there was no keybind for this command, create it
@@ -2244,24 +1908,24 @@ void CSettings::ProcessKeyBinds ( void )
                         if ( pSecKeys[k] != pBind->boundKey )
                         {
                             // Did we have any keys with the same "up" state?
-                            CCommandBind* pUpBind = pKeyBinds->FindMatchingUpBind ( pBind );
+                            CCommandBind* pUpBind = pKeyBinds->GetBindFromCommand ( szCommand, NULL, true, pBind->boundKey->szKey, true, false );
                             if ( pUpBind )
                             {
-                                pKeyBinds->UserChangeCommandBoundKey( pUpBind, pSecKeys[k] );
+                                pUpBind->boundKey = pSecKeys[k];
                             }
-                            pKeyBinds->UserChangeCommandBoundKey( pBind, pSecKeys[k] );
+                            pBind->boundKey = pSecKeys[k];
                         }
                     }
                     // If the secondary key field was empty, we should remove the keybind
                     else
                     {
                         // Remove any matching "up" state binds we may have
-                        CCommandBind* pUpBind = pKeyBinds->FindMatchingUpBind ( pBind );
+                        CCommandBind* pUpBind = pKeyBinds->GetBindFromCommand ( szCommand, NULL, true, pBind->boundKey->szKey, true, false );
                         if ( pUpBind )
                         {
-                            pKeyBinds->UserRemoveCommandBoundKey( pUpBind );
+                             pKeyBinds->Remove ( pUpBind );
                         }
-                        pKeyBinds->UserRemoveCommandBoundKey( pBind );
+                        pKeyBinds->Remove ( pBind );
                     }
                 }
                 // If this key bind didn't exist, create it
@@ -2270,13 +1934,13 @@ void CSettings::ProcessKeyBinds ( void )
                     if ( strResource.empty() )
                         pKeyBinds->AddCommand ( pSecKeys[k], szCommand, szArguments );
                     else
-                        pKeyBinds->AddCommand ( pSecKeys[k]->szKey, szCommand, szArguments, true, strResource.c_str () );
+                        pKeyBinds->AddCommand ( pSecKeys[k]->szKey, szCommand, szArguments, true, strResource.c_str (), true );
 
                     // Also add a matching "up" state if applicable
                     CCommandBind* pUpBind = pKeyBinds->GetBindFromCommand ( szCommand, NULL, true, pPriKey->szKey, true, false );
                     if ( pUpBind )
                     {
-                        pKeyBinds->AddCommand ( pSecKeys[k]->szKey, szCommand, pUpBind->szArguments, false, pUpBind->szResource );
+                        pKeyBinds->AddCommand ( pSecKeys[k]->szKey, szCommand, pUpBind->szArguments, false, pUpBind->szResource, true );
                     }
                 }
             }
@@ -2403,8 +2067,6 @@ void CSettings::Initialize ( void )
         (*iters)->rowCount = 0;
     }
  
-    pKeyBinds->SortCommandBinds();
-
     // Loop through all the available controls
     int i;
     for ( i = 0 ; *g_bcControls [ i ].szControl != NULL ; i++ );
@@ -2852,7 +2514,7 @@ void CSettings::LoadData ( void )
     // Browser speed
     CVARS_GET ( "browser_speed", iVar );
     if ( iVar == 0 ) m_pBrowserSpeedCombo->SetText ( _("Very slow") );
-    else if ( iVar == 1 ) m_pBrowserSpeedCombo->SetText ( _("Default") );
+    else if ( iVar == 1 ) m_pBrowserSpeedCombo->SetText ( _("Slow") );
     else if ( iVar == 2 ) m_pBrowserSpeedCombo->SetText ( _("Fast") );
 
     // Single download
@@ -2860,34 +2522,11 @@ void CSettings::LoadData ( void )
     if ( iVar == 0 ) m_pSingleDownloadCombo->SetText ( _("Default") );
     else if ( iVar == 1 ) m_pSingleDownloadCombo->SetText ( _("On") );
 
-    // Packet tag
-    CVARS_GET ( "packet_tag", iVar );
-    if ( iVar == 0 ) m_pPacketTagCombo->SetText ( _("Default") );
-    else if ( iVar == 1 ) m_pPacketTagCombo->SetText ( _("On") );
-
-    // Progress animation
-    CVARS_GET ( "progress_animation", iVar );
-    if ( iVar == 0 ) m_pProgressAnimationCombo->SetText ( _("Off") );
-    else if ( iVar == 1 ) m_pProgressAnimationCombo->SetText ( _("Default") );
-
-    // Windows 8 16-bit color
-    iVar = GetApplicationSettingInt( "Win8Color16" );
-    m_pWin8ColorCheckBox->SetSelected ( iVar != 0 );
-
-    // Windows 8 mouse fix
-    iVar = GetApplicationSettingInt( "Win8MouseFix" );
-    m_pWin8MouseCheckBox->SetSelected ( iVar != 0 );
-
     // Update build type
     CVARS_GET ( "update_build_type", iVar );
     if ( iVar == 0 ) m_pUpdateBuildTypeCombo->SetText ( _("Default") );
     else if ( iVar == 1 ) m_pUpdateBuildTypeCombo->SetText ( "Beta" );
     else if ( iVar == 2 ) m_pUpdateBuildTypeCombo->SetText ( "Nightly" );
-
-    // Update auto install
-    CVARS_GET ( "update_auto_install", iVar );
-    if ( iVar == 0 ) m_pUpdateAutoInstallCombo->SetText ( _("Off") );
-    else if ( iVar == 1 ) m_pUpdateAutoInstallCombo->SetText ( "Default" );
 
     // Chat
     LoadChatColorFromCVar ( ChatColorTypes::CHAT_COLOR_BG, "chat_color" );
@@ -2927,24 +2566,6 @@ void CSettings::LoadData ( void )
 
         CVARS_GET ( "chat_line_fade_out", iVar ); 
         SetMilliseconds ( m_pChatLineFadeout, iVar );
-    }
-
-    // Browser
-    CVARS_GET ( "browser_remote_websites", bVar ); m_pCheckBoxRemoteBrowser->SetSelected ( bVar );
-    CVARS_GET ( "browser_remote_javascript", bVar ); m_pCheckBoxRemoteJavascript->SetSelected ( bVar );
-    CVARS_GET ( "browser_plugins", bVar ); m_pCheckBoxBrowserPluginsEnabled->SetSelected ( bVar );
-
-    m_pGridBrowserBlacklist->Clear ();
-    m_pGridBrowserWhitelist->Clear ();
-
-    std::vector<std::pair<SString, bool>> customBlacklist;
-    CCore::GetSingleton ().GetWebCore ()->GetFilterEntriesByType ( customBlacklist, eWebFilterType::WEBFILTER_USER );
-    for ( std::vector<std::pair<SString, bool>>::iterator iter = customBlacklist.begin(); iter != customBlacklist.end (); ++iter )
-    {
-        if ( iter->second == false )
-            m_pGridBrowserBlacklist->SetItemText ( m_pGridBrowserBlacklist->AddRow (), 1, iter->first );
-        else
-            m_pGridBrowserWhitelist->SetItemText ( m_pGridBrowserWhitelist->AddRow (), 1, iter->first );
     }
 }
 
@@ -3068,10 +2689,6 @@ void CSettings::SaveData ( void )
     bool bDeviceSelectionDialogEnabled = m_pCheckBoxDeviceSelectionDialog->GetSelected ();
     SetApplicationSettingInt ( "device-selection-disabled", bDeviceSelectionDialogEnabled ? 0 : 1 );
 
-    // Show unsafe resolutions
-    bool bShowUnsafeResolutions = m_pCheckBoxShowUnsafeResolutions->GetSelected ();
-    CVARS_SET("show_unsafe_resolutions", bShowUnsafeResolutions);
-
     // Allow screen upload
     bool bAllowScreenUploadEnabled = m_pCheckBoxAllowScreenUpload->GetSelected ();
     CVARS_SET ( "allow_screen_upload", bAllowScreenUploadEnabled );
@@ -3079,17 +2696,12 @@ void CSettings::SaveData ( void )
     // Grass
     bool bGrassEnabled = m_pCheckBoxGrass->GetSelected ();
     CVARS_SET ( "grass", bGrassEnabled );
-    gameSettings->SetGrassEnabled ( bGrassEnabled );
+	gameSettings->SetGrassEnabled ( bGrassEnabled );
 
     // Heat haze
     bool bHeatHazeEnabled = m_pCheckBoxHeatHaze->GetSelected ();
     CVARS_SET ( "heat_haze", bHeatHazeEnabled );
-    g_pCore->GetMultiplayer ()->SetHeatHazeEnabled ( bHeatHazeEnabled );
-
-    // Tyre smoke particles
-    bool bTyreSmokeEnabled = m_pCheckBoxTyreSmokeParticles->GetSelected ();
-    CVARS_SET ( "tyre_smoke_enabled", bTyreSmokeEnabled );
-    g_pCore->GetMultiplayer ()->SetTyreSmokeEnabled ( bTyreSmokeEnabled );
+	g_pCore->GetMultiplayer ()->SetHeatHazeEnabled ( bHeatHazeEnabled );
 
     // Fast clothes loading
     if ( CGUIListItem* pSelected = m_pFastClothesCombo->GetSelectedItem () )
@@ -3132,26 +2744,6 @@ void CSettings::SaveData ( void )
         CVARS_SET ( "single_download", iSelected );
     }
 
-    // Packet tag
-    if ( CGUIListItem* pSelected = m_pPacketTagCombo->GetSelectedItem () )
-    {
-        int iSelected = ( int ) pSelected->GetData();
-        CVARS_SET ( "packet_tag", iSelected );
-    }
-
-    // Progress animation
-    if ( CGUIListItem* pSelected = m_pProgressAnimationCombo->GetSelectedItem () )
-    {
-        int iSelected = ( int ) pSelected->GetData();
-        CVARS_SET ( "progress_animation", iSelected );
-    }
-
-    // Windows 8 16-bit color
-    SetApplicationSettingInt( "Win8Color16", m_pWin8ColorCheckBox->GetSelected() );
-
-    // Windows 8 mouse fix
-    SetApplicationSettingInt( "Win8MouseFix", m_pWin8MouseCheckBox->GetSelected() );
-
     // Debug setting
     if ( CGUIListItem* pSelected = m_pDebugSettingCombo->GetSelectedItem () )
     {
@@ -3164,13 +2756,6 @@ void CSettings::SaveData ( void )
     {
         int iSelected = ( int ) pSelected->GetData();
         CVARS_SET ( "update_build_type", iSelected );
-    }
-
-    // Update auto install
-    if ( CGUIListItem* pSelected = m_pUpdateAutoInstallCombo->GetSelectedItem () )
-    {
-        int iSelected = ( int ) pSelected->GetData();
-        CVARS_SET ( "update_auto_install", iSelected );
     }
 
     // Map alpha
@@ -3229,39 +2814,6 @@ void CSettings::SaveData ( void )
     unsigned int value = SharedUtil::Lerp ( min, fPos, max );
     CVARS_SET ( "streaming_memory", value );
 
-    // Webbrowser settings
-    bool bOldRemoteWebsites, bOldRemoteJavascript, bOldPlugins;
-    CVARS_GET ( "browser_remote_websites", bOldRemoteWebsites );
-    CVARS_GET ( "browser_remote_javascript", bOldRemoteJavascript );
-    CVARS_GET ( "browser_plugins", bOldPlugins );
-
-    bool bBrowserSettingChanged = false;
-    if ( bOldRemoteWebsites != m_pCheckBoxRemoteBrowser->GetSelected()
-        || bOldRemoteJavascript != m_pCheckBoxRemoteJavascript->GetSelected()
-        || bOldPlugins != m_pCheckBoxBrowserPluginsEnabled->GetSelected())
-    {
-        bBrowserSettingChanged = true;
-        CVARS_SET ( "browser_remote_websites", m_pCheckBoxRemoteBrowser->GetSelected () );
-        CVARS_SET ( "browser_remote_javascript", m_pCheckBoxRemoteJavascript->GetSelected () );
-        CVARS_SET ("browser_plugins", m_pCheckBoxBrowserPluginsEnabled->GetSelected () );
-    }
-
-    std::vector<SString> customBlacklist;
-    for ( int i = 0; i < m_pGridBrowserBlacklist->GetRowCount (); ++i )
-    {
-        customBlacklist.push_back ( m_pGridBrowserBlacklist->GetItemText ( i, 1 ) );
-    }
-    CCore::GetSingleton ().GetWebCore ()->WriteCustomList ( "customblacklist", customBlacklist );
-    
-    std::vector<SString> customWhitelist;
-    for ( int i = 0; i < m_pGridBrowserWhitelist->GetRowCount (); ++i )
-    {
-        customWhitelist.push_back ( m_pGridBrowserWhitelist->GetItemText ( i, 1 ) );
-    }
-    CCore::GetSingleton ().GetWebCore ()->WriteCustomList ( "customwhitelist", customWhitelist );
-    if ( m_bBrowserListsChanged )
-        bBrowserSettingChanged = true;
-
     // Ensure CVARS ranges ok
     CClientVariables::GetSingleton().ValidateValues ();
 
@@ -3273,8 +2825,6 @@ void CSettings::SaveData ( void )
     // Ask to restart?
     if ( bIsVideoModeChanged || bIsAntiAliasingChanged || bIsAeroChanged || bIsDriverOverridesChanged || bIsCustomizedSAFilesChanged || bIsLocaleChanged )
         ShowRestartQuestion();
-    else if ( CModManager::GetSingleton ().IsLoaded () && bBrowserSettingChanged )
-        ShowDisconnectQuestion();
 }
 
 void CSettings::RemoveKeyBindSection ( char * szSectionName )
@@ -3892,88 +3442,6 @@ bool CSettings::OnCustomizedSAFilesClick ( CGUIElement* pElement )
     return true;
 }
 
-//
-// ShowUnsafeResolutionsClick
-//
-bool CSettings::ShowUnsafeResolutionsClick ( CGUIElement* pElement )
-{
-    // Change list of available resolutions
-    PopulateResolutionComboBox();
-    return true;
-}
-
-bool CSettings::OnBrowserBlacklistAdd ( CGUIElement* pElement )
-{
-    SString strDomain = m_pEditBrowserBlacklistAdd->GetText ();
-    if ( !strDomain.empty () )
-    {
-        bool bExists = false;
-        for ( int i = 0; i < m_pGridBrowserBlacklist->GetRowCount (); ++i )
-        {
-            if ( m_pGridBrowserBlacklist->GetItemText ( i, 1 ) == strDomain )
-            {
-                bExists = true;
-                break;
-            }
-        }
-
-        if ( !bExists )
-        {
-            m_pGridBrowserBlacklist->SetItemText ( m_pGridBrowserBlacklist->AddRow (), 1, strDomain );
-            m_bBrowserListsChanged = true;
-        }
-    }
-    return true;
-}
-
-bool CSettings::OnBrowserBlacklistRemove ( CGUIElement* pElement )
-{
-    int iSelectedRow = m_pGridBrowserBlacklist->GetSelectedItemRow ();
-    if ( iSelectedRow > -1 )
-    {
-        m_pGridBrowserBlacklist->RemoveRow ( iSelectedRow );
-        m_bBrowserListsChanged = true;
-    }
-
-    return true;
-}
-
-bool CSettings::OnBrowserWhitelistAdd ( CGUIElement* pElement )
-{
-    SString strDomain = m_pEditBrowserWhitelistAdd->GetText ();
-    if ( !strDomain.empty () )
-    {
-        bool bExists = false;
-        for ( int i = 0; i < m_pGridBrowserWhitelist->GetRowCount (); ++i )
-        {
-            if ( m_pGridBrowserWhitelist->GetItemText ( i, 1 ) == strDomain )
-            {
-                bExists = true;
-                break;
-            }
-        }
-
-        if ( !bExists )
-        {
-            m_pGridBrowserWhitelist->SetItemText ( m_pGridBrowserWhitelist->AddRow (), 1, strDomain );
-            m_bBrowserListsChanged = true;
-        }
-    }
-    return true;
-}
-
-bool CSettings::OnBrowserWhitelistRemove ( CGUIElement* pElement )
-{
-    int iSelectedRow = m_pGridBrowserWhitelist->GetSelectedItemRow ();
-    if ( iSelectedRow > -1 )
-    {
-        m_pGridBrowserWhitelist->RemoveRow ( iSelectedRow );
-        m_bBrowserListsChanged = true;
-    }
-
-    return true;
-}
-
 
 void NewNicknameCallback ( void* ptr, unsigned int uiButton, std::string strNick )
 {
@@ -4012,7 +3480,6 @@ bool CSettings::OnShowAdvancedSettingDescription ( CGUIElement* pElement )
     CGUILabel* pLabel = dynamic_cast < CGUILabel* > ( pElement );
     CGUIComboBox* pComboBox = dynamic_cast < CGUIComboBox* > ( pElement );
     CGUIScrollBar* pScrollBar = dynamic_cast < CGUIScrollBar* > ( pElement );
-    CGUICheckBox* pCheckBox = dynamic_cast < CGUICheckBox* > ( pElement );
 
     std::string strText = "";
 
@@ -4024,10 +3491,6 @@ bool CSettings::OnShowAdvancedSettingDescription ( CGUIElement* pElement )
         strText = std::string( _( "Browser speed:" ) ) + " " + std::string( _( "Older routers may require a slower scan speed." ) );
     else if ( pLabel && pLabel == m_pSingleDownloadLabel || pComboBox && pComboBox == m_pSingleDownloadCombo )
         strText = std::string( _( "Single connection:" ) ) + " " + std::string( _( "Switch on to use only one connection when downloading." ) );
-    else if ( pLabel && pLabel == m_pPacketTagLabel || pComboBox && pComboBox == m_pPacketTagCombo )
-        strText = std::string( _( "Packet tag:" ) ) + " " + std::string( _( "Tag network packets to help ISPs identify MTA traffic." ) );
-    else if ( pLabel && pLabel == m_pProgressAnimationLabel || pComboBox && pComboBox == m_pProgressAnimationCombo )
-        strText = std::string( _( "Progress animation:" ) ) + " " + std::string( _( "Spinning circle animation at the bottom of the screen" ) );
     else if ( pLabel && pLabel == m_pFullscreenStyleLabel || pComboBox && pComboBox == m_pFullscreenStyleCombo )
         strText = std::string( _( "Fullscreen mode:" ) ) + " " + std::string( _( "Experimental feature." ) );
     else if ( pLabel && pLabel == m_pDebugSettingLabel || pComboBox && pComboBox == m_pDebugSettingCombo )
@@ -4036,13 +3499,8 @@ bool CSettings::OnShowAdvancedSettingDescription ( CGUIElement* pElement )
         strText = std::string( _( "Streaming memory:" ) ) + " " + std::string( _( "Maximum is usually best" ) );
     else if ( pLabel && pLabel == m_pUpdateBuildTypeLabel || pComboBox && pComboBox == m_pUpdateBuildTypeCombo )
         strText = std::string( _( "Auto updater:" ) ) + " " + std::string( _( "Select default unless you like filling out bug reports." ) );
-    else if ( pLabel && pLabel == m_pUpdateAutoInstallLabel || pComboBox && pComboBox == m_pUpdateAutoInstallCombo )
-        strText = std::string( _( "Auto updater:" ) ) + " " + std::string( _( "Select default to automatically install important updates." ) );
-    else if ( pCheckBox && pCheckBox == m_pWin8ColorCheckBox )
-        strText = std::string( _( "16-bit color:" ) ) + " " + std::string( _( "Enable 16 bit color modes - Requires MTA restart" ) );
-    else if ( pCheckBox && pCheckBox == m_pWin8MouseCheckBox )
-        strText = std::string( _( "Mouse fix:" ) ) + " " + std::string( _( "Mouse movement fix - May need PC restart" ) );
     
+
     if ( strText != "" )
         m_pAdvancedSettingDescriptionLabel->SetText ( strText.c_str () );
 
@@ -4054,43 +3512,4 @@ bool CSettings::OnHideAdvancedSettingDescription ( CGUIElement* pElement )
     m_pAdvancedSettingDescriptionLabel->SetText ( "" );
 
     return true;
-}
-
-void CSettings::SetSelectedIndex ( unsigned int uiIndex )
-{
-    unsigned int uiTabCount = m_pTabs->GetTabCount ( );
-
-    if ( uiIndex < uiTabCount )
-    {
-        m_pTabs->SetSelectedIndex ( uiIndex );
-    }
-}
-
-void CSettings::TabSkip ( bool bBackwards )
-{
-    unsigned int uiTabCount = m_pTabs->GetTabCount ( );
-
-    if ( bBackwards )
-    {
-        unsigned int uiIndex = m_pTabs->GetSelectedIndex ( ) - 1;
-
-        if ( m_pTabs->GetSelectedIndex ( ) == 0 )
-        {
-            uiIndex = uiTabCount - 1;
-        }
-
-        SetSelectedIndex ( uiIndex );
-    }
-    else
-    {
-        unsigned int uiIndex = m_pTabs->GetSelectedIndex ( ) + 1;
-        unsigned int uiNewIndex = uiIndex % uiTabCount;
-
-        SetSelectedIndex ( uiNewIndex );
-    }
-}
-
-bool CSettings::IsActive ( void )
-{
-    return m_pWindow->IsActive ();
 }

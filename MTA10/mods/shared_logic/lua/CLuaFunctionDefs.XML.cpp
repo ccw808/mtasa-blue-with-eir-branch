@@ -36,11 +36,14 @@ int CLuaFunctionDefs::XMLNodeFindChild ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        CXMLNode * pFoundNode = pNode->FindSubNode ( strTagName, iIndex ); 
-        if ( pFoundNode )
+        if ( pNode )
         {
-            lua_pushxmlnode ( luaVM, pFoundNode );
-            return 1;
+            CXMLNode * pFoundNode = pNode->FindSubNode ( strTagName, iIndex ); 
+            if ( pFoundNode )
+            {
+                lua_pushxmlnode ( luaVM, pFoundNode );
+                return 1;
+            }
         }
     }
     else
@@ -62,30 +65,33 @@ int CLuaFunctionDefs::XMLNodeGetChildren ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        bool bGetAllChildren = uiIndex == -1;
-
-        CXMLNode * pFoundNode = NULL;
-        if ( !bGetAllChildren )
+        if ( pNode )
         {
-            pFoundNode = pNode->GetSubNode ( uiIndex );
-            if ( pFoundNode )
+            bool bGetAllChildren = uiIndex == -1;
+
+            CXMLNode * pFoundNode = NULL;
+            if ( !bGetAllChildren )
             {
-                lua_pushxmlnode ( luaVM, pFoundNode );
+                pFoundNode = pNode->GetSubNode ( uiIndex );
+                if ( pFoundNode )
+                {
+                    lua_pushxmlnode ( luaVM, pFoundNode );
+                    return 1;
+                }
+            }
+            else
+            {
+                lua_newtable ( luaVM );
+                uiIndex = 0;
+                list < CXMLNode * > ::iterator iter = pNode->ChildrenBegin ();
+                for ( ; iter != pNode->ChildrenEnd () ; iter++ )
+                {                
+                    lua_pushnumber ( luaVM, ++uiIndex );
+                    lua_pushxmlnode ( luaVM, ( CXMLNode * ) ( *iter ) );
+                    lua_settable ( luaVM, -3 );
+                }
                 return 1;
             }
-        }
-        else
-        {
-            lua_newtable ( luaVM );
-            uiIndex = 0;
-            list < CXMLNode * > ::iterator iter = pNode->ChildrenBegin ();
-            for ( ; iter != pNode->ChildrenEnd () ; iter++ )
-            {                
-                lua_pushnumber ( luaVM, ++uiIndex );
-                lua_pushxmlnode ( luaVM, ( CXMLNode * ) ( *iter ) );
-                lua_settable ( luaVM, -3 );
-            }
-            return 1;
         }
     }
     else
@@ -105,8 +111,11 @@ int CLuaFunctionDefs::XMLNodeGetValue ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        lua_pushstring ( luaVM, pNode->GetTagContent ().c_str () );
-        return 1;
+        if ( pNode )
+        {  
+            lua_pushstring ( luaVM, pNode->GetTagContent ().c_str () );
+            return 1;
+        }
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
@@ -121,17 +130,18 @@ int CLuaFunctionDefs::XMLNodeSetValue ( lua_State* luaVM )
     // pNode, Value
     CXMLNode* pNode = NULL;
     SString strValue = "";
-    bool bUseCDATA;
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pNode );
     argStream.ReadString ( strValue );
-    argStream.ReadBool ( bUseCDATA, false );
 
     if ( !argStream.HasErrors ( ) )
     {
-        pNode->SetTagContent ( strValue, bUseCDATA );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        if ( pNode )
+        {
+            pNode->SetTagContent ( strValue );
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
@@ -170,9 +180,14 @@ int CLuaFunctionDefs::XMLNodeSetName ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        pNode->SetTagName ( strTagName );
-        lua_pushboolean ( luaVM, true );
-        return 1;
+        if ( pNode )
+        {
+            pNode->SetTagName ( strTagName );
+            lua_pushboolean ( luaVM, true );
+            return 1;
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "xml-node", 1 );
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
@@ -191,16 +206,21 @@ int CLuaFunctionDefs::XMLNodeGetAttributes ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        lua_newtable ( luaVM );
-        unsigned int uiIndex = 0;
-        list < CXMLAttribute * > ::iterator iter = pNode->GetAttributes ().ListBegin ();
-        for ( ; iter != pNode->GetAttributes ().ListEnd () ; iter++ )
+        if ( pNode )
         {
-            lua_pushstring ( luaVM, ( *iter )->GetName ().c_str () );
-            lua_pushstring ( luaVM, ( *iter )->GetValue ().c_str () );
-            lua_settable ( luaVM, -3 );
+            lua_newtable ( luaVM );
+            unsigned int uiIndex = 0;
+            list < CXMLAttribute * > ::iterator iter = pNode->GetAttributes ().ListBegin ();
+            for ( ; iter != pNode->GetAttributes ().ListEnd () ; iter++ )
+            {
+                lua_pushstring ( luaVM, ( *iter )->GetName ().c_str () );
+                lua_pushstring ( luaVM, ( *iter )->GetValue ().c_str () );
+                lua_settable ( luaVM, -3 );
+            }
+            return 1;
         }
-        return 1;
+        else
+            m_pScriptDebugging->LogBadType ( luaVM );
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
@@ -221,13 +241,16 @@ int CLuaFunctionDefs::XMLNodeGetAttribute ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        // Find the attribute with that name
-        CXMLAttribute * pAttribute = pNode->GetAttributes ().Find ( strAttributeName ); 
-        if ( pAttribute )
-        {
-            // Read the attribute and return the string
-            lua_pushstring ( luaVM, pAttribute->GetValue ().c_str () );
-            return 1;
+        if ( pNode )
+        {  
+            // Find the attribute with that name
+            CXMLAttribute * pAttribute = pNode->GetAttributes ().Find ( strAttributeName ); 
+            if ( pAttribute )
+            {
+                // Read the attribute and return the string
+                lua_pushstring ( luaVM, pAttribute->GetValue ().c_str () );
+                return 1;
+            }
         }
     }
     else
@@ -251,29 +274,32 @@ int CLuaFunctionDefs::XMLNodeSetAttribute ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        // Are we going to set it to a value?
-        if ( argStream.NextCouldBeString( -1 ) )
+        if ( pNode )
         {
-            // Write the node
-            CXMLAttribute* pAttribute = pNode->GetAttributes ().Create ( strAttributeName );
-            if ( pAttribute )
+            // Are we going to set it to a value?
+            if ( argStream.NextCouldBeString( -1 ) )
             {
-                pAttribute->SetValue ( strAttributeValue );
+                // Write the node
+                CXMLAttribute* pAttribute = pNode->GetAttributes ().Create ( strAttributeName );
+                if ( pAttribute )
+                {
+                    pAttribute->SetValue ( strAttributeValue );
 
-                lua_pushboolean ( luaVM, true );
-                return 1;
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
             }
-        }
-        else
-        {
-            // Delete the attribute if it exists
-            CXMLAttribute* pAttribute = pNode->GetAttributes ().Find ( strAttributeName );
-            if ( pAttribute )
+            else
             {
-                delete pAttribute;
+                // Delete the attribute if it exists
+                CXMLAttribute* pAttribute = pNode->GetAttributes ().Find ( strAttributeName );
+                if ( pAttribute )
+                {
+                    delete pAttribute;
 
-                lua_pushboolean ( luaVM, true );
-                return 1;
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
             }
         }
     }
@@ -294,11 +320,14 @@ int CLuaFunctionDefs::XMLNodeGetParent ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        CXMLNode * pParent = pNode->GetParent ();
-        if ( pParent )
+        if ( pNode )
         {
-            lua_pushxmlnode ( luaVM, pParent );
-            return 1;
+            CXMLNode * pParent = pNode->GetParent ();
+            if ( pParent )
+            {
+                lua_pushxmlnode ( luaVM, pParent );
+                return 1;
+            }
         }
     }
     else
@@ -421,12 +450,15 @@ int CLuaFunctionDefs::XMLSaveFile ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        CLuaMain * luaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( luaMain )
+        if ( pNode )
         {
-            luaMain->SaveXML ( pNode );
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            CLuaMain * luaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+            if ( luaMain )
+            {
+                luaMain->SaveXML ( pNode );
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
     }
     else
@@ -446,12 +478,15 @@ int CLuaFunctionDefs::XMLUnloadFile ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        CLuaMain * luaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-        if ( luaMain )
+        if ( pNode )
         {
-            luaMain->DestroyXML ( pNode );
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            CLuaMain * luaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
+            if ( luaMain )
+            {
+                luaMain->DestroyXML ( pNode );
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
     }
     else
@@ -473,11 +508,14 @@ int CLuaFunctionDefs::XMLCreateChild ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        CXMLNode* pXMLSubNode = pNode->CreateSubNode ( strChild );
-        if ( pXMLSubNode )
+        if ( pNode )
         {
-            lua_pushxmlnode ( luaVM, pXMLSubNode );
-            return 1;
+            CXMLNode* pXMLSubNode = pNode->CreateSubNode ( strChild );
+            if ( pXMLSubNode )
+            {
+                lua_pushxmlnode ( luaVM, pXMLSubNode );
+                return 1;
+            }
         }
     }
     else
@@ -497,16 +535,19 @@ int CLuaFunctionDefs::XMLDestroyNode ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        // Grab the parent so that we can delete this node from it
-        CXMLNode* pParent = pNode->GetParent ();
-        if ( pParent )
+        if ( pNode )
         {
-            // Delete it
-            pParent->DeleteSubNode ( pNode );
+            // Grab the parent so that we can delete this node from it
+            CXMLNode* pParent = pNode->GetParent ();
+            if ( pParent )
+            {
+                // Delete it
+                pParent->DeleteSubNode ( pNode );
 
-            // Return success
-            lua_pushboolean ( luaVM, true );
-            return 1;
+                // Return success
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
     }
     else
@@ -588,3 +629,5 @@ int CLuaFunctionDefs::XMLCopyFile ( lua_State* luaVM )
     lua_pushboolean ( luaVM, false );
     return 1;
 }
+
+

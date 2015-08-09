@@ -21,14 +21,8 @@ class CLuaMain;
 #define __CLUAMAIN_H
 
 #include "CLuaTimerManager.h"
-#include "CLuaVector2.h"
-#include "CLuaVector3.h"
-#include "CLuaVector4.h"
-#include "CLuaMatrix.h"
 #include "CLuaModuleManager.h"
 #include "../CTextDisplay.h"
-
-#include "CLuaFunctionDefs.h"
 
 #define MAX_SCRIPTNAME_LENGTH 64
 
@@ -56,9 +50,7 @@ public:
                                                               CBlipManager* pBlipManager,
                                                               CRadarAreaManager* pRadarAreaManager,
                                                               CMapManager* pMapManager,
-                                                              CResource* pResourceOwner, 
-                                                              bool bEnableOOP );
-
+                                                              CResource* pResourceOwner );
                                     ~CLuaMain               ( void );
 
     bool                            LoadScriptFromBuffer    ( const char* cpBuffer, unsigned int uiSize, const char* szFileName );
@@ -121,47 +113,10 @@ public:
     const SString&                  GetFunctionTag          ( int iFunctionNumber );
     int                             PCall                   ( lua_State *L, int nargs, int nresults, int errfunc );
     void                            CheckExecutionTime      ( void );
-    static int                      LuaLoadBuffer           ( lua_State *L, const char *buff, size_t sz, const char *name );
-    static int                      OnUndump                ( const char* p, size_t n );
 
 private:
     void                            InitSecurity            ( void );
     void                            InitClasses             ( lua_State* luaVM );
-
-public:
-
-    void                            AddVector4DClass        ( lua_State* luaVM );
-    void                            AddVector3DClass        ( lua_State* luaVM );
-    void                            AddVector2DClass        ( lua_State* luaVM );
-    void                            AddMatrixClass          ( lua_State* luaVM );
-
-    void                            AddElementClass         ( lua_State* luaVM );
-    void                            AddACLClass             ( lua_State* luaVM );
-    void                            AddACLGroupClass        ( lua_State* luaVM );
-    void                            AddAccountClass         ( lua_State* luaVM );
-    void                            AddBanClass             ( lua_State* luaVM );
-    void                            AddBlipClass            ( lua_State* luaVM );
-    void                            AddColShapeClass        ( lua_State* luaVM );
-    void                            AddFileClass            ( lua_State* luaVM );
-    void                            AddMarkerClass          ( lua_State* luaVM );
-    void                            AddObjectClass          ( lua_State* luaVM );
-    void                            AddPedClass             ( lua_State* luaVM );
-    void                            AddPickupClass          ( lua_State* luaVM );
-    void                            AddPlayerClass          ( lua_State* luaVM );
-    void                            AddRadarAreaClass       ( lua_State* luaVM );
-    void                            AddResourceClass        ( lua_State* luaVM );
-    void                            AddConnectionClass      ( lua_State* luaVM );
-    void                            AddQueryHandleClass     ( lua_State* luaVM );
-    void                            AddTeamClass            ( lua_State* luaVM );
-    void                            AddTextDisplayClass     ( lua_State* luaVM );
-    void                            AddTextItemClass        ( lua_State* luaVM );
-    void                            AddVehicleClass         ( lua_State* luaVM );
-    void                            AddWaterClass           ( lua_State* luaVM );
-    void                            AddXMLClass             ( lua_State* luaVM );
-    void                            AddTimerClass           ( lua_State* luaVM );
-    
-    bool                            IsOOPEnabled            ( void )                        { return m_bEnableOOP; }
-private:
 
     static void                     InstructionCountHook    ( lua_State* luaVM, lua_Debug* pDebug );
 
@@ -183,8 +138,6 @@ private:
     list < CTextDisplay* >          m_Displays;
     list < CTextItem* >             m_TextItems;
 
-    bool                            m_bEnableOOP;
-
     bool                            m_bBeingDeleted; // prevent it being deleted twice
 
     CElapsedTime                    m_FunctionEnterTimer;
@@ -193,10 +146,9 @@ private:
     std::vector < SString >         m_OpenFilenameList;
     uint                            m_uiOpenFileCountWarnThresh;
     uint                            m_uiOpenXMLFileCountWarnThresh;
-    static SString                  ms_strExpectedUndumpHash;
 
 public:
-    CFastHashMap < const void*, CRefInfo >  m_CallbackTable;
+    std::map < const void*, CRefInfo >      m_CallbackTable;
     std::map < int, SString >       m_FunctionTagMap;
 };
 

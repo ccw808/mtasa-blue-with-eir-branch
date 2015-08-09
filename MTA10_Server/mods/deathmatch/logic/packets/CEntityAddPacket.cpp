@@ -18,35 +18,6 @@
 
 #include "StdInc.h"
 
-//
-// Temporary helper functions for fixing crashes on pre r6459 clients.
-// Cause of #IND numbers should be handled before it gets here. (To avoid desync)
-//
-bool IsIndeterminate( float fValue )
-{
-    return fValue - fValue != 0;
-}
-
-void SilentlyFixIndeterminate( float& fValue )
-{
-    if ( IsIndeterminate( fValue ) )
-        fValue = 0;
-}
-
-void SilentlyFixIndeterminate( CVector& vecValue )
-{
-    SilentlyFixIndeterminate( vecValue.fX );
-    SilentlyFixIndeterminate( vecValue.fY );
-    SilentlyFixIndeterminate( vecValue.fZ );
-}
-
-void SilentlyFixIndeterminate( CVector2D& vecValue )
-{
-    SilentlyFixIndeterminate( vecValue.fX );
-    SilentlyFixIndeterminate( vecValue.fY );
-}
-
-
 void CEntityAddPacket::Add ( CElement * pElement )
 {
     // Only add it if it has a parent.
@@ -210,7 +181,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
 
                     // Position
                     position.data.vecPosition = pObject->GetPosition ();
-                    SilentlyFixIndeterminate( position.data.vecPosition );      // Crash fix for pre r6459 clients
                     BitStream.Write ( &position );
 
                     // Rotation
@@ -371,7 +341,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
 
                     // Position
                     position.data.vecPosition = pPickup->GetPosition ();
-                    SilentlyFixIndeterminate( position.data.vecPosition );      // Crash fix for pre r6459 clients
                     BitStream.Write ( &position );
 
                     // Grab the model and write it
@@ -644,7 +613,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                             for ( int i = 0; i < ucSirenCount; i++ )
                             {
                                 SVehicleSirenSync syncData;
-                                syncData.data.m_bOverrideSirens = true;
                                 syncData.data.m_b360Flag = pVehicle->m_tSirenBeaconInfo.m_b360Flag;
                                 syncData.data.m_bDoLOSCheck = pVehicle->m_tSirenBeaconInfo.m_bDoLOSCheck;
                                 syncData.data.m_bUseRandomiser = pVehicle->m_tSirenBeaconInfo.m_bUseRandomiser;
@@ -666,7 +634,6 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
 
                     // Position
                     position.data.vecPosition = pMarker->GetPosition ();
-                    SilentlyFixIndeterminate( position.data.vecPosition );      // Crash fix for pre r6459 clients
                     BitStream.Write ( &position );
 
                     // Type
@@ -712,8 +679,8 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     // Write the ordering id
                     BitStream.WriteCompressed ( pBlip->m_sOrdering );
 
-                    // Write the visible distance - 14 bits allows 16383.
-                    SIntegerSync < unsigned short, 14 > visibleDistance ( Min ( pBlip->m_usVisibleDistance, (unsigned short)16383 ) );
+                    // Write the visible distance
+                    SIntegerSync < unsigned short, 14 > visibleDistance ( pBlip->m_usVisibleDistance );
                     BitStream.Write ( &visibleDistance );
 
                     // Write the icon
@@ -741,13 +708,11 @@ bool CEntityAddPacket::Write ( NetBitStreamInterface& BitStream ) const
                     // Write the position
                     SPosition2DSync position2D ( false );
                     position2D.data.vecPosition = pArea->GetPosition ();
-                    SilentlyFixIndeterminate( position2D.data.vecPosition );    // Crash fix for pre r6459 clients
                     BitStream.Write ( &position2D );
 
                     // Write the size
                     SPosition2DSync size2D ( false );
                     size2D.data.vecPosition = pArea->GetSize ();
-                    SilentlyFixIndeterminate( size2D.data.vecPosition );        // Crash fix for pre r6459 clients
                     BitStream.Write ( &size2D );
 
                     // And the color

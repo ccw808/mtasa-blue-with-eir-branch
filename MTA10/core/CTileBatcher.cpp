@@ -12,7 +12,6 @@
 
 #include <StdInc.h>
 #include "CTileBatcher.h"
-#define DEG2RAD(deg) ( (deg) * (6.2832f/360.f) )
 
 ////////////////////////////////////////////////////////////////
 //
@@ -479,7 +478,7 @@ void CTileBatcher::MakeCustomMatrices ( const SShaderTransform& t
 
 
     // Perspective
-    CVector2D useCenOfPers = t.vecPersCenOffset * vecHalfScreenSize;
+    CVector useCenOfPers = t.vecPersCenOffset * vecHalfScreenSize;
     if ( !t.bPersCenOffsetOriginIsScreen )
     {
         useCenOfPers += vecCenterOfTile - vecCenterOfScreen;

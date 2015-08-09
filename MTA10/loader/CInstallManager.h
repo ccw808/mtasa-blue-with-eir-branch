@@ -15,7 +15,7 @@
 // Common command line keys
 #define INSTALL_STAGE       "install_stage"
 #define INSTALL_LOCATION    "install_loc"
-#define HIDE_PROGRESS       "hide_prog"
+#define SILENT_OPT          "silent_opt"
 
 typedef CBadLang < class CInstallManager > CSequencerType;
 
@@ -43,7 +43,6 @@ protected:
     SString         _ProcessLangFileChecks          ( void );
     SString         _ProcessExePatchChecks          ( void );
     SString         _ProcessServiceChecks           ( void );
-    SString         _ProcessAppCompatChecks         ( void );
     SString         _ChangeFromAdmin                ( void );
     SString         _InstallNewsItems               ( void );
     SString         _Quit                           ( void );

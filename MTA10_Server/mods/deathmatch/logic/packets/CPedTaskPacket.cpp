@@ -24,10 +24,9 @@ bool CPedTaskPacket::Read ( NetBitStreamInterface& BitStream )
         // Read and save packet data
         m_uiNumBitsInPacketBody = BitStream.GetNumberOfUnreadBits();
         uint uiNumBytes = ( m_uiNumBitsInPacketBody + 1 ) / 8;
-        dassert( uiNumBytes < sizeof( m_DataBuffer ) );
-        if( uiNumBytes < sizeof( m_DataBuffer ) )
-            if ( BitStream.ReadBits( m_DataBuffer, m_uiNumBitsInPacketBody ) )
-                return true;
+        assert( uiNumBytes < sizeof( m_DataBuffer ) );
+        if ( BitStream.ReadBits( m_DataBuffer, m_uiNumBitsInPacketBody ) )
+            return true;
     }
 
     return false;

@@ -34,12 +34,10 @@ struct SAclRequest;
 #include <xml/CXMLAttributes.h>
 #include <xml/CXMLAttribute.h>
 #include "CVector.h"
-#include "CVector4D.h"
 #include "CSphere.h"
 #include "CBox.h"
 #include "CMatrix.h"
 #include "CQuat.h"
-#include "net/Packets.h"
 #include "Enums.h"
 #include <bochs_internal/crc32.h>
 #include "CChecksum.h"
@@ -47,6 +45,7 @@ struct SAclRequest;
 #include "pcrecpp.h"
 
 // Packet includes
+#include "net/Packets.h"
 #include "packets/CCameraSyncPacket.h"
 #include "packets/CChatEchoPacket.h"
 #include "packets/CCommandPacket.h"
@@ -125,11 +124,6 @@ struct SAclRequest;
 #include "luadefs/CLuaVoiceDefs.h"
 #include "luadefs/CLuaXMLDefs.h"
 #include "luadefs/CLuaClassDefs.h"
-#include "luadefs/CLuaVector2Defs.h"
-#include "luadefs/CLuaVector3Defs.h"
-#include "luadefs/CLuaVector4Defs.h"
-#include "luadefs/CLuaMatrixDefs.h"
-#include "lua/oopdefs/CLuaOOPDefs.h"
 
 // Lua includes
 #include "lua/LuaCommon.h"
@@ -141,7 +135,7 @@ struct SAclRequest;
 #include "lua/CLuaManager.h"
 #include "lua/CLuaTimerManager.h"
 #include "lua/CLuaTimer.h"
-#include "lua/CLuaFunctionDefs.h"
+#include "lua/CLuaFunctionDefinitions.h"
 #include "lua/CLuaModuleManager.h"
 #include "lua/CLuaArgument.h"
 #include "lua/CLuaCFunctions.h"

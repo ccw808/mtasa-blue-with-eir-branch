@@ -18,7 +18,6 @@ void    HandleIfGTAIsAlreadyRunning     ( void );
 void    ValidateGTAPath                 ( void );
 void    CheckAntiVirusStatus            ( void );
 void    CheckDataFiles                  ( void );
-void    CheckLibVersions                ( void );
 int     LaunchGame                      ( SString strCmdLine );
 void    HandleOnQuitCommand             ( void );
 

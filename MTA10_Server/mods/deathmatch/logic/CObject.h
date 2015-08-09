@@ -42,9 +42,6 @@ public:
     void                        GetRotation             ( CVector & vecRotation );
     void                        SetRotation             ( const CVector& vecRotation );
 
-    void                        GetMatrix               ( CMatrix& matrix );
-    void                        SetMatrix               ( const CMatrix& matrix );
-
     bool                        IsMoving                ( void );
     void                        Move                    ( const CPositionRotationAnimation& a_rMoveAnimation );
     void                        StopMoving              ( void );

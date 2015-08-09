@@ -293,6 +293,64 @@ void CPacketHandler::Packet_ServerConnected ( NetBitStreamInterface& bitStream )
 }
 
 
+///////////////////////////////////////////////////////////////
+//
+// Discover HTTP port for bitStream version < 0x48
+//
+// Can be removed for 1.4 release or later
+//
+///////////////////////////////////////////////////////////////
+static ushort usDiscoverHttpPortResult;
+static uint uiDiscoverHttpPortFailCounter;
+
+static bool DiscoverInternalHTTPPortCallback ( double sizeJustDownloaded, double totalDownloaded, char * data, size_t dataLength, void * obj, bool complete, int error )
+{
+    if ( complete || ( error >= 200 && error < 600 ) )
+    {
+        usDiscoverHttpPortResult = (ushort)obj;
+    }
+    else
+    if ( error )
+        uiDiscoverHttpPortFailCounter++;
+
+    return true;
+}
+
+static ushort DiscoverInternalHTTPPort()
+{
+    // Make a list of ports to try
+    ushort usGamePort = atoi( SStringX( g_pNet->GetConnectedServer( true ) ).SplitRight( ":" ) );
+    std::vector < ushort > testPortList;
+    testPortList.push_back( usGamePort );
+    testPortList.push_back( usGamePort + 2 );
+
+    CNetHTTPDownloadManagerInterface* pHTTP = g_pCore->GetNetwork ()->GetHTTPDownloadManager ( EDownloadMode::RESOURCE_INITIAL_FILES );
+    pHTTP->SetMaxConnections( testPortList.size() );
+
+    usDiscoverHttpPortResult = 0;
+    uiDiscoverHttpPortFailCounter = 0;
+
+    // Send request to each port
+    for ( uint i = 0 ; i < testPortList.size() ; i++ )
+    {
+        ushort usHTTPPort = testPortList[i];
+        SString strHTTPDownloadURL = SString ( "http://%s:%d/http_port_test/", g_pNet->GetConnectedServer(), usHTTPPort );
+        pHTTP->QueueFile ( strHTTPDownloadURL, "", 0, NULL, 0, false, (void*)usHTTPPort, DiscoverInternalHTTPPortCallback, g_pClientGame->IsLocalGame (), 1, 10000, false );
+    }    
+
+    // Wait up to 3 seconds for response
+    for ( uint i = 0 ; i < 3000 ; i += 100 )
+    {
+        Sleep( 100 );
+        pHTTP->ProcessQueuedFiles();
+        if ( usDiscoverHttpPortResult || uiDiscoverHttpPortFailCounter >= testPortList.size() )
+            break;
+    }
+
+    return usDiscoverHttpPortResult;
+}
+
+
 void CPacketHandler::Packet_ServerJoined ( NetBitStreamInterface& bitStream )
 {
     // ElementID        (2)     - assigned player id
@@ -350,7 +408,7 @@ void CPacketHandler::Packet_ServerJoined ( NetBitStreamInterface& bitStream )
     // Can't be 0
     if ( ucNumberOfPlayers == 0 )
     {
-        RaiseProtocolError ( 14 );
+        RaiseProtocolError ( 6 );
         return;
     }
 
@@ -416,18 +474,22 @@ void CPacketHandler::Packet_ServerJoined ( NetBitStreamInterface& bitStream )
         }
         case HTTP_DOWNLOAD_ENABLED_URL:
         {
-            // Internal http server port in case we need it
-            bitStream.Read( g_pClientGame->m_usHTTPDownloadPort );
+            if ( bitStream.Version() >= 0x48 )
+                bitStream.Read( g_pClientGame->m_usHTTPDownloadPort );
 
-            // External http server URL
-            bitStream.ReadString( g_pClientGame->m_strHTTPDownloadURL );
+            BitStreamReadUsString( bitStream, g_pClientGame->m_strHTTPDownloadURL );
 
             // See if we should switch to the internal http server
             if ( g_pCore->ShouldUseInternalHTTPServer() )
             {
-                g_pClientGame->m_strHTTPDownloadURL = SString ( "http://%s:%d", g_pNet->GetConnectedServer(), g_pClientGame->m_usHTTPDownloadPort );
-                g_pClientGame->m_ucHTTPDownloadType = HTTP_DOWNLOAD_ENABLED_PORT;
-                iHTTPMaxConnectionsPerClient = 1;
+                if ( !g_pClientGame->m_usHTTPDownloadPort )
+                    g_pClientGame->m_usHTTPDownloadPort = DiscoverInternalHTTPPort();
+                if ( g_pClientGame->m_usHTTPDownloadPort )
+                {
+                    g_pClientGame->m_strHTTPDownloadURL = SString ( "http://%s:%d", g_pNet->GetConnectedServer(), g_pClientGame->m_usHTTPDownloadPort );
+                    g_pClientGame->m_ucHTTPDownloadType = HTTP_DOWNLOAD_ENABLED_PORT;
+                    iHTTPMaxConnectionsPerClient = 1;
+                }
             }
             break;
         }
@@ -477,7 +539,6 @@ void CPacketHandler::Packet_ServerDisconnected ( NetBitStreamInterface& bitStrea
     SString strReason;
     SString strErrorCode;
     bool bShowMessageBox = true;
-    bool bExpectExtraString = false;
 
     bitStream.ReadBits ( &ucType, 5 );
 
@@ -491,17 +552,14 @@ void CPacketHandler::Packet_ServerDisconnected ( NetBitStreamInterface& bitStrea
             break;
         case ePlayerDisconnectType::BANNED_SERIAL:
             strReason = _("Disconnected: Serial is banned.\nReason: %s"); strErrorCode = _E("CD32");
-            bExpectExtraString = true;
             bitStream.ReadString ( strDuration );
             break;
         case ePlayerDisconnectType::BANNED_IP:
             strReason = _("Disconnected: You are banned.\nReason: %s"); strErrorCode = _E("CD33");
-            bExpectExtraString = true;
             bitStream.ReadString ( strDuration );
             break;
         case ePlayerDisconnectType::BANNED_ACCOUNT:
             strReason = _("Disconnected: Account is banned.\nReason: %s"); strErrorCode = _E("CD34");
-            bExpectExtraString = true;
             break;
         case ePlayerDisconnectType::VERSION_MISMATCH:
             strReason = _("Disconnected: Version mismatch"); strErrorCode = _E("CD35");
@@ -511,19 +569,15 @@ void CPacketHandler::Packet_ServerDisconnected ( NetBitStreamInterface& bitStrea
             break;
         case ePlayerDisconnectType::DIFFERENT_BRANCH:
             strReason = _("Disconnected: Server from different branch.\nInformation: %s"); strErrorCode = _E("CD37");
-            bExpectExtraString = true;
             break;
         case ePlayerDisconnectType::BAD_VERSION:
             strReason = _("Disconnected: Bad version.\nInformation: %s"); strErrorCode = _E("CD38");
-            bExpectExtraString = true;
             break;
         case ePlayerDisconnectType::SERVER_NEWER:
             strReason = _("Disconnected: Server is running a newer build.\nInformation: %s"); strErrorCode = _E("CD39");
-            bExpectExtraString = true;
             break;
         case ePlayerDisconnectType::SERVER_OLDER:
             strReason = _("Disconnected: Server is running an older build.\nInformation: %s"); strErrorCode = _E("CD40");
-            bExpectExtraString = true;
             break;
         case ePlayerDisconnectType::NICK_CLASH:
             strReason = _("Disconnected: Nick already in use"); strErrorCode = _E("CD41");
@@ -533,14 +587,12 @@ void CPacketHandler::Packet_ServerDisconnected ( NetBitStreamInterface& bitStrea
             break;
         case ePlayerDisconnectType::GENERAL_REFUSED:
             strReason = _("Disconnected: Server refused the connection: %s"); strErrorCode = _E("CD43");
-            bExpectExtraString = true;
             break;
         case ePlayerDisconnectType::SERIAL_VERIFICATION:
             strReason = _("Disconnected: Serial verification failed"); strErrorCode = _E("CD44");
             break;
         case ePlayerDisconnectType::CONNECTION_DESYNC:
             strReason = _("Disconnected: Connection desync %s"); strErrorCode = _E("CD45");
-            bExpectExtraString = true;
             break;
         case ePlayerDisconnectType::INVALID_PASSWORD:
             g_pCore->ShowServerInfo ( 2 );
@@ -548,34 +600,27 @@ void CPacketHandler::Packet_ServerDisconnected ( NetBitStreamInterface& bitStrea
             break;
         case ePlayerDisconnectType::KICK:
             strReason = _("Disconnected: You were kicked by %s"); strErrorCode = _E("CD46");
-            bExpectExtraString = true;
             break;
         case ePlayerDisconnectType::BAN:
             strReason = _("Disconnected: You were banned by %s"); strErrorCode = _E("CD47");
-            bExpectExtraString = true;
             bitStream.ReadString ( strDuration );
             break;
         case ePlayerDisconnectType::CUSTOM:
             strReason = "%s"; strErrorCode = _E("CD48"); // Custom disconnect reason
-            bExpectExtraString = true;
             break;
         default: break;
     }
 
     if ( bShowMessageBox )
     {
-        // Read and insert extra string if required
-        SString strMessage;
-        if ( bitStream.GetNumberOfUnreadBits() > 7 ) // We have our string left to read
+        if ( bitStream.GetNumberOfUnreadBits() > 0 ) // We have our string left to read
         {
+            SString strMessage;
             bitStream.ReadString ( strMessage );
-        }
-        if ( bExpectExtraString )
-        {
-            strReason = SString( strReason, strMessage.c_str() );
+            strReason = SString(strReason,strMessage.c_str());
         }
 
-        if ( !strDuration.empty() && strDuration != "0")
+        if ( !strDuration.empty() )
         {
             time_t Duration;
             std::istringstream ( strDuration ) >> Duration;
@@ -596,10 +641,8 @@ void CPacketHandler::Packet_ServerDisconnected ( NetBitStreamInterface& bitStrea
         }
 
         // Display the error
-        g_pCore->ShowMessageBox ( _("Disconnected")+strErrorCode, strReason, MB_BUTTON_OK | MB_ICON_INFO );
+         g_pCore->ShowMessageBox ( _("Disconnected")+strErrorCode, strReason, MB_BUTTON_OK | MB_ICON_INFO );
     }
-
-    AddReportLog( 7107, SString( "Game - Disconnected (%s) (%s)", *strErrorCode, *strReason.Replace( "\n", " " ) ) );
 
     // Terminate the mod (disconnect first in case there were more packets after this one)
     g_pClientGame->m_bGracefulDisconnect = true;
@@ -747,17 +790,11 @@ void CPacketHandler::Packet_PlayerList ( NetBitStreamInterface& bitStream )
         bool bIsFrozen = bitStream.ReadBit ();
 
         // Player nametag text
-        char szNametagText [MAX_PLAYER_NAMETAG_LENGTH + 1];
+        char szNametagText [MAX_PLAYER_NICK_LENGTH + 1];
         szNametagText[0] = '\0';
 
         unsigned char ucNametagTextLength;
-        if ( !bitStream.Read ( ucNametagTextLength ) || ucNametagTextLength > MAX_PLAYER_NAMETAG_LENGTH )
-        {
-            // Nametag length all wrong
-            RaiseProtocolError ( 9 );
-            return;
-        }
-
+        bitStream.Read ( ucNametagTextLength );
         if ( ucNametagTextLength > 0 )
         {
             bitStream.Read ( szNametagText, ucNametagTextLength );
@@ -1046,9 +1083,6 @@ void CPacketHandler::Packet_PlayerSpawn ( NetBitStreamInterface& bitStream )
         // Reset weapons
         pPlayer->RemoveAllWeapons ();
 
-        // Remove jetpack
-        pPlayer->SetHasJetPack ( false );
-
         // Spawn him
         pPlayer->Spawn ( vecPosition,
                          fRotation,
@@ -1115,24 +1149,12 @@ void CPacketHandler::Packet_PlayerWasted ( NetBitStreamInterface& bitStream )
         CClientEntity * pKiller = ( KillerID != INVALID_ELEMENT_ID ) ? CElementIDs::GetElement ( KillerID ) : NULL;
         if ( pPed )
         {
-            // assume we aren't already dead on the network
-            bool bAlreadyDeadOnNetwork = false;
-            // Here
-            // if we are a player do some special steps
+            // Mark him as dead?
             if ( IS_PLAYER ( pPed ) )
-            {
-                // cast us to a player
-                CClientPlayer * pPlayer = static_cast < CClientPlayer * > ( pPed );
-                // store our dead on the network state
-                bAlreadyDeadOnNetwork = pPlayer->IsDeadOnNetwork ( );
-                // update our dead on the network state
-                pPlayer->SetDeadOnNetwork ( true );
-            }
+                static_cast < CClientPlayer * > ( pPed )->SetDeadOnNetwork ( true );
+
             // Update our sync-time context
             pPed->SetSyncTimeContext ( ucTimeContext );
-
-            // To at least here needs to be done on the local player to avoid desync
-            // Caz: Issue 8148 - Desync when calling spawnPlayer from an event handler remotely triggered from within onClientPlayerWasted
 
             // Is this a stealth kill? and do we have a killer ped?
             if ( bStealth && pKiller && IS_PED ( pKiller ) )
@@ -1146,24 +1168,19 @@ void CPacketHandler::Packet_PlayerWasted ( NetBitStreamInterface& bitStream )
                          bodyPart.data.uiBodypart,
                          bStealth, false, animGroup, animID );
 
-            // Local player triggers himself when sending the death packet to the server, this one will be delayed by network delay so disable it unless it's sent by the server.
-            // if we were not already dead on the network trigger it anyway because this is also called by KillPed server side and that will not trigger the event locally.
-            if ( pPed->IsLocalPlayer ( ) == false || bAlreadyDeadOnNetwork == false )
-            {
-                // Call the onClientPlayerWasted event
-                CLuaArguments Arguments;
-                if ( pKiller ) Arguments.PushElement ( pKiller );
-                else Arguments.PushBoolean ( false );
-                if ( weapon.data.ucWeaponType != 0xFF ) Arguments.PushNumber ( weapon.data.ucWeaponType );
-                else Arguments.PushBoolean ( false );
-                if ( bodyPart.data.uiBodypart != 0xFF ) Arguments.PushNumber ( bodyPart.data.uiBodypart );
-                else Arguments.PushBoolean ( false );
-                Arguments.PushBoolean ( bStealth );
-                if ( IS_PLAYER ( pPed ) )
-                    pPed->CallEvent ( "onClientPlayerWasted", Arguments, true );
-                else
-                    pPed->CallEvent ( "onClientPedWasted", Arguments, true );
-            }
+            // Call the onClientPlayerWasted event
+            CLuaArguments Arguments;
+            if ( pKiller ) Arguments.PushElement ( pKiller );
+            else Arguments.PushBoolean ( false );
+            if ( weapon.data.ucWeaponType != 0xFF ) Arguments.PushNumber ( weapon.data.ucWeaponType );
+            else Arguments.PushBoolean ( false );
+            if ( bodyPart.data.uiBodypart != 0xFF ) Arguments.PushNumber ( bodyPart.data.uiBodypart );
+            else Arguments.PushBoolean ( false );
+            Arguments.PushBoolean ( bStealth );
+            if ( IS_PLAYER ( pPed ) )
+                pPed->CallEvent ( "onClientPlayerWasted", Arguments, true );
+            else
+                pPed->CallEvent ( "onClientPedWasted", Arguments, true );
         }
     }
     else
@@ -1307,8 +1324,7 @@ void CPacketHandler::Packet_ChatEcho ( NetBitStreamInterface& bitStream )
             char* szMessage = new char[iNumberOfBytesUsed + 1];
             bitStream.Read ( szMessage, iNumberOfBytesUsed );
             szMessage [iNumberOfBytesUsed] = 0;
-            // actual limits enforced on the remote client, this is the maximum a string can be to be printed.
-            if ( MbUTF8ToUTF16 ( szMessage ).size ( ) <= MAX_OUTPUTCHATBOX_LENGTH + 6 )   // Extra 6 characters to fix #7125 (Teamsay + long name + long message = too long message)
+            if ( MbUTF8ToUTF16(szMessage).size() <= MAX_CHATECHO_LENGTH + 6 )   // Extra 6 characters to fix #7125 (Teamsay + long name + long message = too long message)
             {
                 // Strip it for bad characters
                 StripControlCodes ( szMessage, ' ' );
@@ -2235,7 +2251,6 @@ void CPacketHandler::Packet_MapInfo ( NetBitStreamInterface& bitStream )
     g_pClientGame->SetGlitchEnabled ( CClientGame::GLITCH_CLOSEDAMAGE, funBugs.data.bCloseRangeDamage );
     g_pClientGame->SetGlitchEnabled ( CClientGame::GLITCH_HITANIM, funBugs.data2.bHitAnim );
     g_pClientGame->SetGlitchEnabled ( CClientGame::GLITCH_FASTSPRINT, funBugs.data3.bFastSprint );
-    g_pClientGame->SetGlitchEnabled ( CClientGame::GLITCH_BADDRIVEBYHITBOX, funBugs.data4.bBadDrivebyHitboxes );
 
     float fJetpackMaxHeight = 100;
     if ( !bitStream.Read ( fJetpackMaxHeight ) )
@@ -2654,12 +2669,9 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
         return;
     }
 
-    EntityAddDebugBegin( NumEntities, &bitStream );
-
     for ( uint EntityIndex = 0 ; EntityIndex < NumEntities ; EntityIndex++ )
     {
         g_pCore->UpdateDummyProgress( EntityIndex * 100 / NumEntities, "%" );
-        EntityAddDebugNext( EntityIndex, bitStream.GetReadOffsetAsBits() );
 
         // Read out the entity type id and the entity id
         ElementID EntityID;
@@ -2707,13 +2719,17 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     // Was a valid custom data name length found?
                     if ( ucNameLength <= MAX_CUSTOMDATA_NAME_LENGTH )
                     {
-                        SString strName;
-                        bitStream.ReadStringCharacters ( strName, ucNameLength );
+                        // Add it only if the name is longer than 0
+                        if ( ucNameLength > 0 )
+                        {
+                            SString strName;
+                            bitStream.ReadStringCharacters ( strName, ucNameLength );
 
-                        CLuaArgument Argument;
-                        Argument.ReadFromBitStream ( bitStream );
+                            CLuaArgument Argument;
+                            Argument.ReadFromBitStream ( bitStream );
 
-                        pCustomData->Set ( strName, Argument, NULL );
+                            pCustomData->Set ( strName, Argument, NULL );
+                        }
                     }
                     else
                     {
@@ -2730,7 +2746,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                         delete pCustomData;
                         pCustomData = NULL;
 
-                        RaiseEntityAddError ( 60 );
+                        RaiseFatalError ( 6 );
                         return;
                     }
                 }
@@ -2745,7 +2761,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     delete pCustomData;
                     pCustomData = NULL;
 
-                    RaiseEntityAddError ( 61 );
+                    RaiseFatalError ( 7 );
                     return;
                 }
             }
@@ -2781,7 +2797,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                 assert ( !pEntity->IsSystemEntity () );
                 if ( pEntity->IsSystemEntity () )
                 {
-                    RaiseEntityAddError ( 62 );
+                    RaiseFatalError ( 8 );
                     return;
                 }
 
@@ -2814,9 +2830,9 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     SRotationRadiansSync rotationRadians ( false );
 
                     // Read out the position, rotation, object ID and alpha value
-                    bitStream.Read ( &position );
-                    bitStream.Read ( &rotationRadians );
-                    if ( bitStream.ReadCompressed ( usObjectID ) &&
+                    if ( bitStream.Read ( &position ) &&
+                         bitStream.Read ( &rotationRadians ) &&
+                         bitStream.ReadCompressed ( usObjectID ) &&
                          bitStream.Read ( &alpha ) )
                     {
                         // Valid object id?
@@ -2851,7 +2867,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                         }
                         else
                         {
-                            RaiseEntityAddError ( 63 );
+                            RaiseFatalError ( 9 );
                             return;
                         }
 
@@ -3008,11 +3024,6 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                             }
                         }
                     }
-                    else
-                    {
-                        RaiseEntityAddError ( 55 );
-                        return;
-                    }
 
                     break;
                 }
@@ -3024,8 +3035,8 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     bool bIsVisible;
                     SPickupTypeSync pickupType;
 
-                    bitStream.Read ( &position );
-                    if ( bitStream.ReadCompressed ( usModel ) &&
+                    if ( bitStream.Read ( &position ) &&
+                         bitStream.ReadCompressed ( usModel ) &&
                          bitStream.ReadBit ( bIsVisible ) &&
                          bitStream.Read ( &pickupType ) )
                     {
@@ -3034,7 +3045,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                         pEntity = pPickup;
                         if ( !pPickup )
                         {
-                            RaiseEntityAddError ( 64 );
+                            RaiseFatalError ( 10 );
                             return;
                         }
 
@@ -3076,7 +3087,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     }
                     else
                     {
-                        RaiseEntityAddError ( 38 );
+                        RaiseProtocolError ( 38 );
                         return;
                     }
 
@@ -3106,7 +3117,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     unsigned short usModel = ucModel + 400;
                     if ( !CClientVehicleManager::IsValidModel ( usModel ) )
                     {
-                        RaiseEntityAddError ( 39 );
+                        RaiseProtocolError ( 39 );
                         return;
                     }
 
@@ -3114,7 +3125,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     SVehicleHealthSync health;
                     if ( !bitStream.Read ( &health ) )
                     {
-                        RaiseEntityAddError ( 40 );
+                        RaiseProtocolError ( 40 );
                         return;
                     }
 
@@ -3122,7 +3133,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     CVehicleColor vehColor;
                     uchar ucNumColors = 0;
                     if ( !bitStream.ReadBits ( &ucNumColors, 2 ) )
-                        return RaiseEntityAddError ( 41 );
+                        return RaiseProtocolError ( 41 );
 
                     for ( uint i = 0 ; i <= ucNumColors ; i++ )
                     {
@@ -3131,7 +3142,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                              !bitStream.Read ( RGBColor.G ) ||
                              !bitStream.Read ( RGBColor.B ) )
                         {
-                            return RaiseEntityAddError ( 41 );
+                            return RaiseProtocolError ( 41 );
                         }
                         vehColor.SetRGBColor ( i, RGBColor );
                     }
@@ -3139,27 +3150,27 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     // Read out the paintjob
                     SPaintjobSync paintjob;
                     if ( !bitStream.Read ( &paintjob ) )
-                        return RaiseEntityAddError ( 41 );
+                        return RaiseProtocolError ( 41 );
 
                     // Read out the vehicle damage sync model
                     SVehicleDamageSync damage ( true, true, true, true, false );
                     if ( !bitStream.Read ( &damage ) )
                     {
-                        RaiseEntityAddError ( 42 );
+                        RaiseProtocolError ( 42 );
                         return;
                     }
 
                     unsigned char ucVariant = 5;
                     if ( !bitStream.Read ( ucVariant ) )
                     {
-                        RaiseEntityAddError ( 42 );
+                        RaiseProtocolError ( 42 );
                         return;
                     }
 
                     unsigned char ucVariant2 = 5;
                     if ( !bitStream.Read ( ucVariant2 ) )
                     {
-                        RaiseEntityAddError ( 42 );
+                        RaiseProtocolError ( 42 );
                         return;
                     }
 
@@ -3168,7 +3179,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     pEntity = pVehicle;
                     if ( !pVehicle )
                     {
-                        RaiseEntityAddError ( 65 );
+                        RaiseFatalError ( 11 );
                         return;
                     }
 
@@ -3338,19 +3349,8 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                             pEntry->SetSuspensionForceLevel ( handling.data.fSuspensionForceLevel );
                             pEntry->SetSuspensionDamping ( handling.data.fSuspensionDamping );
                             pEntry->SetSuspensionHighSpeedDamping ( handling.data.fSuspensionHighSpdDamping );
-
-
-                            // Ensure suspension isn't within a certain threshold and isn't too close to eachother
-                            if ( handling.data.fSuspensionLowerLimit >= -50 && handling.data.fSuspensionLowerLimit <= 50 && handling.data.fSuspensionLowerLimit < handling.data.fSuspensionUpperLimit - 0.01 &&
-                                 handling.data.fSuspensionUpperLimit >= -50 && handling.data.fSuspensionUpperLimit <= 50 && handling.data.fSuspensionUpperLimit > handling.data.fSuspensionLowerLimit + 0.01  )
-                            {
-                                if ( ( handling.data.fSuspensionUpperLimit >= 0.0001 || handling.data.fSuspensionUpperLimit <= -0.0001 )
-                                    && ( handling.data.fSuspensionLowerLimit >= 0.0001 || handling.data.fSuspensionLowerLimit <= -0.0001 ))
-                                {
-                                    pEntry->SetSuspensionUpperLimit ( handling.data.fSuspensionUpperLimit );
-                                    pEntry->SetSuspensionLowerLimit ( handling.data.fSuspensionLowerLimit );
-                                }
-                            }
+                            pEntry->SetSuspensionUpperLimit ( handling.data.fSuspensionUpperLimit );
+                            pEntry->SetSuspensionLowerLimit ( handling.data.fSuspensionLowerLimit );
                             pEntry->SetSuspensionFrontRearBias ( handling.data.fSuspensionFrontRearBias );
                             pEntry->SetSuspensionAntiDiveMultiplier ( handling.data.fSuspensionAntiDiveMultiplier );
                         }
@@ -3410,8 +3410,8 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     float fSize;
                     SColorSync color;
 
-                    bitStream.Read ( &position );
-                    if ( bitStream.Read ( &markerType ) &&
+                    if ( bitStream.Read ( &position ) &&
+                         bitStream.Read ( &markerType ) &&
                          bitStream.Read ( fSize ) &&
                          bitStream.Read ( &color ) )
                     {
@@ -3452,12 +3452,12 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                         }
                         else
                         {
-                            RaiseEntityAddError ( 123 );
+                            RaiseProtocolError ( 123 );
                         }
                     }
                     else
                     {
-                        RaiseEntityAddError ( 44 );
+                        RaiseProtocolError ( 44 );
                     }
 
                     break;
@@ -3514,9 +3514,9 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     SPosition2DSync size2D ( false );
                     SColor color;
                     bool bIsFlashing;
-                    bitStream.Read ( &position2D );
-                    bitStream.Read ( &size2D );
-                    if ( bitStream.Read ( color.R ) &&
+                    if ( bitStream.Read ( &position2D ) &&
+                         bitStream.Read ( &size2D ) &&
+                         bitStream.Read ( color.R ) &&
                          bitStream.Read ( color.G ) &&
                          bitStream.Read ( color.B ) &&
                          bitStream.Read ( color.A ) &&
@@ -3533,11 +3533,6 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                             pArea->SetColor ( color );
                             pArea->SetFlashing ( bIsFlashing );
                         }
-                    }
-                    else
-                    {
-                        RaiseEntityAddError ( 56 );
-                        return;
                     }
 
                     break;
@@ -3566,11 +3561,6 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                             pNode->SetNextNodeID ( NextNodeID );
                         }
                     }
-                    else
-                    {
-                        RaiseEntityAddError ( 57 );
-                        return;
-                    }
 
                     break;
                 }
@@ -3584,7 +3574,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     bitStream.ReadCompressed ( usNameLength );
                     if ( usNameLength > MAX_TEAM_NAME_LENGTH )
                     {
-                        RaiseEntityAddError ( 66 );
+                        RaiseFatalError ( 12 );
                         return;
                     }
 
@@ -3614,7 +3604,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                             CClientPlayer * pPlayer = g_pClientGame->m_pManager->GetPlayerManager ( )->Get ( PlayerId );
                             if ( pPlayer )
                             {
-                                pPlayer->SetTeam ( pTeam, true );
+                                pPlayer->SetTeam ( pTeam );
                             }
                         }
                     }
@@ -3633,7 +3623,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                     bitStream.ReadCompressed ( usModel );
                     if ( !CClientPlayerManager::IsValidModel ( usModel ) )
                     {
-                        RaiseEntityAddError ( 51 );
+                        RaiseProtocolError ( 51 );
                         return;
                     }
 
@@ -3848,7 +3838,7 @@ void CPacketHandler::Packet_EntityAdd ( NetBitStreamInterface& bitStream )
                         }
                         default:
                         {
-                            RaiseEntityAddError ( 54 );
+                            RaiseProtocolError ( 54 );
                             break;
                         }
                     }
@@ -4302,7 +4292,7 @@ void CPacketHandler::Packet_ExplosionSync ( NetBitStreamInterface& bitStream )
             if ( g_pClientGame->m_pNetAPI->GetInterpolation ( vecWarpPosition, usLatency ) )
             {
                 pMovedEntity->GetPosition ( vecRestorePosition );
-                pMovedEntity->SetPosition ( vecWarpPosition, false, false );
+                pMovedEntity->SetPosition ( vecWarpPosition );
             }
             else
                 pMovedEntity = NULL;
@@ -4373,7 +4363,7 @@ void CPacketHandler::Packet_ExplosionSync ( NetBitStreamInterface& bitStream )
     if ( pMovedEntity )
     {
         // Restore its position
-        pMovedEntity->SetPosition ( vecRestorePosition, false, false );
+        pMovedEntity->SetPosition ( vecRestorePosition );
     }
 }
 
@@ -4494,6 +4484,7 @@ void CPacketHandler::Packet_ProjectileSync ( NetBitStreamInterface& bitStream )
             // Read the velocity
             if ( !bitStream.Read ( &velocity ) )
                 return;
+            pvecVelocity = &( velocity.data.vecVelocity );
             bCreateProjectile = true;
 
             break;
@@ -4516,10 +4507,12 @@ void CPacketHandler::Packet_ProjectileSync ( NetBitStreamInterface& bitStream )
             // Read out the velocity
             if ( !bitStream.Read ( &velocity ) )
                 return;
+            pvecVelocity = &( velocity.data.vecVelocity );
 
             // Read out the rotation
             if ( !bitStream.Read ( &rotation ) )
                 return;
+            pvecRotation = &( rotation.data.vecRotation );
 
             if ( TargetID != INVALID_ELEMENT_ID )
             {
@@ -4552,7 +4545,7 @@ void CPacketHandler::Packet_ProjectileSync ( NetBitStreamInterface& bitStream )
             CClientProjectile * pProjectile = g_pClientGame->m_pManager->GetProjectileManager ()->Create ( pCreator, weaponType, origin.data.vecPosition, fForce, NULL, pTargetEntity );
             if ( pProjectile )
             {
-                pProjectile->Initiate(origin.data.vecPosition, rotation.data.vecRotation, velocity.data.vecVelocity, usModel);
+                pProjectile->Initiate ( &origin.data.vecPosition, pvecRotation, pvecVelocity, usModel );
             }
         }
     }
@@ -4841,19 +4834,11 @@ void CPacketHandler::Packet_ResourceStart ( NetBitStreamInterface& bitStream )
                                 break;
                         }
 
-                        // Does the Client and Server checksum differ?
-                        if ( pDownloadableResource && !pDownloadableResource->DoesClientAndServerChecksumMatch () )
+                        // Is it a valid downloadable resource?
+                        if ( pDownloadableResource && pDownloadableResource->IsAutoDownload() )
                         {
-                            // Delete the file that already exists
-                            FileDelete ( pDownloadableResource->GetName () );
-                            if ( FileExists( pDownloadableResource->GetName () ) )
-                            {
-                                SString strMessage( "Unable to delete old file %s", *ConformResourcePath( pDownloadableResource->GetName () ) );
-                                g_pClientGame->TellServerSomethingImportant( 1009, strMessage, false );
-                            }
-
-                            // Is it downloadable now?
-                            if ( pDownloadableResource->IsAutoDownload() )
+                            // Does the Client and Server checksum Match?
+                            if ( !pDownloadableResource->DoesClientAndServerChecksumMatch () )
                             {
                                 // Make sure the directory exists
                                 const char* szTempName = pDownloadableResource->GetName ();
@@ -4866,6 +4851,8 @@ void CPacketHandler::Packet_ResourceStart ( NetBitStreamInterface& bitStream )
                                 // Combine the HTTP Download URL, the Resource Name and the Resource File
                                 SString strHTTPDownloadURLFull ( "%s/%s/%s", g_pClientGame->m_strHTTPDownloadURL.c_str (), pResource->GetName (), pDownloadableResource->GetShortName () );
 
+                                // Delete the file that already exists
+                                unlink ( pDownloadableResource->GetName () );
 
                                 // Queue the file to be downloaded
                                 bool bAddedFile = pHTTP->QueueFile ( strHTTPDownloadURLFull, pDownloadableResource->GetName (), dChunkDataSize, NULL, 0, false, NULL, NULL, g_pClientGame->IsLocalGame (), 10, 10000, true );
@@ -5089,14 +5076,9 @@ void CPacketHandler::Packet_SyncSettings ( NetBitStreamInterface& bitStream )
     if ( bitStream.Version () >= 0x58 )
         bitStream.Read ( ucAllowFastSprintFix );
 
-    uchar ucAllowBadDrivebyHitboxesFix = 0;
-    if ( bitStream.Version() >= 0x59 )
-        bitStream.Read ( ucAllowBadDrivebyHitboxesFix );
-
     SMiscGameSettings miscGameSettings;
     miscGameSettings.bUseAltPulseOrder = ( ucUseAltPulseOrder != 0 );
     miscGameSettings.bAllowFastSprintFix = ( ucAllowFastSprintFix != 0 );
-    miscGameSettings.bAllowBadDrivebyHitboxFix = (ucAllowBadDrivebyHitboxesFix != 0);
     g_pClientGame->SetMiscGameSettings( miscGameSettings );
 }
 
@@ -5142,190 +5124,4 @@ void CPacketHandler::Packet_PedTask ( NetBitStreamInterface& bitStream )
         default:
             break;
     };
-}
-
-
-//
-//
-//
-// EntityAdd debugging
-//
-//
-//
-
-///////////////////////////////////////////////////////////////
-//
-// CPacketHandler::EntityAddDebugBegin
-//
-// Called at start of entity add packet processing
-//
-///////////////////////////////////////////////////////////////
-void CPacketHandler::EntityAddDebugBegin( uint uiNumEntities, NetBitStreamInterface* pBitStream )
-{
-    m_uiEntityAddNumEntities = uiNumEntities;
-    m_pEntityAddBitStream = pBitStream;
-    m_EntityAddReadOffsetStore.clear();
-    m_EntityAddReadOffsetStore.reserve( m_uiEntityAddNumEntities );
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CPacketHandler::EntityAddDebugNext
-//
-// Called when processing next entity in entity add packet
-//
-///////////////////////////////////////////////////////////////
-void CPacketHandler::EntityAddDebugNext( uint uiEntityIndex, int iReadOffset )
-{
-    m_EntityAddReadOffsetStore.push_back( iReadOffset );
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CPacketHandler::EntityAddDebugNext
-//
-// Called when entity add packet processing fails
-//
-///////////////////////////////////////////////////////////////
-void CPacketHandler::RaiseEntityAddError( uint uiCode )
-{
-    SString strLine( "ProtocolError %d", uiCode );
-    WriteDebugEvent( strLine );
-    AddReportLog( 8331, strLine );
-
-    NetBitStreamInterface& bitStream = *m_pEntityAddBitStream;
-    for ( uint i = Max ( 0, (int)m_EntityAddReadOffsetStore.size() - 5 ) ; i < m_EntityAddReadOffsetStore.size() ; i++ )
-    {
-        m_pEntityAddBitStream->SetReadOffsetAsBits( m_EntityAddReadOffsetStore[i] );
-        SString strStatus = EntityAddDebugRead( *m_pEntityAddBitStream );
-
-        SString strLine( "%d/%d Offset:%-6d %s"
-                                 ,i
-                                 ,m_uiEntityAddNumEntities
-                                 ,m_EntityAddReadOffsetStore[i]
-                                 ,*strStatus
-                                );
-        WriteDebugEvent( strLine );
-        AddReportLog( 8332, strLine );
-    }
-    RaiseProtocolError( uiCode );
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// CPacketHandler::EntityAddDebugRead
-//
-// Read one entity from the bitstream and return description
-// Similar to entity reading code in Packet_EntityAdd
-//
-///////////////////////////////////////////////////////////////
-SString CPacketHandler::EntityAddDebugRead( NetBitStreamInterface& bitStream )
-{
-    // Attached
-    bool bIsAttached;
-    SPositionSync attachedPosition ( false );
-    SRotationDegreesSync attachedRotation ( false );
-    ElementID EntityAttachedToID;
-
-    // Read out the entity type id and the entity id
-    ElementID EntityID;
-    unsigned char ucEntityTypeID;
-    ElementID ParentID;
-    unsigned char ucInterior;
-    unsigned short usDimension;
-    bool bCollisonsEnabled;
-    bool bCallPropagationEnabled;
-
-    if ( bitStream.Read ( EntityID ) &&
-            bitStream.Read ( ucEntityTypeID ) &&
-            bitStream.Read ( ParentID ) &&
-            bitStream.Read ( ucInterior ) &&
-            bitStream.ReadCompressed ( usDimension ) &&
-            bitStream.ReadBit ( bIsAttached ) )
-    {
-
-        if ( bIsAttached )
-        {
-            bitStream.Read ( EntityAttachedToID );
-            bitStream.Read ( &attachedPosition );
-            bitStream.Read ( &attachedRotation );
-        }
-
-        // Check element collisions enabled ( for use later on )
-        bitStream.ReadBit ( bCollisonsEnabled );
-
-        if ( bitStream.Version() >= 0x56 )
-            bitStream.ReadBit ( bCallPropagationEnabled );
-        else
-            bCallPropagationEnabled = true;
-
-        // Read custom data
-        //CCustomData* pCustomData = new CCustomData;
-        unsigned short usNumData = 0;
-        bitStream.ReadCompressed ( usNumData );
-
-        SString strStatus( "ID:%05x Type:%d ParID:%05x Int:%d Dim:%d Attach:%d NumData:%d "
-                                    ,EntityID
-                                    ,ucEntityTypeID
-                                    ,ParentID
-                                    ,ucInterior
-                                    ,usDimension
-                                    ,bIsAttached
-                                    ,usNumData
-                            );
-
-        for ( unsigned short us = 0 ; us < usNumData ; us++ )
-        {
-            unsigned char ucNameLength = 0;
-
-            // Read the custom data name length
-            if ( bitStream.Read ( ucNameLength ) )
-            {
-                // Was a valid custom data name length found?
-                if ( ucNameLength <= MAX_CUSTOMDATA_NAME_LENGTH )
-                {
-                    SString strName;
-                    bitStream.ReadStringCharacters ( strName, ucNameLength );
-
-                    CLuaArgument Argument;
-                    Argument.ReadFromBitStream ( bitStream );
-
-                    //pCustomData->Set ( strName, Argument, NULL );
-                }
-                else
-                {
-                    return strStatus + "Error 6";
-                }
-            }
-            else
-            {
-                return strStatus + "Error 7";
-            }
-        }
-
-        // Read out the name length
-        unsigned short usNameLength;
-        bitStream.ReadCompressed ( usNameLength );
-
-        // Create the name string and 0 terminate it
-        char* szName = new char [ usNameLength + 1 ];
-        szName [ usNameLength ] = 0;
-
-        // Read out the name if it's longer than empty
-        if ( usNameLength > 0 )
-        {
-            bitStream.Read ( szName, usNameLength );
-        }
-
-        strStatus += SString( "NameLen:%d Name:'%s'"
-                                    ,usNameLength
-                                    ,*SStringX( szName ).Left( 40 )
-                            );
-
-        return strStatus;
-    }
-    return "Read error";
 }

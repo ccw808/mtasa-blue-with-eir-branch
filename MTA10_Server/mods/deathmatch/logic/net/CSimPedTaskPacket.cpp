@@ -23,10 +23,9 @@ bool CSimPedTaskPacket::Read ( NetBitStreamInterface& BitStream )
     // Read and save packet data
     m_Cache.uiNumBitsInPacketBody = BitStream.GetNumberOfUnreadBits();
     uint uiNumBytes = ( m_Cache.uiNumBitsInPacketBody + 1 ) / 8;
-    dassert( uiNumBytes < sizeof( m_Cache.DataBuffer ) );
-    if( uiNumBytes < sizeof( m_Cache.DataBuffer ) )
-        if ( BitStream.ReadBits( m_Cache.DataBuffer, m_Cache.uiNumBitsInPacketBody ) )
-            return true;
+    assert( uiNumBytes < sizeof( m_Cache.DataBuffer ) );
+    if ( BitStream.ReadBits( m_Cache.DataBuffer, m_Cache.uiNumBitsInPacketBody ) )
+        return true;
 
     return false;
 }

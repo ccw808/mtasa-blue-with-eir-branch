@@ -76,7 +76,9 @@ int CLuaFunctionDefs::PlaySound3D ( lua_State* luaVM )
     bool bLoop = false;
     CScriptArgReader argStream ( luaVM );
     argStream.ReadString ( strSound );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadBool ( bLoop, false );
 
     if ( !argStream.HasErrors() )
@@ -765,6 +767,7 @@ int CLuaFunctionDefs::GetSoundLevelData ( lua_State* luaVM )
         }
         else
         {
+            m_pScriptDebugging->LogBadPointer ( luaVM, "sound/player", 1 );
             lua_pushboolean ( luaVM, false );
             return 1;
         }
@@ -1394,12 +1397,7 @@ int CLuaFunctionDefs::PlaySFX ( lua_State* luaVM )
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadEnumString ( containerIndex );
-
-    if (!argStream.HasErrors() && containerIndex == AUDIO_LOOKUP_RADIO)
-        argStream.ReadEnumString<eRadioStreamIndex>((eRadioStreamIndex&)iBankIndex);
-    else
-        argStream.ReadNumber(iBankIndex);
-
+    argStream.ReadNumber ( iBankIndex );
     argStream.ReadNumber ( iAudioIndex );
     argStream.ReadBool ( bLoop, false );
 
@@ -1435,14 +1433,11 @@ int CLuaFunctionDefs::PlaySFX3D ( lua_State* luaVM )
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadEnumString ( containerIndex );
-
-    if (!argStream.HasErrors() && containerIndex == AUDIO_LOOKUP_RADIO)
-        argStream.ReadEnumString<eRadioStreamIndex>((eRadioStreamIndex&) iBankIndex);
-    else
-        argStream.ReadNumber(iBankIndex);
-
+    argStream.ReadNumber ( iBankIndex );
     argStream.ReadNumber ( iAudioIndex );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadBool ( bLoop, false );
 
     if ( !argStream.HasErrors () )
@@ -1497,43 +1492,26 @@ int CLuaFunctionDefs::GetSFXStatus ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetSoundPan ( lua_State* luaVM )
 {
-//  setSoundPan ( sound theSound, float pan )
-//  setSoundPan ( player thePlayer, float pan )
-    CClientSound* pSound = NULL; CClientPlayer* pPlayer = NULL; float fPan;
+//  setSoundPan ( element theSound, float pan )
+    CClientSound* pSound; float fPan;
 
     CScriptArgReader argStream ( luaVM );
-    if ( argStream.NextIsUserDataOfType < CClientSound > () )
-    {
-        argStream.ReadUserData ( pSound );
-    }
-    else if ( argStream.NextIsUserDataOfType < CClientPlayer > () )
-    {
-        argStream.ReadUserData ( pPlayer );
-    }
-    else
-    {
-        m_pScriptDebugging->LogBadPointer ( luaVM, "sound/player", 1 );
-        lua_pushboolean ( luaVM, false );
-        return 1;
-    }
-
+    argStream.ReadUserData ( pSound );
     argStream.ReadNumber ( fPan );
 
     if ( !argStream.HasErrors () )
     {
-        if ( pSound && CStaticFunctionDefinitions::SetSoundPan ( *pSound, fPan ) )
+        if ( pSound )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-        else if ( pPlayer && CStaticFunctionDefinitions::SetSoundPan ( *pPlayer, fPan ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            if ( CStaticFunctionDefinitions::SetSoundPan ( *pSound, fPan ) )
+            {
+                lua_pushboolean ( luaVM, true );
+                return 1;
+            }
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;
@@ -1543,41 +1521,24 @@ int CLuaFunctionDefs::SetSoundPan ( lua_State* luaVM )
 int CLuaFunctionDefs::GetSoundPan ( lua_State* luaVM )
 {
 //  getSoundPan ( element theSound )
-//  getSoundPan ( player thePlayer )
-    CClientSound* pSound = NULL; CClientPlayer* pPlayer = NULL;
-    
+    CClientSound* pSound;
     CScriptArgReader argStream ( luaVM );
-    if ( argStream.NextIsUserDataOfType < CClientSound > () )
-    {
-        argStream.ReadUserData ( pSound );
-    }
-    else if ( argStream.NextIsUserDataOfType < CClientPlayer > () )
-    {
-        argStream.ReadUserData ( pPlayer );
-    }
-    else
-    {
-        m_pScriptDebugging->LogBadPointer ( luaVM, "sound/player", 1 );
-        lua_pushboolean ( luaVM, false );
-        return 1;
-    }
+    argStream.ReadUserData ( pSound );
 
     if ( !argStream.HasErrors () )
     {
-        float fPan = 0.0;
-        if ( pSound && CStaticFunctionDefinitions::GetSoundPan ( *pSound, fPan ) )
+        if ( pSound )
         {
-            lua_pushnumber ( luaVM, fPan );
-            return 1;
-        }
-        else if ( pPlayer && CStaticFunctionDefinitions::GetSoundPan ( *pPlayer, fPan ) )
-        {
-            lua_pushnumber ( luaVM, fPan );
-            return 1;
+            float fPan = 0.0;
+            if ( CStaticFunctionDefinitions::GetSoundPan ( *pSound, fPan ) )
+            {
+                lua_pushnumber ( luaVM, fPan );
+                return 1;
+            }
         }
     }
     else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
+        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
     return 1;

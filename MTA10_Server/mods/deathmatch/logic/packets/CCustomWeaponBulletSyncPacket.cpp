@@ -20,21 +20,26 @@ CCustomWeaponBulletSyncPacket::CCustomWeaponBulletSyncPacket ( CPlayer * pPlayer
 
 bool CCustomWeaponBulletSyncPacket::Read ( NetBitStreamInterface& BitStream )
 {
+    // Ignore old bullet sync stuff
+    if ( BitStream.Version () < 0x03C )
+        return false;
+
     // Got a player?
     if ( m_pSourceElement )
     {
+        bool bOk = true;
+
         ElementID WeaponID = INVALID_ELEMENT_ID;
-        BitStream.Read ( WeaponID );
+        bOk |= BitStream.Read ( WeaponID );
         m_pWeapon = GetElementFromId < CCustomWeapon > ( WeaponID );
 
-        BitStream.Read ( (char *)&m_vecStart, sizeof ( CVector ) );
-        BitStream.Read ( (char *)&m_vecEnd, sizeof ( CVector ) );
+        bOk |= BitStream.Read ( (char *)&m_vecStart, sizeof ( CVector ) );
+        bOk |= BitStream.Read ( (char *)&m_vecEnd, sizeof ( CVector ) );
 
         // Duplicate packet protection
-        if ( !BitStream.Read ( m_ucOrderCounter ) )
-            return false;
+        bOk |= BitStream.Read ( m_ucOrderCounter );
 
-        return true;
+        return bOk;
     }
 
     return false;
@@ -44,6 +49,10 @@ bool CCustomWeaponBulletSyncPacket::Read ( NetBitStreamInterface& BitStream )
 // Note: Relays a previous Read()
 bool CCustomWeaponBulletSyncPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
+    // Don't send to older clients
+    if ( BitStream.Version () < 0x03C )
+        return false;
+
     // Got a player to write?
     if ( m_pSourceElement )
     {

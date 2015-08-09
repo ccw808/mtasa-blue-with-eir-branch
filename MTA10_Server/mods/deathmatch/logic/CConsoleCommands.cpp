@@ -135,7 +135,7 @@ bool CConsoleCommands::RestartResource ( CConsole* pConsole, const char* szArgum
 bool CConsoleCommands::RefreshResources ( CConsole* pConsole, const char* szArguments, CClient* pClient, CClient* pEchoClient )
 {
     BeginConsoleOutputCapture ( pEchoClient );
-    g_pGame->GetResourceManager ()->Refresh ( false, "", SStringX( szArguments ) == "t" );
+    g_pGame->GetResourceManager ()->Refresh ( false );
     EndConsoleOutputCapture ( pEchoClient, "refresh completed" );
     return true;
 }
@@ -1443,13 +1443,15 @@ bool CConsoleCommands::WhoWas ( CConsole* pConsole, const char* szArguments, CCl
                     if ( ++uiCount <= 20 )
                     {
                         // Convert the IP to a string
-                        SString strIP = LongToDottedIP ( iter->ulIP );
+                        char szIP [32];
+                        szIP[0] = '\0';
+                        LongToDottedIP ( iter->ulIP, szIP );
 
                         // Populate a line about him
                         SString strName = iter->strNick;
                         if ( iter->strAccountName != GUEST_ACCOUNT_NAME )
                             strName += SString ( " (%s)", *iter->strAccountName );
-                        pClient->SendEcho ( SString ( "%s  -  IP:%s  serial:%s  version:%s", *strName, *strIP, iter->strSerial.c_str (), iter->strPlayerVersion.c_str () ) );
+                        pClient->SendEcho ( SString ( "%s  -  IP:%s  serial:%s  version:%s", *strName, szIP, iter->strSerial.c_str (), iter->strPlayerVersion.c_str () ) );
                     }
                     else
                     {
@@ -1623,11 +1625,6 @@ bool CConsoleCommands::LoadModule ( CConsole* pConsole, const char* szArguments,
         if ( pClient->GetNick () )
             CLogger::LogPrintf ( "loadmodule: Requested by %s\n", GetAdminNameForLog ( pClient ).c_str () );
 
-        if ( !IsValidFilePath ( szArguments ) )
-        {
-            pEchoClient->SendConsole ( "loadmodule: Invalid module path" );
-            return false;
-        }
         SString strFilename ( "%s/modules/%s", g_pServerInterface->GetModManager ()->GetModPath (), szArguments );
 
         // These modules are late loaded
@@ -1806,14 +1803,6 @@ bool CConsoleCommands::OpenPortsTest ( CConsole* pConsole, const char* szArgumen
 {
     if ( pClient->GetClientType () == CClient::CLIENT_CONSOLE )
     {
-#if MTASA_VERSION_TYPE < VERSION_TYPE_RELEASE
-        if ( SStringX( szArguments ) == "crashme" )
-        {
-            // For testing crash handling
-            int* pData = NULL;
-            *pData = 0;
-        }
-#endif
         g_pGame->StartOpenPortsTest ();
         return true;
     }
@@ -1977,30 +1966,5 @@ bool CConsoleCommands::DebugJoinFlood ( CConsole* pConsole, const char* szArgume
 
     SString strOutput = g_pGame->GetJoinFloodProtector()->DebugDump( llTickCountAdd );
     pEchoClient->SendConsole ( strOutput );
-    return true;
-}
-
-
-bool CConsoleCommands::DebugUpTime ( CConsole* pConsole, const char* szArguments, CClient* pClient, CClient* pEchoClient )
-{
-    if ( !pClient->GetClientType () == CClient::CLIENT_CONSOLE )
-    {
-        if ( !g_pGame->GetACLManager()->CanObjectUseRight ( pClient->GetAccount ()->GetName ().c_str (), CAccessControlListGroupObject::OBJECT_TYPE_USER, "debuguptime", CAccessControlListRight::RIGHT_TYPE_COMMAND, false ) )
-        {
-            pEchoClient->SendConsole ( "debuguptime: You do not have sufficient rights to use this command." );
-            return false;
-        }
-    }
-
-    int iDaysAdd = 0;
-    if ( szArguments )
-    {
-        iDaysAdd = atoi( szArguments );
-        iDaysAdd = Clamp( 0, iDaysAdd, 10 );
-    }
-
-    long long llTickCountAdd = iDaysAdd * 1000 * 60 * 60 * 24;
-    AddTickCount( llTickCountAdd );
-    pEchoClient->SendConsole ( SString( "TickCount advanced by %d days", iDaysAdd ) );
     return true;
 }

@@ -27,7 +27,6 @@ ASE::ASE ( CMainConfig* pMainConfig, CPlayerManager* pPlayerManager, unsigned sh
     : m_QueryDosProtect( 5, 6000, 7000 )        // Max of 5 queries per 6 seconds, then 7 second ignore
 {
     _instance = this;
-    m_tStartTime = time( NULL );
 
     m_usPortBase = usPort;
 
@@ -148,12 +147,12 @@ void ASE::DoPulse ( void )
     m_llCurrentTime = GetTickCount64_ ();
     m_uiCurrentPlayerCount = m_pPlayerManager->Count ();
 
-    char szBuffer[100];     // Extra bytes for future use
-
     for ( uint i = 0 ; i < 100 ; i++ )
     {
+        char szBuffer[2];
+
         // We set the socket to non-blocking so we can just keep reading
-        int iBuffer = recvfrom ( m_Socket, szBuffer, sizeof( szBuffer ), 0, (sockaddr*)&SockAddr, &nLen );
+        int iBuffer = recvfrom ( m_Socket, szBuffer, 1, 0, (sockaddr*)&SockAddr, &nLen );
         if ( iBuffer < 1 )
             break;
 
@@ -411,7 +410,6 @@ std::string ASE::QueryLight ( void )
     g_pNetServer->GetNetRoute ( &strNetRouteFixed );
     SString strPingStatus = (const char*)strPingStatusFixed;
     SString strNetRoute = (const char*)strNetRouteFixed;
-    SString strUpTime( "%d", (uint)( time( NULL ) - m_tStartTime ) );
 
     reply << "EYE2";
     // game
@@ -427,7 +425,7 @@ std::string ASE::QueryLight ( void )
     reply << ( unsigned char ) ( m_strGameType.length() + 1 );
     reply << m_strGameType;
     // map name with backwardly compatible large player count, build type and build number
-    reply << ( unsigned char ) ( m_strMapName.length() + 1 + strPlayerCount.length () + 1 + strBuildType.length () + 1 + strBuildNumber.length () + 1 + strPingStatus.length () + 1 + strNetRoute.length () + 1 + strUpTime.length() + 1 );
+    reply << ( unsigned char ) ( m_strMapName.length() + 1 + strPlayerCount.length () + 1 + strBuildType.length () + 1 + strBuildNumber.length () + 1 + strPingStatus.length () + 1 + strNetRoute.length () + 1 );
     reply << m_strMapName;
     reply << ( unsigned char ) 0;
     reply << strPlayerCount;
@@ -439,8 +437,6 @@ std::string ASE::QueryLight ( void )
     reply << strPingStatus;
     reply << ( unsigned char ) 0;
     reply << strNetRoute;
-    reply << ( unsigned char ) 0;
-    reply << strUpTime;
     // version
     std::string temp = MTA_DM_ASE_VERSION;
     reply << ( unsigned char ) ( temp.length() + 1 );
@@ -458,7 +454,7 @@ std::string ASE::QueryLight ( void )
     CPlayer* pPlayer = NULL;
 
     // Keep the packet under 1350 bytes to try to avoid fragmentation 
-    int iBytesLeft = 1340 - (int)reply.tellp ();
+    int iBytesLeft = 1340 - reply.tellp ();
     int iPlayersLeft = iJoinedPlayers;
 
     list < CPlayer* > ::const_iterator pIter = m_pPlayerManager->IterBegin ();

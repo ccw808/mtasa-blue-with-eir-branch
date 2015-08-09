@@ -64,6 +64,7 @@ public:
     inline void                     SetNametagText          ( const char* szText );
     inline bool                     IsNametagShowing        ( void )                                { return m_bNametagShowing; }
     inline void                     SetNametagShowing       ( bool bShowing )                       { m_bNametagShowing = bShowing; }
+    inline CGUIStaticImage*         GetStatusIcon           ( void )                                { return m_pStatusIcon; }
     inline unsigned long            GetLastNametagShow      ( void )                                { return m_ulLastNametagShow; }
     inline void                     SetLastNametagShow      ( unsigned long ulTime )                { m_ulLastNametagShow = ulTime; }
 
@@ -93,7 +94,7 @@ public:
     inline unsigned int             GetVehicleSyncCount     ( void )                                { return m_uiVehicleSyncCount; }
     
     inline CClientTeam*             GetTeam                 ( void )                                { return m_pTeam; }
-    void                            SetTeam                 ( CClientTeam* pTeam, bool bChangeTeam );
+    void                            SetTeam                 ( CClientTeam* pTeam, bool bChangeTeam = false);
     bool                            IsOnMyTeam              ( CClientPlayer* pPlayer );
 
     CClientPlayerVoice*             GetVoice                ( void )                                { return m_voice; }
@@ -149,6 +150,7 @@ private:
 
     CClientTeam*                    m_pTeam;
 
+    CGUIStaticImage*                m_pStatusIcon;
     bool                            m_bNametagShowing;
     unsigned long                   m_ulLastNametagShow;
     unsigned char                   m_ucNametagColorR, m_ucNametagColorG, m_ucNametagColorB;

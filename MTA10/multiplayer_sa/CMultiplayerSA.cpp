@@ -30,16 +30,8 @@ extern CMultiplayerSA* pMultiplayer;
 
 using namespace std;
 
-char* CMultiplayerSA::ms_PlayerImgCachePtr = NULL;
-
 extern CGame * pGameInterface;
 
-unsigned long CMultiplayerSA::HOOKPOS_FindPlayerCoors;
-unsigned long CMultiplayerSA::HOOKPOS_FindPlayerCentreOfWorld;
-unsigned long CMultiplayerSA::HOOKPOS_FindPlayerHeading;
-unsigned long CMultiplayerSA::HOOKPOS_CStreaming_Update_Caller;
-unsigned long CMultiplayerSA::HOOKPOS_CHud_Draw_Caller;
-unsigned long CMultiplayerSA::HOOKPOS_CRunningScript_Process;
 unsigned long CMultiplayerSA::HOOKPOS_CExplosion_AddExplosion;
 unsigned long CMultiplayerSA::HOOKPOS_CRealTimeShadowManager__ReturnRealTimeShadow;
 unsigned long CMultiplayerSA::HOOKPOS_CCustomRoadsignMgr__RenderRoadsignAtomic;
@@ -47,17 +39,13 @@ unsigned long CMultiplayerSA::HOOKPOS_Trailer_BreakTowLink;
 unsigned long CMultiplayerSA::HOOKPOS_CRadar__DrawRadarGangOverlay;
 unsigned long CMultiplayerSA::HOOKPOS_CTaskComplexJump__CreateSubTask;
 unsigned long CMultiplayerSA::HOOKPOS_CTrain_ProcessControl_Derail;
-unsigned long CMultiplayerSA::HOOKPOS_CVehicle_SetupRender;
-unsigned long CMultiplayerSA::HOOKPOS_CVehicle_ResetAfterRender;
 unsigned long CMultiplayerSA::HOOKPOS_CObject_Render;
 unsigned long CMultiplayerSA::HOOKPOS_EndWorldColors;
 unsigned long CMultiplayerSA::HOOKPOS_CWorld_ProcessVerticalLineSectorList;
 unsigned long CMultiplayerSA::HOOKPOS_ComputeDamageResponse_StartChoking;
 unsigned long CMultiplayerSA::HOOKPOS_CAutomobile__ProcessSwingingDoor;
 
-unsigned long CMultiplayerSA::FUNC_CStreaming_Update;
 unsigned long CMultiplayerSA::FUNC_CAudioEngine__DisplayRadioStationName;
-unsigned long CMultiplayerSA::FUNC_CHud_Draw;
 
 unsigned long CMultiplayerSA::ADDR_CursorHiding;
 unsigned long CMultiplayerSA::ADDR_GotFocus;
@@ -72,15 +60,9 @@ DWORD RETURN_FxManager_DestroyFxSystem =                    0x4A9817;
 
 #define HOOKPOS_CCam_ProcessFixed                           0x51D470
 #define HOOKPOS_CTaskSimplePlayerOnFoot_ProcessPlayerWeapon 0x6859a0
-#define HOOKPOS_CPed_IsPlayer                               0x5DF8F0
 
 DWORD RETURN_CCam_ProcessFixed =                            0x51D475;
 DWORD RETURN_CTaskSimplePlayerOnFoot_ProcessPlayerWeapon =  0x6859A7;
-DWORD RETURN_CPed_IsPlayer =                                0x5DF8F6;
-
-#define VAR_CollisionStreamRead_ModelInfo                   0x9689E0
-#define HOOKPOS_CollisionStreamRead                         0x41B1D0
-DWORD RETURN_CollisionStreamRead =                          0x41B1D6;
 
 #define CALL_Render3DStuff                                  0x53EABF
 #define FUNC_Render3DStuff                                  0x53DF40
@@ -184,12 +166,6 @@ DWORD RETURN_CheckAnimMatrix_US =                           0x7C5A61;
 DWORD RETURN_CheckAnimMatrix_EU =                           0x7C5AA1;
 DWORD RETURN_CheckAnimMatrix_BOTH =                         0;
 
-#define HOOKPOS_VehColCB                                    0x04C838D
-DWORD RETURN_VehColCB =                                     0x04C83AA;
-
-#define HOOKPOS_VehCol                                      0x06D6603
-DWORD RETURN_VehCol =                                       0x06D660C;
-
 // Handling fix - driveType is per model
 #define HOOKPOS_CHandlingData_isNotRWD              0x6A048C
 DWORD RETURN_CHandlingData_isNotRWD =               0x6A0493;
@@ -210,46 +186,6 @@ DWORD RETURN_PreFxRender_BOTH =                                 0;
 #define HOOKPOS_PreHUDRender                                      0x053EAD8
 DWORD RETURN_PreHUDRender =                                       0x053EADD;
 
-#define HOOKPOS_LoadIPLInstance                                    0x4061E8
-DWORD CALL_LoadIPLInstance   =                                     0x538090;
-DWORD RETURN_LoadIPLInstance =                                     0x04061ED;
-
-#define HOOKPOS_CWorld_LOD_SETUP                                  0x406224
-#define HOOKPOS_CWorld_LOD_SETUP2                                 0x406326
-DWORD CALL_CWorld_LODSETUP   =                                    0x404C90;
-
-#define HOOKPOS_CBuilding_DTR                                     0x404180
-DWORD JMP_CBuilding_DTR   =                                       0x535E90;
-
-#define HOOKPOS_CDummy_DTR                                        0x532566
-DWORD JMP_CDummy_DTR   =                                          0x535E90;
-
-#define HOOKPOS_CObject_DTR                                       0x59F680
-DWORD JMP_CObject_DTR  =                                          0x59F686;
-
-#define HOOKPOS_AddBuildingInstancesToWorld_CWorldAdd             0x5B5348
-DWORD JMP_CWorld_Add_AddBuildingInstancesToWorld_CALL_CWorldAdd = 0x563220;
-DWORD RETURN_AddBuildingInstancesToWorld_CWorldAdd =              0x5B534D;
-
-
-#define HOOKPOS_CWorld_Remove_CPopulation_ConvertToDummyObject    0x6146F8
-
-#define HOOKPOS_CWorld_ADD_CPopulation_ConvertToRealObject              0x6145C7
-DWORD JMP_CWorld_Add_CPopulation_ConvertToRealObject_Retn =             0x6145CC;
-DWORD JMP_CWorld_Add_CPopulation_ConvertToRealObject_CallCWorldAdd =    0x563220;
-
-#define HOOKPOS_ConvertToObject_CPopulationManageDummy            0x616091
-DWORD CALL_Convert_To_Real_Object_CPopulation_ManageDummy = 0x614580;
-DWORD JMP_RETN_Called_CPopulation_ManageDummy = 0x616097;
-DWORD JMP_RETN_Cancel_CPopulation_ManageDummy = 0x616098;
-
-#define HOOKPOS_CWorld_ADD_CPopulation_ConvertToDummyObject       0x61470C
-DWORD CALL_CWorld_Add_CPopulation_ConvertToDummyObject = 0x563220;
-DWORD JMP_RETN_Called_CPopulation_ConvertToDummyObject = 0x614712;
-DWORD JMP_RETN_Cancelled_CPopulation_ConvertToDummyObject = 0x614715;
-
-#define HOOKPOS_CEntity_IsOnScreen_FixObjectsScale      0x534575
-DWORD JMP_CEntity_IsOnScreen_FixObjectsScale = 0x53457C;
 
 #define HOOKPOS_CEventVehicleDamageCollision                    0x6A7657
 DWORD JMP_CEventVehicleDamageCollision_RETN = 0x6A765D;
@@ -285,21 +221,8 @@ DWORD RETURN_CGlass_WindowRespondsToCollision = 0x71BC48;
 
 #define HOOKPOS_FxManager_c__DestroyFxSystem                0x4A989A
 
-#define HOOKPOS_CTaskSimplyGangDriveBy__ProcessPed          0x62D5A7
-DWORD RETURN_CTaskSimplyGangDriveBy__ProcessPed = 0x62D5AC;
-
-#define HOOKPOS_CAERadioTrackManager__ChooseMusicTrackIndex 0x4EA296
-DWORD RETURN_CAERadioTrackManager__ChooseMusicTrackIndex             = 0x4EA2A0;
-DWORD RETURN_CAERadioTrackManager__ChooseMusicTrackIndex_Regenerate  = 0x04EA286;
-
 CPed* pContextSwitchedPed = 0;
-CVector vecCenterOfWorld;
-FLOAT fFalseHeading;
-bool bSetCenterOfWorld;
 DWORD dwVectorPointer;
-bool bInStreamingUpdate;
-bool bHideRadar;
-bool bHasProcessedScript;
 float fX, fY, fZ;
 DWORD RoadSignFixTemp;
 DWORD dwEAEG = 0;
@@ -360,15 +283,10 @@ HeliKillHandler* m_pHeliKillHandler = NULL;
 ObjectDamageHandler* m_pObjectDamageHandler = NULL;
 ObjectBreakHandler* m_pObjectBreakHandler = NULL;
 FxSystemDestructionHandler* m_pFxSystemDestructionHandler = NULL;
-DrivebyAnimationHandler* m_pDrivebyAnimationHandler = NULL;
 
 CEntitySAInterface * dwSavedPlayerPointer = 0;
 CEntitySAInterface * activeEntityForStreaming = 0; // the entity that the streaming system considers active
 
-void HOOK_FindPlayerCoors();
-void HOOK_FindPlayerCentreOfWorld();
-void HOOK_FindPlayerHeading();
-void HOOK_CStreaming_Update_Caller();
 void HOOK_CHud_Draw_Caller();
 void HOOK_CRunningScript_Process();
 void HOOK_CExplosion_AddExplosion();
@@ -377,21 +295,16 @@ void HOOK_CCustomRoadsignMgr__RenderRoadsignAtomic();
 void HOOK_Trailer_BreakTowLink();
 void HOOK_CRadar__DrawRadarGangOverlay();
 void HOOK_CTaskComplexJump__CreateSubTask();
-void HOOK_CBike_ProcessRiderAnims();
 void HOOK_FxManager_CreateFxSystem ();
 void HOOK_FxManager_DestroyFxSystem ();
 void HOOK_CCam_ProcessFixed ();
 void HOOK_Render3DStuff ();
 void HOOK_CTaskSimplePlayerOnFoot_ProcessPlayerWeapon ();
-void HOOK_CPed_IsPlayer ();
 void HOOK_CTrain_ProcessControl_Derail ();
-void HOOK_CVehicle_SetupRender ();
-void HOOK_CVehicle_ResetAfterRender();
 void HOOK_CObject_Render ();
 void HOOK_EndWorldColors ();
 void HOOK_CWorld_ProcessVerticalLineSectorList ();
 void HOOK_ComputeDamageResponse_StartChoking ();
-void HOOK_CollisionStreamRead ();
 void HOOK_CPhysical_ApplyGravity ();
 void HOOK_VehicleCamStart ();
 void HOOK_VehicleCamTargetZTweak ();
@@ -446,8 +359,6 @@ void HOOK_CrashFix_Misc22 ();
 void HOOK_CrashFix_Misc23 ();
 void HOOK_CrashFix_Misc24 ();
 void HOOK_CheckAnimMatrix ();
-void HOOK_VehColCB ();
-void HOOK_VehCol ();
 void HOOK_isVehDriveTypeNotRWD ();
 void HOOK_isVehDriveTypeNotFWD ();
 void HOOK_PreFxRender ();
@@ -481,8 +392,6 @@ void Hook_CDummy_DTR ( );
 
 void Hook_CObject_DTR ( );
 
-void HOOK_CEntity_IsOnScreen_FixObjectScale ();
-
 void HOOK_CEventVehicleDamageCollision ( );
 
 void HOOK_CEventVehicleDamageCollision_Plane ( );
@@ -501,10 +410,6 @@ void HOOK_CObject_ProcessCollision ();
 void HOOK_CGlass_WindowRespondsToCollision ();
 
 void HOOK_FxManager_c__DestroyFxSystem ();
-
-void HOOK_CTaskSimpleGangDriveBy__ProcessPed();
-
-void HOOK_CAERadioTrackManager__ChooseMusicTrackIndex ( );
 
 CMultiplayerSA::CMultiplayerSA()
 {
@@ -552,13 +457,8 @@ void CMultiplayerSA::InitHooks()
     InitKeysyncHooks();
     InitShotsyncHooks();
     vehicle_lights_init ();
-    bSetCenterOfWorld = false;
-    bHasProcessedScript = false;
-    m_fNearClipDistance = DEFAULT_NEAR_CLIP_DISTANCE;
 
     eGameVersion version = pGameInterface->GetGameVersion ();
-
-    bSetCenterOfWorld = false;  
 
     //00442DC6  |. 0F86 31090000  JBE gta_sa_u.004436FD
     //00442DC6     E9 32090000    JMP gta_sa_u.004436FD
@@ -573,12 +473,6 @@ void CMultiplayerSA::InitHooks()
     MemPut < BYTE > ( 0x468EB5, 0xEB );
     MemPut < BYTE > ( 0x468EB6, 0x32 );
 
-    HookInstall(HOOKPOS_FindPlayerCoors, (DWORD)HOOK_FindPlayerCoors, 6);
-    HookInstall(HOOKPOS_FindPlayerCentreOfWorld, (DWORD)HOOK_FindPlayerCentreOfWorld, 6);
-    HookInstall(HOOKPOS_FindPlayerHeading, (DWORD)HOOK_FindPlayerHeading, 6);
-    HookInstall(HOOKPOS_CStreaming_Update_Caller, (DWORD)HOOK_CStreaming_Update_Caller, 7);
-    HookInstall(HOOKPOS_CHud_Draw_Caller, (DWORD)HOOK_CHud_Draw_Caller, 10);
-    HookInstall(HOOKPOS_CRunningScript_Process, (DWORD)HOOK_CRunningScript_Process, 6);
     HookInstall(HOOKPOS_CExplosion_AddExplosion, (DWORD)HOOK_CExplosion_AddExplosion, 6);
     HookInstall(HOOKPOS_CRealTimeShadowManager__ReturnRealTimeShadow, (DWORD)HOOK_CRealTimeShadowManager__ReturnRealTimeShadow, 6);
     HookInstall(HOOKPOS_CCustomRoadsignMgr__RenderRoadsignAtomic, (DWORD)HOOK_CCustomRoadsignMgr__RenderRoadsignAtomic, 6);
@@ -589,15 +483,11 @@ void CMultiplayerSA::InitHooks()
     HookInstall(HOOKPOS_FxManager_DestroyFxSystem, (DWORD)HOOK_FxManager_DestroyFxSystem, 7);
     HookInstall(HOOKPOS_CCam_ProcessFixed, (DWORD)HOOK_CCam_ProcessFixed, 5);
     HookInstall(HOOKPOS_CTaskSimplePlayerOnFoot_ProcessPlayerWeapon, (DWORD)HOOK_CTaskSimplePlayerOnFoot_ProcessPlayerWeapon, 7);
-    HookInstall(HOOKPOS_CPed_IsPlayer, (DWORD)HOOK_CPed_IsPlayer, 6);
     HookInstall(HOOKPOS_CTrain_ProcessControl_Derail, (DWORD)HOOK_CTrain_ProcessControl_Derail, 6);
-    HookInstall(HOOKPOS_CVehicle_SetupRender, (DWORD)HOOK_CVehicle_SetupRender, 5);
-    HookInstall(HOOKPOS_CVehicle_ResetAfterRender, (DWORD)HOOK_CVehicle_ResetAfterRender, 5);
     HookInstall(HOOKPOS_CObject_Render, (DWORD)HOOK_CObject_Render, 5);
     HookInstall(HOOKPOS_EndWorldColors, (DWORD)HOOK_EndWorldColors, 5);
     HookInstall(HOOKPOS_CWorld_ProcessVerticalLineSectorList, (DWORD)HOOK_CWorld_ProcessVerticalLineSectorList, 8);
     HookInstall(HOOKPOS_ComputeDamageResponse_StartChoking, (DWORD)HOOK_ComputeDamageResponse_StartChoking, 7);
-    HookInstall(HOOKPOS_CollisionStreamRead, (DWORD)HOOK_CollisionStreamRead, 6);
     HookInstall(HOOKPOS_VehicleCamStart, (DWORD)HOOK_VehicleCamStart, 6);
     HookInstall(HOOKPOS_VehicleCamTargetZTweak, (DWORD)HOOK_VehicleCamTargetZTweak, 8);
     HookInstall(HOOKPOS_VehicleCamLookDir1, (DWORD)HOOK_VehicleCamLookDir1, 5);
@@ -636,8 +526,6 @@ void CMultiplayerSA::InitHooks()
         RETURN_PreFxRender_BOTH = RETURN_PreFxRender_EU;
     }
 
-    HookInstall(HOOKPOS_VehColCB, (DWORD)HOOK_VehColCB, 29 );
-    HookInstall(HOOKPOS_VehCol, (DWORD)HOOK_VehCol, 9 );
     HookInstall(HOOKPOS_PreFxRender, (DWORD)HOOK_PreFxRender, 5 );
     HookInstall(HOOKPOS_PreHUDRender, (DWORD)HOOK_PreHUDRender, 5 );
     HookInstall(HOOKPOS_CAutomobile__ProcessSwingingDoor, (DWORD)HOOK_CAutomobile__ProcessSwingingDoor, 7 );
@@ -645,7 +533,6 @@ void CMultiplayerSA::InitHooks()
     HookInstall(HOOKPOS_CHandlingData_isNotRWD, (DWORD)HOOK_isVehDriveTypeNotRWD, 7 );
     HookInstall(HOOKPOS_CHandlingData_isNotFWD, (DWORD)HOOK_isVehDriveTypeNotFWD, 7 );
 
-    HookInstallCall ( CALL_CBike_ProcessRiderAnims, (DWORD)HOOK_CBike_ProcessRiderAnims );
     HookInstallCall ( CALL_Render3DStuff, (DWORD)HOOK_Render3DStuff );
     HookInstallCall ( CALL_VehicleCamUp, (DWORD)HOOK_VehicleCamUp );
     HookInstallCall ( CALL_VehicleLookBehindUp, (DWORD)HOOK_VehicleCamUp );
@@ -655,33 +542,6 @@ void CMultiplayerSA::InitHooks()
     HookInstallCall ( CALL_CTrafficLights_GetSecondaryLightState, (DWORD)HOOK_CTrafficLights_GetSecondaryLightState);
     HookInstall ( HOOKPOS_CTrafficLights_DisplayActualLight, (DWORD)HOOK_CTrafficLights_DisplayActualLight, 36 );
 
-    HookInstall(HOOKPOS_CEntity_IsOnScreen_FixObjectsScale, (DWORD)HOOK_CEntity_IsOnScreen_FixObjectScale, 7);
-
-
-
-    // Start of Building removal hooks
-    HookInstallCall ( HOOKPOS_LoadIPLInstance, (DWORD)HOOK_LoadIPLInstance );
-
-    HookInstallCall ( HOOKPOS_CWorld_LOD_SETUP, (DWORD)HOOK_CWorld_LOD_SETUP );
-
-    HookInstallCall ( HOOKPOS_CWorld_LOD_SETUP2, (DWORD)HOOK_CWorld_LOD_SETUP );
-
-    HookInstall ( HOOKPOS_CBuilding_DTR, (DWORD)Hook_CBuilding_DTR, 5 );
-
-    HookInstall ( HOOKPOS_CDummy_DTR, (DWORD)Hook_CDummy_DTR, 5 );
-
-    HookInstall ( HOOKPOS_CObject_DTR, (DWORD)Hook_CObject_DTR, 6 );
-
-    HookInstallCall ( HOOKPOS_AddBuildingInstancesToWorld_CWorldAdd, (DWORD)Hook_AddBuildingInstancesToWorld );
-
-    HookInstallCall( HOOKPOS_CWorld_ADD_CPopulation_ConvertToRealObject, (DWORD)Hook_CWorld_ADD_CPopulation_ConvertToRealObject );
-
-    HookInstallCall( HOOKPOS_CWorld_Remove_CPopulation_ConvertToDummyObject, (DWORD)HOOK_CWorld_Remove_CPopulation_ConvertToDummyObject );
-
-    HookInstall ( HOOKPOS_CWorld_ADD_CPopulation_ConvertToDummyObject, (DWORD)HOOK_CWorld_Add_CPopulation_ConvertToDummyObject, 6 );
-    
-    HookInstall ( HOOKPOS_ConvertToObject_CPopulationManageDummy, (DWORD)HOOK_ConvertToObject_CPopulationManageDummy, 6 );
-    // End of building removal hooks
 
     // Vehicle Collision Event Hooks
     HookInstall ( HOOKPOS_CEventVehicleDamageCollision, (DWORD)HOOK_CEventVehicleDamageCollision, 6 );
@@ -709,21 +569,8 @@ void CMultiplayerSA::InitHooks()
     // Post-destruction hook for FxSystems
     HookInstall ( HOOKPOS_FxManager_c__DestroyFxSystem, (DWORD)HOOK_FxManager_c__DestroyFxSystem, 5);
 
-    // CTaskSimpleGangDriveBy::ProcessPed hook for disabling certain animations
-    HookInstall(HOOKPOS_CTaskSimplyGangDriveBy__ProcessPed, (DWORD) HOOK_CTaskSimpleGangDriveBy__ProcessPed, 5);
-
-    SString strTrakLkupMd5 = CMD5Hasher::CalculateHexString( PathJoin( GetLaunchPath(), "audio", "CONFIG", "TrakLkup.dat" ) );
-    if ( strTrakLkupMd5 != "528E75D663B8BAE072A01351081A2145" )
-    {
-        // CAERadioTrackManager::ChooseMusicTrackIndex hook for fixing a crash with the steam audio files
-        HookInstall(HOOKPOS_CAERadioTrackManager__ChooseMusicTrackIndex, (DWORD) HOOK_CAERadioTrackManager__ChooseMusicTrackIndex, 10);
-    }
-
     // Disable GTA setting g_bGotFocus to false when we minimize
     MemSet ( (void *)ADDR_GotFocus, 0x90, pGameInterface->GetGameVersion () == VERSION_EU_10 ? 6 : 10 );
-
-    // Increase double link limit from 3200 ro 8000
-    MemPut < int > ( 0x00550F82, 8000 );
 
 
     // Disable GTA being able to call CAudio::StopRadio ()
@@ -804,10 +651,6 @@ void CMultiplayerSA::InitHooks()
 
     // DISABLE CCrime__ReportCrime
     MemPut < BYTE > ( 0x532010, 0xC3 );
-    
-    // Disables deletion of RenderWare objects during unloading of ModelInfo
-    // This is used so we can circumvent the limit of ~21 different vehicles by managing the RwObject ourselves
-    //*(BYTE *)0x4C9890 = 0xC3;
 
     /*
     004C021D   B0 00            MOV AL,0
@@ -910,14 +753,6 @@ void CMultiplayerSA::InitHooks()
 
     // Prevent gta stopping driveby players from falling off
     MemSet ( (LPVOID)0x6B5B17, 0x90, 6 );
-
-    // Increase VehicleStruct pool size
-    MemPut < BYTE > ( 0x5B8342 + 0, 0x33 );     // xor eax, eax
-    MemPut < BYTE > ( 0x5B8342 + 1, 0xC0 );
-    MemPut < BYTE > ( 0x5B8342 + 2, 0xB0 );     // mov al, 0xFF
-    MemPut < BYTE > ( 0x5B8342 + 3, 0xFF );
-    MemPut < BYTE > ( 0x5B8342 + 4, 0x8B );     // mov edi, eax
-    MemPut < BYTE > ( 0x5B8342 + 5, 0xF8 );
     
     /*
     // CTaskSimpleCarDrive: Swaps driveby for gang-driveby for drivers
@@ -1183,9 +1018,6 @@ void CMultiplayerSA::InitHooks()
     // Trains may infact go further than Los Santos
     MemPut < BYTE > ( 0x4418E0, 0xC3 );
 
-    // EXPERIMENTAL - disable unloading of cols
-   // MemSet ( (void*)0x4C4EDA, 0x90, 10 );
-
     // Make CTaskComplexSunbathe::CanSunbathe always return true
     MemPut < BYTE > ( 0x632140, 0xB0 );
     MemPut < BYTE > ( 0x632141, 0x01 );
@@ -1412,9 +1244,6 @@ void CMultiplayerSA::InitHooks()
     // Disable CStreaming::StreamVehiclesAndPeds_Always
     MemPut < BYTE > ( 0x40B650, 0xC3 );
 
-    // Double the size of CPlaceable matrix array to fix a crash after CMatrixLinkList::AddToList1
-    MemPut < int > ( 0x54F3A1, 1800 );
-
     SetSuspensionEnabled ( true );
 
     // Aircraft Max Height checks are at 0x6D2614 and 0x6D2625 edit the check to use our own float.
@@ -1435,22 +1264,14 @@ void CMultiplayerSA::InitHooks()
     // in CFire::ProcessFire
     MemSet((void*)0x53A651, 0x90, 0xA);
 
-    // Prevent money change (+12$) when entering a taxi/cabbie (fix for #8332)
-    MemSet ( (void*)0x6D1741, 0x90, 0x6D175F-0x6D1741 );
-
-    // Increase intensity of vehicle tail light corona
-    MemPut < BYTE > ( 0x6E1A22, 0xF0 );
-
-
     InitHooks_CrashFixHacks ();
 
     // Init our 1.3 hooks.
     Init_13 ();
-    InitHooks_LicensePlate ();
+    //InitHooks_LicensePlate (); MOVED TO CGameSA
     InitHooks_Direct3D();
     InitHooks_FixLineOfSightArgs();
     InitHooks_VehicleDamage();
-    InitHooks_VehicleLights();
 }
 
 
@@ -1834,21 +1655,6 @@ void CMultiplayerSA::RestoreFarClipDistance ( )
     }
 }
 
-float CMultiplayerSA::GetNearClipDistance ( void )
-{
-    return m_fNearClipDistance;
-}
-
-void CMultiplayerSA::SetNearClipDistance ( float fDistance )
-{
-    m_fNearClipDistance = Clamp( 0.1f, fDistance, 20.f );
-}
-
-void CMultiplayerSA::RestoreNearClipDistance ( void )
-{
-    m_fNearClipDistance = DEFAULT_NEAR_CLIP_DISTANCE;
-}
-
 float CMultiplayerSA::GetFogDistance ( )
 {
     return *(float *) 0xB7C4F4;
@@ -2221,20 +2027,10 @@ void CMultiplayerSA::SetFxSystemDestructionHandler ( FxSystemDestructionHandler 
     m_pFxSystemDestructionHandler = pHandler;
 }
 
-void CMultiplayerSA::SetDrivebyAnimationHandler(DrivebyAnimationHandler * pHandler)
-{
-    m_pDrivebyAnimationHandler = pHandler;
-}
-
 // What we do here is check if the idle handler has been set
 bool CMultiplayerSA::IsConnected ( void )
 {
     return m_pIdleHandler != NULL;
-}
-
-void CMultiplayerSA::HideRadar ( bool bHide )
-{
-    bHideRadar = bHide;
 }
 
 void CMultiplayerSA::AllowMouseMovement ( bool bAllow )
@@ -2258,284 +2054,6 @@ void CMultiplayerSA::DoSoundHacksOnLostFocus ( bool bLostFocus )
         MemPut < BYTE > ( 0x4D988B, 0xFF );
         MemPut < BYTE > ( 0x4D988C, 0xFF );
     }
-}
-
-void CMultiplayerSA::SetCenterOfWorld(CEntity * entity, CVector * vecPosition, FLOAT fHeading)
-{
-    if ( vecPosition )
-    {
-        bInStreamingUpdate = false;
-
-        vecCenterOfWorld.fX = vecPosition->fX;
-        vecCenterOfWorld.fY = vecPosition->fY;
-        vecCenterOfWorld.fZ = vecPosition->fZ;
-
-        if ( entity )
-        {
-            CEntitySA* pEntitySA = dynamic_cast < CEntitySA* > ( entity );
-            if ( pEntitySA )
-                activeEntityForStreaming = pEntitySA->GetInterface();
-        }
-    /*  else
-        {
-            if ( !bActiveEntityForStreamingIsFakePed )
-            {
-                activeEntityForStreaming = new CPedSAInterface();
-                MemSet (activeEntityForStreaming, 0, sizeof(CPedSAInterface));
-                activeEntityForStreaming->Placeable.matrix = new CMatrix_Padded();
-            }
-
-            bActiveEntityForStreamingIsFakePed = true;
-            
-            activeEntityForStreaming->Placeable.matrix->vPos.fX = vecPosition->fX;
-            activeEntityForStreaming->Placeable.matrix->vPos.fY = vecPosition->fY;
-            activeEntityForStreaming->Placeable.matrix->vPos.fZ = vecPosition->fZ;
-        }*/
-
-        //DWORD dwCurrentValue = *(DWORD *)FUNC_CPlayerInfoBase;
-        fFalseHeading = fHeading;
-        bSetCenterOfWorld = true;
-    }
-    else 
-    {
-        /*if ( bActiveEntityForStreamingIsFakePed )
-        {
-            delete activeEntityForStreaming->Placeable.matrix;
-            delete activeEntityForStreaming;
-        }
-
-        bActiveEntityForStreamingIsFakePed = false;*/
-        activeEntityForStreaming = NULL;
-        bSetCenterOfWorld = false;
-    }
-}
-
-void _declspec(naked) HOOK_FindPlayerCoors()
-{
-    _asm
-    {
-        // Only set our world of center if we have a center of world set
-        push    eax
-        mov     al, bSetCenterOfWorld
-        test    al, al
-        jz      dontset
-
-        // Only set our world of center if bInStreamingUpdate is true
-        mov     al, bInStreamingUpdate
-        test    al, al
-        jz      dontset
-
-        // Move our center of world into gta's senter of world when it requests so
-        pop     eax
-        lea     esi, vecCenterOfWorld
-        mov     edi, [esp+4]
-        mov     eax, edi
-        movsd
-        movsd
-        movsd           
-        retn    
-
-        // Continue. Don't replace the world center.
-        dontset:
-        pop     eax
-        mov     eax, [esp+8]
-        xor     edx, edx
-        mov     ecx, CMultiplayerSA::HOOKPOS_FindPlayerCoors
-        add     ecx, 6
-        jmp     ecx
-    }
-}
-
-void _declspec(naked) HOOK_CStreaming_Update_Caller()
-{
-    /*
-    0053BF09   8BF8             MOV EDI,EAX
-    0053BF0B   E8 6027EDFF      CALL gta_sa.0040E670
-    */
-
-    _asm
-    {
-        // Store all registers
-        pushad
-    }
-
-    // We're now in the streaming update
-    bInStreamingUpdate = true;
-
-    // We have an active entity for streaming?
-    if( activeEntityForStreaming )
-    {
-        // Do something...
-        _asm
-        {
-            mov     edi, CMultiplayerSA::FUNC_CPlayerInfoBase
-            mov     ebx, [edi]
-            mov     dwSavedPlayerPointer, ebx
-            mov     ebx, activeEntityForStreaming
-            mov     [edi], ebx
-        }
-    }
-
-    _asm
-    {
-        mov     edi, eax
-
-        // Call CMultiplayerSA::FUNC_CStreaming_Update
-        mov     eax, CMultiplayerSA::FUNC_CStreaming_Update
-        call    eax
-    }
-
-    // We have an entity for streaming?
-    if ( activeEntityForStreaming )
-    {
-        _asm
-        {
-            // ...
-            mov     edi, CMultiplayerSA::FUNC_CPlayerInfoBase
-            mov     ebx, dwSavedPlayerPointer
-            mov     [edi], ebx
-        }
-    }
-
-    // We're no longer in streaming update
-    bInStreamingUpdate = false;
-    _asm
-    {
-        // Restore registers
-        popad
-
-        // Continue at the old func
-        mov     eax, CMultiplayerSA::HOOKPOS_CStreaming_Update_Caller
-        add     eax, 7
-        jmp     eax
-    }
-}
-
-void _declspec(naked) HOOK_CHud_Draw_Caller()
-{
-    /*
-    0053E4FA   . E8 318BFCFF                          CALL gta_sa_u.00507030
-    0053E4FF   . E8 DC150500                          CALL gta_sa_u.0058FAE0
-    */
-    _asm
-    {
-        pushad
-
-        mov     edx, CMultiplayerSA::FUNC_CAudioEngine__DisplayRadioStationName
-        call    edx
-    }
-
-    if(!bSetCenterOfWorld)
-    {
-        _asm
-        {
-            mov     edx, CMultiplayerSA::FUNC_CHud_Draw
-            call    edx
-        }
-
-    }
-    else
-    {
-        /*if ( activeEntityForStreaming )
-        {
-            _asm
-            {
-                mov     edi, FUNC_CPlayerInfoBase
-                mov     ebx, [edi]
-                mov     dwSavedPlayerPointer, ebx
-                mov     ebx, activeEntityForStreaming
-                mov     [edi], ebx
-            }
-        }*/
-
-        if (!bHideRadar)
-        {
-            _asm
-            {
-                mov     edx, 0x58A330
-                call    edx
-            }
-        }
-
-        /*if ( activeEntityForStreaming )
-        {
-            _asm
-            {
-                mov     edi, FUNC_CPlayerInfoBase
-                mov     ebx, dwSavedPlayerPointer
-                mov     [edi], ebx
-            }
-        }*/
-    }
-
-    _asm
-    {
-        popad
-
-        mov     eax, CMultiplayerSA::HOOKPOS_CHud_Draw_Caller
-        add     eax, 10
-        jmp     eax
-    }
-}
-
-void _declspec(naked) HOOK_FindPlayerCentreOfWorld()
-{
-    /*
-    0056E250  /$ 8B4424 04      MOV EAX,DWORD PTR SS:[ESP+4]
-    0056E254  |. 85C0           TEST EAX,EAX
-    */
-
-    _asm
-    {
-        mov     al, bSetCenterOfWorld
-        test    al, al
-        jnz     hascenter
-
-        mov     eax, [esp+4]
-        test    eax, eax
-
-        mov     edx, CMultiplayerSA::HOOKPOS_FindPlayerCentreOfWorld
-        add     edx, 6
-        jmp     edx
-        
-
-        hascenter:
-        lea     eax, vecCenterOfWorld
-        retn
-    }
-    
-}
-
-void _declspec(naked) HOOK_FindPlayerHeading()
-{
-    /*
-    0056E450  /$ 8B4C24 04      MOV ECX,DWORD PTR SS:[ESP+4]
-    0056E454  |. 8BD1           MOV EDX,ECX
-    */
-
-    _asm
-    {
-        // Jump if bSetCenterOfWorld is true
-        push    eax
-        mov     al, bSetCenterOfWorld
-        test    al, al
-        pop     eax
-        jnz     hascenter
-
-        mov     ecx, [esp+4]
-        mov     edx, ecx
-
-        // Return to the hookpos
-        mov     eax, CMultiplayerSA::HOOKPOS_FindPlayerHeading
-        add     eax, 6
-        jmp     eax
-
-        // ..
-        hascenter:
-        fld     fFalseHeading
-        retn
-    }
-    
 }
 
 // this hook adds a null check to prevent the game crashing when objects are placed really high up (issue 517)
@@ -2616,52 +2134,6 @@ void _declspec(naked) HOOK_Trailer_BreakTowLink()
         mov     ecx, CMultiplayerSA::HOOKPOS_Trailer_BreakTowLink
         add     ecx, 6
         jmp     ecx
-    }
-}
-
-
-bool ProcessRiderAnims ( CPedSAInterface * pPedInterface )
-{
-    CPed * pPed = pGameInterface->GetPools ()->GetPed ( (DWORD*) pPedInterface );
-    if ( pPed )
-    {
-        CPedSA * pPedSA = dynamic_cast < CPedSA * > ( pPed );
-        if ( pPedSA->GetOccupiedSeat () == 0 )
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-
-CPedSAInterface * pRiderPed = NULL;
-void _declspec(naked) HOOK_CBike_ProcessRiderAnims ()
-{    
-    // This hook is no longer needed
-    _asm jmp    FUNC_CBike_ProcessRiderAnims
-
-    _asm
-    {
-        mov     pRiderPed, eax
-        pushad
-    }
-
-    if ( ProcessRiderAnims ( pRiderPed ) )
-    {
-        _asm
-        {
-            popad
-            jmp    FUNC_CBike_ProcessRiderAnims
-        }
-    }
-    else
-    {
-        _asm
-        {
-            popad
-            ret
-        }
     }
 }
 
@@ -2929,7 +2401,7 @@ void _declspec(naked) HOOK_FxManager_CreateFxSystem ()
         mov         [esp+12], eax
 
         // The original code we replaced
-        mov         eax, [esp+16]
+        mov         eax, [esp+10]
         mov         edx, [esp+8]
 
         // Jump back to the rest of the function we hooked
@@ -3086,171 +2558,6 @@ void _declspec(naked) HOOK_CTaskSimplePlayerOnFoot_ProcessPlayerWeapon ()
     }
 }
 
-CPedSAInterface * pIsPlayerPed = NULL;
-bool IsPlayer ()
-{
-    return true;
-}
-
-void _declspec(naked) HOOK_CPed_IsPlayer ()
-{
-    /*
-    005DF8F0  mov         eax,dword ptr [ecx+598h]      <hook>
-    005DF8F6  test        eax,eax                       <return>
-    */
-    _asm
-    {
-        mov    pIsPlayerPed, ecx
-        pushad
-    }
-    if ( IsPlayer () )
-    {
-        _asm
-        {
-            popad
-            mov         eax,dword ptr [ecx+598h]
-            jmp         RETURN_CPed_IsPlayer
-        }
-    }
-    else
-    {
-        _asm
-        {
-            popad
-            xor         al, al
-            ret
-        }
-    }
-}
-
-
-void CRunningScript_Process ( void )
-{
-    if ( !bHasProcessedScript )
-    {
-        CCamera * pCamera = pGameInterface->GetCamera();
-        pCamera->SetFadeColor ( 0, 0, 0 );
-        pCamera->Fade ( 0.0f, FADE_OUT );
-
-        DWORD dwFunc = 0x409D10; // RequestSpecialModel
-
-        char szModelName [64];
-        strcpy ( szModelName, "player" );
-        _asm
-        {
-            push    26
-            lea     eax, szModelName
-            push    eax
-            push    0
-            call    dwFunc
-            add     esp, 12
-        }
-
-        dwFunc = 0x40EA10; // load all requested models
-        _asm
-        {
-            push    1
-            call    dwFunc
-            add     esp, 4
-        }
-
-        dwFunc = 0x60D790; // setup player ped
-        _asm
-        {
-            push    0
-            call    dwFunc
-            add     esp, 4
-        }
-        
-        /*dwFunc = 0x05E47E0; // set created by
-        _asm
-        {
-            mov     edi, 0xB7CD98
-            mov     ecx, [edi]
-            push    2
-            call    dwFunc
-        }
-
-        dwFunc = 0x609520; // deactivate player ped
-        _asm
-        {
-            push    0
-            call    dwFunc
-            add     esp, 4
-        }
-*/
-        //_asm int 3
-        dwFunc = 0x420B80; // set position
-        fX = 2488.562f;
-        fY = -1666.864f;
-        fZ = 12.8757f;
-        _asm
-        {
-            mov     edi, 0xB7CD98
-            push    fZ
-            push    fY
-            push    fX
-            mov     ecx, [edi]
-            call    dwFunc
-        }
-        /*_asm int 3
-        dwFunc = 0x609540; // reactivate player ped
-        _asm
-        {
-            push    0
-            call    dwFunc
-            add     esp, 4
-        }
-
-        dwFunc = 0x61A5A0; // CTask::operator new
-        _asm
-        {
-            push    28
-            call    dwFunc
-            add     esp, 4
-        }
-
-        dwFunc = 0x685750; // CTaskSimplePlayerOnFoot::CTaskSimplePlayerOnFoot
-        _asm
-        {
-            mov     ecx, eax
-            call    dwFunc
-        }
-
-        dwFunc = 0x681AF0; // set task
-        _asm
-        {
-            mov     edi, 0xB7CD98
-            mov     edi, [edi]
-            mov     ecx, [edi+0x47C]
-            add     ecx, 4
-            push    0
-            push    4   
-            push    eax
-            call    dwFunc
-        }*/
-
-        
-        bHasProcessedScript = true;
-    }
-}
-
-void _declspec(naked) HOOK_CRunningScript_Process()
-{
-    _asm
-    {
-        pushad
-    }
-
-    CRunningScript_Process ();
-
-    _asm
-    {
-        popad
-        retn
-    }
-}
-
 static CVehicleSAInterface* pDerailingTrain = NULL;
 void _declspec(naked) HOOK_CTrain_ProcessControl_Derail()
 {
@@ -3370,7 +2677,7 @@ static void RestoreAlphaValues ()
  **/
 static RpAtomic* CVehicle_EAEG ( RpAtomic* pAtomic, void* )
 {
-    RwFrame* pFrame = ((RwFrame*)(((RwObject *)(pAtomic))->parent));
+    RwFrame* pFrame = pAtomic->parent;
     if ( pFrame )
     {
         switch ( pFrame->szName[0] )
@@ -3411,46 +2718,6 @@ static void SetVehicleAlpha ( )
     else
         bEntityHasAlpha = false;
 }
-
-static DWORD dwCVehicle_SetupRender_ret = 0x6D6517;
-void _declspec(naked) HOOK_CVehicle_SetupRender()
-{
-    _asm
-    {
-        mov     dwAlphaEntity, esi
-        pushad
-    }
-
-    SetVehicleAlpha ( );
-
-    _asm
-    {
-        popad
-        add     esp, 0x8
-        test    eax, eax
-        jmp     dwCVehicle_SetupRender_ret
-    }
-}
-
-static DWORD dwCVehicle_ResetAfterRender_ret = 0x6D0E43;
-void _declspec(naked) HOOK_CVehicle_ResetAfterRender ()
-{
-    _asm
-    {
-        pushad
-    }
-
-    RestoreAlphaValues ();
-
-    _asm
-    {
-        popad
-        add     esp, 0x0C
-        test    eax, eax
-        jmp     dwCVehicle_ResetAfterRender_ret
-    }
-}
-
 
 /**
  ** Objects
@@ -3807,7 +3074,6 @@ void CMultiplayerSA::SetBulletFireHandler ( BulletFireHandler* pHandler )
 
 void CMultiplayerSA::Reset ( void )
 {
-    bHideRadar = false;
     m_pExplosionHandler = NULL;
     m_pPreContextSwitchHandler = NULL;
     m_pPostContextSwitchHandler = NULL;
@@ -3824,47 +3090,22 @@ void CMultiplayerSA::Reset ( void )
 
 void CMultiplayerSA::ConvertEulerAnglesToMatrix ( CMatrix& Matrix, float fX, float fY, float fZ )
 {
-    CMatrix_Padded matrixPadded ( Matrix );
-    CMatrix_Padded* pMatrixPadded = &matrixPadded;
-    DWORD dwFunc = FUNC_CMatrix__ConvertFromEulerAngles;
-    int iUnknown = 21;
-    _asm
-    {
-        push    iUnknown
-        push    fZ
-        push    fY
-        push    fX
-        mov     ecx, pMatrixPadded
-        call    dwFunc
-    }
+    RwMatrix matrix ( Matrix );
+
+    matrix.SetRotationRad( fX, fY, fZ );
 
     // Convert the result matrix to the CMatrix we know
-    matrixPadded.ConvertToMatrix ( Matrix );
+    Matrix = matrix;
 }
 
 
 void CMultiplayerSA::ConvertMatrixToEulerAngles ( const CMatrix& Matrix, float& fX, float& fY, float& fZ )
 {
     // Convert the given matrix to a padded matrix
-    CMatrix_Padded matrixPadded ( Matrix );
+    RwMatrix matrix( Matrix );
 
-    // Grab its pointer and call gta's func
-    CMatrix_Padded* pMatrixPadded = &matrixPadded;
-    DWORD dwFunc = FUNC_CMatrix__ConvertToEulerAngles;
-
-    float* pfX = &fX;
-    float* pfY = &fY;
-    float* pfZ = &fZ;
-    int iUnknown = 21;
-    _asm
-    {
-        push    iUnknown
-        push    pfZ
-        push    pfY
-        push    pfX
-        mov     ecx, pMatrixPadded
-        call    dwFunc
-    }
+    // Convert stuff
+    matrix.GetRotationRad( fX, fY, fZ );
 }
 
 void CMultiplayerSA::RebuildMultiplayerPlayer ( CPed * player )
@@ -3973,16 +3214,6 @@ void CMultiplayerSA::SetLocalStatValue ( unsigned short usStat, float fValue )
 }
 
 
-float CMultiplayerSA::GetLocalStatValue ( unsigned short usStat )
-{
-    if ( usStat < MAX_FLOAT_STATS )
-        return localStatsData.StatTypesFloat [usStat];
-    else if ( usStat >= STATS_OFFSET && usStat < MAX_INT_FLOAT_STATS )
-        return (float)localStatsData.StatTypesInt [usStat - STATS_OFFSET];
-    return 0;
-}
-
-
 void CMultiplayerSA::SetLocalStatsStatic ( bool bStatic )
 {
     bLocalStatsStatic = bStatic;
@@ -4010,25 +3241,6 @@ void CMultiplayerSA::SetCustomCameraRotationEnabled ( bool bEnabled )
 void CMultiplayerSA::SetDebugVars ( float f1, float f2, float f3 )
 {
 
-}
-
-void _declspec(naked) HOOK_CollisionStreamRead ()
-{
-    if ( *(DWORD *)VAR_CollisionStreamRead_ModelInfo )
-    {
-        _asm
-        {
-            mov eax, dword ptr fs:[0]
-            jmp RETURN_CollisionStreamRead
-        }
-    }
-    else
-    {
-        _asm
-        {
-            ret
-        }
-    }
 }
 
 unsigned char ucDesignatedLightState = 0;
@@ -5143,20 +4355,6 @@ void CMultiplayerSA::SetAltWaterOrderEnabled ( bool bEnable )
     }
 }
 
-
-//
-// Notify core when rendering grass so we can do optimal things
-//
-void CPlantMgr_Render_Pre( void )
-{
-    g_pCore->NotifyRenderingGrass( true );
-}
-
-void CPlantMgr_Render_Post( void )
-{
-    g_pCore->NotifyRenderingGrass( false );
-}
-
 // The purpose of these hooks is to divide plant (grass) rendering in two:
 // rather than render *all* grass before or after the water like SA does, we render
 // underwater plants before the water and above-water plants after. This way, we have
@@ -5168,20 +4366,12 @@ void _declspec(naked) HOOK_RenderScene_Plants ()
 {
     _asm
     {
-        pushad
-        call    CPlantMgr_Render_Pre
-        popad
-        
         push 1                  // bRenderingBeforeWater
         movzx eax, bl           // bCamBelowWater
         push eax
         mov eax, 0x5DBAE0       // CPlantMgr::Render
         call eax
         add esp, 8
-
-        pushad
-        call    CPlantMgr_Render_Post
-        popad
         ret
     }
 }
@@ -5190,20 +4380,12 @@ void _declspec(naked) HOOK_RenderScene_end ()
 {
     _asm
     {
-        pushad
-        call    CPlantMgr_Render_Pre
-        popad
-
         push 0                  // bRenderingBeforeWater
         movzx eax, bl           // bCamBelowWater
         push eax
         mov eax, 0x5DBAE0       // CPlantMgr::Render
         call eax
         add esp, 8
-
-        pushad
-        call    CPlantMgr_Render_Post
-        popad
 
         pop ebx
         add esp, 8
@@ -5374,7 +4556,7 @@ bool CPed_GetWeaponSkill ()
     CPed * pPed = pGameInterface->GetPools ()->GetPed ( (DWORD*) weaponSkillPed );
     if ( pPed )
     {
-        CPed* pLocalPlayerPed = pGameInterface->GetPools ()->GetPedFromRef ( (DWORD)1 );
+        CPed* pLocalPlayerPed = pGameInterface->GetPools ()->GetPedFromRef ( (DWORD)0 );
         if ( pPed != pLocalPlayerPed )
         {
             if ( weaponSkillWeapon >= WEAPONTYPE_PISTOL && weaponSkillWeapon <= WEAPONTYPE_TEC9 )
@@ -5436,7 +4618,7 @@ void _declspec(naked) HOOK_CPed_GetWeaponSkill ()
 // applying the visual effect
 bool _cdecl CPed_AddGogglesModelCheck ( void* pPedInterface )
 {
-    return pGameInterface->GetPools ()->GetPed ( (DWORD *)pPedInterface ) == pGameInterface->GetPools ()->GetPedFromRef ( 1 );
+    return pGameInterface->GetPools ()->GetPed ( (DWORD *)pPedInterface ) == pGameInterface->GetPools ()->GetPedFromRef ( 0 );
 }
 
 void _declspec(naked) HOOK_CPed_AddGogglesModel ()
@@ -5639,65 +4821,6 @@ void _declspec(naked) HOOK_CheckAnimMatrix ()
     }
 }
 
-
-
-static SColor vehColors[4];
-
-void _cdecl SaveVehColors ( DWORD dwThis )
-{
-    CVehicle* pVehicle = pGameInterface->GetPools ()->GetVehicle ( (DWORD *)dwThis );
-    if ( pVehicle )
-    {
-        pVehicle->GetColor ( &vehColors[0], &vehColors[1], &vehColors[2], &vehColors[3], true );
-    }
-}
-
-
-void _declspec(naked) HOOK_VehCol ()
-{
-    _asm
-    {
-        // Get vehColors for this vehicle
-        pushad
-        push esi
-        call SaveVehColors
-        add esp, 4
-        popad
-
-        // Hooked from 006D6603  9 bytes
-        mov         dl, 3
-        mov         al, 2
-        mov         cl, 1
-        push        edx  
-        xor         edx,edx 
-        mov         dl,byte ptr [esi+434h] 
-        mov         dl, 0
-
-        jmp     RETURN_VehCol  // 006D660C
-    }
-}
-
-
-void _declspec(naked) HOOK_VehColCB ()
-{
-    _asm
-    {
-        // Hooked from 004C838D  29 bytes
-
-        // Apply vehColors for this vehicle
-        mov         cl,byte ptr [esi*4+vehColors.R] 
-        mov         byte ptr [eax+4],cl
-
-        mov         cl,byte ptr [esi*4+vehColors.G] 
-        mov         byte ptr [eax+5],cl
-
-        mov         cl,byte ptr [esi*4+vehColors.B] 
-        mov         byte ptr [eax+6],cl
-
-        jmp     RETURN_VehColCB  // 004C83AA
-    }
-}
-
 // Check if this vehicle is allowed to process swinging doors.
 static DWORD dwSwingingDoorAutomobile;
 static const DWORD dwSwingingRet1 = 0x6A9DB6;
@@ -5858,385 +4981,6 @@ void CMultiplayerSA::SetSuspensionEnabled ( bool bEnabled )
 }
 
 
-// Variables
-SIPLInst* pEntityWorldAdd = NULL;
-CEntitySAInterface * pLODInterface = NULL; 
-bool bNextHookSetModel = false;
-bool bCodePathCheck = false;
-
-bool CheckRemovedModelNoSet ( )
-{
-    // Init our variables
-    bNextHookSetModel = false;
-    bCodePathCheck = bNextHookSetModel;
-    pLODInterface = NULL;
-    CWorld* pWorld = pGameInterface->GetWorld();
-    // You never know.
-    if ( pWorld )
-    {
-        // Is the model in question even removed?
-        if ( pWorld->IsModelRemoved ( pEntityWorldAdd->m_nModelIndex ) )
-        {
-            // is the replaced model in the spherical radius of any building removal
-            if ( pGameInterface->GetWorld ( )->IsRemovedModelInRadius ( pEntityWorldAdd ) )
-            {
-                // if it is next hook remove it from the world
-                return true;
-            }
-        }
-        return false;
-    }
-    return false;
-}
-// Binary
-bool CheckRemovedModel ( )
-{
-    TIMING_CHECKPOINT( "+CheckRemovedModel" );
-    bNextHookSetModel = CheckRemovedModelNoSet ( );
-    TIMING_CHECKPOINT( "-CheckRemovedModel" );
-    bCodePathCheck = true;
-    return bNextHookSetModel;
-}
-
-// Binary
-// Hook 1
-void _declspec(naked) HOOK_LoadIPLInstance ()
-{
-    _asm
-    {
-        pushad
-        mov pEntityWorldAdd, ecx
-    }
-    if ( pEntityWorldAdd )
-    {
-        CheckRemovedModel ( );
-    }
-    _asm
-    {
-        popad
-        jmp CALL_LoadIPLInstance
-        jmp RETURN_LoadIPLInstance
-    }
-}
-static bool bTest = false;
-// Binary
-void HideEntitySomehow ( )
-{
-    TIMING_CHECKPOINT( "+HideEntitySomehow" );
-    // Did we get instructed to set the model
-    if ( bNextHookSetModel && pLODInterface )
-    {
-        // Init pInterface with the Initial model
-        CEntitySAInterface * pInterface = pLODInterface;
-        // Grab the removal for the interface
-        SBuildingRemoval* pBuildingRemoval = pGameInterface->GetWorld ( )->GetBuildingRemoval ( pInterface );
-        // Remove down the LOD tree
-        if ( pBuildingRemoval && pInterface && pInterface != NULL && pInterface->bIsProcObject == 0 && ( pInterface->nType == ENTITY_TYPE_BUILDING || pInterface->nType == ENTITY_TYPE_DUMMY ) )
-        {
-            // Add the LOD to the list
-            pBuildingRemoval->AddBinaryBuilding ( pInterface );
-            // Remove the model from the world
-            pGameInterface->GetWorld ( )->Remove ( pInterface, BuildingRemoval );
-            // Get next LOD ( LOD's can have LOD's so we keep checking pInterface )
-            //pInterface = pInterface->m_pLod;
-        }
-    }
-    else if ( bCodePathCheck && pLODInterface )
-    {
-        // Init pInterface with the Initial model
-        CEntitySAInterface * pInterface = pLODInterface;
-        if ( pInterface && pInterface != NULL && pInterface->bIsProcObject == 0 && ( pInterface->nType == ENTITY_TYPE_BUILDING || pInterface->nType == ENTITY_TYPE_DUMMY ) )
-        {
-            pGameInterface->GetWorld()->AddBinaryBuilding ( pInterface );
-        }
-    }
-    // Reset our next hook variable
-    bNextHookSetModel = false;
-    bCodePathCheck = bNextHookSetModel;
-    TIMING_CHECKPOINT( "-HideEntitySomehow" );
-}
-// Binary
-// Hook 2
-void _declspec(naked) HOOK_CWorld_LOD_SETUP ()
-{
-    _asm
-    {
-        pushad
-        mov pLODInterface, esi
-    }
-    HideEntitySomehow ( );
-    _asm
-    {
-        popad
-        jmp CALL_CWorld_LODSETUP
-    }
-}
-
-CEntitySAInterface * pBuildingAdd = NULL;
-void StorePointerToBuilding ( )
-{
-    if ( pBuildingAdd != NULL )
-    {
-        pGameInterface->GetWorld ( )->AddDataBuilding ( pBuildingAdd );
-    }
-}
-
-// Called when a data entity is added to the world (this happens once when the game loads so we just dump those in a list and we can sift through when someone tries to remove.)
-void _declspec(naked) Hook_AddBuildingInstancesToWorld ( )
-{
-    _asm
-    {
-        pushad
-        mov pBuildingAdd, edx
-    }
-    StorePointerToBuilding ( );
-    _asm
-    {
-        popad
-        jmp JMP_CWorld_Add_AddBuildingInstancesToWorld_CALL_CWorldAdd
-    }
-}
-
-bool CheckForRemoval ( )
-{
-    // Did we get instructed to set the model
-    if ( pLODInterface )
-    {
-        // Init pInterface with the Initial model
-        CEntitySAInterface * pInterface = pLODInterface;
-        // Remove down the LOD tree
-        if ( pGameInterface->GetWorld ( )->IsObjectRemoved ( pInterface ) )
-        {
-            return true;
-        }
-    }
-    return false;
-}
-
-// Call to CWorld::Add in CPopulation::ConvertToRealObject we just use this to get a list of pointers to valid objects for instant removal
-void _declspec(naked) Hook_CWorld_ADD_CPopulation_ConvertToRealObject ( )
-{
-    _asm
-    {
-        pushad
-        mov pBuildingAdd, esi
-        mov pLODInterface, esi
-    }
-    StorePointerToBuilding ( );
-    _asm
-    {
-        popad
-        jmp JMP_CWorld_Add_CPopulation_ConvertToRealObject_CallCWorldAdd
-        jmp JMP_CWorld_Add_CPopulation_ConvertToRealObject_Retn
-    }
-}
-
-void RemoveObjectIfNeeded ( )
-{
-    TIMING_CHECKPOINT( "+RemoveObjectIfNeeded" );
-    SBuildingRemoval* pBuildingRemoval = pGameInterface->GetWorld ( )->GetBuildingRemoval ( pLODInterface );
-    if ( pBuildingRemoval != NULL )
-    {
-        if ( (DWORD)(pBuildingAdd->vtbl) != VTBL_CPlaceable )
-        {
-            pBuildingRemoval->AddDataBuilding ( pBuildingAdd );
-            pGameInterface->GetWorld ( )->Remove( pBuildingAdd, BuildingRemoval3 );
-        }
-
-        if ( (DWORD)(pLODInterface->vtbl) != VTBL_CPlaceable )
-        {
-            pBuildingRemoval->AddDataBuilding ( pLODInterface );
-            pGameInterface->GetWorld ( )->Remove( pLODInterface, BuildingRemoval4 );
-        }
-    }
-    TIMING_CHECKPOINT( "-RemoveObjectIfNeeded" );
-}
-
-// on stream in -> create and remove it from the world just after so we can restore easily
-void _declspec (naked) HOOK_ConvertToObject_CPopulationManageDummy ( )
-{
-    _asm
-    {
-        pushad
-        mov pBuildingAdd, edx
-        mov pLODInterface, edx
-    }
-    _asm
-    {
-        popad
-        push edx
-        call CALL_Convert_To_Real_Object_CPopulation_ManageDummy
-        pop ecx
-        mov pLODInterface, ecx
-        pushad
-    }
-    RemoveObjectIfNeeded ( );
-    _asm
-    {
-        popad
-        jmp JMP_RETN_Cancel_CPopulation_ManageDummy
-    }
-}
-
-CEntitySAInterface * pBuildingRemove = NULL;
-void RemovePointerToBuilding ( )
-{
-    if ( pBuildingRemove->nType == ENTITY_TYPE_BUILDING || pBuildingRemove->nType == ENTITY_TYPE_DUMMY || pBuildingRemove->nType == ENTITY_TYPE_OBJECT )
-    {
-        pGameInterface->GetWorld ( )->RemoveWorldBuildingFromLists ( pBuildingRemove );
-    }
-}
-
-DWORD dwCWorldRemove = 0x563280;
-// Call to CWorld::Remove in CPopulation::ConvertToDummyObject this is called just before deleting a CObject so we remove the CObject while we are there and remove the new dummy if we need to do so before returning
-void _declspec(naked) HOOK_CWorld_Remove_CPopulation_ConvertToDummyObject ( )
-{
-    _asm
-    {
-        pushad
-        mov pBuildingRemove, esi
-        mov pBuildingAdd, edi
-        mov pLODInterface, edi
-    }
-    TIMING_CHECKPOINT( "+RemovePointerToBuilding" );
-    RemovePointerToBuilding ( );
-    StorePointerToBuilding ( );
-    RemoveObjectIfNeeded ( );
-    TIMING_CHECKPOINT( "-RemovePointerToBuilding" );
-    _asm
-    {
-        popad
-        jmp dwCWorldRemove
-    }
-}
-// if it's replaced get rid of it
-void RemoveDummyIfReplaced ( )
-{
-    SBuildingRemoval* pBuildingRemoval = pGameInterface->GetWorld ( )->GetBuildingRemoval ( pLODInterface );
-    if ( pBuildingRemoval != NULL )
-    {
-        if ( (DWORD)(pBuildingAdd->vtbl) != VTBL_CPlaceable )
-        {
-            pBuildingRemoval->AddDataBuilding ( pBuildingAdd );
-            pGameInterface->GetWorld ( )->Remove( pBuildingAdd, BuildingRemoval5 );
-        }
-    }
-}
-
-// Function that handles dummy -> object so we can cancel this process if need be
-void _declspec(naked) HOOK_CWorld_Add_CPopulation_ConvertToDummyObject ( )
-{
-    _asm
-    {
-        pushad
-        mov pLODInterface, edi
-        mov pBuildingAdd, edi
-    }
-
-    TIMING_CHECKPOINT( "+CheckForRemoval" );
-    StorePointerToBuilding ( );
-    if ( CheckForRemoval ( ) )
-    {
-        TIMING_CHECKPOINT( "-CheckForRemoval" );
-        _asm
-        {
-            popad
-            jmp JMP_RETN_Cancelled_CPopulation_ConvertToDummyObject
-        }
-    }
-    else
-    {
-        TIMING_CHECKPOINT( "-CheckForRemoval" );
-        _asm
-        {
-            popad
-            push edi
-            call CALL_CWorld_Add_CPopulation_ConvertToDummyObject
-            jmp JMP_RETN_Called_CPopulation_ConvertToDummyObject
-        }
-    }
-}
-
-// Destructors to catch element deletion so we can delete their entries
-void _declspec(naked) Hook_CBuilding_DTR ( )
-{
-    _asm
-    {
-        pushad
-        mov pBuildingRemove, ecx
-    }
-    RemovePointerToBuilding ( );
-    _asm
-    {
-        popad
-        jmp JMP_CBuilding_DTR
-    }
-}
-
-void _declspec(naked) Hook_CDummy_DTR ( )
-{
-    _asm
-    {
-        pushad
-        mov pBuildingRemove, ecx
-    }
-    RemovePointerToBuilding ( );
-    _asm
-    {
-        popad
-        jmp JMP_CDummy_DTR
-    }
-}
-
-DWORD dwObjectVtbl = 0x866F60;
-void _declspec(naked) Hook_CObject_DTR ( )
-{
-    _asm
-    {
-        pushad
-        mov pBuildingRemove, esi
-    }
-    RemovePointerToBuilding ( );
-    _asm
-    {
-        popad
-        mov dword ptr [esi], offset dwObjectVtbl
-        jmp JMP_CObject_DTR
-    }
-}
-
-static DWORD dwEntityVtbl;
-static DWORD dwMultResult;
-void _declspec(naked) HOOK_CEntity_IsOnScreen_FixObjectScale ()
-{
-    _asm
-    {
-        push    0xB6FA74
-
-        pushad
-        mov     eax, [esi]
-        mov     dwEntityVtbl, eax
-    }
-
-    if ( dwEntityVtbl == 0x866F60 )
-        goto IsOnScreen_IsObject;
-
-    _asm
-    {
-        popad
-        mov     esi, ecx
-        jmp     JMP_CEntity_IsOnScreen_FixObjectsScale
-
-IsOnScreen_IsObject:
-        popad
-        fld     [eax+0x24]
-        fld     [esi+0x15C]
-        fmulp   st(1), st(0)
-        fstp    dwMultResult
-        mov     esi, dwMultResult
-        jmp     JMP_CEntity_IsOnScreen_FixObjectsScale
-    }
-}
 CVehicleSAInterface * pCollisionVehicle = NULL;
 void TriggerVehicleCollisionEvent ( )
 {
@@ -6495,8 +5239,6 @@ void _declspec(naked) HOOK_CObject_ProcessDamage ( )
         _asm
         {
             popad
-            ffree   st(0)
-            fdecstp
             jmp     RETURN_CObject_ProcessDamage_Cancel
         }
     }
@@ -6625,246 +5367,5 @@ void _declspec(naked) HOOK_FxManager_c__DestroyFxSystem ()
         pop ebx
         pop ecx
         retn 4
-    }
-}
-
-DWORD pProcessedGangDriveBySimpleTask;
-void CTaskSimpleGangDriveBy__ProcessPed()
-{
-    AnimationId *pRequiredAnim = ((AnimationId*) (pProcessedGangDriveBySimpleTask + 0x24));
-    AssocGroupId requiredAnimGroup = *((AssocGroupId*) (pProcessedGangDriveBySimpleTask + 0x28));
-
-    if (m_pDrivebyAnimationHandler != NULL)
-        *pRequiredAnim = m_pDrivebyAnimationHandler(*pRequiredAnim, requiredAnimGroup);
-}
-
-void _declspec(naked) HOOK_CTaskSimpleGangDriveBy__ProcessPed()
-{
-    // esi contains 'this'
-    _asm
-    {
-        mov pProcessedGangDriveBySimpleTask, esi
-        pushad
-    }
-    CTaskSimpleGangDriveBy__ProcessPed();
-    _asm
-    {
-        popad;
-        // Replaced code
-        cmp[esi + 28h], edi;    // .text:0062D5A7
-        jnz 0x62D5C1;           // .text:0062D5AA
-        // Return to original code
-        jmp RETURN_CTaskSimplyGangDriveBy__ProcessPed;
-    }
-     
-}
-
-
-eRadioStationID dwStationID = UNKNOWN;
-BYTE bTrackID = 0;
-DWORD dwNumberOfTracks = 0;
-
-DWORD pTrackNumbers[] = {
-    0x2, // radio off, somewhere 2 is subtracted from this so that's why it's 2
-    0xB, // playback fm
-    0xF, // k-rose
-    0xF, // k-dst
-    0xE, // bounce fm
-    0x10, // sf-ur
-    0xE, // rls
-    0xD, // radio x
-    0xD, // csr
-    0xE, // k-jah
-    0xC, // master sounds
-    0x1F,
-};
-
-
-bool ChooseMusicTrackIndex_SteamFix ( )
-{
-    // update the number of tracks from the array above as it has the new values
-    dwNumberOfTracks = pTrackNumbers[dwStationID];
-
-    // switch contains all radio stations and music that has been removed from the game
-
-    switch ( dwStationID )
-    {
-    case Playback_FM:
-        {
-            // disable "Critical Beatdown"
-            if ( bTrackID == 9 )
-            {
-                return true;
-            }
-        }
-        break;
-    case K_Rose:
-        break;
-    case K_DST:
-        {
-            // disable "Running Down A Dream"
-            if ( bTrackID == 0 )
-            {
-                return true;
-            }
-            // disable "Woman To Woman"
-            else if ( bTrackID == 2 )
-            {
-                return true;
-            }
-        }
-        break;
-    case BOUNCE_FM:
-        {
-            // disable "You Dropped A Bomb On Me"
-            if ( bTrackID == 3 )
-            {
-                return true;
-            }
-            // disable "Yum Yum"
-            else if ( bTrackID == 8 )
-            {
-                return true;
-            }
-            // disable "Running Away"
-            else if ( bTrackID == 15 )
-            {
-                return true;
-            }
-        }
-        break;
-    case SF_UR:
-        break;
-    case RLS:
-        {
-            // "I Don't Give A f*ck"
-            if ( bTrackID == 1 )
-            {
-                return true;
-            }
-            // disable "Express Yourself"
-            else if ( bTrackID == 6 )
-            {
-                return true;
-            }
-        }
-        break;
-    case RADIO_X:
-        {
-            // disable "Hellraiser"
-            if ( bTrackID == 6 )
-            {
-                return true;
-            }
-            // disable "Killing in the Name of"
-            else if ( bTrackID == 7 )
-            {
-                return true;
-            }
-        }
-        break;
-    case CSR_1039:
-        break;
-    case K_JAH_WEST:
-        {
-            // disable "Ring My Bell"
-            if ( bTrackID == 2 )
-            {
-                return true;
-            }
-            // disable "Don't Let It Go To Your Head"
-            else if ( bTrackID == 3 )
-            {
-                return true;
-            }
-        }
-        break;
-    case Master_Sounds:
-        {
-            // disable "Express Yourself"
-            if ( bTrackID == 0 )
-            {
-                return true;
-            }
-            // disable "Rock Creek Park"
-            else if ( bTrackID == 5 )
-            {
-                return true;
-            }
-            // disable "Funky President"
-            else if ( bTrackID == 7 )
-            {
-                return true;
-            }
-            // disable "Grunt"
-            else if ( bTrackID == 8 )
-            {
-                return true;
-            }
-            // disable "Soul power"
-            else if ( bTrackID == 11 )
-            {
-                return true;
-            }
-            // disable "The payback"
-            else if ( bTrackID == 16 )
-            {
-                return true;
-            }
-        }
-        break;
-    case WCTR:
-        break;
-    }
-#ifdef PRINT_SONGID
-    OutputDebugLine(SString("%i %i", dwStationID, bTrackID ));
-#endif
-    // song is allowed
-    return false;
-}
-/*
-    This hook is ultra important as of 09/11/2014 as steam has released a patch which changes the audio files and causes the following consequenses:
-        1) a division by zero when trying to start deleted songs due to the track list being malformed
-        2) the game getting stuck on a specific song and never carrying on as the game tries to play 15 songs before restarting on a channel that only has 12
-
-    These are as a result of the fact that steam updated gta-sa.exe and gta_sa.exe is our old exe which contains the arrays the game had originally for audio files
-    All the files related to the deleted audio are zeroed and decompress to 5kb 0 length files which includes intros and outros.
-*/
-void _declspec(naked) HOOK_CAERadioTrackManager__ChooseMusicTrackIndex ( )
-{
-    // esi is our station id    
-    // al has the random number picked (music id the game wants to play)
-
-
-    _asm
-    {
-        add esp, 8              // fix the stack from the function call above as we overrote this instruction
-        pushad                  // save our registers
-        mov dwStationID, esi    // save esi, we need the station ID above
-        mov bTrackID, al        // save our track ID which we need to figure out if we can play it.
-    }
-
-    // returns true if this is a restricted song
-    if ( ChooseMusicTrackIndex_SteamFix ( ) )
-    {
-        _asm
-        {
-            // pop the stack
-            popad
-            // go back to generating a number again, this is so that we don't get stuck in an infinite loop if we tried to increment or decrement
-            // SA tries to avoid playing the same songs close together so it won't play anything that's already played once until we have done a full loop
-            // as such generating a new ID is better than trying to fix it (this is how the game naturally works anyway)
-            jmp RETURN_CAERadioTrackManager__ChooseMusicTrackIndex_Regenerate
-        }
-    }
-    // looks good, carry on
-    _asm
-    {
-        // pop the stack
-        popad
-        // this number of tracks needs fixing because we need the game to know about the deletions here as it is used for the wrap around logic of radio 
-        mov ecx, dwNumberOfTracks
-        // jump back to normal processing
-        jmp RETURN_CAERadioTrackManager__ChooseMusicTrackIndex
     }
 }

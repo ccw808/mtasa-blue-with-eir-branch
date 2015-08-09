@@ -17,7 +17,6 @@
 #ifdef WIN32
     #include <direct.h>
     #include <shellapi.h>
-    #include <TlHelp32.h>
 #else
     #include <wctype.h>
     #ifndef _GNU_SOURCE
@@ -638,7 +637,7 @@ void SharedUtil::AddReportLog ( uint uiId, const SString& strText, uint uiAmount
     SString strPathFilename = PathJoin ( GetMTADataPath (), "report.log" );
     MakeSureDirExists ( strPathFilename );
 
-    SString strMessage ( "%u: %s %s [%s] - %s\n", uiId, GetTimeString ( true, false ).c_str (), GetReportLogHeaderText ().c_str (), GetReportLogProcessTag().c_str (), strText.c_str () );
+    SString strMessage ( "%u: %s %s - %s\n", uiId, GetTimeString ( true, false ).c_str (), GetReportLogHeaderText ().c_str (), strText.c_str () );
     FileAppend ( strPathFilename, &strMessage.at ( 0 ), strMessage.length () );
     OutputDebugLine ( SStringX ( "[ReportLog] " ) + strMessage );
 }
@@ -658,43 +657,6 @@ SString SharedUtil::GetReportLogContents ( void )
     FileLoad ( strReportFilename, buffer );
     buffer.push_back ( 0 );
     return &buffer[0];
-}
-
-SString SharedUtil::GetReportLogProcessTag ( void )
-{
-    static SString strResult;
-    if ( strResult.empty() )
-    {
-        int pid = GetCurrentProcessId();
-        if ( !IsGTAProcess() )
-        {
-            // Use pid only for launcher
-            strResult = SString( "%05d", pid );
-        }
-        else
-        {
-            // Use pid & parent pid for game
-            int parentPid = 0;
-            HANDLE h = CreateToolhelp32Snapshot( TH32CS_SNAPPROCESS, 0 );
-            PROCESSENTRY32W pe = { 0 };
-            pe.dwSize = sizeof( PROCESSENTRY32W );
-            if( Process32FirstW( h, &pe ))
-            {
-    	        do
-                {
-    		        if ( pe.th32ProcessID == pid )
-                    {
-                        parentPid = pe.th32ParentProcessID;
-                        break;
-    		        }
-    	        }
-                while( Process32NextW( h, &pe ) );
-            }
-            CloseHandle( h );
-            strResult = SString( "%05d-%05d", parentPid, pid );
-        }
-    }
-    return strResult;
 }
 
 // Client logfile.txt
@@ -1609,12 +1571,6 @@ namespace SharedUtil
             store.ullPrevUserTimeUs = ullUserTimeUs;
             store.ullPrevKernelTimeUs = ullKernelTimeUs;
             store.ullPrevCPUMeasureTimeMs = ullCPUMeasureTimeMs;
-
-            // Updated smoothed values
-            float fAlpha = 1.f / store.fAvgTimeSeconds;
-            store.fUserPercentAvg = Lerp( store.fUserPercentAvg, fAlpha, store.fUserPercent );
-            store.fKernelPercentAvg = Lerp( store.fKernelPercentAvg, fAlpha, store.fKernelPercent );
-            store.fTotalCPUPercentAvg = Lerp( store.fTotalCPUPercentAvg, fAlpha, store.fTotalCPUPercent );
         }  
     }
 
@@ -1743,30 +1699,4 @@ namespace SharedUtil
         return false;
     }
 
-}
-
-
-//
-// For checking MTA library module versions
-//
-MTAEXPORT void GetLibMtaVersion( char* pBuffer, uint uiMaxSize )
-{
-    SString strVersion( "%d.%d.%d-%d.%05d.%d"
-#ifdef MTASA_VERSION_MAJOR
-                            ,MTASA_VERSION_MAJOR
-                            ,MTASA_VERSION_MINOR
-                            ,MTASA_VERSION_MAINTENANCE
-                            ,MTASA_VERSION_TYPE
-                            ,MTASA_VERSION_BUILD
-#else
-                            ,0
-                            ,0
-                            ,0
-                            ,0
-                            ,0
-#endif
-                            ,0
-                            );
-    uint uiLengthInclTerm = strVersion.length() + 1;
-    STRNCPY( pBuffer, *strVersion, Max( uiLengthInclTerm, uiMaxSize ) );
 }

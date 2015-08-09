@@ -232,7 +232,20 @@ bool CLuaArguments::Call ( CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFuncti
     if ( iret == LUA_ERRRUN || iret == LUA_ERRMEM )
     {
         SString strRes = ConformResourcePath ( lua_tostring( luaVM, -1 ) );
-        g_pGame->GetScriptDebugging()->LogPCallError( luaVM, strRes );
+        
+        vector <SString> vecSplit;
+        strRes.Split ( ":", vecSplit );
+        
+        if ( vecSplit.size ( ) >= 3 )
+        {
+            SString strFile = vecSplit[0];
+            int     iLine   = atoi ( vecSplit[1].c_str ( ) );
+            SString strMsg  = vecSplit[2].substr ( 1 );
+            
+            g_pGame->GetScriptDebugging()->LogError ( strFile, iLine, strMsg );
+        }
+        else
+            g_pGame->GetScriptDebugging()->LogError ( luaVM, "%s", strRes.c_str () );
 
         // cleanup the stack
         while ( lua_gettop ( luaVM ) - luaStackPointer > 0 )
@@ -286,7 +299,7 @@ bool CLuaArguments::CallGlobal ( CLuaMain* pLuaMain, const char* szFunction, CLu
     if ( iret == LUA_ERRRUN || iret == LUA_ERRMEM )
     {
         std::string strRes = ConformResourcePath ( lua_tostring( luaVM, -1 ) );
-        g_pGame->GetScriptDebugging()->LogPCallError( luaVM, strRes );
+        g_pGame->GetScriptDebugging()->LogError ( luaVM, "%s", strRes.c_str () );
 
         // cleanup the stack
         while ( lua_gettop ( luaVM ) - luaStackPointer > 0 )
@@ -515,25 +528,11 @@ bool CLuaArguments::ReadFromBitStream ( NetBitStreamInterface& bitStream, std::v
         bKnownTablesCreated = true;
     }
 
-    unsigned int uiNumArgs;
-    bool bResult;
-#if MTA_DM_VERSION >= 0x150
-    bResult = bitStream.ReadCompressed ( uiNumArgs );
-#else
-    if ( bitStream.Version () < 0x05B )
-    {
-        unsigned short usNumArgs;
-        bResult = bitStream.ReadCompressed ( usNumArgs );
-        uiNumArgs = usNumArgs;
-    }
-    else
-        bResult = bitStream.ReadCompressed ( uiNumArgs );
-#endif
-
-    if ( bResult )
+    unsigned short usNumArgs;
+    if ( bitStream.ReadCompressed ( usNumArgs ) )
     {
         pKnownTables->push_back ( this );
-        for ( unsigned int ui = 0; ui < uiNumArgs; ++ui )
+        for ( unsigned short us = 0 ; us < usNumArgs ; us++ )
         {
             CLuaArgument* pArgument = new CLuaArgument ( bitStream, pKnownTables );
             m_Arguments.push_back ( pArgument );
@@ -558,20 +557,7 @@ bool CLuaArguments::WriteToBitStream ( NetBitStreamInterface& bitStream, CFastHa
 
     bool bSuccess = true;
     pKnownTables->insert ( make_pair ( (CLuaArguments *)this, pKnownTables->size () ) );
-    
-#if MTA_DM_VERSION >= 0x150
-    bitStream.WriteCompressed ( static_cast < unsigned int > ( m_Arguments.size () ) );
-#else
-    if ( ExtractVersionStringBuildNumber ( g_pGame->GetPlayerManager ()->GetLowestConnectedPlayerVersion () ) < ExtractVersionStringBuildNumber( "1.4.0-9.06858" ) && MTASA_VERSION_TYPE != VERSION_TYPE_CUSTOM )
-        bitStream.WriteCompressed ( static_cast < unsigned short > ( m_Arguments.size () ) );
-    else
-    {
-        // Send 0xFFFF to indicate that we're using the new version | TODO: Remove this in 1.5
-        bitStream.WriteCompressed ( static_cast < unsigned short > ( 0xFFFF ) );
-        bitStream.WriteCompressed ( static_cast < unsigned int > ( m_Arguments.size () ) );
-    }
-#endif
-
+    bitStream.WriteCompressed ( static_cast < unsigned short > ( m_Arguments.size () ) );
     vector < CLuaArgument* > ::const_iterator iter = m_Arguments.begin ();
     for ( ; iter != m_Arguments.end () ; ++iter )
     {

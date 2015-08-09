@@ -13,11 +13,9 @@
 #include "StdInc.h"
 #include "po_parser.hpp"
 
-CLanguage::CLanguage ( Dictionary Dict, const SString& strLocale, const SString& strLangName )
+CLanguage::CLanguage ( Dictionary Dict )
 { 
     m_Dict = Dict;
-    m_strCode = strLocale;
-    m_strName = strLangName;
 }
 
 CLanguage::CLanguage ( const SString& strPOPath )
@@ -34,7 +32,7 @@ CLanguage::~CLanguage ( void )
 
 SString CLanguage::Translate ( const SString& strMessage )
 {
-    return SString(m_Dict.translate ( strMessage ));
+    return SString(m_Dict.translate ( strMessage ));;
 }
 
 SString CLanguage::TranslateWithContext ( const SString& strContext, const SString& strMessage )

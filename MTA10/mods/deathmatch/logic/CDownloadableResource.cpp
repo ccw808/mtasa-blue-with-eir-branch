@@ -39,18 +39,15 @@ CDownloadableResource::CDownloadableResource ( eResourceType resourceType, const
     }
 
     m_bAutoDownload = bAutoDownload;
-    m_bDownloaded = false;
-    g_pClientGame->GetResourceManager()->OnAddResourceFile( this );
 }
 
 CDownloadableResource::~CDownloadableResource ( void )
 {
-    g_pClientGame->GetResourceManager()->OnRemoveResourceFile( this );
 }
 
 bool CDownloadableResource::DoesClientAndServerChecksumMatch ( void )
 {
-    return ( m_LastClientChecksum == m_ServerChecksum );
+    return ( m_LastClientChecksum.CompareWithLegacy ( m_ServerChecksum ) );
 }
 
 CChecksum CDownloadableResource::GenerateClientChecksum ( void )

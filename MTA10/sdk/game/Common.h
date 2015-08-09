@@ -12,11 +12,16 @@
 #ifndef __GAME_COMMON
 #define __GAME_COMMON
 
+// Flag management definitions
+#define IS_FLAG( mem, flag ) ( ( (mem) & (flag) ) == flag )
+#define IS_ANY_FLAG( num, flag ) ( ( (num) & (flag) ) != 0 )
+#define BOOL_FLAG( mem, flag, b ) { if ( b ) { (mem) |= (flag); } else { mem &= ~(flag); } }
+
 #include <windows.h>
 
-#define MAX_VEHICLES                        110
-#define MAX_PEDS                            140
-#define MAX_OBJECTS                         700
+#define MAX_VEHICLES                        500
+#define MAX_PEDS                            500
+#define MAX_OBJECTS                         4000
 #define MAX_BUILDINGS                       13000
 
 /**
@@ -1453,8 +1458,6 @@ enum eWeaponProperty
     WEAPON_FLAG_SHOT_ANIM_ABRUPT,               // 0x040000 - force the anim to finish player after aim/fire rather than blending out   (ie rpgs)
     WEAPON_FLAG_SHOT_EXPANDS,                   // 0x080000 - expands
     WEAPON_FLAG_LAST = WEAPON_FLAG_SHOT_EXPANDS,
-
-    WEAPON_FIRE_ROTATION,
 };
 
 enum eVehicleComponent

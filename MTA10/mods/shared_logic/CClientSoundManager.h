@@ -58,10 +58,6 @@ public:
     bool                    IsMinimizeMuted             ( void )                    { return m_bMinimizeMuted; };
     void                    SetMinimizeMuted            ( bool bMute )              { m_bMinimizeMuted = bMute; };
 
-    void                    QueueChannelStop            ( DWORD pSound );
-    void                    QueueAudioStop              ( CBassAudio* pAudio );
-    void                    ProcessStopQueues           ( bool bFlush = false );
-
 private:
 
     CClientManager*                 m_pClientManager;
@@ -77,10 +73,6 @@ private:
     bool                            m_bMinimizeMuted;
 
     bool                            m_aValidatedSFX[9];
-
-    std::vector < DWORD >                   m_ChannelStopQueue;
-    std::map < CBassAudio*, CElapsedTime >  m_AudioStopQueue;
-    CCriticalSection                        m_CS;
 };
 
 #endif

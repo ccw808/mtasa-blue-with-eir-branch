@@ -1343,21 +1343,6 @@ void CVersionUpdater::_CheckSidegradeRequirements ( void )
 
     if ( bVersionMatch && bLaunchPathValid )
     {
-        // Check core.dll version in case user has installed over different major version
-        SString strCoreDll = PathJoin( ExtractPath( m_strSidegradePath ), "mta", "core.dll" );
-        SLibVersionInfo versionInfo;
-        if ( GetLibVersionInfo( strCoreDll, &versionInfo ) )
-        {
-            SString strVersion( "%d.%d", versionInfo.dwProductVersionMS >> 16, versionInfo.dwProductVersionMS & 0xffff );
-            if ( strVersion != m_strSidegradeVersion )
-                bVersionMatch = false;
-        }
-        else
-            bLaunchPathValid = false;
-    }
-
-    if ( bVersionMatch && bLaunchPathValid )
-    {
         m_ConditionMap.SetCondition ( "ProcessResponse", "installed" );
     }
     else
@@ -1839,7 +1824,7 @@ void CVersionUpdater::_QUpdateResult ( void )
         if ( m_JobInfo.strStatus == "silent" )
         {
             // 'silent' - Self extracting archive 
-            SetOnRestartCommand ( "silent", m_JobInfo.strSaveLocation, m_JobInfo.strParameters );
+            SetOnRestartCommand ( "silent", m_JobInfo.strSaveLocation );
         }
 #if MTA_DEBUG
         else
@@ -2070,7 +2055,6 @@ void CVersionUpdater::_ProcessPatchFileQuery ( void )
 
     CXMLAccess XMLAccess ( XMLBuffer.m_pRoot );
     XMLAccess.GetSubNodeValue ( "status",                       m_JobInfo.strStatus );
-    XMLAccess.GetSubNodeValue ( "parameters",                   m_JobInfo.strParameters );
     XMLAccess.GetSubNodeValue ( "priority",                     m_JobInfo.strPriority );
     XMLAccess.GetSubNodeValue ( "dialog.title",                 m_JobInfo.strTitle );
     XMLAccess.GetSubNodeValue ( "dialog.msg",                   m_JobInfo.strMsg );
@@ -2105,16 +2089,6 @@ void CVersionUpdater::_ProcessPatchFileQuery ( void )
         m_JobInfo.iFilesize     = m_JobInfo.exe.iFilesize;
         m_JobInfo.strMD5        = m_JobInfo.exe.strMD5;
         m_JobInfo.serverInfoMap = m_JobInfo.exe.serverInfoMap;
-    }
-
-    // Change from 'silent' if user has disabled automatic install
-    if ( m_JobInfo.strStatus == "silent" && m_JobInfo.strParameters.Contains( "allowuseroverride" ) )
-    {
-        if ( CVARS_GET_VALUE < bool > ( "update_auto_install" ) == false )
-        {
-            m_JobInfo.strStatus = "files";
-            m_JobInfo.strParameters = m_JobInfo.strParameters.Replace( "hideprogress", "" );
-        }
     }
 
     // Process
@@ -2964,14 +2938,6 @@ int CVersionUpdater::DoSendDownloadRequestToNextServer ( void )
                              , GetApplicationSettingInt( DIAG_MINIDUMP_CONFIRMED_COUNT )
                            );
 
-    SString strSystemStats3 ( "3_%d"
-                             "_%s"
-                             "_%s"
-                             , GetApplicationSettingInt( "vs2013-runtime-installed" )
-                             , *GetApplicationSetting ( "real-os-build" )
-                             , *GetApplicationSetting ( "locale" ).Replace( "_", "-" )
-                           );
-
     SString strConnectUsage = SString("%i_%i", GetApplicationSettingInt ( "times-connected-editor" ), GetApplicationSettingInt ( "times-connected" ) );
     SString strOptimusInfo = SString("%i_%i_%i", GetApplicationSettingInt ( "nvhacks", "optimus" ), GetApplicationSettingInt ( "nvhacks", "optimus-startup-option" ), GetApplicationSettingInt ( "nvhacks", "optimus-force-windowed" ) );
 
@@ -2990,7 +2956,6 @@ int CVersionUpdater::DoSendDownloadRequestToNextServer ( void )
     strQueryURL = strQueryURL.Replace ( "_FILE_", m_JobInfo.strPostFilename );
     strQueryURL = strQueryURL.Replace ( "_SYS_", strSystemStats );
     strQueryURL = strQueryURL.Replace ( "_SYS2_", strSystemStats2 );
-    strQueryURL = strQueryURL.Replace ( "_SYS3_", strSystemStats3 );
     strQueryURL = strQueryURL.Replace ( "_VID_", strVideoCard );
     strQueryURL = strQueryURL.Replace ( "_USAGE_", strConnectUsage );
     strQueryURL = strQueryURL.Replace ( "_SCUT_", strSoundCut );

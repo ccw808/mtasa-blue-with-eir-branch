@@ -44,7 +44,6 @@ public:
         inline bool             GetComplete                     ( void ) { return m_bComplete; };
 
         void                    CallFinished                    ( bool bSuccess );
-        void                    Cancel                          ( void );
 
         // CRC-based methods
         CChecksum               GenerateClientChecksum          ( void );
@@ -62,7 +61,6 @@ protected:
     CResource*          m_pResource;
 
     bool                m_bComplete;
-    bool                m_bBeingDeleted;
 
     CChecksum           m_LastClientChecksum;
     CChecksum           m_ProvidedChecksum;

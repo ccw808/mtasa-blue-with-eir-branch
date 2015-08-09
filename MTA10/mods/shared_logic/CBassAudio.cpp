@@ -7,9 +7,6 @@
 *  PURPOSE:
 *  DEVELOPERS:  me'n'caz'n'flobu
 *
-*  TODO:      - Handle tempo attributes when the sound moves in/out of range
-*             - Enable beat event for non streams
-*
 *****************************************************************************/
 
 #include <StdInc.h>
@@ -25,49 +22,6 @@ void CALLBACK BeatCallback ( DWORD chan, double beatpos, void *user );
 
 #define INVALID_FX_HANDLE (-1)  // Hope that BASS doesn't use this as a valid Fx handle
 
-namespace
-{
-    //
-    // Use ids instead of points for callback arguments,
-    // as it's easier to identify an invalid id
-    //
-    CCriticalSection                 ms_CallbackCS;
-    std::map < void*, CBassAudio* >  ms_CallbackIdMap;
-    uint                             ms_uiNextCallbackId = 1;
-
-    // Get callback id for this CBassAudio
-    void* AddCallbackId( CBassAudio* pBassAudio )
-    {
-        ms_CallbackCS.Lock();
-        void* uiId = (void*)( ++ms_uiNextCallbackId ? ms_uiNextCallbackId : ++ms_uiNextCallbackId );
-        MapSet( ms_CallbackIdMap, uiId, pBassAudio );
-        ms_CallbackCS.Unlock();
-        return uiId;
-    }
-    
-    // Mark callback id as no longer valid
-    void RemoveCallbackId( void* uiId )
-    {
-        ms_CallbackCS.Lock();
-        MapRemove( ms_CallbackIdMap, uiId );
-        ms_CallbackCS.Unlock();
-    }
-    
-    // Get pointer from id
-    CBassAudio* LockCallbackId( void* uiId )
-    {
-        ms_CallbackCS.Lock();
-        return MapFindRef( ms_CallbackIdMap, uiId );
-    }
-
-    // Finish with pointer
-    void UnlockCallbackId( void )
-    {
-        ms_CallbackCS.Unlock();
-    }
-}
-
-
 CBassAudio::CBassAudio ( bool bStream, const SString& strPath, bool bLoop, bool b3D )
     : m_bStream ( bStream )
     , m_strPath ( strPath )
@@ -81,7 +35,6 @@ CBassAudio::CBassAudio ( bool bStream, const SString& strPath, bool bLoop, bool 
     m_fPlaybackSpeed = 1.0f;
     m_bPaused = false;
     m_bPan = true;
-    m_uiCallbackId = AddCallbackId( this );
 }
 
 
@@ -94,44 +47,45 @@ CBassAudio::CBassAudio ( void* pBuffer, unsigned int uiBufferLength, bool bLoop,
     m_fPlaybackSpeed = 1.0f;
     m_bPaused = false;
     m_bPan = true;
-    m_uiCallbackId = AddCallbackId( this );
 }
 
 
 CBassAudio::~CBassAudio ( void )
 {
-    assert( m_uiCallbackId == 0 );
     if ( m_pSound )
-    {
         BASS_ChannelStop ( m_pSound );
+
+    // Stream threads:
+    //  BASS has been told to stop at this point, so it is assumed that it will not initiate any new threaded callbacks.
+    //  However m_pThread could still be active and may still create a sound handle.
+    //   So, we decrement the ref count on the shared variables
+    //   If BASS_StreamCreateURL still holds a ref to the shared variables, any sound handle it may create will
+    //   get cleaned up when it releases its ref.
+    if ( m_pVars )
+    {
+        m_pVars->Release ();  // Ref for main thread can now be released
+        m_pVars = NULL;
     }
 
-    SAFE_DELETE( m_pVars );
+#ifdef MTA_DEBUG // OutputDebugLine only works in debug mode!
+    if ( m_bStream )
+        OutputDebugLine ( "[Bass]        stream destroyed" );
+    else
+        OutputDebugLine ( "[Bass] sound destroyed" );
+#endif
 }
 
+//
+// As BASS_ChannelStop can cause a brief pause, do delete on another thread
+//
 void CBassAudio::Destroy ( void )
 {
-    RemoveCallbackId( m_uiCallbackId );
-    m_uiCallbackId = 0;
-    if ( m_pSound )
-    {
-        // Remove all callbacks
-        BASS_FX_BPM_BeatFree( m_pSound );
-        BASS_FX_BPM_Free( m_pSound );
-        BASS_ChannelRemoveSync( m_pSound, m_hSyncDownload );
-        BASS_ChannelRemoveSync( m_pSound, m_hSyncEnd );
-        BASS_ChannelRemoveSync( m_pSound, m_hSyncFree );
-        BASS_ChannelRemoveSync( m_pSound, m_hSyncMeta );
+    CreateThread ( NULL, 0, reinterpret_cast <LPTHREAD_START_ROUTINE> ( &CBassAudio::DestroyInternal ), this, 0, NULL );
+}
 
-        // Best way to minimize a freeze during BASS_ChannelStop:
-        //   * BASS_ChannelPause
-        //   * wait a little bit
-        //   * BASS_ChannelStop
-        BASS_ChannelPause ( m_pSound ); 
-        g_pClientGame->GetManager()->GetSoundManager()->QueueAudioStop( this );
-    }
-    else
-        delete this;
+void CBassAudio::DestroyInternal ( CBassAudio* pBassAudio )
+{
+    delete pBassAudio;
 }
 
 //
@@ -157,9 +111,10 @@ bool CBassAudio::BeginLoadingMedia ( void )
         //
         assert ( !m_pVars );
         m_pVars = new SSoundThreadVariables ();
+        m_pVars->iRefCount = 2;     // One for here, one for BASS_StreamCreateURL
         m_pVars->strURL = m_strPath;
         m_pVars->lFlags = lFlags;
-        CreateThread ( NULL, 0, reinterpret_cast <LPTHREAD_START_ROUTINE> ( &CBassAudio::PlayStreamIntern ), m_uiCallbackId, 0, NULL );
+        CreateThread ( NULL, 0, reinterpret_cast <LPTHREAD_START_ROUTINE> ( &CBassAudio::PlayStreamIntern ), m_pVars, 0, NULL );
         m_bPendingPlay = true;
         OutputDebugLine ( "[Bass]        stream connect started" );
     }
@@ -202,12 +157,12 @@ bool CBassAudio::BeginLoadingMedia ( void )
         m_pSound = BASS_FX_ReverseCreate ( m_pSound, 2.0f, BASS_STREAM_DECODE | BASS_FX_FREESOURCE | BASS_MUSIC_PRESCAN );
         BASS_ChannelSetAttribute ( m_pSound, BASS_ATTRIB_REVERSE_DIR, BASS_FX_RVS_FORWARD );
         // Sucks.
-        /*if ( BASS_FX_BPM_CallbackSet ( m_pSound, (BPMPROC*)&BPMCallback, 1, 0, 0, m_uiCallbackId ) == false )
+        /*if ( BASS_FX_BPM_CallbackSet ( m_pSound, (BPMPROC*)&BPMCallback, 1, 0, 0, this ) == false )
         {
             g_pCore->GetConsole()->Printf ( "BASS ERROR %d in BASS_FX_BPM_CallbackSet  path:%s  3d:%d  loop:%d", BASS_ErrorGetCode(), *m_strPath, m_b3D, m_bLoop );
         }*/
 
-        if ( BASS_FX_BPM_BeatCallbackSet ( m_pSound, (BPMBEATPROC*)&BeatCallback, m_uiCallbackId ) == false )
+        if ( BASS_FX_BPM_BeatCallbackSet ( m_pSound, (BPMBEATPROC*)&BeatCallback, this ) == false )
         {
             g_pCore->GetConsole()->Printf ( "BASS ERROR %d in BASS_FX_BPM_BeatCallbackSet  path:%s  3d:%d  loop:%d", BASS_ErrorGetCode(), *m_strPath, m_b3D, m_bLoop );
         }
@@ -273,45 +228,38 @@ HSTREAM CBassAudio::ConvertFileToMono(const SString& strPath)
 
 void CALLBACK DownloadSync ( HSYNC handle, DWORD channel, DWORD data, void* user )
 {
-    CBassAudio* pBassAudio = LockCallbackId( user );
-    if ( pBassAudio )
-    {
-        pBassAudio->m_pVars->criticalSection.Lock ();
-        pBassAudio->m_pVars->onClientSoundFinishedDownloadQueue.push_back ( pBassAudio->GetLength () );
-        pBassAudio->m_pVars->criticalSection.Unlock ();
-    }
-    UnlockCallbackId();
+    CBassAudio* pBassAudio = static_cast <CBassAudio*> ( user );
+
+    pBassAudio->m_pVars->criticalSection.Lock ();
+    pBassAudio->m_pVars->onClientSoundFinishedDownloadQueue.push_back ( pBassAudio->GetLength () );
+    pBassAudio->m_pVars->criticalSection.Unlock ();
 }
 
 // get stream title from metadata and send it as event
 void CALLBACK MetaSync( HSYNC handle, DWORD channel, DWORD data, void *user )
 {
-    CBassAudio* pBassAudio = LockCallbackId( user );
+    CBassAudio* pBassAudio = static_cast <CBassAudio*> ( user );
 
-    if ( pBassAudio )
+    pBassAudio->m_pVars->criticalSection.Lock ();
+    DWORD pSound = pBassAudio->m_pVars->pSound;
+    pBassAudio->m_pVars->criticalSection.Unlock ();
+
+    const char* szMeta = BASS_ChannelGetTags( pSound, BASS_TAG_META );
+    if ( szMeta )
     {
-        pBassAudio->m_pVars->criticalSection.Lock ();
-        DWORD pSound = pBassAudio->m_pVars->pSound;
-        pBassAudio->m_pVars->criticalSection.Unlock ();
-
-        const char* szMeta = BASS_ChannelGetTags( pSound, BASS_TAG_META );
-        if ( szMeta )
+        SString strMeta = szMeta;
+        if ( !strMeta.empty () )
         {
-            SString strMeta = szMeta;
-            if ( !strMeta.empty () )
-            {
-                pBassAudio->m_pVars->criticalSection.Lock ();
-                pBassAudio->m_pVars->onClientSoundChangedMetaQueue.push_back ( strMeta );
-                pBassAudio->m_pVars->criticalSection.Unlock ();
-            }
+            pBassAudio->m_pVars->criticalSection.Lock ();
+            pBassAudio->m_pVars->onClientSoundChangedMetaQueue.push_back ( strMeta );
+            pBassAudio->m_pVars->criticalSection.Unlock ();
         }
     }
-    UnlockCallbackId();
 }
 
 void CALLBACK BPMCallback ( int handle, float bpm, void* user )
 {
-    CBassAudio* pBassAudio = LockCallbackId( user );
+    CBassAudio* pBassAudio = static_cast <CBassAudio*> ( user );
     if ( pBassAudio )
     {
         if ( pBassAudio->m_pVars )
@@ -325,12 +273,11 @@ void CALLBACK BPMCallback ( int handle, float bpm, void* user )
             pBassAudio->SetSoundBPM( bpm );
         }
     }
-    UnlockCallbackId();
 }
 
 void CALLBACK BeatCallback ( DWORD chan, double beatpos, void *user )
 {
-    CBassAudio* pBassAudio = LockCallbackId( user );
+    CBassAudio* pBassAudio = static_cast <CBassAudio*> ( user );
     if ( pBassAudio )
     {
         if ( pBassAudio->m_pVars )
@@ -340,39 +287,20 @@ void CALLBACK BeatCallback ( DWORD chan, double beatpos, void *user )
             pBassAudio->m_pVars->criticalSection.Unlock ();
         }
     }
-    UnlockCallbackId();
 }
 
 void CBassAudio::PlayStreamIntern ( void* arguments )
 {
-    CBassAudio* pBassAudio = LockCallbackId( arguments );
-    if ( pBassAudio )
-    {
-        pBassAudio->m_pVars->criticalSection.Lock ();
-        SString strURL = pBassAudio->m_pVars->strURL;
-        long lFlags = pBassAudio->m_pVars->lFlags;
-        pBassAudio->m_pVars->criticalSection.Unlock ();
-        UnlockCallbackId();
+    SSoundThreadVariables* pArgs = static_cast <SSoundThreadVariables*> ( arguments );
 
-        // This can take a while
-        HSTREAM pSound = BASS_StreamCreateURL ( strURL, 0, lFlags, NULL, NULL );
+    // Try to load the sound file
+    HSTREAM pSound = BASS_StreamCreateURL ( pArgs->strURL, 0, pArgs->lFlags, NULL, NULL );
 
-        CBassAudio* pBassAudio = LockCallbackId( arguments );
-        if ( pBassAudio )
-        {
-            pBassAudio->m_pVars->criticalSection.Lock ();
-            pBassAudio->m_pVars->bStreamCreateResult = true;
-            pBassAudio->m_pVars->pSound = pSound;
-            pBassAudio->m_pVars->criticalSection.Unlock ();
-        }
-        else
-        {
-            // Deal with unwanted pSound
-            g_pClientGame->GetManager()->GetSoundManager()->QueueChannelStop( pSound );
-        }
-    }
-
-    UnlockCallbackId();
+    pArgs->criticalSection.Lock ();
+    pArgs->bStreamCreateResult = true;
+    pArgs->pSound = pSound;
+    pArgs->criticalSection.Unlock ();
+    pArgs->Release ();  // Ref for BASS_StreamCreateURL can now be released
 }
 
 //
@@ -390,14 +318,14 @@ void CBassAudio::CompleteStreamConnect ( HSTREAM pSound )
             BASS_ChannelSetAttribute( pSound, BASS_ATTRIB_VOL, m_fVolume );
         ApplyFxEffects ();
         // Set a Callback function for download finished or connection closed prematurely
-        m_hSyncDownload = BASS_ChannelSetSync ( pSound, BASS_SYNC_DOWNLOAD, 0, &DownloadSync, m_uiCallbackId );
+        BASS_ChannelSetSync ( pSound, BASS_SYNC_DOWNLOAD, 0, &DownloadSync, this );
         SetFinishedCallbacks ();
 
-        if ( BASS_FX_BPM_CallbackSet ( pSound, (BPMPROC*)&BPMCallback, 1, 0, 0, m_uiCallbackId ) == false )
+        if ( BASS_FX_BPM_CallbackSet ( pSound, (BPMPROC*)&BPMCallback, 1, 0, 0, this ) == false )
         {
             g_pCore->GetConsole()->Print ( "BASS ERROR in BASS_FX_BPM_CallbackSet" );
         }
-        if ( BASS_FX_BPM_BeatCallbackSet ( pSound, (BPMBEATPROC*)&BeatCallback, m_uiCallbackId ) == false )
+        if ( BASS_FX_BPM_BeatCallbackSet ( pSound, (BPMBEATPROC*)&BeatCallback, this ) == false )
         {
             g_pCore->GetConsole()->Print ( "BASS ERROR in BASS_FX_BPM_BeatCallbackSet" );
         }
@@ -429,7 +357,7 @@ void CBassAudio::CompleteStreamConnect ( HSTREAM pSound )
             }
         }
         // set sync for stream titles
-        m_hSyncMeta = BASS_ChannelSetSync( pSound, BASS_SYNC_META, 0, &MetaSync, m_uiCallbackId ); // Shoutcast
+        BASS_ChannelSetSync( pSound, BASS_SYNC_META, 0, &MetaSync, this); // Shoutcast
         //g_pCore->GetConsole()->Printf ( "BASS ERROR %d in BASS_SYNC_META", BASS_ErrorGetCode() );
         //BASS_ChannelSetSync(pSound,BASS_SYNC_OGG_CHANGE,0,&MetaSync,this); // Icecast/OGG
         //g_pCore->GetConsole()->Printf ( "BASS ERROR %d in BASS_SYNC_OGG_CHANGE", BASS_ErrorGetCode() );
@@ -452,29 +380,21 @@ void CBassAudio::CompleteStreamConnect ( HSTREAM pSound )
 //
 void CALLBACK EndSync ( HSYNC handle, DWORD channel, DWORD data, void* user )
 {
-    CBassAudio* pBassAudio = LockCallbackId( user );
-    if ( pBassAudio )
-    {
-        pBassAudio->uiEndSyncCount++;
-    }
-    UnlockCallbackId();
+    CBassAudio* pBassAudio = static_cast <CBassAudio*> ( user );
+    pBassAudio->uiEndSyncCount++;
 }
 
 void CALLBACK FreeSync ( HSYNC handle, DWORD channel, DWORD data, void* user )
 {
-    CBassAudio* pBassAudio = LockCallbackId( user );
-    if ( pBassAudio )
-    {
-        pBassAudio->bFreeSync = true;
-    }
-    UnlockCallbackId();
+    CBassAudio* pBassAudio = static_cast <CBassAudio*> ( user );
+    pBassAudio->bFreeSync = true;
 }
 
 
 void CBassAudio::SetFinishedCallbacks ( void )
 {
-    m_hSyncEnd = BASS_ChannelSetSync ( m_pSound, BASS_SYNC_END, 0, &EndSync, m_uiCallbackId );
-    m_hSyncFree = BASS_ChannelSetSync ( m_pSound, BASS_SYNC_FREE, 0, &FreeSync, m_uiCallbackId );
+    BASS_ChannelSetSync ( m_pSound, BASS_SYNC_END, 0, &EndSync, this );
+    BASS_ChannelSetSync ( m_pSound, BASS_SYNC_FREE, 0, &FreeSync, this );
 }
 
 
@@ -606,7 +526,7 @@ void CBassAudio::SetPan ( float fPan )
         BASS_ChannelSetAttribute( m_pSound, BASS_ATTRIB_PAN, fPan );
 }
 
-void CBassAudio::SetVolume ( float fVolume )
+void CBassAudio::SetVolume ( float fVolume, bool bStore )
 {
     m_fVolume = fVolume;
 
@@ -660,14 +580,10 @@ void CBassAudio::SetTempoValues ( float fSampleRate, float fTempo, float fPitch,
     m_bReversed = bReverse;
 
     // Update our attributes
-    if ( m_pSound )
-    {
-        // TODO: These are lost when the sound is not streamed in
-        BASS_ChannelSetAttribute ( m_pSound, BASS_ATTRIB_TEMPO, m_fTempo );
-        BASS_ChannelSetAttribute ( m_pSound, BASS_ATTRIB_TEMPO_PITCH, m_fPitch );
-        BASS_ChannelSetAttribute ( m_pSound, BASS_ATTRIB_TEMPO_FREQ, m_fSampleRate );
-        BASS_ChannelSetAttribute ( BASS_FX_TempoGetSource ( m_pSound ), BASS_ATTRIB_REVERSE_DIR, (float)(bReverse == false ? BASS_FX_RVS_FORWARD : BASS_FX_RVS_REVERSE) );
-    }
+    BASS_ChannelSetAttribute ( m_pSound, BASS_ATTRIB_TEMPO, m_fTempo );
+    BASS_ChannelSetAttribute ( m_pSound, BASS_ATTRIB_TEMPO_PITCH, m_fPitch );
+    BASS_ChannelSetAttribute ( m_pSound, BASS_ATTRIB_TEMPO_FREQ, m_fSampleRate );
+    BASS_ChannelSetAttribute ( BASS_FX_TempoGetSource ( m_pSound ), BASS_ATTRIB_REVERSE_DIR, (float)(bReverse == false ? BASS_FX_RVS_FORWARD : BASS_FX_RVS_REVERSE) );
 }
 
 float* CBassAudio::GetFFTData ( int iLength )
@@ -1047,4 +963,30 @@ bool CBassAudio::GetQueuedEvent ( SSoundEventInfo& info )
     info = m_EventQueue.front ();
     m_EventQueue.pop_front ();
     return true;
+}
+
+
+///////////////////////////////////////////////////////
+//
+// SSoundThreadVariables::Release
+//
+// This gets called when BASS_StreamCreateURL has completed or when CBassAudio is destroyed
+//
+///////////////////////////////////////////////////////
+void SSoundThreadVariables::Release ( void )
+{
+    criticalSection.Lock ();
+    assert ( iRefCount > 0 );
+    bool bLastRef = --iRefCount == 0;
+    criticalSection.Unlock ();
+
+    if ( !bLastRef )
+        return;
+
+    // Cleanup any pSound created by BASS_StreamCreateURL that has not been handled
+    if ( bStreamCreateResult )
+        if ( pSound )
+            BASS_ChannelStop ( pSound );
+
+    delete this;
 }

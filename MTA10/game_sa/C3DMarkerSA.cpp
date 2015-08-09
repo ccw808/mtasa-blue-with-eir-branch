@@ -16,21 +16,13 @@
 
 void C3DMarkerSA::GetMatrix ( CMatrix * pMatrix )
 {
-    CMatrix_Padded * mat = &GetInterface ()->m_mat;
-    MemCpyFast ( &pMatrix->vPos, &mat->vPos, sizeof ( CVector ) );
-    MemCpyFast ( &pMatrix->vFront, &mat->vFront, sizeof ( CVector ) );
-    MemCpyFast ( &pMatrix->vRight, &mat->vRight, sizeof ( CVector ) );
-    MemCpyFast ( &pMatrix->vUp, &mat->vUp, sizeof ( CVector ) );
+    *pMatrix = GetInterface ()->m_mat;
 }
 
 
 void C3DMarkerSA::SetMatrix ( CMatrix * pMatrix )
 {
-    CMatrix_Padded * mat = &GetInterface ()->m_mat;
-    MemCpyFast ( &mat->vPos, &pMatrix->vPos, sizeof ( CVector ) );
-    MemCpyFast ( &mat->vFront, &pMatrix->vFront, sizeof ( CVector ) );
-    MemCpyFast ( &mat->vRight, &pMatrix->vRight, sizeof ( CVector ) );
-    MemCpyFast ( &mat->vUp, &pMatrix->vUp, sizeof ( CVector ) );
+    GetInterface ()->m_mat = *pMatrix;
 }
 
 VOID C3DMarkerSA::SetPosition(CVector * vecPosition)

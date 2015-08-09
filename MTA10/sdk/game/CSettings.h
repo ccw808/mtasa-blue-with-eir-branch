@@ -81,13 +81,6 @@ enum eAspectRatio
     ASPECT_RATIO_16_9,
 };
 
-enum eRadarMode
-{
-    RADAR_MODE_ALL = 0,
-    RADAR_MODE_BLIPS_ONLY,
-    RADAR_MODE_NO_HUD
-};
-
 class CGameSettings
 {
 public:
@@ -97,11 +90,6 @@ public:
     virtual VideoMode *     GetVideoModeInfo        ( VideoMode * modeInfo, unsigned int modeIndex ) = 0;
     virtual unsigned int    GetCurrentVideoMode     ( void ) = 0;
     virtual void            SetCurrentVideoMode     ( unsigned int modeIndex, bool bOnRestart ) = 0;
-    virtual unsigned int    GetNumAdapters          ( void ) = 0;
-    virtual unsigned int    GetCurrentAdapter       ( void ) = 0;
-    virtual bool            HasUnsafeResolutions    ( void ) = 0;
-    virtual bool            IsUnsafeResolution      ( int iWidth, int iHeight ) = 0;
-    virtual void            SetAdapter              ( unsigned int uiAdapterIndex ) = 0;
     virtual unsigned char   GetRadioVolume          ( void ) = 0;
     virtual void            SetRadioVolume          ( unsigned char ucVolume ) = 0;
     virtual unsigned char   GetSFXVolume            ( void ) = 0;
@@ -144,8 +132,7 @@ public:
     virtual bool            IsGrassEnabled          ( void ) = 0;
     virtual void            SetGrassEnabled         ( bool bEnable ) = 0;
 
-    virtual eRadarMode      GetRadarMode            ( void ) = 0;
-    virtual void            SetRadarMode            ( eRadarMode hudMode ) = 0;
+    virtual void            SetSelectDeviceDialogEnabled    ( bool bEnable ) = 0;
 
     virtual void            Save                    ( void ) = 0;
 };

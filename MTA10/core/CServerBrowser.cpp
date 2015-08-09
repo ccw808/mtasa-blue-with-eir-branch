@@ -190,13 +190,6 @@ CServerBrowser::CServerBrowser ( void )
         pLabel->SetHorizontalAlign ( CGUI_ALIGN_HORIZONTALCENTER_WORDWRAP );
         pLabel->SetProperty( "BackgroundEnabled", "True" );
 
-        // Create second slightly smaller label so wrapped text looks better
-        pLabel = reinterpret_cast < CGUILabel* > ( pManager->CreateLabel ( m_pQuickConnectHelpWindow, "" ) );
-        pLabel->SetPosition ( CVector2D ( 5 + 10, 0 ) );
-        pLabel->SetSize ( CVector2D ( 310 - 10 * 2, 150 ) );
-        pLabel->SetVerticalAlign ( CGUI_ALIGN_VERTICALCENTER );
-        pLabel->SetHorizontalAlign ( CGUI_ALIGN_HORIZONTALCENTER_WORDWRAP );
-
         SString strHelpMessage = _(
                             "FOR QUICK CONNECT:\n"
                             "\n"
@@ -534,7 +527,7 @@ void CServerBrowser::CreateTab ( ServerBrowserType type, const char* szName )
     m_pIncludeOtherVersions [ type ]->SetPosition ( CVector2D ( fX, fY ), false );
     m_pIncludeOtherVersions [ type ]->AutoSize ( m_pIncludeOtherVersions [ type ]->GetText ().c_str (), 20.0f );
     m_pIncludeOtherVersions [ type ]->SetClickHandler ( GUI_CALLBACK ( &CServerBrowser::OnFilterChanged, this ) );
-    m_pIncludeOtherVersions [ type ]->SetSelected ( true );
+    m_pIncludeOtherVersions [ type ]->SetVisible ( false );
 
     // Status bar
 	fX = 5;
@@ -780,7 +773,7 @@ void CServerBrowser::SetVisible ( bool bVisible )
 
 bool CServerBrowser::IsVisible ( void )
 {
-    return m_pTopWindow && m_pTopWindow->IsVisible ();
+    return m_pTopWindow->IsVisible ();
 }
 
 //
@@ -863,7 +856,7 @@ void CServerBrowser::UpdateServerList ( ServerBrowserType Type, bool bClearServe
             AddServerToList ( pServer, Type );
         }
     }
-    bool bIncludeOtherVersions = m_pIncludeOtherVersions [ Type ]->GetSelected ();
+    bool bIncludeOtherVersions = m_pIncludeOtherVersions [ Type ]->IsVisible () && m_pIncludeOtherVersions [ Type ]->GetSelected ();
     ServerBrowserType type = Type;
 
     if ( bIncludeOtherVersions )
@@ -971,7 +964,7 @@ void CServerBrowser::AddServerToList ( const CServerListItem * pServer, const Se
     bool bIncludeFull   = m_pIncludeFull [ Type ]->GetSelected ();
     bool bIncludeLocked = m_pIncludeLocked [ Type ]->GetSelected ();
     bool bIncludeOffline = m_pIncludeOffline [ Type ] && m_pIncludeOffline [ Type ]->GetSelected ();
-    bool bIncludeOtherVersions = m_pIncludeOtherVersions [ Type ]->GetSelected ();
+    bool bIncludeOtherVersions = m_pIncludeOtherVersions [ Type ]->IsVisible () && m_pIncludeOtherVersions [ Type ]->GetSelected ();
     bool bServerSearchFound = true;
 
     std::string strServerSearchText = m_pEditSearch [ Type ]->GetText ();
@@ -1021,6 +1014,16 @@ void CServerBrowser::AddServerToList ( const CServerListItem * pServer, const Se
     bool bIsLocked          = pServer->bPassworded;
     bool bIsBlockedVersion  = bIsOtherVersion && !CanBrowseVersion ( pServer->strVersion );
     bool bIsBlockedServer   = ( pServer->uiMasterServerSaysRestrictions & ASE_FLAG_RESTRICTIONS ) != false;
+
+    // Maybe switch on 'Other version' checkbox
+    if ( bIsOtherVersion && !bIsBlockedVersion )
+    {
+        if ( !m_pIncludeOtherVersions [ Type ]->IsVisible () )
+        {
+            m_pIncludeOtherVersions [ Type ]->SetSelected ( true );
+            m_pIncludeOtherVersions [ Type ]->SetVisible ( true );
+        }
+    }
 
     if (
         ( !pServer->strVersion.empty () || bIsOffline ) &&
@@ -1194,7 +1197,7 @@ bool CServerBrowser::OnClick ( CGUIElement* pElement )
             }
 
             SetAddressBarText ( "mtasa://" + pServer->strEndpoint );
-            m_pLabelAddressDescription [ Type ]->SetVisible ( false );
+
         }
 
         // save the selected server
@@ -1516,11 +1519,6 @@ bool CServerBrowser::OnGeneralHelpClick ( CGUIElement* pElement )
     {
         if ( GetTickCount64_ () - m_llLastGeneralHelpTime > 500 )
         {
-            CVector2D helpButtonSize = m_pButtonGeneralHelp [ 0 ]->GetSize ();
-            CVector2D helpButtonPos = CalcScreenPosition ( m_pButtonGeneralHelp [ 0 ] ) + CVector2D ( 0, 24 );
-            CVector2D generalHelpSize = m_pGeneralHelpWindow->GetSize ();
-            CVector2D generalHelpPos = helpButtonPos - generalHelpSize + CVector2D ( helpButtonSize.fX, 0 );
-            m_pGeneralHelpWindow->SetPosition ( generalHelpPos );
             m_pGeneralHelpWindow->SetVisible ( true );
             m_pGeneralHelpWindow->BringToFront ();
         }
@@ -2217,7 +2215,7 @@ void CServerBrowser::OnQuickConnectButtonClick ( void )
 {
     // Show help text
     if ( m_uiShownQuickConnectHelpCount < 1 )
-        {
+    {
         m_pQuickConnectHelpWindow->SetVisible ( true );
         m_pQuickConnectHelpWindow->BringToFront ();
         m_uiShownQuickConnectHelpCount++;
@@ -2265,44 +2263,4 @@ bool CServerBrowser::OnServerListChangeRow ( CGUIKeyEventArgs Args )
     }
 
     return true;
-}
-
-void CServerBrowser::SetSelectedIndex ( unsigned int uiIndex )
-{
-    unsigned int uiTabCount = m_pPanel->GetTabCount ( );
-
-    if ( uiIndex < uiTabCount )
-    {
-        m_pPanel->SetSelectedIndex ( uiIndex );
-    }
-}
-
-void CServerBrowser::TabSkip ( bool bBackwards )
-{
-    unsigned int uiTabCount = m_pPanel->GetTabCount ( );
-
-    if ( bBackwards )
-    {
-        unsigned int uiIndex = m_pPanel->GetSelectedIndex ( ) - 1;
-
-        if ( m_pPanel->GetSelectedIndex ( ) == 0 )
-        {
-            uiIndex = uiTabCount - 1;
-        }
-
-        SetSelectedIndex ( uiIndex );
-    }
-    else
-    {
-        unsigned int uiIndex = m_pPanel->GetSelectedIndex ( ) + 1;
-        unsigned int uiNewIndex = uiIndex % uiTabCount;
-
-        SetSelectedIndex ( uiNewIndex );
-    }
-}
-
-bool CServerBrowser::IsActive ( void )
-{
-    return ( m_pFrame && m_pFrame->IsActive ( ) )
-        || ( m_pPanel && m_pPanel->IsActive ( ) );
 }

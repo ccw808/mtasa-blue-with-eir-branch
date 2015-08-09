@@ -47,7 +47,7 @@ public:
                                                               CEvents* pEvents );
                                     ~CLuaManager            ( void );
 
-    CLuaMain*                       CreateVirtualMachine    ( CResource* pResourceOwner, bool bEnableOOP );
+    CLuaMain*                       CreateVirtualMachine    ( CResource* pResourceOwner );
     bool                            RemoveVirtualMachine    ( CLuaMain* vm );
     CLuaMain*                       GetVirtualMachine       ( lua_State* luaVM );
     void                            OnLuaMainOpenVM         ( CLuaMain* pLuaMain, lua_State* luaVM );

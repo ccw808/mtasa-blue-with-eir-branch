@@ -36,7 +36,7 @@ class CServerImpl;
 
 #define SERVER_RESET_RETURN 500
 
-typedef CXML* (*InitXMLInterface) ( const char* szSaveFlagDirectory );
+typedef CXML* (*InitXMLInterface) ( void );
 typedef CNetServer* (*InitNetServerInterface) ( void );
 
 #ifdef WIN32
@@ -73,14 +73,11 @@ public:
 
 private:
     void                MainLoop            ( void );
-    bool                CheckLibVersions    ( void );
 
     bool                ParseArguments      ( int iArgumentCount, char* szArguments [] );
 
     void                ShowInfoTag         ( char *szTag );
     void                HandleInput         ( void );
-    void                HandlePulseSleep    ( void );
-    void                ApplyFrameRateLimit ( uint uiUseRate );
 
     void                DestroyWindow       ( void );
 
@@ -105,14 +102,14 @@ private:
     
     char                m_szTag[80];
 
-    double              m_dLastTimeMs;
-    double              m_dPrevOverrun;
-
 #ifdef WIN32
     HANDLE              m_hConsole;
     CHAR_INFO           m_ScrnBuffer[256];
 
     CThreadCommandQueue*    m_pThreadCommandQueue;
+#else
+    WINDOW*             m_wndMenu;
+    WINDOW*             m_wndInput;
 #endif
 };
 

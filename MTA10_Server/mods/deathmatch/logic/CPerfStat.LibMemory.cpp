@@ -217,17 +217,21 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
     {
         if ( m_LibraryList.size () == 0 )
         {
-            const char* libs [] = {
-                            SERVER_BIN_PATH "core",
-                            SERVER_BIN_PATH_MOD "deathmatch",
-                            SERVER_BIN_PATH "net",
-                            SERVER_BIN_PATH "xmll",
+            struct {
+                bool bModDir;
+                const char* szName;
+            } libs [] = {
+                            { false,  "core", },
+                            { true,   "deathmatch", },
+                            { false,  "net", },
+                            { false,  "xmll", },
                         };
 
             for ( unsigned int i = 0 ; i < NUMELMS ( libs ) ; i++ )
             {
                 CLibraryInfo info;
-                info.strName = libs[i];
+                bool bModDir = libs[i].bModDir;
+                info.strName = libs[i].szName;
                 #if MTA_DEBUG
                     info.strName += "_d";
                 #endif
@@ -238,7 +242,11 @@ void CPerfStatLibMemoryImpl::GetLibMemoryStats ( CPerfStatResult* pResult, const
                 #endif
                 info.pLibrary = new CDynamicLibrary();
 
-                SString strPathFilename = g_pServerInterface->GetAbsolutePath ( info.strName );
+                SString strPathFilename;
+                if ( bModDir )
+                    strPathFilename = g_pServerInterface->GetModManager ()->GetAbsolutePath ( info.strName );
+                else
+                    strPathFilename = g_pServerInterface->GetAbsolutePath ( info.strName );
 
                 if ( info.pLibrary->Load ( strPathFilename ) )
                 {

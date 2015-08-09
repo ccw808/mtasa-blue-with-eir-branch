@@ -10,7 +10,6 @@
 *
 *****************************************************************************/
 
-#include "sha1.hpp"
 #include "sha2.hpp"
 
 namespace SharedUtil
@@ -510,67 +509,22 @@ namespace SharedUtil
 
     void GenerateSha256( const void* pData, uint uiLength, uchar output[32] )
     {
-        sha256( (const uchar*)pData, uiLength, output );
+        sha2_context ctx;
+        sha2_starts( &ctx, false );
+        sha2_update( &ctx, (const uchar*)pData, uiLength );
+        sha2_finish( &ctx, output );
     }
 
     SString GenerateSha256HexString( const void* pData, uint uiLength )
     {
-        return GenerateHashHexString( EHashFunction::SHA256, pData, uiLength );
+        uchar output[32];
+        GenerateSha256( pData, uiLength, output );
+        return ConvertDataToHexString( output, sizeof( output ) );
     }
 
     SString GenerateSha256HexString( const SString& strData )
     {
-        return GenerateHashHexString( EHashFunction::SHA256, strData );
-    }
-
-
-    SString GenerateHashHexString( EHashFunctionType hashFunction, const void* pData, uint uiLength )
-    {
-        switch( hashFunction )
-        {
-            case EHashFunction::MD5:
-            {
-                return CMD5Hasher::CalculateHexString( pData, uiLength );
-            }
-            case EHashFunction::SHA1:
-            {
-                uchar output[20];
-                sha1( (const uchar*)pData, uiLength, output );
-                return ConvertDataToHexString( output, sizeof( output ) );
-            }
-            case EHashFunction::SHA224:
-            {
-                uchar output[ SHA224_DIGEST_SIZE ];
-                sha224( (const uchar*)pData, uiLength, output );
-                return ConvertDataToHexString( output, sizeof( output ) );
-            }
-            case EHashFunction::SHA256:
-            {
-                uchar output[ SHA256_DIGEST_SIZE ];
-                sha256( (const uchar*)pData, uiLength, output );
-                return ConvertDataToHexString( output, sizeof( output ) );
-            }
-            case EHashFunction::SHA384:
-            {
-                uchar output[ SHA384_DIGEST_SIZE ];
-                sha384( (const uchar*)pData, uiLength, output );
-                return ConvertDataToHexString( output, sizeof( output ) );
-            }
-            case EHashFunction::SHA512:
-            {
-                uchar output[ SHA512_DIGEST_SIZE ];
-                sha512( (const uchar*)pData, uiLength, output );
-                return ConvertDataToHexString( output, sizeof( output ) );
-            }
-            default:
-                break;
-        };
-        return "";
-    }
-
-    SString GenerateHashHexString( EHashFunctionType hashFunction, const SString& strData )
-    {
-        return GenerateHashHexString( hashFunction, *strData, strData.length() );
+        return GenerateSha256HexString( *strData, strData.length() );
     }
 
     void encodeXtea(unsigned int* v, unsigned int* w, unsigned int* k) {
@@ -628,17 +582,20 @@ namespace SharedUtil
         memcpy ( strbuf, str.c_str(), str.length() );
 
         // Encode it!
+        char output [ 4 ];
         v[1] = 0;
         for ( int i = 0; i < strbuflen; i += 4 )
         {
             v[0] = *(unsigned int*)&strbuf[i];
 
             encodeXtea ( &v[0], &w[0], &k[0] );
-            out->append ( (char*)&w[0], 4 );
+            *(unsigned int*)&output[0] = w[0];
+            out->append ( output, 4 );
 
             v[1] = w[1];
         }
-        out->append ( (char*)&v[1], 4 );
+        *(unsigned int*)&output[0] = v[1];
+        out->append ( output, 4 );
 
         delete [] strbuf;
     }

@@ -30,8 +30,6 @@ namespace
         SetApplicationSetting ( "real-os-version",  GetRealOSVersion () );
         SetApplicationSetting ( "is-admin",         IsUserAdmin () ? "1" : "0" );
         SetApplicationSettingInt ( "last-server-ip", 0 );
-        SetApplicationSetting ( "real-os-build",    GetRealOSBuildNumber () );
-        SetApplicationSettingInt ( "vs2013-runtime-installed",  IsVS2013RuntimeInstalled () ? 1 : 0 );
     }
 
     // Comms between 'Admin' and 'User' processes
@@ -150,18 +148,7 @@ void CInstallManager::InitSequencer ( void )
                 CR "            IF LastResult == ok GOTO service_check: "
                 CR "            CALL Quit "
                 CR " "
-                CR "service_end: "                                  ////// End of 'Service checks' //////
-                CR " "        
-                CR "appcompat_check: "                              ////// Start of 'AppCompat checks' //////
-                CR "            CALL ProcessAppCompatChecks "       // Make changes to comply with appcompat requirements
-                CR "            IF LastResult == ok GOTO appcompat_end: "
-                CR " "
-                CR "            CALL ChangeToAdmin "                // If changes failed, try as admin
-                CR "            IF LastResult == ok GOTO appcompat_check: "
-                CR "            CALL Quit "
-                CR " "
-                CR "appcompat_end: "                                ////// End of 'AppCompat checks' //////
-                CR " "        
+                CR "service_end: "                                  ////// End of 'Driver checks' //////
                 CR "            CALL ChangeFromAdmin "              
                 CR "            CALL InstallNewsItems "             // Install pending news
                 CR "            GOTO launch: "
@@ -187,7 +174,6 @@ void CInstallManager::InitSequencer ( void )
     m_pSequencer->AddFunction ( "ProcessLangFileChecks",   &CInstallManager::_ProcessLangFileChecks );
     m_pSequencer->AddFunction ( "ProcessExePatchChecks",   &CInstallManager::_ProcessExePatchChecks );
     m_pSequencer->AddFunction ( "ProcessServiceChecks",    &CInstallManager::_ProcessServiceChecks );
-    m_pSequencer->AddFunction ( "ProcessAppCompatChecks",  &CInstallManager::_ProcessAppCompatChecks );
     m_pSequencer->AddFunction ( "ChangeFromAdmin",         &CInstallManager::_ChangeFromAdmin );
     m_pSequencer->AddFunction ( "InstallNewsItems",        &CInstallManager::_InstallNewsItems );
     m_pSequencer->AddFunction ( "Quit",                    &CInstallManager::_Quit );
@@ -431,7 +417,7 @@ SString CInstallManager::_CheckOnRestartCommand ( void )
     {
         // New settings for install
         m_pSequencer->SetVariable ( INSTALL_LOCATION, strResult.Contains ( "far" )    ? "far" : "near" );
-        m_pSequencer->SetVariable ( HIDE_PROGRESS,    strResult.Contains ( "hideprogress" ) ? "yes" : "no" );
+        m_pSequencer->SetVariable ( SILENT_OPT,       strResult.Contains ( "silent" ) ? "yes" : "no" );
         return "ok";
     }
     else
@@ -502,7 +488,7 @@ SString CInstallManager::_InstallFiles ( void )
     WatchDogReset ();
 
     // Install new files
-    if ( !InstallFiles ( m_pSequencer->GetVariable ( HIDE_PROGRESS ) != "no" ) )
+    if ( !InstallFiles ( m_pSequencer->GetVariable ( SILENT_OPT ) != "no" ) )
     {
         if ( !IsUserAdmin () )
             AddReportLog ( 3048, SString ( "_InstallFiles: Install - trying as admin %s", "" ) );
@@ -759,7 +745,7 @@ SString CInstallManager::MaybeRenameExe( const SString& strGTAPath )
     {
         // See if exe copy seems usable
         SString strHTAEXEPath = PathJoin( strGTAPath, MTA_HTAEXE_NAME );
-        uint64 uiStdFileSize = FileSize( strGTAEXEPath );
+        uint uiStdFileSize = FileSize( strGTAEXEPath );
         if ( uiStdFileSize && uiStdFileSize == FileSize( strHTAEXEPath ) )
             strGTAEXEPath = strHTAEXEPath;
     }
@@ -830,118 +816,6 @@ SString CInstallManager::_ProcessServiceChecks ( void )
         if ( !IsUserAdmin() )
         {
             m_strAdminReason = _("Update install settings");
-            return "fail";
-        }
-    }
-    return "ok";
-}
-
-
-//////////////////////////////////////////////////////////
-//
-// CInstallManager::_ProcessAppCompatChecks
-//
-// Remove/add required options from AppCompatFlags/Layers
-//
-//////////////////////////////////////////////////////////
-SString CInstallManager::_ProcessAppCompatChecks ( void )
-{
-    BOOL bIsWOW64 = false;  // 64bit OS
-    IsWow64Process( GetCurrentProcess(), &bIsWOW64 );
-    uint uiHKLMFlags = bIsWOW64 ? KEY_WOW64_64KEY : 0;
-    WString strGTAExePathFilename = FromUTF8( GetUsingExePathFilename() );
-    WString strMTAExePathFilename = FromUTF8( GetLaunchPathFilename() );
-    WString strCompatModeRegKey = L"SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\AppCompatFlags\\Layers";
-    int bWin816BitColorOption = GetApplicationSettingInt( "Win8Color16" );
-    int bWin8MouseOption = GetApplicationSettingInt( "Win8MouseFix" );
-
-    // Lists of things to add/remove from AppCompatFlags
-    std::vector < WString > addList;
-    std::vector < WString > removeList;
-
-    // Remove user voodoo
-    removeList.push_back( L"WIN95" );
-    removeList.push_back( L"WIN98" );
-    removeList.push_back( L"NT4SP5" );
-    removeList.push_back( L"WIN2000" );
-    removeList.push_back( L"WINXPSP2" );
-    removeList.push_back( L"WINXPSP3" );
-    removeList.push_back( L"WINSRV03SP1" );
-    removeList.push_back( L"WINSRV08SP1" );
-    removeList.push_back( L"VISTARTM" );
-    removeList.push_back( L"VISTASP1" );
-    removeList.push_back( L"VISTASP2" );
-    removeList.push_back( L"WIN7RTM" );
-    removeList.push_back( L"256COLOR" );
-    removeList.push_back( L"16BITCOLOR" );
-    removeList.push_back( L"640X480" );
-    removeList.push_back( L"DISABLETHEMES" );
-    removeList.push_back( L"DISABLEDWM" );
-    removeList.push_back( L"HIGHDPIAWARE" );
-
-    // Remove potential performance hit
-    removeList.push_back( L"FaultTolerantHeap" );
-
-    // Handle Windows 8 options
-    if ( bWin816BitColorOption )
-        addList.push_back( L"DWM8And16BitMitigation" );
-    else
-        removeList.push_back( L"DWM8And16BitMitigation" );
-
-    if ( bWin8MouseOption )
-        addList.push_back( L"NoDTToDITMouseBatch" );
-    else
-        removeList.push_back( L"NoDTToDITMouseBatch" );
-
-    // Details of reg keys to fiddle with
-    struct
-    {
-        WString     strProgName;
-        HKEY        hKeyRoot;
-        uint        uiFlags;
-    } items[] = { { strGTAExePathFilename, HKEY_CURRENT_USER,  0 },
-                  { strGTAExePathFilename, HKEY_LOCAL_MACHINE, uiHKLMFlags },
-                  { strMTAExePathFilename, HKEY_CURRENT_USER,  0 },
-                  { strMTAExePathFilename, HKEY_LOCAL_MACHINE, uiHKLMFlags } };
-
-    bool bTryAdmin = false;
-    for ( uint i = 0 ; i < NUMELMS( items ) ; i++ )
-    {
-        // Get current setting
-        WString strValue = ReadCompatibilityEntries( items[i].strProgName, strCompatModeRegKey, items[i].hKeyRoot, items[i].uiFlags );
-
-        // Break into words
-        std::vector < WString > entryList;
-        strValue.Split( " ", entryList );
-        ListRemove( entryList, WString() );
-
-        // Apply removals
-        for ( uint a = 0 ; a < removeList.size() ; a++ )
-            ListRemove( entryList, removeList[a] );
-
-        // Apply adds
-        for ( uint a = 0 ; a < addList.size() ; a++ )
-            ListAddUnique( entryList, addList[a] );
-
-        // Clear list if only flags remain
-        if ( entryList.size() == 1 && entryList[0].size() < 3 )
-            entryList.clear();
-
-        // Join to one value
-        WString strNewValue = WString::Join( L" ", entryList );
-
-        // Save setting
-        if ( strNewValue != strValue )
-            if ( !WriteCompatibilityEntries( items[i].strProgName, strCompatModeRegKey, items[i].hKeyRoot, items[i].uiFlags, strNewValue ) )
-                bTryAdmin = true;
-    }
-
-    // Handle admin requirement
-    if ( bTryAdmin )
-    {
-        if ( !IsUserAdmin() )
-        {
-            m_strAdminReason = _("Update compatibility settings");
             return "fail";
         }
     }

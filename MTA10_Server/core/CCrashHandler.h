@@ -24,7 +24,7 @@
 class CCrashHandler
 {
 public:
-    static void                 Init                    ( const SString& strServerPath );
+    static void                 Init                    ( void );
 
 private:
     #ifdef WIN32

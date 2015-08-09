@@ -139,17 +139,10 @@ void CClientProjectile::DoPulse ( void )
 
     // Update our position/rotation if we're attached
     DoAttaching ();
-
-    if ( m_bCorrected == false &&
-        m_pProjectile != NULL && 
-        GetWeaponType ( ) == eWeaponType::WEAPONTYPE_REMOTE_SATCHEL_CHARGE )
-    {
-        m_bCorrected = m_pProjectile->CorrectPhysics ( );
-    }
 }
 
 
-void CClientProjectile::Initiate ( CVector& vecPosition, CVector& vecRotation, CVector& vecVelocity, unsigned short usModel )
+void CClientProjectile::Initiate ( CVector * pvecPosition, CVector * pvecRotation, CVector * pvecVelocity, unsigned short usModel )
 {
 #ifdef MTA_DEBUG
     if ( m_pInitiateData ) _asm int 3
@@ -157,22 +150,12 @@ void CClientProjectile::Initiate ( CVector& vecPosition, CVector& vecRotation, C
 
     // Store our initiation data
     m_pInitiateData = new CProjectileInitiateData;
-    m_pInitiateData->pvecPosition = new CVector ( vecPosition );
-
-    if ( vecRotation != CVector ( 0, 0, 0 ) )
-    {
-        m_pInitiateData->pvecRotation = new CVector ( vecRotation );
-    }
-    else
-    {
-        m_pInitiateData->pvecRotation = NULL;
-    }
-
-    if ( vecVelocity != CVector(0,0,0) ) 
-        m_pInitiateData->pvecVelocity = new CVector ( vecVelocity );
-    else 
-        m_pInitiateData->pvecVelocity = NULL;
-
+    if ( pvecPosition ) m_pInitiateData->pvecPosition = new CVector ( *pvecPosition );
+    else m_pInitiateData->pvecPosition = NULL;
+    if ( pvecRotation ) m_pInitiateData->pvecRotation = new CVector ( *pvecRotation );
+    else m_pInitiateData->pvecRotation = NULL;
+    if ( pvecVelocity ) m_pInitiateData->pvecVelocity = new CVector ( *pvecVelocity );
+    else m_pInitiateData->pvecVelocity = NULL;
     m_pInitiateData->usModel = usModel;
 }
 
@@ -320,17 +303,4 @@ DWORD CClientProjectile::GetCounter ( void )
     if ( m_pProjectile )
         return m_pProjectileInfo->GetCounter ( );
     return 0;
-}
-
-CClientEntity* CClientProjectile::GetSatchelAttachedTo ( void )
-{
-    if ( !m_pProjectile )
-        return NULL;
-
-    CEntity* pAttachedToSA = m_pProjectile->GetAttachedEntity ( );
-
-    if ( !pAttachedToSA )
-        return NULL;
-
-    return m_pManager->FindEntity ( pAttachedToSA, false );
 }

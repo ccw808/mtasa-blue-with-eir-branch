@@ -15,20 +15,16 @@
 
 #include "StdInc.h"
 HRESULT HandleCreateDeviceResult( HRESULT hResult, IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface );
-std::vector < IDirect3D9* > ms_CreatedDirect3D9List;
-bool CreateDeviceSecondCallCheck( HRESULT& hOutResult, IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface );
 
 CProxyDirect3D9::CProxyDirect3D9 ( IDirect3D9* pInterface )
 {
     WriteDebugEvent ( SString( "CProxyDirect3D9::CProxyDirect3D9 %08x", this ) );
     m_pDevice       = pInterface;
-    ms_CreatedDirect3D9List.push_back( m_pDevice );
 }
 
 CProxyDirect3D9::~CProxyDirect3D9             ( )
 {
     WriteDebugEvent ( SString( "CProxyDirect3D9::~CProxyDirect3D9 %08x", this ) );
-    ListRemove( ms_CreatedDirect3D9List, m_pDevice );
     m_pDevice       = NULL;
 }
 
@@ -118,20 +114,6 @@ HMONITOR   CProxyDirect3D9::GetAdapterMonitor           ( UINT Adapter )
     return m_pDevice->GetAdapterMonitor ( Adapter );
 }
 
-HMONITOR  CProxyDirect3D9::StaticGetAdapterMonitor      ( UINT Adapter )
-{
-    if ( ms_CreatedDirect3D9List.empty() )
-        return NULL;
-    return ms_CreatedDirect3D9List[0]->GetAdapterMonitor ( Adapter );
-}
-
-IDirect3D9*  CProxyDirect3D9::StaticGetDirect3D      ( void )
-{
-    if ( ms_CreatedDirect3D9List.empty() )
-        return NULL;
-    return ms_CreatedDirect3D9List[0];
-}
-
 HRESULT    CProxyDirect3D9::CreateDevice                ( UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface )
 {
 // Do not change the code at the start of this function.
@@ -181,12 +163,6 @@ HRESULT    CProxyDirect3D9::CreateDevice                ( UINT Adapter, D3DDEVTY
     #else
         SetWindowTextW ( hFocusWindow, MbUTF8ToUTF16("MTA: San Andreas").c_str() );
     #endif
-
-    // Detect if second call to CreateDevice
-    if ( CreateDeviceSecondCallCheck( hResult, m_pDevice, Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface ) )
-    {
-        return hResult;
-    }
 
     // Enable the auto depth stencil parameter
     pPresentationParameters->EnableAutoDepthStencil = true;
@@ -306,27 +282,12 @@ namespace
     SString ToString( const D3DCAPS9& a )
     {
         return SString(
-                        " VSVer:0x%08x"
-                        " PSVer:0x%08x"
+                        " VertexShaderVersion:0x%08x"
+                        " PixelShaderVersion:0x%08x"
                         " DeclTypes:0x%03x"
-                        " VerProcCaps:0x%03x"
-                        " MaxLights:0x%01x"
-                        " MaxClips:0x%01x"
-                        " TexOpCaps:0x%08x"
-                        " S30MaxSlots:%d/%d"
-                        " TexMaxSize:%d/%d/%d"
                         , a.VertexShaderVersion
                         , a.PixelShaderVersion
                         , a.DeclTypes
-                        , a.VertexProcessingCaps
-                        , a.MaxActiveLights
-                        , a.MaxUserClipPlanes
-                        , a.TextureOpCaps
-                        , a.MaxVertexShader30InstructionSlots
-                        , a.MaxPixelShader30InstructionSlots
-                        , a.MaxTextureWidth
-                        , a.MaxTextureHeight
-                        , a.MaxVolumeExtent
                     );
     }
 
@@ -685,43 +646,9 @@ void AddCapsReport( UINT Adapter, IDirect3D9* pDirect3D, IDirect3DDevice9* pD3DD
 
     if ( bFixGTACaps && !DeviceCapsSameAsGTACaps )
     {
-        if ( DeviceCaps9.DeclTypes > pGTACaps9->DeclTypes )
-        {
-            WriteDebugEvent( "Not Fixing GTA caps as DeviceCaps is better" );
-        }
-        else
-        {
-            WriteDebugEvent( "Fixing GTA caps" );
-            memcpy( pGTACaps9, &DeviceCaps9, sizeof( D3DCAPS9 ) );
-        }
+        WriteDebugEvent( "Fixing GTA caps" );
+        memcpy( pGTACaps9, &DeviceCaps9, sizeof( D3DCAPS9 ) );
     }
-}
-
-
-////////////////////////////////////////////////
-//
-// CreateDeviceSecondCallCheck
-//
-// Check for, and handle subsequent calls to create device
-// Know to occur with RTSSHooks.dll (EVGA Precision X on screen display)
-//
-////////////////////////////////////////////////
-bool CreateDeviceSecondCallCheck( HRESULT& hOutResult, IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface )
-{
-    static uint uiCreateCount = 0;
-
-    // Also check for invalid size
-    if ( pPresentationParameters->BackBufferWidth == 0 )
-    {
-        WriteDebugEvent ( SString ( " Passing through call #%d to CreateDevice because size is invalid", uiCreateCount ) );
-        return true;
-    }
-
-    if ( ++uiCreateCount == 1 )
-        return false;
-    WriteDebugEvent ( SString ( " Passing through call #%d to CreateDevice", uiCreateCount ) );
-    hOutResult = pDirect3D->CreateDevice ( Adapter, DeviceType, hFocusWindow, BehaviorFlags, pPresentationParameters, ppReturnedDeviceInterface );
-    return true;
 }
 
 
@@ -808,10 +735,8 @@ HRESULT HandleCreateDeviceResult( HRESULT hResult, IDirect3D9* pDirect3D, UINT A
     if ( uiCurrentStatus == CREATE_DEVICE_FAIL )
         uiDiagnosticLogLevel = 2;   // Log and wait - If fail status
 
-    bool bDetectOptimus = ( GetModuleHandle( "nvd3d9wrap.dll" ) != NULL );
-
     bool bFixCaps = false;
-    if ( GetApplicationSettingInt( "nvhacks", "optimus" ) || bDetectOptimus )
+    if ( GetApplicationSettingInt( "nvhacks", "optimus" ) )
     {
         bFixCaps = true;
         if ( uiDiagnosticLogLevel == 0 )
@@ -1006,11 +931,9 @@ HRESULT CCore::OnPostCreateDevice( HRESULT hResult, IDirect3D9* pDirect3D, UINT 
                                 ) );
     }
 
-    bool bDetectOptimus = ( GetModuleHandle( "nvd3d9wrap.dll" ) != NULL );
-
     // Calc log level to use
     uint uiDiagnosticLogLevel = 0;
-    if ( GetApplicationSettingInt( "nvhacks", "optimus" ) || bDetectOptimus )
+    if ( GetApplicationSettingInt( "nvhacks", "optimus" ) )
         uiDiagnosticLogLevel = 1;   // Log and continue
     if ( hResult != D3D_OK )
         uiDiagnosticLogLevel = 2;   // Log and wait - If fail status

@@ -73,7 +73,7 @@ public:
 
 
     void                                DoPulse                 ( void );
-    void                                Initiate                ( CVector& vecPosition, CVector& vecRotation, CVector& vecVelocity, unsigned short usModel );
+    void                                Initiate                ( CVector * pvecPosition, CVector * pvecRotation, CVector * pvecVelocity, unsigned short usModel );
     void                                Destroy                 ( bool bBlow = true );
 
     bool                                IsActive                ( void );
@@ -98,7 +98,6 @@ public:
     inline CVector *                    GetTarget               ( void )        { return m_pvecTarget; }
     inline float                        GetForce                ( void )        { return m_fForce; }
     inline bool                         IsLocal                 ( void )        { return m_bLocal; }
-    CClientEntity*                      GetSatchelAttachedTo    ( void );
     
 protected:
     CClientProjectileManager*           m_pProjectileManager;
@@ -118,7 +117,6 @@ protected:
 
     bool                                m_bInitiate;
     CProjectileInitiateData *           m_pInitiateData;
-    bool                                m_bCorrected;
 };
 
 #endif

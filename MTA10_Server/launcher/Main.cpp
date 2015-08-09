@@ -10,19 +10,8 @@
 *
 *****************************************************************************/
 
-/*
-    IMPORTANT (Windows only)
-
-    If this project changes, a new release build should be copied into
-    the launcher/output diectory.
-
-    The 'MTA Server.exe' in launcher/output will be used by the installer and updater.
-
-    (set flag.new_server_exe on the build server to generate a new 'MTA Server.exe')
-*/
-
-
 #include "CDynamicLibrary.h"
+#include "../version.h"
 #include "../../Shared/sdk/SharedUtil.Defines.h"
 #include <cstdio>
 #include <iostream>
@@ -37,7 +26,6 @@ using namespace std;
 #else
     #include <string.h>
     #include <alloca.h>
-    #include <unistd.h>
 #endif
 
 #ifdef WIN32
@@ -86,9 +74,6 @@ int main ( int argc, char* argv [] )
             printf ( "  -t                   Run server with a simple console\n" );
             printf ( "  -f                   Run server with a standard console (Default)\n" );
             printf ( "  -n                   Disable the usage of ncurses (For screenlog)\n" );
-#ifndef WIN32
-            printf ( "  -x                   Disable simplified crash reports (To allow core dumps)\n" );
-#endif
             printf ( "  -D [PATH]            Use as base directory\n" );
             printf ( "  --config [FILE]      Alternate mtaserver.conf file\n" );
             printf ( "  --ip [ADDR]          Set IP address\n" );
@@ -96,6 +81,11 @@ int main ( int argc, char* argv [] )
             printf ( "  --httpport [PORT]    Set http port\n" );
             printf ( "  --maxplayers [max]   Set maxplayers\n" );
             printf ( "  --novoice            Disable voice communication\n" );
+            return 1;
+        }
+        else if ( strcmp ( argv[1], "--version" ) == 0 || strcmp ( argv[1], "-v" ) == 0 )
+        {
+            printf ( MTA_DM_FULL_STRING " v" MTA_DM_BUILDTAG_LONG "\n" );
             return 1;
         }
     }

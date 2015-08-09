@@ -292,13 +292,12 @@ int CLuaFunctionDefs::GetElementPosition ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetElementRotation ( lua_State* luaVM )
 {
-//  float float float getElementRotation ( element theElement [, string rotOrder = "default" ] )
+    // Verify the argument
     CClientEntity* pEntity = NULL;
-    eEulerRotationOrder rotationOrder;
-
+    SString strRotationOrder = "default";
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
-    argStream.ReadEnumString ( rotationOrder, EULER_DEFAULT );
+    argStream.ReadString ( strRotationOrder, "default" );
 
     if ( !argStream.HasErrors ( ) )
     {
@@ -306,7 +305,7 @@ int CLuaFunctionDefs::GetElementRotation ( lua_State* luaVM )
         {
             // Grab the rotation
             CVector vecRotation;
-            if ( CStaticFunctionDefinitions::GetElementRotation ( *pEntity, vecRotation, rotationOrder ) )
+            if ( CStaticFunctionDefinitions::GetElementRotation ( *pEntity, vecRotation, strRotationOrder ) )
             {
                 // Return it
                 lua_pushnumber ( luaVM, vecRotation.fX );
@@ -668,10 +667,22 @@ int CLuaFunctionDefs::IsElementWithinMarker( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        // Check if it's within
-        bool bWithin = pEntity->CollisionExists ( pMarker->GetColShape() );
-        lua_pushboolean ( luaVM, bWithin );
-        return 1;
+        // Valid element?
+        if ( pEntity )
+        {
+            // Valid colshape?
+            if ( pMarker )
+            {
+                // Check if it's within
+                bool bWithin = pEntity->CollisionExists ( pMarker->GetColShape() );
+                lua_pushboolean ( luaVM, bWithin );
+                return 1;
+            }
+            else
+                m_pScriptDebugging->LogBadPointer ( luaVM, "marker", 2 );
+        }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
@@ -712,12 +723,9 @@ int CLuaFunctionDefs::GetElementsWithinColShape ( lua_State* luaVM )
                 {
                     if ( szType == NULL || strcmp ( (*iter)->GetTypeName (), szType ) == 0 )
                     {
-                        if ( !( *iter )->IsBeingDeleted ( ) )
-                        {
-                            lua_pushnumber ( luaVM, ++uiIndex );
-                            lua_pushelement ( luaVM, *iter );
-                            lua_settable ( luaVM, -3 );
-                        }
+                        lua_pushnumber ( luaVM, ++uiIndex );
+                        lua_pushelement ( luaVM, *iter );
+                        lua_settable ( luaVM, -3 );
                     }
                 }
 
@@ -911,13 +919,10 @@ int CLuaFunctionDefs::GetAttachedElements ( lua_State* luaVM )
             for ( uint i = 0 ; i < pEntity->GetAttachedEntityCount() ; i++ )
             {
                 CClientEntity * pAttached = pEntity->GetAttachedEntity( i );
-                assert ( pAttached->GetAttachedTo ( ) == pEntity );
-                if ( !pAttached->IsBeingDeleted ( ) )
-                {
-                    lua_pushnumber ( luaVM, i + 1 );
-                    lua_pushelement ( luaVM, pAttached );
-                    lua_settable ( luaVM, -3 );
-                }
+                assert ( pAttached->GetAttachedTo () == pEntity );
+                lua_pushnumber ( luaVM, i + 1 );
+                lua_pushelement ( luaVM, pAttached );
+                lua_settable ( luaVM, -3 );
             }
             return 1;
         }
@@ -974,7 +979,7 @@ int CLuaFunctionDefs::IsElementLocal ( lua_State* luaVM )
         if ( pEntity )
         {
             // Return whether it's local or not
-            bool bLocal = pEntity->IsLocalEntity ();
+            bool bLocal = pEntity->IsLocalEntity ();;
             lua_pushboolean ( luaVM, bLocal );
             return 1;
         }
@@ -1577,7 +1582,7 @@ int CLuaFunctionDefs::SetElementData ( lua_State* luaVM )
 int CLuaFunctionDefs::RemoveElementData ( lua_State* luaVM )
 {
 //  bool removeElementData ( element theElement, string key )
-    CClientEntity* pEntity; SString strKey;
+    CClientEntity* pEntity; SString strKey;;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
@@ -1613,23 +1618,14 @@ int CLuaFunctionDefs::RemoveElementData ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetElementMatrix ( lua_State* luaVM )
 {
-    //  setElementMatrix ( element theElement, table matrix )
+//  setElementMatrix ( element theElement, table matrix )
     CClientEntity* pEntity; CMatrix matrix;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
 
-    if ( argStream.NextIsTable ( ) )
-    {
-        if ( !ReadMatrix ( luaVM, argStream.m_iIndex, matrix ) )
-        {
-            argStream.SetCustomError ( "Matrix is not 4 x 4" );
-        }
-    }
-    else
-    {
-        argStream.ReadMatrix ( matrix );
-    }
+    if ( !ReadMatrix ( luaVM, argStream.m_iIndex, matrix ) )
+        argStream.SetCustomError ( "Matrix is not 4 x 4" );
 
     // Verify the arguments
     if ( !argStream.HasErrors ( ) )
@@ -1687,17 +1683,17 @@ int CLuaFunctionDefs::SetElementPosition ( lua_State* luaVM )
 int CLuaFunctionDefs::SetElementRotation ( lua_State* luaVM )
 {
 //  bool setElementRotation ( element theElement, float rotX, float rotY, float rotZ [, string rotOrder = "default", bool fixPedRotation = false ] )
-    CClientEntity* pEntity; CVector vecRotation; eEulerRotationOrder rotationOrder; bool bNewWay;
+    CClientEntity* pEntity; CVector vecRotation; SString strRotationOrder; bool bNewWay;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
     argStream.ReadVector3D ( vecRotation );
-    argStream.ReadEnumString ( rotationOrder, EULER_DEFAULT );
+    argStream.ReadString ( strRotationOrder, "default" );
     argStream.ReadBool ( bNewWay, false );
 
     if ( !argStream.HasErrors () )
     {
-        if ( CStaticFunctionDefinitions::SetElementRotation ( *pEntity, vecRotation, rotationOrder, bNewWay ) )
+        if ( CStaticFunctionDefinitions::SetElementRotation ( *pEntity, vecRotation, strRotationOrder, bNewWay ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
@@ -1806,9 +1802,13 @@ int CLuaFunctionDefs::SetElementInterior ( lua_State* luaVM )
             bool bSetPosition = false;
             CVector vecPosition;
 
-            if ( argStream.NextIsVector3D ( ) )
+            if ( argStream.NextIsNumber ( ) && 
+                 argStream.NextIsNumber ( 1 ) && 
+                 argStream.NextIsNumber ( 2 ) )
             {
-                argStream.ReadVector3D ( vecPosition );
+                argStream.ReadNumber ( vecPosition.fX );
+                argStream.ReadNumber ( vecPosition.fY );
+                argStream.ReadNumber ( vecPosition.fZ );
                 if ( !argStream.HasErrors ( ) )
                 {
                     bSetPosition = true;
@@ -2382,26 +2382,373 @@ int CLuaFunctionDefs::IsElementCallPropagationEnabled ( lua_State* luaVM )
     return 1;
 }
 
-int CLuaFunctionDefs::IsElementWaitingForGroundToLoad ( lua_State* luaVM )
+DECLARE_ENUM( eEntityRenderMode );
+
+IMPLEMENT_ENUM_BEGIN( eEntityRenderMode )
+    ADD_ENUM( ENTITY_RMODE_LIGHTING,                "lighting" )
+    ADD_ENUM( ENTITY_RMODE_LIGHTING_AMBIENT,        "lighting_ambient" )
+    ADD_ENUM( ENTITY_RMODE_LIGHTING_DIRECTIONAL,    "lighting_directional" )
+    ADD_ENUM( ENTITY_RMODE_LIGHTING_POINT,          "lighting_point" )
+    ADD_ENUM( ENTITY_RMODE_LIGHTING_SPOT,           "lighting_spot" )
+    ADD_ENUM( ENTITY_RMODE_LIGHTING_MATERIAL,       "lighting_material" )
+    ADD_ENUM( ENTITY_RMODE_REFLECTION,              "reflection" )
+    ADD_ENUM( ENTITY_RMODE_ALPHACLAMP,              "alphaClamp" )
+IMPLEMENT_ENUM_END( "eEntityRenderMode" )
+
+inline eRenderModeValueType ReadPreferedValueType( CScriptArgReader& argStream )
 {
-    CClientEntity* pEntity;
-
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-
-    if ( !argStream.HasErrors () )
+    if ( argStream.NextIsString() )
     {
-        bool bEnabled;
-        if ( CStaticFunctionDefinitions::IsElementFrozenWaitingForGroundToLoad ( *pEntity, bEnabled ) )
-        {
-            lua_pushboolean ( luaVM, bEnabled );
-            return 1;
-        }        
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+        SString valueTypeString;
 
-    lua_pushboolean ( luaVM, false );
+        argStream.ReadString( valueTypeString );
+
+        if ( !argStream.HasErrors() )
+        {
+            if ( valueTypeString == "bool" )
+            {
+                return RMODE_BOOLEAN;
+            }
+            else if ( valueTypeString == "int" )
+            {
+                return RMODE_INT;
+            }
+            else if ( valueTypeString == "float" )
+            {
+                return RMODE_FLOAT;
+            }
+        }
+    }
+
+    return RMODE_VOID;
+}
+
+template <typename callbackType>
+static AINLINE int _ElementRenderModeSelector( lua_State *L, bool allowTypeSpecifier, callbackType& cb )
+{
+    CClientEntity *pEntity = NULL;
+    const char *entityTypeString = NULL;
+    
+    CScriptArgReader argStream( L );
+    
+    if ( argStream.NextIsUserDataOfType <CClientEntity> () )
+    {
+        argStream.ReadUserData( pEntity );
+    }
+    else if ( argStream.NextIsString() )
+    {
+        entityTypeString = lua_tostring( L, 1 );
+
+        argStream.m_iIndex++;
+    }
+
+    eEntityRenderMode rMode;
+    
+    if ( !argStream.HasErrors() )
+    {
+        argStream.ReadEnumString( rMode );
+    }
+    
+    if ( !argStream.HasErrors() )
+    {
+        rModeResult result;
+
+        if ( pEntity )
+        {
+            eRenderModeValueType valueType = RMODE_VOID;
+
+            if ( allowTypeSpecifier )
+            {
+                {
+                    eRenderModeValueType prefScriptType = ReadPreferedValueType( argStream );
+
+                    if ( prefScriptType != RMODE_VOID )
+                    {
+                        valueType = prefScriptType;
+                    }
+                }
+
+                if ( valueType == RMODE_VOID )
+                {
+                    valueType = g_pGame->GetPreferedEntityRenderModeType( rMode );
+                }
+            }
+
+            result = cb.OnEntitySelectedRenderMode( L, argStream, rMode, pEntity, valueType );
+        }
+        else
+        {
+            // todo.
+        }
+
+        return cb.DoReturnResult( L, result );
+    }
+
+    if ( argStream.HasErrors() )
+        g_pClientGame->GetScriptDebugging()->LogCustom ( L, argStream.GetFullErrorMessage() );
+
+    lua_pushboolean( L, false );
     return 1;
+}
+
+struct SetRenderModeCallback
+{
+    AINLINE rModeResult OnEntitySelectedRenderMode( lua_State *L, CScriptArgReader& argStream, eEntityRenderMode rMode, CClientEntity *pEntity, eRenderModeValueType valueType )
+    {
+        union
+        {
+            bool boolValue;
+            float floatValue;
+            int intValue;
+        };
+
+        bool gotBoolValue = false;
+        bool gotFloatValue = false;
+        bool gotIntValue = false;
+        
+        if ( valueType != RMODE_VOID )
+        {
+            CScriptArgReader secondaryArgStream( L );
+
+            secondaryArgStream.m_iIndex = argStream.m_iIndex;
+
+            if ( valueType == RMODE_BOOLEAN )
+            {
+                secondaryArgStream.ReadBool( boolValue );
+
+                gotBoolValue = !secondaryArgStream.HasErrors();
+            }
+            else if ( valueType == RMODE_FLOAT )
+            {
+                secondaryArgStream.ReadNumber( floatValue );
+
+                gotFloatValue = !secondaryArgStream.HasErrors();
+            }
+            else if ( valueType == RMODE_INT )
+            {
+                secondaryArgStream.ReadNumber( intValue );
+
+                gotIntValue = !secondaryArgStream.HasErrors();
+            }
+        }
+
+        if ( !gotIntValue && !gotFloatValue && !gotBoolValue )
+        {
+            if ( argStream.NextIsBool() )
+            {
+                argStream.ReadBool( boolValue );
+
+                gotBoolValue = !argStream.HasErrors();
+            }
+            else if ( argStream.NextIsNumber() )
+            {
+                argStream.ReadNumber( floatValue );
+
+                gotFloatValue = !argStream.HasErrors();
+            }
+            else
+                argStream.SetCustomError( "invalid property type" );
+        }
+
+        rModeResult result;
+
+        if ( !argStream.HasErrors() )
+        {
+            if ( gotBoolValue )
+            {
+                result = pEntity->SetEntityRenderModeBool( rMode, boolValue );
+            }
+            else if ( gotFloatValue )
+            {
+                result = pEntity->SetEntityRenderModeFloat( rMode, floatValue );
+            }
+            else if ( gotIntValue )
+            {
+                result = pEntity->SetEntityRenderModeInt( rMode, intValue );
+            }
+        }
+        else
+        {
+            g_pClientGame->GetScriptDebugging()->LogCustom ( L, argStream.GetFullErrorMessage() );
+
+            result.successful = false;
+            result.debugMsg = argStream.GetErrorMessage();
+        }
+
+        return result;
+    }
+
+    AINLINE int DoReturnResult( lua_State *L, rModeResult& theResult )
+    {
+        int numRet = 1;
+
+        lua_pushboolean( L, theResult.successful );
+
+        if ( theResult.debugMsg.size() != 0 )
+        {
+            lua_pushlstring( L, theResult.debugMsg.c_str(), theResult.debugMsg.size() );
+            numRet++;
+        }
+        return numRet;
+    }
+};
+
+int CLuaFunctionDefs::SetElementRenderMode ( lua_State *L )
+{
+    // bool, string setElementRenderMode ( [ string entityType/element theElement, ] string rModeDesc, [, string preferedValueType, ] var value )
+    SetRenderModeCallback callback;
+
+    return _ElementRenderModeSelector( L, true, callback );
+}
+
+struct GetElementRenderModeCallback
+{
+    bool hasReturnValue;
+
+    AINLINE GetElementRenderModeCallback( void )
+    {
+        hasReturnValue = false;
+    }
+
+    AINLINE rModeResult OnEntitySelectedRenderMode( lua_State *L, CScriptArgReader& argStream, eEntityRenderMode rMode, CClientEntity *pEntity, eRenderModeValueType valueType )
+    {
+        union
+        {
+            bool boolValue;
+            float floatValue;
+            int intValue;
+        };
+
+        bool gotBoolValue = false;
+        bool gotFloatValue = false;
+        bool gotIntValue = false;
+
+        rModeResult result;
+
+        // Return by preference if possible.
+        if ( valueType == RMODE_BOOLEAN )
+        {
+            result = pEntity->GetEntityRenderModeBool( rMode, boolValue );
+
+            gotBoolValue = result.successful;
+        }
+        else if ( valueType == RMODE_FLOAT )
+        {
+            result = pEntity->GetEntityRenderModeFloat( rMode, floatValue );
+
+            gotFloatValue = result.successful;
+        }
+        else if ( valueType == RMODE_INT )
+        {
+            result = pEntity->GetEntityRenderModeInt( rMode, intValue );
+
+            gotIntValue = result.successful;
+        }
+
+        // If preference failed, try default stuff.
+        if ( !gotBoolValue && !gotFloatValue && !gotIntValue )
+        {
+            rModeResult secResult = pEntity->GetEntityRenderModeBool( rMode, boolValue );
+
+            if ( !secResult.successful )
+            {
+                secResult = pEntity->GetEntityRenderModeFloat( rMode, floatValue );
+
+                if ( !secResult.successful )
+                {
+                    secResult = pEntity->GetEntityRenderModeInt( rMode, intValue );
+
+                    if ( secResult.successful )
+                    {
+                        gotIntValue = true;
+                    }
+                }
+                else
+                {
+                    gotFloatValue = true;
+                }
+            }
+            else
+            {
+                gotBoolValue = true;
+            }
+
+            if ( secResult.successful )
+            {
+                result = secResult;
+            }
+        }
+
+        if ( gotBoolValue )
+        {
+            lua_pushboolean( L, boolValue );
+        }
+        else if ( gotFloatValue )
+        {
+            lua_pushnumber( L, floatValue );
+        }
+        else if ( gotIntValue )
+        {
+            lua_pushinteger( L, intValue );
+        }
+
+        hasReturnValue = ( gotBoolValue || gotFloatValue || gotIntValue );
+
+        return result;
+    }
+
+    AINLINE int DoReturnResult( lua_State *L, rModeResult& theResult )
+    {
+        int numRet = 1;
+
+        if ( !hasReturnValue )
+        {
+            lua_pushboolean( L, theResult.successful );
+        }
+
+        if ( theResult.debugMsg.size() != 0 )
+        {
+            lua_pushlstring( L, theResult.debugMsg.c_str(), theResult.debugMsg.size() );
+            numRet++;
+        }
+        return numRet;
+    }
+};
+
+int CLuaFunctionDefs::GetElementRenderMode ( lua_State *L )
+{
+    // value, string getElementRenderMode ( [ string entityType/element theElement, string rModeDesc, string prefValueType ] )
+    GetElementRenderModeCallback callback;
+
+    return _ElementRenderModeSelector( L, true, callback );
+}
+
+struct ResetElementRenderModeCallback
+{
+    AINLINE rModeResult OnEntitySelectedRenderMode( lua_State *L, CScriptArgReader& argStream, eEntityRenderMode rMode, CClientEntity *pEntity, eRenderModeValueType valueType )
+    {
+        return pEntity->ResetEntityRenderMode( rMode );
+    }
+
+    AINLINE int DoReturnResult( lua_State *L, rModeResult& theResult )
+    {
+        int numRet = 1;
+
+        lua_pushboolean( L, theResult.successful );
+
+        if ( theResult.debugMsg.size() != 0 )
+        {
+            lua_pushlstring( L, theResult.debugMsg.c_str(), theResult.debugMsg.size() );
+            numRet++;
+        }
+        return numRet;
+    }
+};
+
+int CLuaFunctionDefs::ResetElementRenderMode ( lua_State *L )
+{
+    // bool, string resetElementRenderMode ( [ string entityType/element theElement, ] string rModeDesc )
+    ResetElementRenderModeCallback callback;
+
+    return _ElementRenderModeSelector( L, false, callback );
 }

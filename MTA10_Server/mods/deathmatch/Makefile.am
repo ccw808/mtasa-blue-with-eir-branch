@@ -123,7 +123,6 @@ LOGIC = \
 ./logic/CPerfStat.LuaMemory.cpp \
 ./logic/CPerfStat.LuaTiming.cpp \
 ./logic/CPerfStat.PacketUsage.cpp \
-./logic/CPerfStat.PlayerPacketUsage.cpp \
 ./logic/CPerfStat.RPCPacketUsage.cpp \
 ./logic/CPerfStat.EventPacketUsage.cpp \
 ./logic/CPerfStat.ServerInfo.cpp \
@@ -187,52 +186,17 @@ LOGIC = \
 ./logic/lua/CLuaArgument.cpp \
 ./logic/lua/CLuaArguments.cpp \
 ./logic/lua/CLuaCFunctions.cpp \
-./logic/lua/CLuaFunctionDefs.cpp \
-./logic/lua/CLuaFunctionDefs.Account.cpp \
-./logic/lua/CLuaFunctionDefs.Ban.cpp \
-./logic/lua/CLuaFunctionDefs.Blip.cpp \
-./logic/lua/CLuaFunctionDefs.Clothing.cpp \
-./logic/lua/CLuaFunctionDefs.ColShape.cpp \
-./logic/lua/CLuaFunctionDefs.Crypt.cpp \
-./logic/lua/CLuaFunctionDefs.Database.cpp \
-./logic/lua/CLuaFunctionDefs.Event.cpp \
-./logic/lua/CLuaFunctionDefs.Marker.cpp \
-./logic/lua/CLuaFunctionDefs.Misc.cpp \
-./logic/lua/CLuaFunctionDefs.Object.cpp \
-./logic/lua/CLuaFunctionDefs.Ped.cpp \
-./logic/lua/CLuaFunctionDefs.Player.cpp \
-./logic/lua/CLuaFunctionDefs.PREG.cpp \
-./logic/lua/CLuaFunctionDefs.RadarArea.cpp \
-./logic/lua/CLuaFunctionDefs.Server.cpp \
-./logic/lua/CLuaFunctionDefs.Team.cpp \
-./logic/lua/CLuaFunctionDefs.Timer.cpp \
-./logic/lua/CLuaFunctionDefs.UTF.cpp \
-./logic/lua/CLuaFunctionDefs.Utility.cpp \
-./logic/lua/CLuaFunctionDefs.Vehicle.cpp \
-./logic/lua/CLuaFunctionDefs.Water.cpp \
-./logic/lua/CLuaFunctionDefs.Weapon.cpp \
+./logic/lua/CLuaFunctionDefinitions.cpp \
 ./logic/lua/CLuaFunctionParseHelpers.cpp \
 ./logic/lua/CLuaFunctionRef.cpp \
 ./logic/lua/CLuaMain.cpp \
 ./logic/lua/CLuaManager.cpp \
-./logic/lua/CLuaMatrix.cpp \
 ./logic/lua/CLuaModule.cpp \
 ./logic/lua/CLuaModuleManager.cpp \
 ./logic/lua/CLuaTimer.cpp \
 ./logic/lua/CLuaTimerManager.cpp \
-./logic/lua/CLuaVector2.cpp \
-./logic/lua/CLuaVector3.cpp \
-./logic/lua/CLuaVector4.cpp \
 ./logic/lua/LuaCommon.cpp \
 ./logic/lua/LuaUtils.cpp \
-./logic/lua/oopdefs/CLuaOOPFunctionDefs.ACL.cpp \
-./logic/lua/oopdefs/CLuaOOPFunctionDefs.Camera.cpp \
-./logic/lua/oopdefs/CLuaOOPFunctionDefs.Connection.cpp \
-./logic/lua/oopdefs/CLuaOOPFunctionDefs.Element.cpp \
-./logic/lua/oopdefs/CLuaOOPFunctionDefs.Marker.cpp \
-./logic/lua/oopdefs/CLuaOOPFunctionDefs.Ped.cpp \
-./logic/lua/oopdefs/CLuaOOPFunctionDefs.Player.cpp \
-./logic/lua/oopdefs/CLuaOOPFunctionDefs.RadarArea.cpp \
 ./logic/luadefs/CLuaACLDefs.cpp \
 ./logic/luadefs/CLuaBitDefs.cpp \
 ./logic/luadefs/CLuaCameraDefs.cpp \
@@ -242,13 +206,9 @@ LOGIC = \
 ./logic/luadefs/CLuaFileDefs.cpp \
 ./logic/luadefs/CLuaHandlingDefs.cpp \
 ./logic/luadefs/CLuaHTTPDefs.cpp \
-./logic/luadefs/CLuaMatrixDefs.cpp \
 ./logic/luadefs/CLuaPickupDefs.cpp \
 ./logic/luadefs/CLuaResourceDefs.cpp \
 ./logic/luadefs/CLuaTextDefs.cpp \
-./logic/luadefs/CLuaVector2Defs.cpp \
-./logic/luadefs/CLuaVector3Defs.cpp \
-./logic/luadefs/CLuaVector4Defs.cpp \
 ./logic/luadefs/CLuaVoiceDefs.cpp \
 ./logic/luadefs/CLuaWorldDefs.cpp \
 ./logic/luadefs/CLuaXMLDefs.cpp \
@@ -361,7 +321,7 @@ deathmatch_la_LIBADD = \
 	../../sdk/libplatform.la \
 	$(top_builddir)/vendor/ehs/libehs.la \
 	$(LUABDIR)/src/liblua.la \
-	$(top_builddir)/vendor/json-c/libjson-c.la \
+	$(top_builddir)/vendor/json-c/libjson.la \
 	$(SPARSEHASH_LIBS)
 
 deathmatch_la_LDFLAGS = \

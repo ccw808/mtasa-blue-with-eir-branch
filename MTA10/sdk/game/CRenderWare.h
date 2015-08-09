@@ -12,13 +12,17 @@
 #ifndef __CRENDERWARE
 #define __CRENDERWARE
 
-#include "RenderWare.h"
-#include <list>
+#include "RenderWare_shared.h"
 
 class CD3DDUMMY;
 class CClientEntityBase;
 class CShaderItem;
 typedef CShaderItem CSHADERDUMMY;
+struct RwTexture;
+struct RpClump;
+struct RwTexDictionary;
+class CColModel;
+struct RwFrame;
 
 // A list of custom textures to add to a model's txd
 struct SReplacementTextures
@@ -56,38 +60,65 @@ enum EEntityTypeMask
     TYPE_MASK_ALL     = 127,
 };
 
+enum eWorldRenderMode
+{
+    WORLD_RENDER_ORIGINAL,
+    WORLD_RENDER_MESHLOCAL_ALPHAFIX,
+    WORLD_RENDER_SCENE_ALPHAFIX
+};
+
+enum eShaderLightingMode
+{
+    SHADER_LIGHTING_SINGULAR,
+    SHADER_LIGHTING_MULTI
+};
+
 typedef void (*PFN_WATCH_CALLBACK) ( CSHADERDUMMY* pContext, CD3DDUMMY* pD3DDataNew, CD3DDUMMY* pD3DDataOld );
 
 #define MAX_ATOMICS_PER_CLUMP   128
 
-class CRenderWare {
-    public:
-    virtual bool                ModelInfoTXDLoadTextures    ( SReplacementTextures* pReplacementTextures, const CBuffer& fileData, bool bFilteringEnabled ) = 0;
+class CRenderWare
+{
+public:
+    virtual void                    EnableEnvMapRendering               ( bool enabled ) = 0;
+    virtual bool                    IsEnvMapRenderingEnabled            ( void ) const = 0;
+
+    // Lighting utilities.
+    virtual void                    SetGlobalLightingAlwaysEnabled      ( bool enabled ) = 0;
+    virtual bool                    IsGlobalLightingAlwaysEnabled       ( void ) const = 0;
+
+    virtual void                    SetLocalLightingAlwaysEnabled       ( bool enabled ) = 0;
+    virtual bool                    IsLocalLightingAlwaysEnabled        ( void ) const = 0;
+
+    // Shader lighting management.
+    virtual void                    SetShaderLightingMode               ( eShaderLightingMode mode ) = 0;
+    virtual eShaderLightingMode     GetShaderLightingMode               ( void ) const = 0;
+
+    // Rendering modes.
+    virtual void                    SetWorldRenderMode                  ( eWorldRenderMode mode ) = 0;
+    virtual eWorldRenderMode        GetWorldRenderMode                  ( void ) const = 0;
+
+    virtual bool                ModelInfoTXDLoadTextures    ( SReplacementTextures* pReplacementTextures, const SString& szFilename, bool bFilteringEnabled ) = 0;
     virtual bool                ModelInfoTXDAddTextures     ( SReplacementTextures* pReplacementTextures, ushort usModelId ) = 0;
     virtual void                ModelInfoTXDRemoveTextures  ( SReplacementTextures* pReplacementTextures ) = 0;
     virtual void                ClothesAddReplacementTxd    ( char* pFileData, ushort usFileId ) = 0;
     virtual void                ClothesRemoveReplacementTxd ( char* pFileData ) = 0;
     virtual bool                HasClothesReplacementChanged( void ) = 0;
-    virtual RwTexDictionary *   ReadTXD                     ( const CBuffer& fileData ) = 0;
-    virtual RpClump *           ReadDFF                     ( const CBuffer& fileData, unsigned short usModelID, bool bLoadEmbeddedCollisions ) = 0;
-    virtual CColModel *         ReadCOL                     ( const CBuffer& fileData ) = 0;
+    virtual RwTexDictionary *   ReadTXD                     ( const char *szTXD ) = 0;
+    virtual RpClump *           ReadDFF                     ( const char *szDFF, unsigned short usModelID, bool bLoadEmbeddedCollisions, CColModel*& colOut ) = 0;
+    virtual CColModel *         ReadCOL                     ( const char * szCOLFile ) = 0;
     virtual void                DestroyDFF                  ( RpClump * pClump ) = 0;
     virtual void                DestroyTXD                  ( RwTexDictionary * pTXD ) = 0;
     virtual void                DestroyTexture              ( RwTexture * pTex ) = 0;
     virtual void                ReplaceCollisions           ( CColModel * pColModel, unsigned short usModelID ) = 0;
-    virtual unsigned int        LoadAtomics                 ( RpClump * pClump, RpAtomicContainer * pAtomics ) = 0;
+    virtual bool                PositionFrontSeat           ( RpClump *pClump, unsigned short usModelID ) = 0;
     virtual void                ReplaceAllAtomicsInModel    ( RpClump * pSrc, unsigned short usModelID ) = 0;
-    virtual void                ReplaceAllAtomicsInClump    ( RpClump * pDst, RpAtomicContainer * pAtomics, unsigned int uiAtomics ) = 0;
-    virtual void                ReplaceWheels               ( RpClump * pClump, RpAtomicContainer * pAtomics, unsigned int uiAtomics, const char * szWheel ) = 0;
     virtual void                RepositionAtomic            ( RpClump * pDst, RpClump * pSrc, const char * szName ) = 0;
     virtual void                AddAllAtomics               ( RpClump * pDst, RpClump * pSrc ) = 0;
-    virtual void                ReplaceVehicleModel         ( RpClump * pNew, unsigned short usModelID ) = 0;
-    virtual void                ReplaceWeaponModel          ( RpClump * pNew, unsigned short usModelID ) = 0;
-    virtual void                ReplacePedModel             ( RpClump * pNew, unsigned short usModelID ) = 0;
-    virtual bool                ReplacePartModels           ( RpClump * pClump, RpAtomicContainer * pAtomics, unsigned int uiAtomics, const char * szName ) = 0;
+    virtual void                ReplaceModel                ( RpClump * pNew, unsigned short usModelID ) = 0;
     virtual void                PulseWorldTextureWatch      ( void ) = 0;
     virtual void                GetModelTextureNames        ( std::vector < SString >& outNameList, ushort usModelID ) = 0;
-    virtual const char*         GetTextureName              ( CD3DDUMMY* pD3DData ) = 0;
+    virtual const SString&      GetTextureName              ( CD3DDUMMY* pD3DData ) = 0;
 
     virtual void                SetRenderingClientEntity    ( CClientEntityBase* pClientEntity, ushort usModelId, int iTypeMask ) = 0;
     virtual SShaderItemLayers*  GetAppliedShaderForD3DData  ( CD3DDUMMY* pD3DData ) = 0;

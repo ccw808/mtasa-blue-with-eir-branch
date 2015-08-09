@@ -107,7 +107,6 @@ public:
     LUA_DECLARE ( OutputConsole );
     LUA_DECLARE ( OutputChatBox );
     LUA_DECLARE ( ShowChat );
-    LUA_DECLARE ( IsChatVisible );
     LUA_DECLARE ( OutputClientDebugString );
     LUA_DECLARE ( SetClipboard );
     LUA_DECLARE ( GetClipboard );
@@ -159,7 +158,7 @@ public:
     LUA_DECLARE ( GetLowLodElement );
     LUA_DECLARE ( IsElementLowLod );
     LUA_DECLARE ( IsElementCallPropagationEnabled );
-    LUA_DECLARE ( IsElementWaitingForGroundToLoad );
+    LUA_DECLARE ( GetElementRenderMode );
 
     // Element set funcs
     LUA_DECLARE ( CreateElement );
@@ -187,6 +186,8 @@ public:
     LUA_DECLARE ( SetElementFrozen );
     LUA_DECLARE ( SetLowLodElement );
     LUA_DECLARE ( SetElementCallPropagationEnabled );
+    LUA_DECLARE ( SetElementRenderMode );
+    LUA_DECLARE ( ResetElementRenderMode );
 
     // Radio functions
     LUA_DECLARE ( SetRadioChannel );
@@ -271,7 +272,6 @@ public:
     LUA_DECLARE ( SetPedAnimationProgress );
     LUA_DECLARE ( SetPedMoveAnim );
     LUA_DECLARE ( SetPedWeaponSlot );
-    LUA_DECLARE ( GivePedWeapon );
     LUA_DECLARE ( AddPedClothes );
     LUA_DECLARE ( RemovePedClothes );
     LUA_DECLARE ( SetPedControlState );
@@ -434,16 +434,6 @@ public:
     // Fire functions
     LUA_DECLARE ( CreateFire );
 
-    // PointLights functions
-    LUA_DECLARE ( CreateLight );
-    LUA_DECLARE ( GetLightType );
-    LUA_DECLARE ( GetLightRadius );
-    LUA_DECLARE ( GetLightColor );
-    LUA_DECLARE ( GetLightDirection );
-    LUA_DECLARE ( SetLightRadius );
-    LUA_DECLARE ( SetLightColor );
-    LUA_DECLARE ( SetLightDirection );
-
     // Audio funcs
     LUA_DECLARE ( PlaySoundFrontEnd );
     LUA_DECLARE ( SetAmbientSoundEnabled );
@@ -525,7 +515,6 @@ public:
     LUA_DECLARE ( SetCameraInterior );
     LUA_DECLARE ( FadeCamera );
     LUA_DECLARE ( SetCameraClip );
-    LUA_DECLARE ( GetCameraClip );
     LUA_DECLARE ( SetCameraViewMode );
     LUA_DECLARE ( SetCameraGoggleEffect );
 
@@ -562,6 +551,17 @@ public:
     LUA_DECLARE ( EngineGetModelIDFromName );
     LUA_DECLARE ( EngineGetModelTextureNames );
     LUA_DECLARE ( EngineGetVisibleTextureNames );
+    LUA_DECLARE ( EngineIsModelBeingUsed );
+    LUA_DECLARE ( DiagnoseEntity );
+    LUA_DECLARE ( EngineStreamingSetProperty );
+    LUA_DECLARE ( EngineStreamingGetProperty );
+    LUA_DECLARE ( EngineGetActiveStreamingEntityCount );
+    LUA_DECLARE ( EngineGetActiveStreamingFreeSlotCount );
+    LUA_DECLARE ( EngineGetActiveStreamingEntities );
+    LUA_DECLARE ( EngineGetGamePoolLimits );
+    LUA_DECLARE ( EngineGetStreamingInfo );
+    LUA_DECLARE ( EngineSetWorldRenderMode );
+    LUA_DECLARE ( EngineGetWorldRenderMode );
     LUA_DECLARE ( SetVehicleComponentPosition );
     LUA_DECLARE ( GetVehicleComponentPosition );
     LUA_DECLARE ( SetVehicleComponentRotation );
@@ -666,7 +666,6 @@ public:
     LUA_DECLARE ( GUIGridListAddColumn );
     LUA_DECLARE ( GUIGridListRemoveColumn );
     LUA_DECLARE ( GUIGridListSetColumnWidth );
-    LUA_DECLARE ( GUIGridListGetColumnWidth );
     LUA_DECLARE ( GUIGridListSetColumnTitle );
     LUA_DECLARE ( GUIGridListGetColumnTitle );
     LUA_DECLARE ( GUIGridListSetScrollBars );
@@ -826,9 +825,6 @@ public:
     LUA_DECLARE ( GetFarClipDistance );
     LUA_DECLARE ( SetFarClipDistance );
     LUA_DECLARE ( ResetFarClipDistance );
-    LUA_DECLARE ( GetNearClipDistance );
-    LUA_DECLARE ( SetNearClipDistance );
-    LUA_DECLARE ( ResetNearClipDistance );
     LUA_DECLARE ( GetFogDistance );
     LUA_DECLARE ( SetFogDistance );
     LUA_DECLARE ( ResetFogDistance );
@@ -957,7 +953,6 @@ public:
     LUA_DECLARE ( InterpolateBetween );
 
     // Map funcs
-    LUA_DECLARE ( ForcePlayerMap );
     LUA_DECLARE ( IsPlayerMapForced );
     LUA_DECLARE ( IsPlayerMapVisible );
     LUA_DECLARE ( GetPlayerMapBoundingBox );
@@ -965,7 +960,6 @@ public:
     // Utility
     LUA_DECLARE ( Md5 );
     LUA_DECLARE ( Sha256 );
-    LUA_DECLARE ( Hash );
     LUA_DECLARE ( TeaEncode );
     LUA_DECLARE ( TeaDecode );
     LUA_DECLARE ( Base64encode );
@@ -975,12 +969,8 @@ public:
     LUA_DECLARE ( GetPerformanceStats );
     LUA_DECLARE ( AddDebugHook );
     LUA_DECLARE ( RemoveDebugHook );
-    LUA_DECLARE ( IsOOPEnabled );
 
     LUA_DECLARE ( GetVersion );
-
-    // L10n
-    LUA_DECLARE ( GetLocalization );
 
     // JSON funcs
     LUA_DECLARE ( toJSON );
@@ -1015,24 +1005,6 @@ public:
     LUA_DECLARE ( BitArShift );
     LUA_DECLARE ( BitExtract );
     LUA_DECLARE ( BitReplace );
-
-    // Webbrowser functions
-    LUA_DECLARE ( CreateBrowser );
-    LUA_DECLARE ( RequestBrowserDomains );
-    LUA_DECLARE ( LoadBrowserURL );
-    LUA_DECLARE ( IsBrowserLoading );
-    LUA_DECLARE ( InjectBrowserMouseMove );
-    LUA_DECLARE ( InjectBrowserMouseDown );
-    LUA_DECLARE ( InjectBrowserMouseUp );
-    LUA_DECLARE ( InjectBrowserMouseWheel );
-    LUA_DECLARE ( GetBrowserTitle );
-    LUA_DECLARE ( GetBrowserURL );
-    LUA_DECLARE ( SetBrowserRenderingPaused );
-    LUA_DECLARE ( ExecuteBrowserJavascript );
-    LUA_DECLARE ( SetBrowserVolume );
-    LUA_DECLARE ( IsBrowserDomainBlocked );
-    LUA_DECLARE ( FocusBrowser );
-    LUA_DECLARE ( IsBrowserFocused );
 
 private:
     // Static references to objects

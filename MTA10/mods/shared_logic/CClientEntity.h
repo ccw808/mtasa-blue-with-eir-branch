@@ -22,6 +22,7 @@ class CClientEntity;
 
 #include "CElementArray.h"
 #include "CClientCommon.h"
+#include "CClientRenderModes.h"
 #include <core/CClientEntityBase.h>
 #include "logic/CClientEntityRefManager.h"
 class CLuaFunctionRef;
@@ -78,10 +79,6 @@ enum eClientEntityType
     CCLIENTSHADER,
     CCLIENTWEAPON,
     CCLIENTEFFECT,
-    CCLIENTPOINTLIGHTS,
-    CCLIENTSCREENSOURCE,
-    CCLIENTRENDERTARGET,
-    CCLIENTBROWSER,
     CCLIENTUNKNOWN,
 };
 
@@ -142,10 +139,8 @@ enum eCClientEntityClassTypes
     CLASS_CClientShader,
     CLASS_CClientRenderTarget,
     CLASS_CClientScreenSource,
-    CLASS_CClientWebBrowser,
     CLASS_CClientWeapon,
     CLASS_CClientEffect,
-    CLASS_CClientPointLights,
 };
 
 
@@ -175,16 +170,7 @@ public:
     // ignored. Note that if this value is 0, all sync packets should be accepted. This is
     // so we don't need this byte when the element is created first.
     inline unsigned char                        GetSyncTimeContext      ( void )                    { return m_ucSyncTimeContext; };
-    inline void                                 SetSyncTimeContext      ( unsigned char ucContext ) 
-    {
-        #ifdef MTA_DEBUG
-        if ( GetType ( ) == eClientEntityType::CCLIENTPLAYER )
-        {
-            g_pCore->GetConsole ( )->Printf ( "Player Sync Context Updated from %i to %i.", m_ucSyncTimeContext, ucContext );
-        }
-        #endif
-        m_ucSyncTimeContext = ucContext;
-    };
+    inline void                                 SetSyncTimeContext      ( unsigned char ucContext ) { m_ucSyncTimeContext = ucContext; };
     bool                                        CanUpdateSync           ( unsigned char ucRemote );
 
     inline const char*                          GetName                 ( void )                    { return m_strName; }
@@ -226,7 +212,6 @@ public:
     virtual void                                GetPosition             ( CVector& vecPosition ) const = 0;
     void                                        GetPositionRelative     ( CClientEntity * pOrigin, CVector& vecPosition ) const;
     virtual void                                SetPosition             ( const CVector& vecPosition ) = 0;
-    virtual void                                SetPosition             ( const CVector& vecPosition, bool bResetInterpolation, bool bAllowGroundLoadFreeze = true ) { SetPosition( vecPosition ); }
     void                                        SetPositionRelative     ( CClientEntity * pOrigin, const CVector& vecPosition );
     virtual void                                Teleport                ( const CVector& vecPosition ) { SetPosition(vecPosition); }
 
@@ -306,6 +291,17 @@ public:
     virtual CEntity*                            GetGameEntity               ( void )                  { return NULL; }
     virtual const CEntity*                      GetGameEntity               ( void ) const            { return NULL; }
 
+    // Render Mode API functions.
+    rModeResult                                 SetEntityRenderModeBool     ( eEntityRenderMode rMode, bool value );
+    rModeResult                                 SetEntityRenderModeFloat    ( eEntityRenderMode rMode, float value );
+    rModeResult                                 SetEntityRenderModeInt      ( eEntityRenderMode rMode, int value );
+
+    rModeResult                                 GetEntityRenderModeBool     ( eEntityRenderMode rMode, bool& value ) const;
+    rModeResult                                 GetEntityRenderModeFloat    ( eEntityRenderMode rMode, float& value ) const;
+    rModeResult                                 GetEntityRenderModeInt      ( eEntityRenderMode rMode, int& value ) const;
+
+    rModeResult                                 ResetEntityRenderMode       ( eEntityRenderMode rMode );
+
     bool                                        IsCollidableWith            ( CClientEntity * pEntity );
     void                                        SetCollidableWith           ( CClientEntity * pEntity, bool bCanCollide );
 
@@ -331,7 +327,7 @@ public:
     float                                       GetDistanceBetweenBoundingSpheres   ( CClientEntity* pOther );
 
     bool                                        IsCallPropagationEnabled    ( void )                { return m_bCallPropagationEnabled; }
-    virtual void                                SetCallPropagationEnabled   ( bool bEnabled )       { m_bCallPropagationEnabled = bEnabled; }
+    void                                        SetCallPropagationEnabled   ( bool bEnabled )       { m_bCallPropagationEnabled = bEnabled; }
 
 protected:
     CClientManager*                             m_pManager;
@@ -377,6 +373,151 @@ protected:
     bool                                        m_bDoubleSidedInit;
     bool                                        m_bWorldIgnored;
     bool                                        m_bCallPropagationEnabled;
+
+    // General entity render modes management.
+    struct renderModeManager
+    {
+        typedef eEntityRenderMode rModeDescType;
+
+        inline renderModeManager( CClientEntity *entity )
+        {
+            this->entity = entity;
+        }
+
+        clientRenderModeStorage <rModeDescType> storage;
+
+        inline rModeResult Validate( rModeDescType rMode, bool value )
+        {
+            return g_pGame->ValidateEntityRenderModeBool( rMode, value );
+        }
+
+        inline rModeResult Validate( rModeDescType rMode, float value )
+        {
+            return g_pGame->ValidateEntityRenderModeFloat( rMode, value );
+        }
+
+        inline rModeResult Validate( rModeDescType rMode, int value )
+        {
+            return g_pGame->ValidateEntityRenderModeInt( rMode, value );
+        }
+
+        inline rModeResult Set( rModeDescType rMode, bool value )
+        {
+            CEntity *gameEntity = entity->GetGameEntity();
+
+            if ( gameEntity )
+            {
+                rModeResult result = gameEntity->SetEntityRenderModeBool( rMode, value );
+
+                if ( !result.successful )
+                    return result;
+            }
+
+            storage.StoreBool( rMode, value );
+            return rModeResult( true );
+        }
+
+        inline rModeResult Set( rModeDescType rMode, float value )
+        {
+            CEntity *gameEntity = entity->GetGameEntity();
+
+            if ( gameEntity )
+            {
+                rModeResult result = gameEntity->SetEntityRenderModeFloat( rMode, value );
+
+                if ( !result.successful )
+                    return result;
+            }
+
+            storage.StoreFloat( rMode, value );
+            return rModeResult( true );
+        }
+
+        inline rModeResult Set( rModeDescType rMode, int value )
+        {
+            CEntity *gameEntity = entity->GetGameEntity();
+
+            if ( gameEntity )
+            {
+                rModeResult result = gameEntity->SetEntityRenderModeInt( rMode, value );
+
+                if ( !result.successful )
+                    return result;
+            }
+
+            storage.StoreInt( rMode, value );
+            return rModeResult( true );
+        }
+
+        inline rModeResult Get( rModeDescType rMode, bool& value )
+        {
+            CEntity *gameEntity = entity->GetGameEntity();
+
+            if ( gameEntity )
+            {
+                return gameEntity->GetEntityRenderModeBool( rMode, value );
+            }
+
+            value = storage.GetStoredBool( rMode );
+            return rModeResult( true );
+        }
+
+        inline rModeResult Get( rModeDescType rMode, float& value )
+        {
+            CEntity *gameEntity = entity->GetGameEntity();
+
+            if ( gameEntity )
+            {
+                return gameEntity->GetEntityRenderModeFloat( rMode, value );
+            }
+
+            value = storage.GetStoredFloat( rMode );
+            return rModeResult( true );
+        }
+
+        inline rModeResult Get( rModeDescType rMode, int& value )
+        {
+            CEntity *gameEntity = entity->GetGameEntity();
+
+            if ( gameEntity )
+            {
+                return gameEntity->GetEntityRenderModeInt( rMode, value );   
+            }
+
+            value = storage.GetStoredInt( rMode );
+            return rModeResult( true );
+        }
+
+        inline rModeResult Reset( rModeDescType rMode )
+        {
+            CEntity *gameEntity = entity->GetGameEntity();
+
+            if ( gameEntity )
+            {
+                return gameEntity->ResetEntityRenderMode( rMode );
+            }
+
+            storage.ResetProperty( rMode );
+            return rModeResult( true );
+        }
+
+        inline void Apply( void )
+        {
+            storage.ApplyStates( *this );
+        }
+
+        inline void Update( void )
+        {
+            //storage.UpdateStates( *this, ENTITY_RMODE_MAX );
+            return; // do nothing actually.
+        }
+
+        CClientEntity *entity;
+    };
+    typedef clientRenderModes_t <renderModeManager> entityRenderModes_t;
+
+    renderModeManager*      m_pRenderModeManager;
+    entityRenderModes_t*    m_pRenderModes;
 
 public:
     // Optimization for getElementsByType starting at root

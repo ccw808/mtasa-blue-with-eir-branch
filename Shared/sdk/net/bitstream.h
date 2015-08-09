@@ -27,7 +27,6 @@ public:
     virtual operator NetBitStreamInterface&         ( void ) = 0;
 
     virtual int         GetReadOffsetAsBits         ( void ) = 0;
-    virtual void        SetReadOffsetAsBits         ( int iOffset ) = 0;
 
     virtual void        Reset                       ( void ) = 0;
     virtual void        ResetReadPointer            ( void ) = 0;
@@ -199,11 +198,6 @@ public:
         return false;
     }
 
-    // Return true if enough bytes left in the bitstream
-    bool CanReadNumberOfBytes( int iLength ) const
-    {
-        return iLength >= 0 && iLength <= ( GetNumberOfUnreadBits() + 7 ) / 8;
-    }
 
     // Write characters from a std::string
     void WriteStringCharacters ( const std::string& value, uint uiLength )
@@ -220,8 +214,6 @@ public:
         result = "";
         if ( uiLength )
         {
-            if ( !CanReadNumberOfBytes( uiLength ) )
-                return false;
             // Read the data
             std::vector < char > bufferArray;
             bufferArray.resize( uiLength );

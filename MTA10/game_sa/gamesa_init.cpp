@@ -15,8 +15,8 @@
 #include "profiler/SharedUtil.Profiler.h"
 
 CGameSA* pGame = NULL;
-CNet* g_pNet = NULL;
 CCoreInterface* g_pCore = NULL;
+CCoreInterface* core = NULL;
 
 //-----------------------------------------------------------
 // This function uses the initialized data sections of the executables
@@ -28,11 +28,9 @@ CGame * GetGameInterface( CCoreInterface* pCore )
 {
     DEBUG_TRACE("CGame * GetGameInterface()");
 
-    g_pNet = pCore->GetNetwork ();
-    assert ( g_pNet );
+    g_pCore = core = pCore;
 
     pGame = new CGameSA;
-    g_pCore = pCore;
 
     return (CGame *)pGame;
 }
@@ -66,4 +64,32 @@ bool GetDebugIdEnabled ( uint uiDebugId )
 void LogEvent ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody, uint uiAddReportLogId )
 {
     g_pCore->LogEvent ( uiDebugId, szType, szContext, szBody, uiAddReportLogId );  
+}
+
+//-----------------------------------------------------------
+
+extern "C"
+{
+BOOL WINAPI _DllMainCRTStartup(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved);
+}
+
+BOOL WINAPI __dllInit( HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpReserved )
+{
+    switch( fdwReason )
+    {
+    case DLL_PROCESS_ATTACH:
+        DbgHeap_Init();
+        break;
+    }
+
+    BOOL ret = _DllMainCRTStartup( hinstDLL, fdwReason, lpReserved );
+
+    switch( fdwReason )
+    {
+    case DLL_PROCESS_DETACH:
+        DbgHeap_Shutdown();
+        break;
+    }
+
+    return ret;
 }

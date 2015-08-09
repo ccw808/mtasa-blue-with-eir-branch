@@ -676,6 +676,7 @@ int CLuaResourceDefs::setResourceInfo ( lua_State* luaVM )
         if ( pLuaMain )
         {
             CResource* pThisResource = pLuaMain->GetResource ();
+            CResource* pResource = lua_toresource ( luaVM, 1 );
             if ( pResource )
             {
                 if ( pResource == pThisResource ||
@@ -714,48 +715,31 @@ int CLuaResourceDefs::getResourceConfig ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        CResource* pThisResource = m_pLuaManager->GetVirtualMachine ( luaVM )->GetResource();
-        CResource* pResource = pThisResource;
+        CResource* pResource = m_pLuaManager->GetVirtualMachine ( luaVM )->GetResource();
 
         if ( CResourceManager::ParseResourcePathInput ( strConfigName, pResource, NULL, &strMetaPath ) )
         {
-            // We have access to modify other resource?
-            if (pResource == pThisResource ||
-                m_pACLManager->CanObjectUseRight(pThisResource->GetName().c_str(),
-                CAccessControlListGroupObject::OBJECT_TYPE_RESOURCE,
-                "ModifyOtherObjects",
-                CAccessControlListRight::RIGHT_TYPE_GENERAL,
-                false))
+            list<CResourceFile *> * resourceFileList = pResource->GetFiles();
+            list<CResourceFile *>::iterator iterd = resourceFileList->begin();
+            for ( ; iterd != resourceFileList->end(); ++iterd )
             {
+                CResourceConfigItem* config = (CResourceConfigItem *)(*iterd);
 
-                list<CResourceFile *> * resourceFileList = pResource->GetFiles();
-                list<CResourceFile *>::iterator iterd = resourceFileList->begin();
-                for (; iterd != resourceFileList->end(); ++iterd)
+                if ( config &&
+                     config->GetType() == CResourceFile::RESOURCE_FILE_TYPE_CONFIG &&
+                     strcmp ( config->GetName(), strMetaPath.c_str() ) == 0 )
                 {
-                    CResourceConfigItem* config = (CResourceConfigItem *) (*iterd);
-
-                    if (config &&
-                        config->GetType() == CResourceFile::RESOURCE_FILE_TYPE_CONFIG &&
-                        strcmp(config->GetName(), strMetaPath.c_str()) == 0)
+                    CXMLNode* pNode = config->GetRoot();
+                    if ( pNode )
                     {
-                        CXMLNode* pNode = config->GetRoot();
-                        if (pNode)
-                        {
-                            lua_pushxmlnode(luaVM, pNode);
-                            return 1;
-                        }
+                        lua_pushxmlnode ( luaVM, pNode );
+                        return 1;
                     }
                 }
             }
-            else
-            {
-                argStream.SetCustomError(SString("ModifyOtherObjects in ACL denied resource '%s' to access '%s'", pThisResource->GetName().c_str(), pResource->GetName().c_str()), "Access denied");
-            }
         }
     }
-    
-
-    if (argStream.HasErrors())
+    else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
@@ -1235,14 +1219,24 @@ int CLuaResourceDefs::LoadString( lua_State* luaVM )
         uint uiSize;
         if ( !g_pRealNetServer->DecryptScript( cpInBuffer, uiInSize, &cpBuffer, &uiSize, m_pResourceManager->GetResourceName( luaVM ) + "/loadstring" ) )
         {
-            SString strMessage( "argument 1 is invalid. Please re-compile at http://luac.mtasa.com/", 0 ); 
-            argStream.SetCustomError( strMessage );
-            cpBuffer = NULL;
+            // Problems problems
+            if ( GetTimeString( true ) <= INVALID_COMPILED_SCRIPT_CUTOFF_DATE )
+            {
+                SString strMessage( "loadstring argument 1 is invalid and will not work after %s. Please re-compile at http://luac.mtasa.com/", INVALID_COMPILED_SCRIPT_CUTOFF_DATE ); 
+                m_pScriptDebugging->LogCustom( luaVM, strMessage );
+                // cpBuffer is always valid after call to DecryptScript
+            }
+            else
+            {
+                SString strMessage( "argument 1 is invalid. Please re-compile at http://luac.mtasa.com/", 0 ); 
+                argStream.SetCustomError( strMessage );
+                cpBuffer = NULL;
+            }
         }
 
         if ( !argStream.HasErrors() )
         {
-            if ( !CLuaMain::LuaLoadBuffer( luaVM, cpBuffer, uiSize, szChunkname ) )
+            if ( !luaL_loadbuffer( luaVM, cpBuffer, uiSize, szChunkname ) )
             {
                 // Ok
                 if ( g_pGame->GetConfig()->GetLoadstringLogEnabled() )
@@ -1307,14 +1301,24 @@ int CLuaResourceDefs::Load( lua_State* luaVM )
         uint uiSize;
         if ( !g_pRealNetServer->DecryptScript( cpInBuffer, uiInSize, &cpBuffer, &uiSize, m_pResourceManager->GetResourceName( luaVM ) + "/load" ) )
         {
-            SString strMessage( "argument 2 is invalid. Please re-compile at http://luac.mtasa.com/", 0 ); 
-            argStream.SetCustomError( strMessage );
-            cpBuffer = NULL;
+            // Problems problems
+            if ( GetTimeString( true ) <= INVALID_COMPILED_SCRIPT_CUTOFF_DATE )
+            {
+                SString strMessage( "load argument 2 is invalid and will not work after %s. Please re-compile at http://luac.mtasa.com/", INVALID_COMPILED_SCRIPT_CUTOFF_DATE ); 
+                m_pScriptDebugging->LogCustom( luaVM, strMessage );
+                // cpBuffer is always valid after call to DecryptScript
+            }
+            else
+            {
+                SString strMessage( "argument 2 is invalid. Please re-compile at http://luac.mtasa.com/", 0 ); 
+                argStream.SetCustomError( strMessage );
+                cpBuffer = NULL;
+            }
         }
 
         if ( !argStream.HasErrors() )
         {
-            if ( !CLuaMain::LuaLoadBuffer( luaVM, cpBuffer, uiSize, szChunkname ) )
+            if ( !luaL_loadbuffer( luaVM, cpBuffer, uiSize, szChunkname ) )
             {
                 // Ok
                 if ( g_pGame->GetConfig()->GetLoadstringLogEnabled() )

@@ -35,14 +35,11 @@ void CClientEffectManager::DeleteAll( )
 
 CClientEffect * CClientEffectManager::Create(const SString& strEffectName, const CVector &vecPosition, ElementID ID)
 {
-    if ( strEffectName.length () >= 0x60 )
-        return NULL;
-
-    CFxSystem * pFxSA = g_pGame->GetFxManager()->CreateFxSystem ( strEffectName, vecPosition, NULL, true );
+    CFxSystem * pFxSA = g_pGame->GetFxManager()->CreateFxSystem(strEffectName, vecPosition, NULL, 0);
     if ( pFxSA == NULL )
         return NULL; // GTA was unable to create the effect (e.g. wrong effect name)
 
-    CClientEffect * pFx = new CClientEffect ( m_pManager, pFxSA, strEffectName, ID );
+    CClientEffect * pFx = new CClientEffect(m_pManager, pFxSA, ID);
     m_Effects.push_back( pFx );
 
     return pFx;
@@ -87,12 +84,9 @@ CClientEffect* CClientEffectManager::Get( void* pFxSAInterface )
 void CClientEffectManager::SAEffectDestroyed ( void *pFxSAInterface )
 {
     CClientEffect * pFx = Get(pFxSAInterface);
-
-    g_pGame->GetFxManager()->OnFxSystemSAInterfaceDestroyed( (CFxSystemSAInterface*)pFxSAInterface );
-
     if(pFx == NULL)
         return; // We didn't create that effect
 
-    pFx->SetFxSystem ( NULL );
+    pFx->SetFxSystem(NULL);
     g_pClientGame->GetElementDeleter()->Delete(pFx);
 }

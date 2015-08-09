@@ -50,17 +50,3 @@ namespace EDebugHook
 using EDebugHook::EDebugHookType;
 
 DECLARE_ENUM( EDebugHook::EDebugHookType );
-
-
-enum eEulerRotationOrder
-{
-    EULER_DEFAULT,
-    EULER_ZXY,
-    EULER_ZYX,
-    EULER_MINUS_ZYX,
-};
-
-DECLARE_ENUM( eEulerRotationOrder );
-
-DECLARE_ENUM( EHashFunction::EHashFunctionType );
-DECLARE_ENUM( ePacketID );

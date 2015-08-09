@@ -29,7 +29,6 @@ public:
     {
         m_iPollInterval = TICKS_FROM_MINUTES( 60 );
         m_strURL = HQCOMMS_URL;
-        m_strCrashInfoFilename = "dumps/server_pending_upload.log";
     }
 
     //
@@ -42,26 +41,21 @@ public:
         {
             m_CheckTimer.Reset();
             m_Stage = HQCOMMS_STAGE_QUERY;
+            int iMinClientAutoUpdate     = g_pGame->GetConfig()->GetMinClientVersionAutoUpdate();
 
-            SString strUrlParams;
-            strUrlParams += SString( "?ip=%s", *g_pGame->GetConfig()->GetServerIP() );
-            strUrlParams += SString( "&gport=%d", g_pGame->GetConfig()->GetServerPort() );
-            strUrlParams += SString( "&version=%s", *CStaticFunctionDefinitions::GetVersionSortable() );
-            strUrlParams += SString( "&minclientautoupdate=%d", g_pGame->GetConfig()->GetMinClientVersionAutoUpdate() );
-            strUrlParams += SString( "&minclientversion=%s", *g_pGame->GetConfig()->GetMinClientVersion() );
-            strUrlParams += SString( "&badscriptrev=%d", m_iPrevBadFileHashesRev );
-            strUrlParams += SString( "&maxplayers=%d", g_pGame->GetConfig()->GetHardMaxPlayers() );
-            strUrlParams += SString( "&numplayers=%d", g_pGame->GetPlayerManager()->Count() );
-            strUrlParams += SString( "&asepush=%d", g_pGame->GetConfig()->GetAseInternetPushEnabled() );
-            strUrlParams += SString( "&aselisten=%d", g_pGame->GetConfig()->GetAseInternetListenEnabled() );
+            if ( iMinClientAutoUpdate > 0 )
+            {
+                SString strUrlParams;
+                strUrlParams += SString( "?ip=%s", *g_pGame->GetConfig()->GetServerIP() );
+                strUrlParams += SString( "&gport=%d", g_pGame->GetConfig()->GetServerPort() );
+                strUrlParams += SString( "&version=%s", *CStaticFunctionDefinitions::GetVersionSortable() );
+                strUrlParams += SString( "&minclientautoupdate=%d", iMinClientAutoUpdate );
+                strUrlParams += SString( "&minclientversion=%s", *g_pGame->GetConfig ()->GetMinClientVersion() );
 
-            SString strCrashInfo;
-            FileLoad( m_strCrashInfoFilename, strCrashInfo );
-            strUrlParams += SString( "&crashinfosize=%d", strCrashInfo.length() );
-
-            // Send request
-            this->AddRef();     // Keep object alive
-            GetDownloadManager()->QueueFile( m_strURL + strUrlParams, NULL, 0, strCrashInfo, strCrashInfo.length(), true, this, StaticProgressCallback, false, 1 );
+                // Send request
+                this->AddRef();     // Keep object alive
+                GetDownloadManager()->QueueFile( m_strURL + strUrlParams, NULL, 0, "", 0, false, this, StaticProgressCallback, false, 1 );
+            }
         }
     }
 
@@ -87,13 +81,24 @@ public:
             m_Stage = HQCOMMS_STAGE_TIMER;
             CArgMap argMap;
             argMap.SetFromString( data );
+            int iForceSetting;
+            argMap.Get( "ForceMinClientVersion", iForceSetting );
+            argMap.Get( "PollInterval", m_iPollInterval, m_iPollInterval );
+            SString strResultMinClientVersion = argMap.Get( "AutoMinClientVersion" );
+            SString strMessage = argMap.Get( "Message" );
 
-            // Process various parts of returned data
-            ProcessPollInterval( argMap );
-            ProcessMinClientVersion( argMap );
-            ProcessMessage( argMap );
-            ProcessBadFileHashes( argMap );
-            ProcessCrashInfo( argMap );
+            // Process received data
+            m_iPollInterval = Max( TICKS_FROM_MINUTES( 5 ), m_iPollInterval );
+            SString strSetttingsMinClientVersion = g_pGame->GetConfig ()->GetMinClientVersion();
+            if ( strResultMinClientVersion > strSetttingsMinClientVersion || iForceSetting )
+            {
+                g_pGame->GetConfig ()->SetSetting ( "minclientversion", strResultMinClientVersion, true );
+            }
+            if ( !strMessage.empty() && strMessage != m_strPrevMessage )
+            {
+                m_strPrevMessage = strMessage;
+                CLogger::LogPrintNoStamp( strMessage );
+            }
         }
         else
         if ( iError )
@@ -101,74 +106,6 @@ public:
             m_Stage = HQCOMMS_STAGE_TIMER;
         }
     }
-
-    // Interval until next HQ check
-    void ProcessPollInterval( const CArgMap& argMap )
-    {
-        int iPollInterval;
-        argMap.Get( "PollInterval", iPollInterval, m_iPollInterval );
-        if ( iPollInterval )
-            m_iPollInterval = Max( TICKS_FROM_MINUTES( 5 ), iPollInterval );
-    }
-
-    // Auto update of min client check
-    void ProcessMinClientVersion( const CArgMap& argMap )
-    {
-        int iForceSetting;
-        argMap.Get( "ForceMinClientVersion", iForceSetting );
-        SString strResultMinClientVersion = argMap.Get( "AutoMinClientVersion" );
-        SString strSetttingsMinClientVersion = g_pGame->GetConfig ()->GetMinClientVersion();
-        if ( strResultMinClientVersion > strSetttingsMinClientVersion || iForceSetting )
-        {
-            g_pGame->GetConfig ()->SetSetting ( "minclientversion", strResultMinClientVersion, true );
-        }
-    }
-
-    // Messsage for this server from HQ
-    void ProcessMessage( const CArgMap& argMap )
-    {
-        int iMessageAlwaysPrint;
-        argMap.Get( "MessageAlwaysPrint", iMessageAlwaysPrint );
-        SString strMessage = argMap.Get( "Message" );
-        if ( !strMessage.empty() && ( strMessage != m_strPrevMessage || iMessageAlwaysPrint ) )
-        {
-            m_strPrevMessage = strMessage;
-            CLogger::LogPrintNoStamp( strMessage );
-        }
-    }
-
-    // Block script hashes
-    void ProcessBadFileHashes( const CArgMap& argMap )
-    {
-        int iBadFileHashesRev;
-        argMap.Get( "BadFileHashesRev", iBadFileHashesRev );
-        if ( iBadFileHashesRev && ( iBadFileHashesRev == 1 || iBadFileHashesRev != m_iPrevBadFileHashesRev ) )
-        {
-            m_iPrevBadFileHashesRev = iBadFileHashesRev;
-            g_pGame->GetResourceManager()->ClearBlockedFileReason( "" );
-            std::vector < SString > itemList;
-            argMap.Get( "BadFileHashes" ).Split( ",", itemList );
-            for ( uint i = 0 ; i < itemList.size() ; i++ )
-            {
-                SString strHash, strReason;
-                itemList[i].Split( "|", &strHash, &strReason );
-                g_pGame->GetResourceManager()->AddBlockedFileReason( strHash, strReason );
-            }
-            g_pGame->GetResourceManager()->SaveBlockedFileReasons();
-        }
-    }
-
-    // Got crashinfo recpt
-    void ProcessCrashInfo( const CArgMap& argMap )
-    {
-        int iGotCrashInfo;
-        argMap.Get( "GotCrashInfo", iGotCrashInfo );
-        if ( iGotCrashInfo )
-        {
-            FileDelete( m_strCrashInfoFilename );
-        }
-    }
-
 
     //
     // Get http downloader used for hq comms etc.
@@ -182,10 +119,8 @@ protected:
     ~CHqComms( void ) {}    // Must use Release()
 
     int             m_iPollInterval;
-    int             m_iPrevBadFileHashesRev;
     uint            m_Stage;
     CElapsedTime    m_CheckTimer;
     SString         m_strURL;
     SString         m_strPrevMessage;
-    SString         m_strCrashInfoFilename;
 };

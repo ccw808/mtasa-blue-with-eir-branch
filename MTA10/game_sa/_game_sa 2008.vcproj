@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="Windows-1252"?>
 <VisualStudioProject
 	ProjectType="Visual C++"
-	Version="9.00"
+	Version="9,00"
 	Name="Client - Game SA"
 	ProjectGUID="{E13D1441-438B-4A03-AB79-5E8EF08EE414}"
 	RootNamespace="Client - Game SA"
@@ -55,7 +55,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows"
+				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../sdk/game"
 				PreprocessorDefinitions="WIN32;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -89,6 +89,7 @@
 				MapFileName=""
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				EntryPointSymbol="__dllInit"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)\$(TargetName).lib"
@@ -150,7 +151,7 @@
 			<Tool
 				Name="VCCLCompilerTool"
 				Optimization="0"
-				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows"
+				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../sdk/game"
 				PreprocessorDefinitions="WIN32;_DEBUG;MTA_DEBUG;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				BasicRuntimeChecks="3"
@@ -184,6 +185,7 @@
 				SuppressStartupBanner="true"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
+				EntryPointSymbol="__dllInit"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)\$(TargetName).lib"
@@ -250,7 +252,7 @@
 				EnableIntrinsicFunctions="true"
 				FavorSizeOrSpeed="1"
 				OmitFramePointers="true"
-				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows"
+				AdditionalIncludeDirectories="../sdk;../../Shared/sdk;../../vendor/sparsehash/current/src;../../vendor/sparsehash/current/src/windows;../sdk/game"
 				PreprocessorDefinitions="WIN32;GAME_SA_EXPORTS;_CRT_SECURE_NO_WARNINGS"
 				StringPooling="true"
 				RuntimeLibrary="2"
@@ -284,6 +286,7 @@
 				MapFileName=""
 				OptimizeReferences="2"
 				EnableCOMDATFolding="2"
+				EntryPointSymbol="__dllInit"
 				RandomizedBaseAddress="1"
 				DataExecutionPrevention="0"
 				ImportLibrary="$(OutDir)\$(TargetName).lib"
@@ -360,6 +363,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CAtomicModelInfoSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CAudioContainerLookupTableSA.cpp"
 				>
 			</File>
@@ -396,6 +403,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CCacheSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CCameraSA.cpp"
 				>
 			</File>
@@ -428,7 +439,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CClothesBuilder.cache.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CClumpModelInfoSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CColModelSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CColModelSA.loader.cpp"
 				>
 			</File>
 			<File
@@ -452,7 +475,39 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CDummySA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CEntitySA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.lod.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.render.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.renderfeedback.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.rendersetup.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.renderutils.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.rmode.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntryInfoSA.cpp"
 				>
 			</File>
 			<File
@@ -472,11 +527,23 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CExecutiveManagerSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CExecutiveManagerSA.fiber.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CExplosionManagerSA.cpp"
 				>
 			</File>
 			<File
 				RelativePath="CExplosionSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CFileUtilsSA.cpp"
 				>
 			</File>
 			<File
@@ -528,6 +595,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CIMGManagerSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CIPLSectorSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CKeyGenSA.cpp"
 				>
 			</File>
@@ -540,7 +615,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CModelInfoSA.base.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CModelInfoSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CModelInfoSA.ide.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CModelManagerSA.cpp"
 				>
 			</File>
 			<File
@@ -549,6 +636,10 @@
 			</File>
 			<File
 				RelativePath="CObjectSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CObjectSA.render.cpp"
 				>
 			</File>
 			<File
@@ -616,6 +707,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CPlaceableSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CPlaneSA.cpp"
 				>
 			</File>
@@ -648,11 +743,23 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CPtrNodeSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CQuadBikeSA.cpp"
 				>
 			</File>
 			<File
+				RelativePath=".\CQuadTreeSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CRadarSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRecordingsSA.cpp"
 				>
 			</File>
 			<File
@@ -664,11 +771,47 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CRenderWareExtensionSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CRenderWareSA.ClothesReplacing.cpp"
 				>
 			</File>
 			<File
 				RelativePath=".\CRenderWareSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.lighting.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.mem.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.pipeline.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.render.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rtbucket.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rtcallback.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rwapi.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rwstats.cpp"
 				>
 			</File>
 			<File
@@ -692,6 +835,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CRouteSA.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CSettingsSA.cpp"
 				>
 			</File>
@@ -704,7 +851,59 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CStreamerSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.cache.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.clump.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.collision.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CStreamingSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.gc.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.init.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.ipl.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.iplfixes.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.loader.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.runtime.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.textures.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.utils.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CTaskAllocatorSA.cpp"
 				>
 			</File>
 			<File
@@ -724,6 +923,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CTextureManagerSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CTextureManagerSA.instance.cpp"
+				>
+			</File>
+			<File
 				RelativePath=".\CTheCarGeneratorsSA.cpp"
 				>
 			</File>
@@ -732,7 +939,31 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CTransformationSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleModelInfoSA.config.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleModelInfoSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleModelInfoSA.render.cpp"
+				>
+			</File>
+			<File
 				RelativePath="CVehicleSA.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleSA.customplate.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleSA.render.cpp"
 				>
 			</File>
 			<File
@@ -863,6 +1094,14 @@
 				RelativePath=".\TaskSecondarySA.cpp"
 				>
 			</File>
+			<Filter
+				Name="debugsdk"
+				>
+				<File
+					RelativePath="..\..\Shared\sdk\debugsdk\dbgheap.cpp"
+					>
+				</File>
+			</Filter>
 		</Filter>
 		<Filter
 			Name="Header Files"
@@ -909,6 +1148,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CAtomicModelInfoSA.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CAudioContainerLookupTableSA.h"
 				>
 			</File>
@@ -949,6 +1192,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CCacheSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CCameraSA.h"
 				>
 			</File>
@@ -981,6 +1228,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CClothesBuilder.cache.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CClumpModelInfoSA.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CColBoxSA.h"
 				>
 			</File>
@@ -990,6 +1245,10 @@
 			</File>
 			<File
 				RelativePath=".\CColModelSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CColModelSA.loader.h"
 				>
 			</File>
 			<File
@@ -1029,7 +1288,43 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CDummySA.h"
+				>
+			</File>
+			<File
 				RelativePath="CEntitySA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.lod.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.render.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.render.hxx"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.renderfeedback.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.rendersetup.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.renderutils.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntitySA.rmode.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CEntryInfoSA.h"
 				>
 			</File>
 			<File
@@ -1049,11 +1344,23 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CExecutiveManagerSA.fiber.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CExecutiveManagerSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CExplosionManagerSA.h"
 				>
 			</File>
 			<File
 				RelativePath="CExplosionSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CFileUtilsSA.h"
 				>
 			</File>
 			<File
@@ -1109,6 +1416,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CIMGManagerSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CIPLSectorSA.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CKeyGenSA.h"
 				>
 			</File>
@@ -1121,7 +1436,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CModelInfoSA.base.h"
+				>
+			</File>
+			<File
 				RelativePath="CModelInfoSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CModelInfoSA.ide.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CModelManagerSA.h"
 				>
 			</File>
 			<File
@@ -1130,6 +1457,10 @@
 			</File>
 			<File
 				RelativePath="CObjectSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CObjectSA.render.h"
 				>
 			</File>
 			<File
@@ -1201,6 +1532,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CPlaceableSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CPlaneSA.h"
 				>
 			</File>
@@ -1233,11 +1568,23 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CPtrNodeSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CQuadBikeSA.h"
 				>
 			</File>
 			<File
+				RelativePath=".\CQuadTreeSA.h"
+				>
+			</File>
+			<File
 				RelativePath="CRadarSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRecordingsSA.h"
 				>
 			</File>
 			<File
@@ -1249,7 +1596,47 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CRenderWareExtensionSA.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CRenderWareSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.lighting.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.mem.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.pipeline.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.render.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rmode.hxx"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rtbucket.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rtcallback.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rwapi.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CRenderWareSA.rwstats.h"
 				>
 			</File>
 			<File
@@ -1269,6 +1656,10 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CRouteSA.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CSettingsSA.h"
 				>
 			</File>
@@ -1281,7 +1672,67 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CStreamerSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.cache.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.clump.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.collision.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.gc.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CStreamingSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.init.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.ipl.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.iplfixes.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.loader.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.runtime.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.sectorize.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.textures.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.utils.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CStreamingSA.utils.hxx"
+				>
+			</File>
+			<File
+				RelativePath=".\CTaskAllocatorSA.h"
 				>
 			</File>
 			<File
@@ -1301,6 +1752,14 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CTextureManagerSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CTextureManagerSA.instance.h"
+				>
+			</File>
+			<File
 				RelativePath=".\CTheCarGeneratorsSA.h"
 				>
 			</File>
@@ -1309,7 +1768,31 @@
 				>
 			</File>
 			<File
+				RelativePath=".\CTransformationSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleModelInfoSA.config.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleModelInfoSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleModelInfoSA.render.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleSA.customplate.h"
+				>
+			</File>
+			<File
 				RelativePath="CVehicleSA.h"
+				>
+			</File>
+			<File
+				RelativePath=".\CVehicleSA.render.h"
 				>
 			</File>
 			<File
@@ -1369,11 +1852,19 @@
 				>
 			</File>
 			<File
+				RelativePath=".\gamesa_renderware.hpp"
+				>
+			</File>
+			<File
 				RelativePath=".\HeapTrace.h"
 				>
 			</File>
 			<File
 				RelativePath=".\HookSystem.h"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare.h"
 				>
 			</File>
 			<File
@@ -1424,6 +1915,230 @@
 				RelativePath=".\TaskSecondarySA.h"
 				>
 			</File>
+			<Filter
+				Name="debugsdk"
+				>
+				<File
+					RelativePath="..\..\Shared\debugsdk\dbgheap.h"
+					>
+				</File>
+			</Filter>
+		</Filter>
+		<Filter
+			Name="RenderWare"
+			>
+			<File
+				RelativePath=".\RenderWare\RpAtomic.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RpAtomicD3D9.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RpClump.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RpGeometry.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RpGeometryStreamline.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RpLight.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RpMaterial.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwCamera.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwFrame.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwMath.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwRenderStates.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwStream.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwTexDictionary.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwTexture.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwTextureD3D9.cpp"
+				>
+			</File>
+			<File
+				RelativePath=".\RenderWare\RwUtilsD3D9.cpp"
+				>
+			</File>
+			<Filter
+				Name="Include"
+				>
+				<File
+					RelativePath=".\RenderWare\RpAtomic.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RpAtomicD3D9.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RpClump.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RpGeometry.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RpGeometryStreamline.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RpLight.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RpMaterial.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwCamera.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwFrame.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwMath.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwRenderStates.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwRenderTools.hxx"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwStream.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwTexDictionary.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwTexture.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwTextureD3D9.h"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\RwUtilsD3D9.h"
+					>
+				</File>
+			</Filter>
+			<Filter
+				Name="Virtual"
+				>
+				<File
+					RelativePath=".\RenderWare\CModelSA.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\CRpAtomicSA.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\CRpLightSA.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\CRwCameraSA.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\CRwFrameSA.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\CRwObjectSA.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\CTexDictionarySA.cpp"
+					>
+				</File>
+				<File
+					RelativePath=".\RenderWare\CTextureSA.cpp"
+					>
+				</File>
+				<Filter
+					Name="Include"
+					>
+					<File
+						RelativePath=".\RenderWare\CModelSA.h"
+						>
+					</File>
+					<File
+						RelativePath=".\RenderWare\CRpAtomicSA.h"
+						>
+					</File>
+					<File
+						RelativePath=".\RenderWare\CRpLightSA.h"
+						>
+					</File>
+					<File
+						RelativePath=".\RenderWare\CRwCameraSA.h"
+						>
+					</File>
+					<File
+						RelativePath=".\RenderWare\CRwFrameSA.h"
+						>
+					</File>
+					<File
+						RelativePath=".\RenderWare\CRwObjectSA.h"
+						>
+					</File>
+					<File
+						RelativePath=".\RenderWare\CTexDictionarySA.h"
+						>
+					</File>
+					<File
+						RelativePath=".\RenderWare\CTextureSA.h"
+						>
+					</File>
+					<File
+						RelativePath=".\RenderWare\include.h"
+						>
+					</File>
+				</Filter>
+			</Filter>
 		</Filter>
 	</Files>
 	<Globals>

@@ -49,7 +49,6 @@ class CCore;
 #include <xml/CXML.h>
 #include <ijsify.h>
 #include "CXfireQuery.h"
-#include "CWebCore.h"
 
 #define DIRECTINPUT_VERSION 0x0800
 #include <dinput.h>
@@ -102,13 +101,13 @@ public:
     CNet*                   GetNetwork                      ( void );
     CXML*                   GetXML                          ( void )                { return m_pXML; };
     CXMLNode*               GetConfig                       ( void );
+    CFileSystem*            GetFileSystem                   ( void )                { return m_fileSystem; }
     CClientVariables*       GetCVars                        ( void )                { return &m_ClientVariables; };
     CKeyBindsInterface*     GetKeyBinds                     ( void );
     CMouseControl*          GetMouseControl                 ( void )                { return m_pMouseControl; };
     CLocalGUI*              GetLocalGUI                     ( void );
     CCommunityInterface*    GetCommunity                    ( void )                { return &m_Community; };
     CLocalizationInterface* GetLocalization                 ( void )                { return g_pLocalization; };
-    CWebCoreInterface*      GetWebCore                      ( void )                { return m_pWebCore; };
 
     void                    SaveConfig                      ( void );
 
@@ -170,6 +169,8 @@ public:
     const char *            GetModInstallRoot               ( const char * szModName );
     bool                    CheckDiskSpace                  ( uint uiResourcesPathMinMB = 10, uint uiDataPathMinMB = 10 );
 
+    CFileTranslator*        GetModRoot                      ( void ) { return m_modRoot; }
+
 
     // Subsystems
     void                    CreateGame                      ( void );
@@ -184,9 +185,6 @@ public:
     void                    DestroyXML                      ( void );
     void                    DeinitGUI                       ( void );
     void                    DestroyGUI                      ( void );
-
-    // Web
-    void                    InitialiseWeb                   ( void );
 
     // Hooks
     void                    ApplyHooks                      ( void );
@@ -253,7 +251,6 @@ public:
     void                    OnPreHUDRender                  ( void );
     void                    OnDeviceRestore                 ( void );
     void                    OnCrashAverted                  ( uint uiId );
-    void                    OnEnterCrashZone                ( uint uiId );
     void                    LogEvent                        ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody, uint uiAddReportLogId = 0 );
     bool                    GetDebugIdEnabled               ( uint uiDebugId );
     EDiagnosticDebugType    GetDiagnosticDebug              ( void );
@@ -273,10 +270,6 @@ public:
 
     void                    OnPreCreateDevice               ( IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD& BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters );
     HRESULT                 OnPostCreateDevice              ( HRESULT hResult, IDirect3D9* pDirect3D, UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface );
-    bool                    GetDeviceSelectionEnabled       ( void );
-    bool                    GetRequiredDisplayResolution    ( int& iOutWidth, int& iOutHeight, int& iOutColorBits, int& iOutAdapterIndex, bool& bOutAllowUnsafeResolutions );
-    void                    NotifyRenderingGrass            ( bool bIsRenderingGrass );
-    bool                    IsRenderingGrass                ( void )                { return m_bIsRenderingGrass; }
 
 private:
     // Core devices.
@@ -287,12 +280,12 @@ private:
     CDirect3DData *             m_pDirect3DData;
     CConnectManager*            m_pConnectManager;
     CModelCacheManager*         m_pModelCacheManager;
+    CFileSystem*                m_fileSystem;
 
     // Instances (put new classes here!)
     CXMLFile*                   m_pConfigFile;
     CClientVariables            m_ClientVariables;
     CCommunity                  m_Community;
-    CWebCore*                   m_pWebCore;
 
     // Hook interfaces.
     CMessageLoopHook *          m_pMessageLoopHook;
@@ -330,7 +323,11 @@ private:
 
     CKeyBinds*                  m_pKeyBinds;
     CMouseControl*              m_pMouseControl;
-    
+
+public:
+    CFileTranslator*            m_modRoot;
+
+private:
     bool                        m_bFirstFrame;
     bool                        m_bIsOfflineMod;
     bool                        m_bCursorToggleControls;
@@ -368,7 +365,6 @@ private:
     HANDLE                      m_DummyProgressTimerHandle;
     SString                     m_strDummyProgressType;
     bool                        m_bDummyProgressUpdateAlways;
-    bool                        m_bIsRenderingGrass;
 
     // Command line
     static void                 ParseCommandLine                ( std::map < std::string, std::string > & options, const char*& szArgs, const char** pszNoValOptions = NULL );

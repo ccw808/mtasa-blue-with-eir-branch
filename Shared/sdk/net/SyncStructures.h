@@ -23,6 +23,7 @@
 #pragma pack(push)
 #pragma pack(1)
 
+
 //////////////////////////////////////////
 //                                      //
 //              Data types              //
@@ -120,7 +121,19 @@ struct SFloatAsBitsSyncBase : public ISyncStructure
         : m_uiBits ( uiBits )
         , ulValueMax ( ( 1 << uiBits ) - 1 )
         , m_fMin ( fMin )
-        , m_fMax ( fMax )
+        , m_fMaxOldVer ( fMax )
+        , m_fMaxNewVer ( fMax )
+        , m_bPreserveGreaterThanMin ( bPreserveGreaterThanMin )
+        , m_bWrapInsteadOfClamp ( bWrapInsteadOfClamp )
+    {
+    }
+
+    SFloatAsBitsSyncBase ( uint uiBits, float fMin, float fMaxOldVer, float fMaxNewVer, bool bPreserveGreaterThanMin, bool bWrapInsteadOfClamp )
+        : m_uiBits ( uiBits )
+        , ulValueMax ( ( 1 << uiBits ) - 1 )
+        , m_fMin ( fMin )
+        , m_fMaxOldVer ( fMaxOldVer )
+        , m_fMaxNewVer ( fMaxNewVer )
         , m_bPreserveGreaterThanMin ( bPreserveGreaterThanMin )
         , m_bWrapInsteadOfClamp ( bWrapInsteadOfClamp )
     {
@@ -128,13 +141,15 @@ struct SFloatAsBitsSyncBase : public ISyncStructure
 
     bool Read ( NetBitStreamInterface& bitStream )
     {
+        const float fMax = bitStream.Version() < 0x54 ? m_fMaxOldVer : m_fMaxNewVer;
+
         unsigned long ulValue = 0;
         if ( bitStream.ReadBits ( &ulValue, m_uiBits ) )
         {
             // Convert bits to position in range
             float fAlpha = ulValue / (float)ulValueMax;
             // Find value in range
-            data.fValue = Lerp ( m_fMin, fAlpha, m_fMax );
+            data.fValue = Lerp ( m_fMin, fAlpha, fMax );
             return true;
         }
         return false;
@@ -142,11 +157,13 @@ struct SFloatAsBitsSyncBase : public ISyncStructure
 
     void Write ( NetBitStreamInterface& bitStream ) const
     {
+        const float fMax = bitStream.Version() < 0x54 ? m_fMaxOldVer : m_fMaxNewVer;
+
         float fValue = data.fValue;
         if ( m_bWrapInsteadOfClamp )
-            fValue = WrapAround ( m_fMin, data.fValue, m_fMax );
+            fValue = WrapAround ( m_fMin, data.fValue, fMax );
         // Find position in range
-        float fAlpha = UnlerpClamped ( m_fMin, fValue, m_fMax );
+        float fAlpha = UnlerpClamped ( m_fMin, fValue, fMax );
         // Convert to bits
         unsigned long ulValue = Round ( ulValueMax * fAlpha );
 
@@ -166,7 +183,8 @@ private:
     const uint m_uiBits;
     const ulong ulValueMax;
     const float m_fMin;
-    const float m_fMax;
+    const float m_fMaxOldVer;
+    const float m_fMaxNewVer;
     const bool  m_bPreserveGreaterThanMin;
     const bool  m_bWrapInsteadOfClamp;
 };
@@ -176,7 +194,12 @@ template < unsigned int bits >
 struct SFloatAsBitsSync : public SFloatAsBitsSyncBase
 {
     SFloatAsBitsSync ( float fMin, float fMax, bool bPreserveGreaterThanMin, bool bWrapInsteadOfClamp = false )
-        : SFloatAsBitsSyncBase ( bits, fMin, fMax, bPreserveGreaterThanMin, bWrapInsteadOfClamp )
+        : SFloatAsBitsSyncBase ( bits, fMin, fMax, fMax, bPreserveGreaterThanMin, bWrapInsteadOfClamp )
+    {
+    }
+
+    SFloatAsBitsSync ( float fMin, float fMaxOldVer, float fMaxNewVer, bool bPreserveGreaterThanMin, bool bWrapInsteadOfClamp )
+        : SFloatAsBitsSyncBase ( bits, fMin, fMaxOldVer, fMaxNewVer, bPreserveGreaterThanMin, bWrapInsteadOfClamp )
     {
     }
 };
@@ -185,32 +208,32 @@ struct SFloatAsBitsSync : public SFloatAsBitsSyncBase
 // Declare specific health and armor sync structures
 struct SPlayerHealthSync : public SFloatAsBitsSync < 8 >
 {
-    // 0 - 200 step 1                                 255 = ( 2^8 - 1 ) * 1
-    SPlayerHealthSync () : SFloatAsBitsSync<8> ( 0.f, 255.0f, true, false ) {}
+    // 0 - 200 step 1                                      255 = ( 2^8 - 1 ) * 1
+    SPlayerHealthSync () : SFloatAsBitsSync<8> ( 0.f, 200, 255.0f, true, false ) {}
 };
 
 struct SPlayerArmorSync : public SFloatAsBitsSync < 8 >
 {
-    // 0 - 100 step 0.5                              127.5 = ( 2^8 - 1 ) * 0.5
-    SPlayerArmorSync () : SFloatAsBitsSync<8> ( 0.f, 127.5f, true, false ) {}
+    // 0 - 100 step 0.5                                   127.5 = ( 2^8 - 1 ) * 0.5
+    SPlayerArmorSync () : SFloatAsBitsSync<8> ( 0.f, 100, 127.5f, true, false ) {}
 };
 
 struct SVehicleHealthSync : public SFloatAsBitsSync < 12 >
 {
-    // 0 - 2000 step 0.5                                2047.5 = ( 2^12 - 1 ) * 0.5
-    SVehicleHealthSync () : SFloatAsBitsSync<12> ( 0.f, 2047.5f, true, false ) {}
+    // 0 - 2000 step 0.5                                      2047.5 = ( 2^12 - 1 ) * 0.5
+    SVehicleHealthSync () : SFloatAsBitsSync<12> ( 0.f, 2000, 2047.5f, true, false ) {}
 };
 
 struct SLowPrecisionVehicleHealthSync : public SFloatAsBitsSync < 8 >
 {
-    // 0 - 2000 step 8                                              2040 = ( 2^8 - 1 ) * 8
-    SLowPrecisionVehicleHealthSync () : SFloatAsBitsSync<8> ( 0.0f, 2040.0f, true, false ) {}
+    // 0 - 2000 step 8                                                    2040 = ( 2^8 - 1 ) * 8
+    SLowPrecisionVehicleHealthSync () : SFloatAsBitsSync<8> ( 0.0f, 2000, 2040.0f, true, false ) {}
 };
 
 struct SObjectHealthSync : public SFloatAsBitsSync < 11 >
 {
-    // 0 - 1000 step 0.5                               1023.5 = ( 2^11 - 1 ) * 0.5
-    SObjectHealthSync () : SFloatAsBitsSync<11> ( 0.f, 1023.5f, true, false ) {}
+    // 0 - 1000 step 0.5                                     1023.5 = ( 2^11 - 1 ) * 0.5
+    SObjectHealthSync () : SFloatAsBitsSync<11> ( 0.f, 1000, 1023.5f, true, false ) {}
 };
 
 
@@ -227,23 +250,21 @@ struct SPositionSync : public ISyncStructure
     {
         if ( m_bUseFloats )
         {
-            return bitStream.Read ( data.vecPosition.fX ) && bitStream.Read ( data.vecPosition.fY ) && bitStream.Read ( data.vecPosition.fZ ) &&
-                    data.vecPosition.fX > -SYNC_POSITION_LIMIT && data.vecPosition.fX < SYNC_POSITION_LIMIT &&
-                    data.vecPosition.fY > -SYNC_POSITION_LIMIT && data.vecPosition.fY < SYNC_POSITION_LIMIT &&
-                    data.vecPosition.fZ > -SYNC_POSITION_LIMIT && data.vecPosition.fZ < SYNC_POSITION_LIMIT;
+            return bitStream.Read ( data.vecPosition.fX ) && data.vecPosition.fX > -SYNC_POSITION_LIMIT && data.vecPosition.fX < SYNC_POSITION_LIMIT &&
+                   bitStream.Read ( data.vecPosition.fY ) && data.vecPosition.fY > -SYNC_POSITION_LIMIT && data.vecPosition.fY < SYNC_POSITION_LIMIT &&
+                   bitStream.Read ( data.vecPosition.fZ ) && data.vecPosition.fZ > -SYNC_POSITION_LIMIT && data.vecPosition.fZ < SYNC_POSITION_LIMIT;
         }
         else
         {
             SFloatSync < 14, 10 > x, y;
 
-            if ( bitStream.Read ( &x ) && bitStream.Read ( &y ) && bitStream.Read ( data.vecPosition.fZ ) )
+            if ( bitStream.Read ( &x ) && x.data.fValue > -SYNC_POSITION_LIMIT && x.data.fValue < SYNC_POSITION_LIMIT &&
+                 bitStream.Read ( &y ) && y.data.fValue > -SYNC_POSITION_LIMIT && y.data.fValue < SYNC_POSITION_LIMIT &&
+                 bitStream.Read ( data.vecPosition.fZ ) && data.vecPosition.fZ > -SYNC_POSITION_LIMIT && data.vecPosition.fZ < SYNC_POSITION_LIMIT )
             {
                 data.vecPosition.fX = x.data.fValue;
                 data.vecPosition.fY = y.data.fValue;
-                if ( x.data.fValue > -SYNC_POSITION_LIMIT && x.data.fValue < SYNC_POSITION_LIMIT &&
-                     y.data.fValue > -SYNC_POSITION_LIMIT && y.data.fValue < SYNC_POSITION_LIMIT &&
-                     data.vecPosition.fZ > -SYNC_POSITION_LIMIT && data.vecPosition.fZ < SYNC_POSITION_LIMIT )
-                    return true;
+                return true;
             }
         }
 
@@ -287,21 +308,19 @@ struct SPosition2DSync : public ISyncStructure
     {
         if ( m_bUseFloats )
         {
-            return bitStream.Read ( data.vecPosition.fX ) && bitStream.Read ( data.vecPosition.fY ) &&
-                    data.vecPosition.fX > -SYNC_POSITION_LIMIT && data.vecPosition.fX < SYNC_POSITION_LIMIT &&
-                    data.vecPosition.fY > -SYNC_POSITION_LIMIT && data.vecPosition.fY < SYNC_POSITION_LIMIT;
+            return bitStream.Read ( data.vecPosition.fX ) && data.vecPosition.fX > -SYNC_POSITION_LIMIT && data.vecPosition.fX < SYNC_POSITION_LIMIT &&
+                   bitStream.Read ( data.vecPosition.fY ) && data.vecPosition.fY > -SYNC_POSITION_LIMIT && data.vecPosition.fY < SYNC_POSITION_LIMIT;
         }
         else
         {
             SFloatSync < 14, 10 > x, y;
 
-            if ( bitStream.Read ( &x ) && bitStream.Read ( &y ) )
+            if ( bitStream.Read ( &x ) && x.data.fValue > -SYNC_POSITION_LIMIT && x.data.fValue < SYNC_POSITION_LIMIT &&
+                 bitStream.Read ( &y ) && y.data.fValue > -SYNC_POSITION_LIMIT && y.data.fValue < SYNC_POSITION_LIMIT )
             {
                 data.vecPosition.fX = x.data.fValue;
                 data.vecPosition.fY = y.data.fValue;
-                if ( x.data.fValue > -SYNC_POSITION_LIMIT && x.data.fValue < SYNC_POSITION_LIMIT &&
-                     y.data.fValue > -SYNC_POSITION_LIMIT && y.data.fValue < SYNC_POSITION_LIMIT )
-                    return true;
+                return true;
             }
         }
 
@@ -627,6 +646,9 @@ struct SCameraRotationSync : public ISyncStructure
 {
     bool Read ( NetBitStreamInterface& bitStream )
     {
+        if ( bitStream.Version () < 0x2C )
+            return bitStream.Read ( data.fRotation );
+
         SFloatAsBitsSync < 12 > rotation ( -PI, PI, false, true );
         if ( bitStream.Read ( &rotation ) )
         {
@@ -637,6 +659,9 @@ struct SCameraRotationSync : public ISyncStructure
     }
     void Write ( NetBitStreamInterface& bitStream ) const
     {
+        if ( bitStream.Version () < 0x2C )
+            return bitStream.Write ( data.fRotation );
+
         SFloatAsBitsSync < 12 > rotation ( -PI, PI, false, true );
         rotation.data.fValue = data.fRotation;
         bitStream.Write ( &rotation );
@@ -914,18 +939,21 @@ struct SFullKeysyncSync : public ISyncStructure
     // one byte of bandwidth per stick.
     bool Read ( NetBitStreamInterface& bitStream )
     {
+        bool bState;
         char cLeftStickX;
         char cLeftStickY;
 
-        bitStream.ReadBits ( (char *)&data, 8 );
-        bitStream.Read ( cLeftStickX );
-        if ( bitStream.Read ( cLeftStickY ) )
+        if ( ( bState = bitStream.ReadBits ( (char *)&data, 8 ) ) )
         {
-            data.sLeftStickX = static_cast < short > ( (float)cLeftStickX * 128.0f/127.0f );
-            data.sLeftStickY = static_cast < short > ( (float)cLeftStickY * 128.0f/127.0f );
-            return true;
+            if ( ( bState = bitStream.Read ( cLeftStickX ) ) )
+            {
+                data.sLeftStickX = static_cast < short > ( (float)cLeftStickX * 128.0f/127.0f );
+                if ( ( bState = bitStream.Read ( cLeftStickY ) ) )
+                    data.sLeftStickY = static_cast < short > ( (float)cLeftStickY * 128.0f/127.0f );
+            }
         }
-        return false;
+
+        return bState;
     }
     void Write ( NetBitStreamInterface& bitStream ) const
     {
@@ -951,7 +979,6 @@ struct SFullKeysyncSync : public ISyncStructure
     } data;
 };
 
-// TODO: SSmallKeysyncSync is now the same as SFullKeysyncSync ?
 struct SSmallKeysyncSync : public ISyncStructure
 {
     // Stick values vary from -128 to 128, but char range is from -128 to 127, so we stretch
@@ -959,26 +986,35 @@ struct SSmallKeysyncSync : public ISyncStructure
     // one byte of bandwidth per stick.
     bool Read ( NetBitStreamInterface& bitStream )
     {
+        bool bState;
         char cLeftStickX;
         char cLeftStickY;
 
-        bitStream.ReadBits ( (char *)&data, 8 );
-        bitStream.Read ( cLeftStickX );
-        if ( bitStream.Read ( cLeftStickY ) )
+        if ( ( bState = bitStream.ReadBits ( (char *)&data, 8 ) ) )
         {
-            data.sLeftStickX = static_cast < short > ( (float)cLeftStickX * 128.0f/127.0f );
-            data.sLeftStickY = static_cast < short > ( (float)cLeftStickY * 128.0f/127.0f );
-            return true;
+            if ( bitStream.Version () >= 0x2C )
+            {
+                if ( ( bState = bitStream.Read ( cLeftStickX ) ) )
+                {
+                    data.sLeftStickX = static_cast < short > ( (float)cLeftStickX * 128.0f/127.0f );
+                    if ( ( bState = bitStream.Read ( cLeftStickY ) ) )
+                        data.sLeftStickY = static_cast < short > ( (float)cLeftStickY * 128.0f/127.0f );
+                }
+            }
         }
-        return false;
+
+        return bState;
     }
     void Write ( NetBitStreamInterface& bitStream ) const
     {
         bitStream.WriteBits ( (const char* )&data, 8 );
-        char cLeftStickX = static_cast < char > ( (float)data.sLeftStickX * 127.0f/128.0f );
-        bitStream.Write ( cLeftStickX );
-        char cLeftStickY = static_cast < char > ( (float)data.sLeftStickY * 127.0f/128.0f );
-        bitStream.Write ( cLeftStickY );
+        if ( bitStream.Version () >= 0x2C )
+        {
+            char cLeftStickX = static_cast < char > ( (float)data.sLeftStickX * 127.0f/128.0f );
+            bitStream.Write ( cLeftStickX );
+            char cLeftStickY = static_cast < char > ( (float)data.sLeftStickY * 127.0f/128.0f );
+            bitStream.Write ( cLeftStickY );
+        }
     }
 
     struct
@@ -1472,129 +1508,6 @@ private:
 };
 
 
-//////////////////////////////////////////
-//                                      //
-//           Vehicle damage v2          //
-//                                      //
-//////////////////////////////////////////
-template < unsigned int MAXELEMENTS, unsigned int NUMBITS >
-struct SVehiclePartStateSyncMethodeB : public ISyncStructure
-{
-    bool Read ( NetBitStreamInterface& bitStream )
-    {
-        bool bIsNonZero;
-        if ( !bitStream.ReadBit ( bIsNonZero ) )
-            return false;
-
-        if ( bIsNonZero )
-        {
-            for ( unsigned int i = 0; i < MAXELEMENTS; ++i )
-            {
-                struct
-                {
-                    unsigned int uiState : NUMBITS;
-                } privateData;
-
-                if ( !bitStream.ReadBits ( reinterpret_cast < char* > ( &privateData ), NUMBITS ) )
-                    return false;
-
-                data.ucStates [ i ] = privateData.uiState;
-            }
-        }
-        else
-        {
-            memset( &data.ucStates[ 0 ], 0, MAXELEMENTS );
-        }
-        return true;
-    }
-
-    void Write ( NetBitStreamInterface& bitStream ) const
-    {
-        // Check if all zeros
-        bool bIsNonZero = false;
-        for ( unsigned int i = 0; i < MAXELEMENTS; ++i )
-        {
-            bIsNonZero |= ( data.ucStates [ i ] != 0 );
-        }
-        bitStream.WriteBit ( bIsNonZero );
-
-        if ( bIsNonZero )
-        {
-            for ( unsigned int i = 0; i < MAXELEMENTS; ++i )
-            {
-                struct
-                {
-                    unsigned int uiState : NUMBITS;
-                } privateData;
-
-                privateData.uiState = data.ucStates [ i ];
-
-                bitStream.WriteBits ( reinterpret_cast < const char* > ( &privateData ), NUMBITS );
-            }
-        }
-    }
-
-    struct
-    {
-        SFixedArray < unsigned char, MAXELEMENTS > ucStates;
-    } data;
-
-};
-
-
-struct SVehicleDamageSyncMethodeB : public ISyncStructure
-{
-    enum { FLAG_BITCOUNT = 4 };
-
-    bool Read ( NetBitStreamInterface& bitStream )
-    {
-        bitStream.ReadBits( (char*)&data, FLAG_BITCOUNT );
-
-        if ( data.bSyncDoors )
-            bitStream.Read ( &data.doors );
-
-        if ( data.bSyncWheels )
-            bitStream.Read ( &data.wheels );
-
-        if ( data.bSyncPanels )
-            bitStream.Read ( &data.panels );
-
-        if ( data.bSyncLights )
-            bitStream.Read ( &data.lights );
-
-        return true;
-    }
-
-    void Write ( NetBitStreamInterface& bitStream ) const
-    {
-        bitStream.WriteBits( (const char*)&data, FLAG_BITCOUNT );
-
-        if ( data.bSyncDoors )
-            bitStream.Write ( &data.doors );
-
-        if ( data.bSyncWheels )
-            bitStream.Write ( &data.wheels );
-
-        if ( data.bSyncPanels )
-            bitStream.Write ( &data.panels );
-
-        if ( data.bSyncLights )
-            bitStream.Write ( &data.lights );
-    }
-
-    struct
-    {
-        bool bSyncDoors : 1;
-        bool bSyncWheels : 1;
-        bool bSyncPanels : 1;
-        bool bSyncLights : 1;
-        SVehiclePartStateSyncMethodeB < MAX_DOORS, 3 > doors;
-        SVehiclePartStateSyncMethodeB < MAX_WHEELS, 2 > wheels;
-        SVehiclePartStateSyncMethodeB < MAX_PANELS, 2 > panels;
-        SVehiclePartStateSyncMethodeB < MAX_LIGHTS, 2 > lights;
-    } data;
-};
-
 
 //////////////////////////////////////////
 //                                      //
@@ -1849,7 +1762,7 @@ struct SVehicleSirenSync : public ISyncStructure
         bool                        m_bOverrideSirens;
         CVector                     m_vecSirenPositions;
         SColor                      m_colSirenColour;
-        uint                        m_dwSirenMinAlpha;
+        DWORD                       m_dwSirenMinAlpha;
         unsigned char               m_ucSirenID;
     } data;
 };
@@ -1917,7 +1830,6 @@ struct SFunBugsStateSync : public ISyncStructure
     enum { BITCOUNT = 5 };
     enum { BITCOUNT2 = 1 };
     enum { BITCOUNT3 = 1 };
-    enum { BITCOUNT4 = 1 };
 
     bool Read ( NetBitStreamInterface& bitStream )
     {
@@ -1930,17 +1842,6 @@ struct SFunBugsStateSync : public ISyncStructure
             bOk &= bitStream.ReadBits ( reinterpret_cast < char* > ( &data3 ), BITCOUNT3 );
         else
             data3.bFastSprint = 0;
-        if (bitStream.Version() >= 0x059)
-            bOk &= bitStream.ReadBits(reinterpret_cast < char* > (&data4), BITCOUNT4);
-        else
-            data4.bBadDrivebyHitboxes = 0;
-
-        //// Example for adding item:
-        // if ( bitStream.Version() >= 0x999 )
-        //     bOk &= bitStream.ReadBits ( reinterpret_cast < char* > ( &data9 ), BITCOUNT9 );
-        // else
-        //     data9.bItemName = 0;
-
         return bOk;
     }
     void Write ( NetBitStreamInterface& bitStream ) const
@@ -1950,13 +1851,6 @@ struct SFunBugsStateSync : public ISyncStructure
             bitStream.WriteBits ( reinterpret_cast < const char* > ( &data2 ), BITCOUNT2 );
         if ( bitStream.Version() >= 0x058 )
             bitStream.WriteBits ( reinterpret_cast < const char* > ( &data3 ), BITCOUNT3 );
-        if (bitStream.Version() >= 0x059)
-            bitStream.WriteBits(reinterpret_cast < const char* > (&data4), BITCOUNT4);
-
-        //// Example for adding item:
-        // if ( bitStream.Version() >= 0x999 )
-        //     bitStream.WriteBits ( reinterpret_cast < const char* > ( &data9 ), BITCOUNT9 );
-
     }
 
     struct
@@ -1979,12 +1873,6 @@ struct SFunBugsStateSync : public ISyncStructure
     {
         bool bFastSprint : 1;
     } data3;
-
-    // Add new ones in separate structs
-    struct
-    {
-        bool bBadDrivebyHitboxes : 1;
-    } data4;
 };
 
 

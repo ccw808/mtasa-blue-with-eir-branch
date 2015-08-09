@@ -15,10 +15,19 @@
 // use this to check if you're using SA or VC headers
 #define GTA_SA
 
+// notifies the environment that we compile for the Eir fork.
+#define _MTA_BLUE
+
+// For nightly build server
+class CFile;
+#undef min
+#undef max
+
 typedef void ( InRenderer ) ( void );
 
 #include "Common.h"
 
+#include "CRenderWare.h"
 #include "C3DMarkers.h"
 #include "CAERadioTrackManager.h"
 #include "CAnimBlendAssociation.h"
@@ -47,6 +56,7 @@ typedef void ( InRenderer ) ( void );
 #include "CHud.h"
 #include "CKeyGen.h"
 #include "CMenuManager.h"
+#include "CStreaming.h"
 #include "CModelInfo.h"
 #include "CPad.h"
 #include "CPathFind.h"
@@ -60,17 +70,18 @@ typedef void ( InRenderer ) ( void );
 #include "CProjectile.h"
 #include "CProjectileInfo.h"
 #include "CRadar.h"
-#include "CRenderWare.h"
 #include "CRestart.h"
 #include "CRopes.h"
 #include "CSettings.h"
 #include "CStats.h"
-#include "CStreaming.h"
 #include "CTaskManagementSystem.h"
 #include "CTasks.h"
 #include "CText.h"
 #include "CTheCarGenerators.h"
 #include "CVisibilityPlugins.h"
+#include "RenderWare/include.h"
+#include "CTextureManager.h"
+#include "CModelManager.h"
 #include "CWaterManager.h"
 #include "CWeaponStatManager.h"
 #include "CWeather.h"
@@ -82,7 +93,10 @@ typedef void ( InRenderer ) ( void );
 
 typedef bool ( PreWeaponFireHandler ) ( class CPlayerPed* pPlayer, bool bStopIfUsingBulletSync );
 typedef void ( PostWeaponFireHandler ) ( void );
-typedef void ( TaskSimpleBeHitHandler ) ( class CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
+typedef void ( TaskSimpleBeHitHandler ) ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
+
+typedef void ( GameEntityRenderHandler ) ( CEntitySAInterface* pEntity );
+typedef void ( PreRenderSkyHandler ) ( void );
 
 enum eGameVersion 
 {
@@ -111,10 +125,28 @@ struct SShaderReplacementStats
     std::map < uint, SMatchChannelStats > channelStatsList;
 };
 
+struct SClothesCacheStats
+{
+    uint uiCacheHit;
+    uint uiCacheMiss;
+    uint uiNumTotal;
+    uint uiNumUnused;
+    uint uiNumRemoved;
+};
+
+struct SRwResourceStats
+{
+    uint uiTextures;
+    uint uiRasters;
+    uint uiGeometries;
+};
+
 
 class __declspec(novtable) CGame 
 {
 public:
+    typedef std::list <CEntity*> entityList_t;
+
     virtual CPools              * GetPools()=0;
     virtual CPlayerInfo         * GetPlayerInfo()=0;
     virtual CProjectileInfo     * GetProjectileInfo()=0;
@@ -149,6 +181,8 @@ public:
     virtual CCarEnterExit       * GetCarEnterExit()=0;
     virtual CControllerConfigManager * GetControllerConfigManager() = 0;
     virtual CRenderWare         * GetRenderWare()=0;
+    virtual CTextureManager     * GetTextureManager()=0;
+    virtual CModelManager       * GetModelManager()=0;
     virtual CHandlingManager    * GetHandlingManager () = 0;
     virtual CAnimManager        * GetAnimManager () = 0;
     virtual CStreaming          * GetStreaming () = 0;
@@ -187,6 +221,11 @@ public:
     virtual void                Reset               ( void ) = 0;
     virtual void                Terminate ( void ) = 0;
 
+    virtual void                OnPreFrame ( void ) = 0;
+    virtual void                OnFrame ( void ) = 0;
+
+    virtual void                DiagnoseEntity ( CEntity *theEntity ) = 0;
+
     virtual BOOL                InitLocalPlayer(  )=0;
 
     virtual float               GetGravity ( void ) = 0;
@@ -197,6 +236,11 @@ public:
 
     virtual unsigned long       GetMinuteDuration ( void ) = 0;
     virtual void                SetMinuteDuration ( unsigned long ulDelay ) = 0;
+
+    virtual void                HideRadar( bool hide ) = 0;
+    virtual bool                IsRadarHidden( void ) = 0;
+
+    virtual void                SetCenterOfWorld( CEntity *streamingEntity, const CVector *pos, float heading ) = 0;
 
     virtual unsigned char       GetBlurLevel ( void ) = 0;
     virtual void                SetBlurLevel ( unsigned char ucLevel ) = 0;
@@ -217,8 +261,32 @@ public:
     virtual bool                PerformChecks               () = 0;
     virtual int&                GetCheckStatus              () = 0;
 
+    // Render Mode validation API.
+    virtual eRenderModeValueType    GetPreferedEntityRenderModeType ( eEntityRenderMode rMode ) = 0;
+
+    virtual rModeResult         ValidateEntityRenderModeBool ( eEntityRenderMode rMode, bool value ) = 0;
+    virtual rModeResult         ValidateEntityRenderModeFloat ( eEntityRenderMode rMode, float value ) = 0;
+    virtual rModeResult         ValidateEntityRenderModeInt ( eEntityRenderMode rMode, int value ) = 0;
+
+    // Clothes
+    virtual void                FlushClothesCache               ( void ) = 0;
+    virtual void                GetClothesCacheStats            ( SClothesCacheStats& outStats ) = 0;
+
+    // Rendering
+    virtual void                SetGameEntityRenderHandler      ( GameEntityRenderHandler * pHandler ) = 0;
+    virtual void                SetPreRenderSkyHandler          ( PreRenderSkyHandler * pHandler ) = 0;
+    virtual void                SetIsMinimizedAndNotConnected   ( bool bIsMinimizedAndNotConnected ) = 0;
+    virtual void                SetMirrorsEnabled               ( bool bEnabled ) = 0;
+
+    // LOD
+    virtual void                SetLODSystemEnabled             ( bool bEnable ) = 0;
+
+    // RenderWare statistics
+    virtual void                GetRwResourceStats              ( SRwResourceStats& outStats ) = 0;
+    virtual void                InitHooks_RwResources           ( void ) = 0;
+
     virtual void                SetAsyncLoadingFromScript       ( bool bScriptEnabled, bool bScriptForced ) = 0;
-    virtual void                SuspendASyncLoading             ( bool bSuspend, uint uiAutoUnsuspendDelay = 0 ) = 0;
+    virtual void                SuspendASyncLoading             ( bool bSuspend ) = 0;
     virtual bool                IsASyncLoadingEnabled           ( bool bIgnoreSuspend = false ) = 0;
 
     virtual bool                HasCreditScreenFadedOut         ( void ) = 0;

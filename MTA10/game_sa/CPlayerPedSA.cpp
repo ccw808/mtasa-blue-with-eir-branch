@@ -26,7 +26,7 @@ static CPedClothesDesc* pLocalClothes = 0;
 static CWantedSAInterface* pLocalWanted = 0;
 static std::set < SString > ms_DoneAnimBlockRefMap;
 
-CPlayerPedSA::CPlayerPedSA( ePedModel pedType )
+CPlayerPedSA::CPlayerPedSA( modelId_t pedType )
 {
     DEBUG_TRACE("CPlayerPedSA::CPlayerPedSA( ePedModel pedType )");
     // based on CPlayerPed::SetupPlayerPed (R*)
@@ -65,7 +65,7 @@ CPlayerPedSA::CPlayerPedSA( ePedModel pedType )
     m_pData = new CPlayerPedDataSAInterface;
 
     // Copy the local player data so we're defaulted to something good
-    CPlayerPedSA* pLocalPlayerSA = dynamic_cast < CPlayerPedSA* > ( pools->GetPedFromRef ( (DWORD)1 ) );
+    CPlayerPedSA* pLocalPlayerSA = dynamic_cast < CPlayerPedSA* > ( pools->GetPedFromRef ( (DWORD)0 ) );
     if ( pLocalPlayerSA )
         MemCpyFast ( m_pData, ((CPlayerPedSAInterface*)pLocalPlayerSA->GetInterface ())->pPlayerData, sizeof ( CPlayerPedDataSAInterface ) );
 
@@ -136,26 +136,18 @@ CPlayerPedSA::CPlayerPedSA ( CPlayerPedSAInterface * pPlayer )
 CPlayerPedSA::~CPlayerPedSA ( void )
 {
     DEBUG_TRACE("CPlayerPedSA::~CPlayerPedSA( )");
-    if(!this->BeingDeleted && DoNotRemoveFromGame == false)
+    if( DoNotRemoveFromGame == false)
     {
         DWORD dwInterface = (DWORD) m_pInterface;
         
-        if ( (DWORD)this->GetInterface()->vtbl != VTBL_CPlaceable )
+        if ( *(DWORD*)this->GetInterface() != VTBL_CPlaceable )
         {
             CWorldSA * world = (CWorldSA *)pGame->GetWorld();
             world->Remove ( m_pInterface, CPlayerPed_Destructor );
         
-            DWORD dwThis = (DWORD) m_pInterface;
-            DWORD dwFunc = m_pInterface->vtbl->SCALAR_DELETING_DESTRUCTOR; // we use the vtbl so we can be type independent
-            _asm    
-            {
-                mov     ecx, dwThis
-                push    1           //delete too
-                call    dwFunc
-            }
+            delete m_pInterface;
         }
         this->BeingDeleted = true;
-        ((CPoolsSA *)pGame->GetPools())->RemovePed((CPed *)(CPedSA *)this, false);
     }
 
     // Delete the player data

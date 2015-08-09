@@ -54,8 +54,6 @@ namespace SharedUtil
     long long   GetModuleTickCount64 ( void );
     void        UpdateModuleTickCount64 ( void );
 
-    // Debugging
-    void        AddTickCount    ( long long llTickCountAdd );
 
     //
     // Encapsulate a tick count value
@@ -137,6 +135,7 @@ namespace SharedUtil
         }
 
     protected:
+        CElapsedTime ( const CElapsedTime& );       // Not implemented
 
         long long DoGetTickCount ( void )
         {
@@ -203,6 +202,7 @@ namespace SharedUtil
 
         static void StaticInitialize( CElapsedTimeApprox* pTimer );
     protected:
+        CElapsedTimeApprox( const CElapsedTimeApprox& );    // Not implemented
 
         uchar DoGetCount( void )
         {

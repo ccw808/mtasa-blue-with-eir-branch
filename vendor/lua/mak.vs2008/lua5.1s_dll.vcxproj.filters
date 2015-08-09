@@ -99,9 +99,6 @@
     <ClCompile Include="..\src\print.c">
       <Filter>src</Filter>
     </ClCompile>
-    <ClCompile Include="..\src\lutf8lib.c">
-      <Filter>src</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\src\lapi.h">
@@ -171,9 +168,6 @@
       <Filter>inc</Filter>
     </ClInclude>
     <ClInclude Include="..\src\lzio.h">
-      <Filter>inc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\src\unidata.h">
       <Filter>inc</Filter>
     </ClInclude>
   </ItemGroup>

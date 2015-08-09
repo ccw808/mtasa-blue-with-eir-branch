@@ -281,9 +281,7 @@ IMPLEMENT_ENUM_BEGIN( eWeaponProperty )
     ADD_ENUM ( WEAPON_FLAG_SHOT_SLOWS,                  "flag_shot_slows" ) 
     ADD_ENUM ( WEAPON_FLAG_SHOT_RAND_SPEED,             "flag_shot_rand_speed" ) 
     ADD_ENUM ( WEAPON_FLAG_SHOT_ANIM_ABRUPT,            "flag_shot_anim_abrupt" ) 
-    ADD_ENUM ( WEAPON_FLAG_SHOT_EXPANDS,                "flag_shot_expands" )
-
-    ADD_ENUM ( WEAPON_FIRE_ROTATION,                    "fire_rotation" ) 
+    ADD_ENUM ( WEAPON_FLAG_SHOT_EXPANDS,                "flag_shot_expands" ) 
 IMPLEMENT_ENUM_END( "weapon-property" )
 
 IMPLEMENT_ENUM_BEGIN( eWeaponSkill )
@@ -403,7 +401,6 @@ IMPLEMENT_ENUM_BEGIN ( eAudioLookupIndex )
     ADD_ENUM ( AUDIO_LOOKUP_SPC_GA, "spc_ga" )
     ADD_ENUM ( AUDIO_LOOKUP_SPC_NA, "spc_na" )
     ADD_ENUM ( AUDIO_LOOKUP_SPC_PA, "spc_pa" )
-    ADD_ENUM ( AUDIO_LOOKUP_RADIO, "radio" )
 IMPLEMENT_ENUM_END ( "audio-lookup-index" )
 
 IMPLEMENT_ENUM_BEGIN ( eAspectRatio )
@@ -413,36 +410,6 @@ IMPLEMENT_ENUM_BEGIN ( eAspectRatio )
     ADD_ENUM ( ASPECT_RATIO_16_9, "16:9" )
 IMPLEMENT_ENUM_END ( "aspectratio" )
 
-IMPLEMENT_ENUM_BEGIN(eRadioStreamIndex)
-    ADD_ENUM(RADIO_STREAM_ADVERTS, "Adverts")
-    ADD_ENUM(RADIO_STREAM_AMBIENCE, "Ambience")
-    ADD_ENUM(RADIO_STREAM_POLICE, "Police")
-    ADD_ENUM(RADIO_STREAM_PLAYBACK, "Playback FM")
-    ADD_ENUM(RADIO_STREAM_KROSE, "K-Rose")
-    ADD_ENUM(RADIO_STREAM_KDST, "K-DST")
-    ADD_ENUM(RADIO_STREAM_CUTSCENE, "Cutscene")
-    ADD_ENUM(RADIO_STREAM_BEATS, "Beats")
-    ADD_ENUM(RADIO_STREAM_BOUNCE, "Bounce FM")
-    ADD_ENUM(RADIO_STREAM_SFUR, "SF-UR")
-    ADD_ENUM(RADIO_STREAM_RADIO_LOS_SANTOS, "Radio Los Santos")
-    ADD_ENUM(RADIO_STREAM_RADIO_X, "Radio X")
-    ADD_ENUM(RADIO_STREAM_CSR, "CSR 103.9")
-    ADD_ENUM(RADIO_STREAM_KJAH, "K-Jah West")
-    ADD_ENUM(RADIO_STREAM_MASTER_SOUNDS, "Master Sounds 98.3")
-    ADD_ENUM(RADIO_STREAM_WCTR, "WCTR")
-IMPLEMENT_ENUM_END("radio-stream-index")
-
-IMPLEMENT_ENUM_BEGIN( EComponentBase::EComponentBaseType )
-    ADD_ENUM( EComponentBaseType::WORLD,    "world" )
-    ADD_ENUM( EComponentBaseType::ROOT,     "root" )
-    ADD_ENUM( EComponentBaseType::PARENT,   "parent" )
-IMPLEMENT_ENUM_END( "component-base" )
-
-IMPLEMENT_ENUM_BEGIN(eWebBrowserMouseButton)
-    ADD_ENUM(BROWSER_MOUSEBUTTON_LEFT, "left")
-    ADD_ENUM(BROWSER_MOUSEBUTTON_MIDDLE, "middle")
-    ADD_ENUM(BROWSER_MOUSEBUTTON_RIGHT, "right")
-IMPLEMENT_ENUM_END("webbrowser-mouse-button")
 
 //
 // Get best guess at name of userdata type
@@ -588,7 +555,7 @@ bool ReadMatrix ( lua_State* luaVM, uint uiArgIndex, CMatrix& outMatrix )
                     if ( iArgumentType == LUA_TNUMBER || iArgumentType == LUA_TSTRING )
                     {
                         if ( uiRow < 4 && uiCol < 4 )
-                            m[uiRow][uiCol] = static_cast < float > ( lua_tonumber ( luaVM, -1 ) );
+                            m[uiRow][uiCol] = static_cast < float > ( lua_tonumber ( luaVM, -1 ) );;
                     }
                 }
 

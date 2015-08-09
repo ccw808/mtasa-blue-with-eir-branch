@@ -54,10 +54,7 @@ bool            HasGTAPath                          ( void );
 void            FindFilesRecursive                  ( const SString& strPathMatch, std::vector < SString >& outFileList, uint uiMaxDepth = 99 );
 SString         GetOSVersion                        ( void );
 SString         GetRealOSVersion                    ( void );
-SString         GetRealOSBuildNumber                ( void );
-bool            IsVS2013RuntimeInstalled            ( void );
 bool            IsVistaOrHigher                     ( void );
-bool            IsWin8OrHigher                      ( void );
 BOOL            IsUserAdmin                         ( void );
 
 void            UpdateMTAVersionApplicationSetting  ( bool bQuiet = false );
@@ -92,8 +89,6 @@ bool            IsDeviceSelectionDialogOpen         ( DWORD dwThreadId );
 std::vector < DWORD > MyEnumProcesses               ( void );
 std::vector < SString > GetPossibleProcessPathFilenames ( DWORD processID );
 void            WriteDebugEventAndReport            ( uint uiId, const SString& strText );
-WString         ReadCompatibilityEntries            ( const WString& strProgName, const WString& strSubKey, HKEY hKeyRoot, uint uiFlags );
-bool            WriteCompatibilityEntries           ( const WString& strProgName, const WString& strSubKey, HKEY hKeyRoot, uint uiFlags, const WString& strNewData );
 
 //
 // Determine if game process has gone wonky

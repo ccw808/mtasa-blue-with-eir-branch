@@ -583,7 +583,7 @@ bool CAccountManager::IntegrityCheck ()
         {
             CLogger::ErrorPrintf ( "%s\n", *m_pDatabaseManager->GetLastErrorMessage () );
             CLogger::ErrorPrintf ( "Errors were encountered updating '%s' database\n", *ExtractFilename ( PathConform ( "internal.db" ) ) );
-            CLogger::ErrorPrintf ( "Database might have incorrect file permissions, or locked by another process, or damaged.\n" );
+            CLogger::ErrorPrintf ( "Database might be locked by another process, or damaged.\n" );
             CLogger::ErrorPrintf ( "See - http://wiki.multitheftauto.com/wiki/fixdb\n" );
             CLogger::ErrorPrintf ( "************************\n" );
             return false;
@@ -900,17 +900,6 @@ bool CAccountManager::LogOut ( CClient* pClient, CClient* pEchoClient )
 
 CLuaArgument* CAccountManager::GetAccountData( CAccount* pAccount, const char* szKey )
 {
-    if ( !pAccount->IsRegistered () )
-    {
-        return pAccount->GetData ( szKey );
-    }
-
-    // Check cache first
-    if ( pAccount->HasData ( szKey ) )
-    {
-        return pAccount->GetData ( szKey );
-    }
-
     //Get the user ID
     int iUserID = pAccount->GetID();
     //create a new registry result for the query return
@@ -927,23 +916,18 @@ CLuaArgument* CAccountManager::GetAccountData( CAccount* pAccount, const char* s
     {
         const CRegistryResultRow& row = result->Data.front();
 
-        const char* szValue = (const char *)row[0].pVal;
         int iType = static_cast < int > ( row[1].nVal );
-
-        // Cache value for next get
-        pAccount->SetData ( szKey, szValue, iType );
-
         //Account data is stored as text so we don't need to check what type it is just return it
         if ( iType == LUA_TBOOLEAN )
         {
-            SString strResult = szValue;
+            SString strResult = (const char *)row[0].pVal;
             pResult->ReadBool ( strResult == "true" );
         }
         else
         if ( iType == LUA_TNUMBER )
-            pResult->ReadNumber ( strtod ( szValue, NULL ) );
+            pResult->ReadNumber ( strtod ( (const char *)row[0].pVal, NULL ) );
         else
-            pResult->ReadString ( szValue );
+            pResult->ReadString ( (const char *)row[0].pVal );
     }
     else
     {
@@ -958,19 +942,6 @@ bool CAccountManager::SetAccountData( CAccount* pAccount, const char* szKey, con
 {
     if ( iType != LUA_TSTRING && iType != LUA_TNUMBER && iType != LUA_TBOOLEAN && iType != LUA_TNIL )
         return false;
-
-    if ( !pAccount->IsRegistered () )
-    {
-        pAccount->SetData ( szKey, strValue, iType );
-        return true;
-    }
-
-    // Set cache value for next get
-    if ( !pAccount->SetData ( szKey, strValue, iType ) )
-    {
-        // If no change, skip DB update
-        return true;
-    }
 
     //Get the user ID
     int iUserID = pAccount->GetID();
@@ -990,110 +961,50 @@ bool CAccountManager::SetAccountData( CAccount* pAccount, const char* szKey, con
 
 bool CAccountManager::CopyAccountData( CAccount* pFromAccount, CAccount* pToAccount )
 {
-    // list to store pFromAccount data to
-    std::map < SString, CAccountData > copiedData;
+    //Get the user ID of the from account
+    int iUserID = pFromAccount->GetID();
+    //create a new registry result for the from account query return value
+    CRegistryResult result;
+    //create a new registry result for the to account query return value
+    //initialize key and value strings
+    SString strKey;
+    SString strValue;
 
-    if ( !pFromAccount->IsRegistered () )   // is not registered account, retrieve data from memory
-    {
-        std::map < SString, CAccountData > ::iterator iter = pFromAccount->DataBegin ();
-        for ( ; iter != pFromAccount->DataEnd (); iter++ )
+    //Select the key and value from the database where the user is our from account
+    m_pDatabaseManager->QueryWithResultf ( m_hDbConnection, &result, "SELECT key,value,type from userdata where userid=? LIMIT 1", SQLITE_INTEGER, iUserID );
+
+    //Do we have any results?
+    if ( result->nRows > 0 ) {
+        //Loop through until i is the same as the number of rows
+        for ( CRegistryResultIterator iter = result->begin() ; iter != result->end() ; ++iter )
         {
-            MapSet( copiedData, iter->second.GetKey(), CAccountData( iter->second.GetKey(), iter->second.GetStrValue(), iter->second.GetType() ) );
+            const CRegistryResultRow& row = *iter;
+            //Get our key
+            strKey = (const char *)row[0].pVal;
+            //Get our value
+            strValue = (const char *)row[1].pVal;
+            int iType = static_cast < int > ( row[2].nVal );
+            //Select the id and userid where the user is the to account and the key is strKey
+            CRegistryResult subResult;
+            m_pDatabaseManager->QueryWithResultf ( m_hDbConnection, &subResult, "SELECT id,userid from userdata where userid=? and key=? LIMIT 1", SQLITE_INTEGER, iUserID, SQLITE_TEXT, strKey.c_str () );
+            //If there is a key with this value update it otherwise insert it and store the return value in bRetVal
+            if ( subResult->nRows > 0 )
+                m_pDatabaseManager->Execf ( m_hDbConnection, "UPDATE userdata SET value=?, type=? WHERE userid=? AND key=?", SQLITE_TEXT, strValue.c_str (), SQLITE_INTEGER, iType, SQLITE_INTEGER, pToAccount->GetID (), SQLITE_TEXT, strKey.c_str () );
+            else
+                m_pDatabaseManager->Execf ( m_hDbConnection, "INSERT INTO userdata (userid, key, value, type) VALUES(?,?,?,?)", SQLITE_INTEGER, pToAccount->GetID (), SQLITE_TEXT, strKey.c_str (), SQLITE_TEXT, strValue.c_str (), SQLITE_INTEGER, iType );
+
         }
-    }
-    else    // is registered account, retrieve from database
-    {
-        SString strKey;
-        SString strValue;
-
-        //Get the user ID of the from account
-        int iUserID = pFromAccount->GetID ();
-        //create a new registry result for the from account query return value
-        CRegistryResult result;
-
-        m_pDatabaseManager->QueryWithResultf ( m_hDbConnection, &result, "SELECT key,value,type from userdata where userid=?", SQLITE_INTEGER, iUserID );
-
-        //Do we have any results?
-        if ( result->nRows > 0 )
-        {
-            for ( CRegistryResultIterator iter = result->begin() ; iter != result->end() ; ++iter )
-            {
-                const CRegistryResultRow& row = *iter;
-                //Get our key
-                strKey = (const char *)row[0].pVal;
-                //Get our value
-                strValue = (const char *)row[1].pVal;
-                int iType = static_cast < int > ( row[2].nVal );
-
-                MapSet( copiedData, strKey, CAccountData ( strKey, strValue, iType ) );
-           }
-        }
-    }
-
-    if (copiedData.size () > 0) // got anything to copy?
-    {
-        std::map < SString, CAccountData > ::iterator iter = copiedData.begin ();
-
-        for (; iter != copiedData.end(); iter++)
-        {
-            if ( !pToAccount->IsRegistered () ) // store to memory
-            {
-                pToAccount->SetData ( iter->second.GetKey (), iter->second.GetStrValue (), iter->second.GetType () );
-            }
-            else // store to database
-            {
-                CRegistryResult subResult;
-
-                m_pDatabaseManager->QueryWithResultf ( m_hDbConnection, &subResult, "SELECT id,userid from userdata where userid=? and key=? LIMIT 1", SQLITE_INTEGER, pToAccount->GetID (), SQLITE_TEXT, iter->second.GetKey ().c_str() );
-                //If there is a key with this value update it otherwise insert it and store the return value in bRetVal
-                if ( subResult->nRows > 0 )
-                    m_pDatabaseManager->Execf ( m_hDbConnection, "UPDATE userdata SET value=?, type=? WHERE userid=? AND key=?", SQLITE_TEXT, iter->second.GetStrValue ().c_str(), SQLITE_INTEGER, iter->second.GetType (), SQLITE_INTEGER, pToAccount->GetID (), SQLITE_TEXT, iter->second.GetKey ().c_str() );
-                else
-                    m_pDatabaseManager->Execf ( m_hDbConnection, "INSERT INTO userdata (userid, key, value, type) VALUES(?,?,?,?)", SQLITE_INTEGER, pToAccount->GetID (), SQLITE_TEXT, iter->second.GetKey ().c_str(), SQLITE_TEXT, iter->second.GetStrValue ().c_str(), SQLITE_INTEGER, iter->second.GetType () );
-            }
-        }
-        return true;
     }
     else
+        //We had no results so return false (Nothing has changed)
         return false;
+    
+    return true;
 }
 
 
 bool CAccountManager::GetAllAccountData( CAccount* pAccount, lua_State* pLua )
 {
-    if ( !pAccount->IsRegistered () )
-    {
-        std::map < SString, CAccountData > ::iterator iter = pAccount->DataBegin ();
-        for ( ; iter != pAccount->DataEnd (); iter++ )
-        {
-            if ( iter->second.GetType() == LUA_TNIL )
-            {
-                lua_pushstring ( pLua, iter->second.GetKey ().c_str() );
-                lua_pushnil ( pLua );
-                lua_settable ( pLua, -3 );
-            }
-            if ( iter->second.GetType() == LUA_TBOOLEAN )
-            {
-                lua_pushstring ( pLua, iter->second.GetKey ().c_str() );
-                lua_pushboolean ( pLua, iter->second.GetStrValue () == "true" ? true : false );
-                lua_settable ( pLua, -3 );
-            }
-            if ( iter->second.GetType() == LUA_TNUMBER )
-            {
-                lua_pushstring ( pLua, iter->second.GetKey ().c_str() );
-                lua_pushnumber ( pLua, strtod ( iter->second.GetStrValue ().c_str(), NULL ) );
-                lua_settable ( pLua, -3 );
-            }
-            else
-            {
-                lua_pushstring ( pLua, iter->second.GetKey ().c_str() );
-                lua_pushstring ( pLua, iter->second.GetStrValue ().c_str() );
-                lua_settable ( pLua, -3 );
-            }
-        }
-        return true;
-    }
-
     //Get the user ID
     int iUserID = pAccount->GetID();
     //create a new registry result for the query return

@@ -27,10 +27,6 @@ CHTTPD::CHTTPD ( void )
     m_pGuestAccount = new CAccount ( g_pGame->GetAccountManager (), false, HTTP_GUEST_ACCOUNT_NAME );
 
     m_HttpDosProtect = CConnectHistory ( g_pGame->GetConfig ()->GetHTTPDosThreshold (), 10000, 60000 * 1 );     // Max of 'n' connections per 10 seconds, then 1 minute ignore
-
-    std::vector< SString > excludeList;
-    g_pGame->GetConfig ()->GetHTTPDosExclude ().Split( ",", excludeList );
-    m_HttpDosExcludeMap = std::set < SString > ( excludeList.begin(), excludeList.end() );
 }
 
 
@@ -89,34 +85,19 @@ bool CHTTPD::StartHTTPD ( const char* szIP, unsigned int port )
     return bResult;
 }
 
-// Called from worker thread.
-// Do some stuff before allowing EHS to do the proper routing
-HttpResponse * CHTTPD::RouteRequest ( HttpRequest * ipoHttpRequest )
-{
-    if ( !g_pGame->IsServerFullyUp () )
-    {
-        // create an HttpRespose object for the message
-        HttpResponse* poHttpResponse = new HttpResponse ( ipoHttpRequest->m_nRequestId, ipoHttpRequest->m_poSourceEHSConnection );
-        SStringX strWait ( "The server is not ready. Please try again in a minute." );
-        poHttpResponse->SetBody ( strWait.c_str (), strWait.size () );
-        poHttpResponse->m_nResponseCode = HTTPRESPONSECODE_200_OK;
-        return poHttpResponse;
-    }
 
-    // Sync with main thread before routing (to a resource)
-    g_pGame->Lock();
-    HttpResponse* poHttpResponse = EHS::RouteRequest( ipoHttpRequest );
-    g_pGame->Unlock();
-
-    return poHttpResponse;
-}
-
-// Called from worker thread. g_pGame->Lock() has already been called.
 // creates a page based on user input -- either displays data from
 //   form or presents a form for users to submit data.
 ResponseCode CHTTPD::HandleRequest ( HttpRequest * ipoHttpRequest,
                                          HttpResponse * ipoHttpResponse )
 {
+    if ( !g_pGame->IsServerFullyUp () )
+    {
+        SStringX strWait ( "The server is not ready. Please try again in a minute." );
+        ipoHttpResponse->SetBody ( strWait.c_str (), strWait.size () );
+        return HTTPRESPONSECODE_200_OK;
+    }
+
     CAccount * account = CheckAuthentication ( ipoHttpRequest );
 
     if ( account )
@@ -128,6 +109,37 @@ ResponseCode CHTTPD::HandleRequest ( HttpRequest * ipoHttpRequest,
             SString strNewURL ( "http://%s/%s/", ipoHttpRequest->oRequestHeaders["host"].c_str(), m_strDefaultResourceName.c_str () );
             ipoHttpResponse->oResponseHeaders["location"] = strNewURL.c_str ();
             return HTTPRESPONSECODE_302_FOUND;
+
+            /*CAccessControlListManager * pACLManager = g_pGame->GetACLManager();
+            char * szAccountName = account->GetName();
+
+            if ( pACLManager->CanObjectUseRight ( szAccountName,
+                                                  CAccessControlListGroupObject::OBJECT_TYPE_USER,
+                                                  m_szDefaultResourceName,
+                                                  CAccessControlListRight::RIGHT_TYPE_RESOURCE,
+                                                  true ) &&
+                pACLManager->CanObjectUseRight ( szAccountName,
+                                                 CAccessControlListGroupObject::OBJECT_TYPE_USER,
+                                                 "http",
+                                                 CAccessControlListRight::RIGHT_TYPE_GENERAL,
+                                                 true ) )
+            {
+                CResource * resource = g_pGame->GetResourceManager()->GetResource ( m_szDefaultResourceName );
+                if ( resource )
+                {
+                    ResponseCode ret = resource->HandleRequest ( ipoHttpRequest, ipoHttpResponse );
+
+                    // Log if this request was not a 200 OK response
+                    if ( ret != HTTPRESPONSECODE_200_OK )
+                        CLogger::LogPrintf ( "HTTPD: Request from %s (%d: %s)\n", ipoHttpRequest->GetAddress ().c_str (), ret, ipoHttpRequest->sUri.c_str () );
+
+                    return ret;
+                }
+            }
+            else
+            {
+                return RequestLogin ( ipoHttpResponse );
+            }*/
         }
     }
 
@@ -238,9 +250,6 @@ void CHTTPD::HttpPulse ( void )
 //
 bool CHTTPD::ShouldAllowConnection ( const char * szAddress )
 {
-    if ( MapContains( m_HttpDosExcludeMap, szAddress ) )
-        return true;
-
     if ( m_HttpDosProtect.IsFlooding ( szAddress ) )
         return false;
 

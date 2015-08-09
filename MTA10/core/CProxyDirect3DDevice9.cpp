@@ -38,9 +38,8 @@ CProxyDirect3DDevice9::CProxyDirect3DDevice9 ( IDirect3DDevice9 * pDevice  )
     m_pDevice->GetCreationParameters ( &creationParameters );
     int iAdapter = creationParameters.AdapterOrdinal;
 
-    IDirect3D9* pD3D9 = CProxyDirect3D9::StaticGetDirect3D();
-    if ( !pD3D9 )
-        m_pDevice->GetDirect3D ( &pD3D9 );
+    IDirect3D9* pD3D9 = NULL;
+    m_pDevice->GetDirect3D ( &pD3D9 );
 
     D3DADAPTER_IDENTIFIER9 adaptIdent;
     ZeroMemory( &adaptIdent, sizeof( D3DADAPTER_IDENTIFIER9 ) );
@@ -76,12 +75,6 @@ CProxyDirect3DDevice9::CProxyDirect3DDevice9 ( IDirect3DDevice9 * pDevice  )
 
     // Clipping is required for some graphic configurations
     g_pDeviceState->AdapterState.bRequiresClipping = SStringX( adaptIdent.Description ).Contains( "Intel" );
-
-    WriteDebugEvent( SString( "*** Using adapter: %s (Mem:%d KB, MaxAnisotropy:%d)"
-                            , (const char*)g_pDeviceState->AdapterState.Name
-                            , g_pDeviceState->AdapterState.InstalledMemoryKB
-                            , g_pDeviceState->AdapterState.MaxAnisotropicSetting
-                            ) );
 
     // Call event handler
     CDirect3DEvents9::OnDirect3DDeviceCreate ( pDevice );
@@ -365,9 +358,6 @@ HRESULT CProxyDirect3DDevice9::Reset                          ( D3DPRESENT_PARAM
 HRESULT CProxyDirect3DDevice9::Present                        ( CONST RECT* pSourceRect,CONST RECT* pDestRect,HWND hDestWindowOverride,CONST RGNDATA* pDirtyRegion )
 {
     CDirect3DEvents9::OnPresent ( m_pDevice );
-
-    // Reset frame stat counters
-    memset( &DeviceState.FrameStats, 0, sizeof( DeviceState.FrameStats ) );
 
     // A fog flicker fix for some ATI cards
     D3DMATRIX projMatrix;
@@ -671,7 +661,6 @@ HRESULT CProxyDirect3DDevice9::GetTexture                     ( DWORD Stage,IDir
 
 HRESULT CProxyDirect3DDevice9::SetTexture                     ( DWORD Stage,IDirect3DBaseTexture9* pTexture )
 {
-    CDirect3DEvents9::CloseActiveShader();
     if ( Stage < NUMELMS( DeviceState.TextureState ) )
         DeviceState.TextureState[Stage].Texture = pTexture;
     return m_pDevice->SetTexture ( Stage, CDirect3DEvents9::GetRealTexture ( pTexture ) );

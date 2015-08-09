@@ -233,7 +233,23 @@ bool CLuaArguments::Call ( CLuaMain* pLuaMain, const CLuaFunctionRef& iLuaFuncti
     if ( iret == LUA_ERRRUN || iret == LUA_ERRMEM )
     {
         SString strRes = ConformResourcePath ( lua_tostring( luaVM, -1 ) );
-        g_pClientGame->GetScriptDebugging()->LogPCallError( luaVM, strRes );
+        
+        // Split the error message
+        vector <SString> vecSplit;
+        strRes.Split ( ":", vecSplit );
+        
+        // If it consists of 3 parts
+        if ( vecSplit.size ( ) >= 3 )
+        {
+            // Pass it to a special LogError function (because with normal Lua errors, the other one won't be able to get the file and line of the error)
+            SString strFile = vecSplit[0];
+            int     iLine   = atoi ( vecSplit[1].c_str ( ) );
+            SString strMsg  = vecSplit[2].substr ( 1 );
+            
+            g_pClientGame->GetScriptDebugging()->LogError ( strFile, iLine, strMsg );
+        }
+        else
+            g_pClientGame->GetScriptDebugging()->LogError ( luaVM, "%s", strRes.c_str () );
 
         // cleanup the stack
         while ( lua_gettop ( luaVM ) - luaStackPointer > 0 )
@@ -287,7 +303,7 @@ bool CLuaArguments::CallGlobal ( CLuaMain* pLuaMain, const char* szFunction, CLu
     if ( iret == LUA_ERRRUN || iret == LUA_ERRMEM )
     {
         std::string strRes = ConformResourcePath ( lua_tostring( luaVM, -1 ) );
-        g_pClientGame->GetScriptDebugging()->LogPCallError( luaVM, strRes );
+        g_pClientGame->GetScriptDebugging()->LogError ( luaVM, "%s", strRes.c_str () );
 
         // cleanup the stack
         while ( lua_gettop ( luaVM ) - luaStackPointer > 0 )
@@ -378,15 +394,6 @@ CLuaArgument* CLuaArguments::PushArgument ( const CLuaArgument& Argument )
 }
 
 
-CLuaArgument* CLuaArguments::PushTable ( CLuaArguments * table )
-{
-    CLuaArgument* pArgument = new CLuaArgument (  );
-    pArgument->ReadTable ( table );
-    m_Arguments.push_back ( pArgument );
-    return pArgument;
-}
-
-
 void CLuaArguments::DeleteArguments ( void )
 {
     // Delete each item
@@ -447,37 +454,11 @@ bool CLuaArguments::ReadFromBitStream ( NetBitStreamInterface& bitStream, std::v
         bKnownTablesCreated = true;
     }
 
-    unsigned int uiNumArgs;
-    bool bResult;
-#if MTA_DM_VERSION >= 0x150
-    bResult = bitStream.ReadCompressed ( uiNumArgs );
-#else
     unsigned short usNumArgs;
-    if ( bitStream.Version () < 0x05B )
-    {
-        // We got the old version
-        bResult = bitStream.ReadCompressed ( usNumArgs );
-        uiNumArgs = usNumArgs;
-    }
-    else
-    {
-        // Check if we got the new version
-        if ( ( bResult = bitStream.ReadCompressed ( usNumArgs ) ) )
-        {
-            if ( usNumArgs == 0xFFFF )
-                // We got the new version
-                bResult = bitStream.ReadCompressed ( uiNumArgs );
-            else
-                // We got the old version
-                uiNumArgs = usNumArgs;
-        }
-    }
-#endif
-
-    if ( bResult )
+    if ( bitStream.ReadCompressed ( usNumArgs ) )
     {
         pKnownTables->push_back ( this );
-        for ( unsigned int ui = 0; ui < uiNumArgs; ++ui )
+        for ( unsigned short us = 0 ; us < usNumArgs ; us++ )
         {
             CLuaArgument* pArgument = new CLuaArgument ( bitStream, pKnownTables );
             m_Arguments.push_back ( pArgument );
@@ -502,16 +483,7 @@ bool CLuaArguments::WriteToBitStream ( NetBitStreamInterface& bitStream, CFastHa
 
     bool bSuccess = true;
     pKnownTables->insert ( make_pair ( (CLuaArguments *)this, pKnownTables->size () ) );
-
-#if MTA_DM_VERSION >= 0x150
-    bitStream.WriteCompressed ( static_cast < unsigned int > ( m_Arguments.size () ) );
-#else
-    if ( bitStream.Version () < 0x05B )
-        bitStream.WriteCompressed ( static_cast < unsigned short > ( m_Arguments.size () ) );
-    else
-        bitStream.WriteCompressed ( static_cast < unsigned int > ( m_Arguments.size () ) );
-#endif
-
+    bitStream.WriteCompressed ( static_cast < unsigned short > ( m_Arguments.size () ) );
     vector < CLuaArgument* > ::const_iterator iter = m_Arguments.begin ();
     for ( ; iter != m_Arguments.end () ; iter++ )
     {

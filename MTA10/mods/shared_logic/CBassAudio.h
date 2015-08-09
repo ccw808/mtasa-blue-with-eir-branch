@@ -31,6 +31,7 @@ struct SSoundEventInfo
 struct SSoundThreadVariables
 {
     ZERO_ON_NEW
+    int                     iRefCount;
     SString                 strURL;
     long                    lFlags;
     DWORD                   pSound;
@@ -40,6 +41,8 @@ struct SSoundThreadVariables
     std::list < double >    onClientBeatQueue;
     std::list < SString >   onClientSoundChangedMetaQueue;
     CCriticalSection        criticalSection;
+
+    void Release ( void );
 };
 
 
@@ -49,7 +52,6 @@ public:
     ZERO_ON_NEW
                             CBassAudio              ( bool bStream, const SString& strPath, bool bLoop, bool b3D );
                             CBassAudio              ( void* pBuffer, unsigned int uiBufferLength, bool bLoop, bool b3D );
-                            ~CBassAudio             ( void );
     void                    Destroy                 ( void );
 
     bool                    BeginLoadingMedia       ( void );
@@ -58,7 +60,7 @@ public:
     void                    SetPlayPosition         ( double dPosition );
     double                  GetPlayPosition         ( void );
     double                  GetLength               ( void );
-    void                    SetVolume               ( float fVolume );
+    void                    SetVolume               ( float fVolume, bool bStore = true );
     void                    SetPlaybackSpeed        ( float fSpeed );
     void                    SetPosition             ( const CVector& vecPosition );
     void                    SetVelocity             ( const CVector& vecVelocity );
@@ -87,6 +89,8 @@ public:
     void                    SetSoundBPM             ( float fBPM )                                              { m_fBPM = fBPM;}
 
 protected:
+                            ~CBassAudio             ( void );
+    static void             DestroyInternal         ( CBassAudio* pBassAudio );
     HSTREAM                 ConvertFileToMono       ( const SString& strPath );
     static void             PlayStreamIntern        ( void* arguments );
     void                    CompleteStreamConnect   ( HSTREAM pSound );
@@ -137,10 +141,4 @@ private:
 
     std::list < SSoundEventInfo > m_EventQueue;
     float                   m_fBPM;
-
-    void*                   m_uiCallbackId;
-    HSYNC                   m_hSyncDownload;
-    HSYNC                   m_hSyncEnd;
-    HSYNC                   m_hSyncFree;
-    HSYNC                   m_hSyncMeta;
 };

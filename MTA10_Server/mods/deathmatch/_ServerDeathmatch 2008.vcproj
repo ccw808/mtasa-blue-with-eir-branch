@@ -83,11 +83,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthread.lib pme.lib pcre3.lib json.lib psapi.lib"
+				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthreadVC2.lib pme.lib pcre3.lib json.lib psapi.lib"
 				OutputFile="C:\Program Files\MTA San Andreas 1.4\server/mods/deathmatch/deathmatch.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/x86/$(ConfigurationName);&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/lib/x86;&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
 				MapFileName=""
@@ -186,11 +186,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthread.lib pme.lib pcre3.lib json.lib psapi.lib"
+				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthreadVC2.lib pme.lib pcre3.lib json.lib psapi.lib"
 				OutputFile="C:\Program Files\MTA San Andreas 1.4\server/$(PlatformName)/deathmatch.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/lib/$(PlatformName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../../symbols/$(ConfigurationName)_$(PlatformName)_$(SafeParentName).pdb"
 				MapFileName=""
@@ -286,11 +286,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s_d.lib wsock32.lib zlib_d.lib ehs_d.lib pthread_d.lib pme_d.lib pcre3_d.lib json_d.lib psapi.lib"
+				AdditionalDependencies="lua5.1s_d.lib wsock32.lib zlib_d.lib ehs_d.lib pthreadVC2.lib pme_d.lib pcre3_d.lib json_d.lib psapi.lib"
 				OutputFile="C:\Program Files\MTA San Andreas 1.4\server/mods/deathmatch/deathmatch_d.dll"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/x86/$(ConfigurationName);&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/lib/x86;&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
 				IgnoreDefaultLibraryNames="MSVCRT"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
@@ -383,11 +383,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s_d.lib wsock32.lib zlib_d.lib ehs_d.lib pthread_d.lib pme_d.lib pcre3_d.lib json_d.lib psapi.lib"
+				AdditionalDependencies="lua5.1s_d.lib wsock32.lib zlib_d.lib ehs_d.lib pthreadVC2.lib pme_d.lib pcre3_d.lib json_d.lib psapi.lib"
 				OutputFile="C:\Program Files\MTA San Andreas 1.4\server\$(PlatformName)\deathmatch_d.dll"
 				LinkIncremental="2"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/lib/$(PlatformName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
 				IgnoreDefaultLibraryNames="MSVCRT"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="$(IntDir)\$(TargetName).pdb"
@@ -483,11 +483,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthread.lib pme.lib pcre3.lib json.lib psapi.lib"
+				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthreadVC2.lib pme.lib pcre3.lib json.lib psapi.lib"
 				OutputFile="../../../output/MTA San Andreas/server/mods/deathmatch/deathmatch.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/x86/$(ConfigurationName);&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="logic/lib;&quot;../../../vendor/lua/x86/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/x86/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/x86/$(ConfigurationName)&quot;;../../../vendor/pthreads/lib/x86;&quot;../../../vendor/zlib/x86/$(ConfigurationName)&quot;"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../../symbols/$(ConfigurationName)_$(SafeParentName).pdb"
 				MapFileName=""
@@ -587,11 +587,11 @@
 			<Tool
 				Name="VCLinkerTool"
 				LinkLibraryDependencies="false"
-				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthread.lib pme.lib pcre3.lib json.lib psapi.lib"
+				AdditionalDependencies="lua5.1s.lib wsock32.lib zlib.lib ehs.lib pthreadVC2.lib pme.lib pcre3.lib json.lib psapi.lib"
 				OutputFile="../../../output/MTA San Andreas/server/$(PlatformName)/deathmatch.dll"
 				LinkIncremental="1"
 				SuppressStartupBanner="true"
-				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
+				AdditionalLibraryDirectories="&quot;../../../vendor/lua/$(PlatformName)/$(ConfigurationName)Server&quot;;&quot;../../../vendor/json-c/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/ehs/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pme/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pcre/$(PlatformName)/$(ConfigurationName)&quot;;&quot;../../../vendor/pthreads/lib/$(PlatformName)&quot;;&quot;../../../vendor/zlib/$(PlatformName)/$(ConfigurationName)&quot;"
 				GenerateDebugInformation="true"
 				ProgramDatabaseFile="../../../symbols/$(ConfigurationName)_$(PlatformName)_$(SafeParentName).pdb"
 				MapFileName=""
@@ -1038,10 +1038,6 @@
 				</File>
 				<File
 					RelativePath=".\logic\CPerfStat.PacketUsage.cpp"
-					>
-				</File>
-				<File
-					RelativePath=".\logic\CPerfStat.PlayerPacketUsage.cpp"
 					>
 				</File>
 				<File
@@ -1560,103 +1556,7 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Account.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Ban.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Blip.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Clothing.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.ColShape.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Crypt.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Database.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Event.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Marker.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Misc.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Object.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Ped.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Player.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.PREG.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.RadarArea.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Server.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Team.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Timer.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.UTF.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Utility.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Vehicle.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Water.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaFunctionDefs.Weapon.cpp"
+						RelativePath=".\logic\lua\CLuaFunctionDefinitions.cpp"
 						>
 					</File>
 					<File
@@ -1676,10 +1576,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaMatrix.cpp"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\lua\CLuaModule.cpp"
 						>
 					</File>
@@ -1696,18 +1592,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaVector2.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaVector3.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaVector4.cpp"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\lua\LuaCommon.cpp"
 						>
 					</File>
@@ -1715,42 +1599,6 @@
 						RelativePath=".\logic\lua\LuaUtils.cpp"
 						>
 					</File>
-					<Filter
-						Name="oopdefs"
-						>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.ACL.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Camera.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Element.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Ped.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Player.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Connection.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.Marker.cpp"
-							>
-						</File>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPFunctionDefs.RadarArea.cpp"
-							>
-						</File>
-					</Filter>
 				</Filter>
 				<Filter
 					Name="luadefs"
@@ -1792,10 +1640,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\luadefs\CLuaMatrixDefs.cpp"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\luadefs\CLuaPickupDefs.cpp"
 						>
 					</File>
@@ -1805,18 +1649,6 @@
 					</File>
 					<File
 						RelativePath=".\logic\luadefs\CLuaTextDefs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector2Defs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector3Defs.cpp"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector4Defs.cpp"
 						>
 					</File>
 					<File
@@ -2384,6 +2216,10 @@
 			</File>
 			<File
 				RelativePath=".\gccHashSupport.h"
+				>
+			</File>
+			<File
+				RelativePath="Server.h"
 				>
 			</File>
 			<File
@@ -3257,10 +3093,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaMatrix.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\lua\CLuaModule.h"
 						>
 					</File>
@@ -3277,18 +3109,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\lua\CLuaVector2.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaVector3.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\lua\CLuaVector4.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\lua\LuaUtils.h"
 						>
 					</File>
@@ -3296,14 +3116,6 @@
 						RelativePath="..\..\..\Shared\sdk\net\rpc_enums.h"
 						>
 					</File>
-					<Filter
-						Name="oopdefs"
-						>
-						<File
-							RelativePath=".\logic\lua\oopdefs\CLuaOOPDefs.h"
-							>
-						</File>
-					</Filter>
 				</Filter>
 				<Filter
 					Name="common"
@@ -3353,10 +3165,6 @@
 						>
 					</File>
 					<File
-						RelativePath=".\logic\luadefs\CLuaMatrixDefs.h"
-						>
-					</File>
-					<File
 						RelativePath=".\logic\luadefs\CLuaPickupDefs.h"
 						>
 					</File>
@@ -3366,18 +3174,6 @@
 					</File>
 					<File
 						RelativePath=".\logic\luadefs\CLuaTextDefs.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector2Defs.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector3Defs.h"
-						>
-					</File>
-					<File
-						RelativePath=".\logic\luadefs\CLuaVector4Defs.h"
 						>
 					</File>
 					<File

@@ -46,7 +46,8 @@ CModelTexturesInfo* CRenderWareSA::GetModelTexturesInfo ( ushort usModelId )
 
         if ( !pTxd )
         {
-            pGame->GetModelInfo ( usModelId )->Request ( BLOCKING, "CRenderWareSA::GetModelTexturesInfo" );
+            Streaming::RequestModel( usModelId, 0x10 );
+            Streaming::LoadAllRequestedModels( true );
             CTxdStore_AddRef ( usTxdId );
             ( (void (__cdecl *)(unsigned short))FUNC_RemoveModel )( usModelId );
             pTxd = CTxdStore_GetTxd ( usTxdId );
@@ -80,14 +81,17 @@ CModelTexturesInfo* CRenderWareSA::GetModelTexturesInfo ( ushort usModelId )
 // Load textures from a TXD file
 //
 ////////////////////////////////////////////////////////////////
-bool CRenderWareSA::ModelInfoTXDLoadTextures ( SReplacementTextures* pReplacementTextures, const CBuffer& fileData, bool bFilteringEnabled )
+bool CRenderWareSA::ModelInfoTXDLoadTextures ( SReplacementTextures* pReplacementTextures, const SString& strFilename, bool bFilteringEnabled )
 {
     // Are we already loaded?
     if ( !pReplacementTextures->textures.empty () )
         return false;
 
+    if ( !g_pCore->GetNetwork ()->CheckFile ( "txd", strFilename ) )
+        return false;
+
     // Try to load it
-    RwTexDictionary* pTxd = ReadTXD ( fileData );
+    RwTexDictionary* pTxd = ReadTXD ( strFilename );
     if ( pTxd )
     {
         // Get the list of textures into our own list

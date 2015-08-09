@@ -20,21 +20,8 @@
 #include "CPopulationMP.h"
 #include "CLimits.h"
 
-struct SRwResourceStats
-{
-    uint uiTextures;
-    uint uiRasters;
-    uint uiGeometries;
-};
+struct RpClump;
 
-struct SClothesCacheStats
-{
-    uint uiCacheHit;
-    uint uiCacheMiss;
-    uint uiNumTotal;
-    uint uiNumUnused;
-    uint uiNumRemoved;
-};
 
 typedef unsigned long AssocGroupId;
 typedef unsigned long AnimationId;
@@ -55,7 +42,6 @@ typedef bool ( BreakTowLinkHandler ) ( class CVehicle * towingVehicle );
 typedef bool ( ProcessCamHandler ) ( class CCam* pCam );
 typedef void ( DrawRadarAreasHandler ) ( void );
 typedef void ( Render3DStuffHandler ) ( void );
-typedef void ( PreRenderSkyHandler ) ( void );
 typedef bool ( ChokingHandler ) ( unsigned char ucWeaponType );
 typedef void ( PreWorldProcessHandler ) ( void );
 typedef void ( PostWorldProcessHandler ) ( void );
@@ -71,15 +57,11 @@ typedef bool ( HeliKillHandler ) ( class CVehicleSAInterface* pVehicle, class CE
 typedef bool ( ObjectDamageHandler ) ( class CObjectSAInterface* pObject, float fLoss, class CEntitySAInterface* pAttacker );
 typedef bool ( ObjectBreakHandler ) ( class CObjectSAInterface* pObject, class CEntitySAInterface* pAttacker );
 typedef bool ( WaterCannonHitHandler ) ( class CVehicleSAInterface* pCannonVehicle, class CPedSAInterface* pHitPed );
-typedef bool ( VehicleFellThroughMapHandler ) ( class CVehicleSAInterface* pVehicle );
 typedef void ( GameObjectDestructHandler ) ( CEntitySAInterface* pObject );
 typedef void ( GameVehicleDestructHandler ) ( CEntitySAInterface* pVehicle );
 typedef void ( GamePlayerDestructHandler ) ( CEntitySAInterface* pPlayer );
 typedef void ( GameProjectileDestructHandler ) ( CEntitySAInterface* pProjectile );
-typedef void ( GameModelRemoveHandler ) ( ushort usModelId );
-typedef void ( GameEntityRenderHandler ) ( CEntitySAInterface* pEntity );
 typedef void ( FxSystemDestructionHandler ) ( void* pFxSA );
-typedef AnimationId(DrivebyAnimationHandler) (AnimationId animGroup, AssocGroupId animId);
 
 /**
  * This class contains information used for shot syncing, one exists per player.
@@ -150,14 +132,13 @@ public:
 
     virtual class CPopulationMP         * GetPopulationMP           () = 0;
     virtual void                        PreventLeavingVehicles      () = 0;
-    virtual void                        HideRadar                   ( bool bHide ) = 0;
-    virtual void                        SetCenterOfWorld            ( class CEntity * entity, class CVector * vecPosition, FLOAT fHeading ) = 0;
+    //virtual void                        HideRadar                   ( bool bHide ) = 0; MOVED TO CGameSA
+    //virtual void                        SetCenterOfWorld            ( class CEntity * entity, class CVector * vecPosition, FLOAT fHeading ) = 0; MOVED TO CGameSA
     virtual void                        DisablePadHandler           ( bool bDisabled ) = 0;
     virtual void                        DisableAllVehicleWeapons    ( bool bDisable ) = 0;
     virtual void                        DisableBirds                ( bool bDisabled ) = 0;
     virtual void                        DisableQuickReload          ( bool bDisable ) = 0;
     virtual void                        DisableCloseRangeDamage     ( bool bDisable ) = 0;
-    virtual void                        DisableBadDrivebyHitboxes   ( bool bDisable ) = 0;
 
     virtual bool                        GetExplosionsDisabled       () = 0;
     virtual void                        DisableExplosions           ( bool bDisabled ) = 0;
@@ -183,16 +164,13 @@ public:
     virtual void                        SetHeliKillHandler          ( HeliKillHandler * pHandler ) = 0;
     virtual void                        SetObjectDamageHandler      ( ObjectDamageHandler * pHandler ) = 0;
     virtual void                        SetObjectBreakHandler       ( ObjectBreakHandler * pHandler ) = 0;
-    virtual void                        SetWaterCannonHitHandler ( WaterCannonHitHandler * pHandler ) = 0;
-    virtual void                        SetVehicleFellThroughMapHandler ( VehicleFellThroughMapHandler * pHandler ) = 0;
+    virtual void                        SetWaterCannonHitHandler    ( WaterCannonHitHandler * pHandler ) = 0;
     virtual void                        SetGameObjectDestructHandler    ( GameObjectDestructHandler * pHandler ) = 0;
     virtual void                        SetGameVehicleDestructHandler   ( GameVehicleDestructHandler * pHandler ) = 0;
     virtual void                        SetGamePlayerDestructHandler    ( GamePlayerDestructHandler * pHandler ) = 0;
     virtual void                        SetGameProjectileDestructHandler( GameProjectileDestructHandler * pHandler ) = 0;
-    virtual void                        SetGameModelRemoveHandler       ( GameModelRemoveHandler * pHandler ) = 0;
-    virtual void                        SetGameEntityRenderHandler      ( GameEntityRenderHandler * pHandler ) = 0;
+    //virtual void                        SetGameEntityRenderHandler      ( GameEntityRenderHandler * pHandler ) = 0; MOVED TO CGameSA
     virtual void                        SetFxSystemDestructionHandler   ( FxSystemDestructionHandler * pHandler ) = 0;
-    virtual void                        SetDrivebyAnimationHandler      (DrivebyAnimationHandler * pHandler) = 0;
 
     virtual void                        AllowMouseMovement          ( bool bAllow ) = 0;
     virtual void                        DoSoundHacksOnLostFocus     ( bool bLostFocus ) = 0;
@@ -219,9 +197,6 @@ public:
     virtual void                        SetFarClipDistance          ( float fDistance ) = 0;
     virtual float                       GetFarClipDistance          ( void ) = 0;
     virtual void                        RestoreFarClipDistance      ( void ) = 0;
-    virtual void                        SetNearClipDistance         ( float fDistance ) = 0;
-    virtual float                       GetNearClipDistance         ( void ) = 0;
-    virtual void                        RestoreNearClipDistance     ( void ) = 0;
     virtual void                        SetFogDistance              ( float fDistance ) = 0;
     virtual float                       GetFogDistance              ( void ) = 0;
     virtual void                        RestoreFogDistance          ( void ) = 0;
@@ -256,7 +231,7 @@ public:
     virtual void                        SetBulletFireHandler        ( BulletFireHandler* pHandler ) = 0;
     virtual void                        SetDrawRadarAreasHandler    ( DrawRadarAreasHandler * pRadarAreasHandler ) = 0;
     virtual void                        SetRender3DStuffHandler     ( Render3DStuffHandler * pHandler ) = 0;
-    virtual void                        SetPreRenderSkyHandler      ( PreRenderSkyHandler * pHandler ) = 0;
+    //virtual void                        SetPreRenderSkyHandler      ( PreRenderSkyHandler * pHandler ) = 0; MOVED TO CGameSA
 
     virtual void                        Reset                       () = 0;
 
@@ -279,7 +254,6 @@ public:
     virtual void                        SetTrafficLightsLocked      ( bool bLocked ) = 0;
 
     virtual void                        SetLocalStatValue           ( unsigned short usStat, float fValue ) = 0;
-    virtual float                       GetLocalStatValue           ( unsigned short usStat ) = 0;
     virtual void                        SetLocalStatsStatic         ( bool bStatic ) = 0;
 
     virtual void                        SetLocalCameraRotation      ( float fRotation ) = 0;
@@ -302,9 +276,9 @@ public:
     virtual bool                        IsSuspensionEnabled         ( ) = 0;
     virtual void                        SetSuspensionEnabled        ( bool bEnabled ) = 0;
 
-    virtual void                        FlushClothesCache           ( void ) = 0;
+    //virtual void                        FlushClothesCache           ( void ) = 0; MOVED TO CGameSA
     virtual void                        SetFastClothesLoading       ( EFastClothesLoading fastClothesLoading ) = 0;
-    virtual void                        SetLODSystemEnabled         ( bool bEnable ) = 0;
+    //virtual void                        SetLODSystemEnabled         ( bool bEnable ) = 0; MOVED TO CGameSA
     virtual void                        SetAltWaterOrderEnabled     ( bool bEnable ) = 0;
 
     virtual float                       GetAircraftMaxHeight        ( void ) = 0;
@@ -318,13 +292,10 @@ public:
     virtual void                        SetPedTargetingMarkerEnabled ( bool bEnabled ) = 0;
     virtual bool                        IsPedTargetingMarkerEnabled ( void ) = 0;
 
-    virtual void                        GetRwResourceStats          ( SRwResourceStats& outStats ) = 0;
-    virtual void                        GetClothesCacheStats        ( SClothesCacheStats& outStats ) = 0;
-    virtual void                        SetIsMinimizedAndNotConnected ( bool bIsMinimizedAndNotConnected ) = 0;
-    virtual void                        SetMirrorsEnabled           ( bool bEnabled ) = 0;
-
-    virtual void                        SetBoatWaterSplashEnabled   ( bool bEnabled ) = 0;
-    virtual void                        SetTyreSmokeEnabled         ( bool bEnabled ) = 0;
+    //virtual void                        GetRwResourceStats          ( SRwResourceStats& outStats ) = 0; MOVED TO CGameSA
+    //virtual void                        GetClothesCacheStats        ( SClothesCacheStats& outStats ) = 0; MOVED TO CGameSA
+    //virtual void                        SetIsMinimizedAndNotConnected ( bool bIsMinimizedAndNotConnected ) = 0; MOVED TO CGameSA
+    //virtual void                        SetMirrorsEnabled           ( bool bEnabled ) = 0; MOVED TO CGameSA
 };
 
 #endif

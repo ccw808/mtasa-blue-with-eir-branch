@@ -148,7 +148,7 @@ void CClientModelCacheManagerImpl::DoPulse ( void )
     // Handle regeneration of possibly replaced clothes textures
     if ( g_pGame->GetRenderWare()->HasClothesReplacementChanged() )
     {
-        g_pMultiplayer->FlushClothesCache();
+        g_pGame->FlushClothesCache();
 
         CClientPlayerManager* pPlayerManager = g_pClientGame->GetPlayerManager();
         for ( std::vector < CClientPlayer* > ::const_iterator iter = pPlayerManager->IterBegin(); iter != pPlayerManager->IterEnd(); ++iter )

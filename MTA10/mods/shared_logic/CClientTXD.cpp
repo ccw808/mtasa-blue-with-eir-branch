@@ -15,18 +15,28 @@ CClientTXD::CClientTXD ( class CClientManager* pManager, ElementID ID ) : ClassI
     // Init
     m_pManager = pManager;
     SetTypeName ( "txd" );
+
+    // RenderWare texture dictionary that holds texture replacement information.
+    m_texDict = NULL;
 }
 
 
 CClientTXD::~CClientTXD ( void )
 {
     // Remove us from all the models
-    g_pGame->GetRenderWare ()->ModelInfoTXDRemoveTextures ( &m_ReplacementTextures );
-
-    // Restream affected models
-    for ( uint i = 0 ; i < m_ReplacementTextures.usedInModelIds.size () ; i++ )
+    if ( m_texDict )
     {
-        Restream ( m_ReplacementTextures.usedInModelIds[i] );
+        CTexDictionary::importList_t importedModels;
+
+        importedModels = m_texDict->GetImportedList();
+
+        delete m_texDict;
+
+        // Restream affected models
+        for ( CTexDictionary::importList_t::const_iterator iter = importedModels.begin(); iter != importedModels.end(); iter++ )
+        {
+            Restream ( *iter );
+        }
     }
 
     // Remove us from all the clothes replacement doo dah
@@ -34,88 +44,93 @@ CClientTXD::~CClientTXD ( void )
 }
 
 
-bool CClientTXD::LoadTXD ( const SString& strFile, bool bFilteringEnabled, bool bIsRawData )
+bool CClientTXD::LoadTXD ( const char* szFile, bool bFilteringEnabled )
 {
+    // Unload previously loaded tex dictionary.
+    if ( m_texDict )
+    {
+        delete m_texDict;
+
+        m_texDict = NULL;
+    }
+
     // Do load here to check for errors.
+    m_strFilename = szFile;
     m_bFilteringEnabled = bFilteringEnabled;
-    m_bIsRawData = bIsRawData;
 
-    if( !m_bIsRawData )
-    {
-        m_strFilename = strFile;
-        CBuffer buffer;
-        if ( !LoadFileData( buffer ) )
-            return false;
-        return g_pGame->GetRenderWare()->ModelInfoTXDLoadTextures( &m_ReplacementTextures, buffer, m_bFilteringEnabled );
-    }
-    else
-    {
-        m_FileData = CBuffer( strFile, strFile.length() );
-        if ( !g_pCore->GetNetwork()->CheckFile( "txd", "", m_FileData ) )
-            return false;
+    CFile *fileStream = g_pCore->GetModRoot()->Open( szFile, "rb" );
 
-        return g_pGame->GetRenderWare()->ModelInfoTXDLoadTextures( &m_ReplacementTextures, m_FileData, m_bFilteringEnabled );
+    CTexDictionary *txd = NULL;
+    
+    if ( fileStream )
+    {
+        txd = g_pGame->GetTextureManager()->CreateTxd( fileStream );
+
+        if ( txd )
+        {
+            m_texDict = txd;
+
+            // Apply filtering
+            if ( bFilteringEnabled )
+            {
+                std::list <CTexture*> texList = txd->GetTextures();
+
+                for ( std::list <CTexture*>::const_iterator iter = texList.begin(); iter != texList.end(); iter++ )
+                {
+                    CTexture *tex = *iter;
+
+                    tex->SetFiltering( true );
+                }
+            }
+        }
+
+        delete fileStream;
     }
+
+    return ( txd != NULL );
 }
-
 
 bool CClientTXD::Import ( unsigned short usModelID )
 {
     if ( usModelID >= CLOTHES_TEX_ID_FIRST && usModelID <= CLOTHES_TEX_ID_LAST )
     {
-        if ( m_FileData.IsEmpty() && m_bIsRawData )
-            return false;   // Raw data has been freed already because texture was first used as non-clothes
-
         // If using for clothes only, unload 'replacing model textures' stuff to save memory
-        if ( !m_ReplacementTextures.textures.empty() && m_ReplacementTextures.usedInModelIds.empty() )
+        if ( m_texDict )
         {
-            g_pGame->GetRenderWare ()->ModelInfoTXDRemoveTextures ( &m_ReplacementTextures );
-            m_ReplacementTextures = SReplacementTextures();
+            delete m_texDict;
+
+            m_texDict = NULL;
         }
         // Load txd file data if not already done
         if ( m_FileData.IsEmpty() )
         {
-            if ( !LoadFileData( m_FileData ) )
+            if ( !g_pCore->GetNetwork ()->CheckFile ( "txd", m_strFilename ) )
                 return false;
+            m_FileData.LoadFromFile( m_strFilename );
         }
-        m_bUsingFileDataForClothes = true;
         g_pGame->GetRenderWare ()->ClothesAddReplacementTxd( m_FileData.GetData(), usModelID - CLOTHES_MODEL_ID_FIRST );
         return true;
     }
     else
     {
         // Ensure loaded for replacing model textures
-        if ( m_ReplacementTextures.textures.empty () )
+        if ( !m_texDict )
         {
-            if( !m_bIsRawData )
-            {
-                CBuffer buffer;
-                if ( !LoadFileData( buffer ) )
-                    return false;
-                g_pGame->GetRenderWare()->ModelInfoTXDLoadTextures( &m_ReplacementTextures, buffer, m_bFilteringEnabled );
-                if ( m_ReplacementTextures.textures.empty() )
-                    return false;
-            }
-            else
-            {
-                g_pGame->GetRenderWare()->ModelInfoTXDLoadTextures( &m_ReplacementTextures, m_FileData, m_bFilteringEnabled );
-                if ( m_ReplacementTextures.textures.empty() )
-                    return false;
-            }
+            LoadTXD( m_strFilename.c_str(), m_bFilteringEnabled );
         }
 
-        // If raw data and not used as clothes textures yet, then free raw data buffer to save RAM
-        if ( m_bIsRawData && !m_bUsingFileDataForClothes )
+        if ( m_texDict )
         {
-            // This means the texture can't be used for clothes now
-            m_FileData.Clear();
-        }
+            // Fail if the TXD contains no textures.
+            if ( m_texDict->GetTextures().empty() )
+                return false;
 
-        // Have we got textures and haven't already imported into this model?
-        if ( g_pGame->GetRenderWare ()->ModelInfoTXDAddTextures ( &m_ReplacementTextures, usModelID ) )
-        {
-            Restream ( usModelID );
-            return true;
+            // Have we got textures and haven't already imported into this model?
+            if ( m_texDict->Import( usModelID ) )
+            {
+                Restream ( usModelID );
+                return true;
+            }
         }
     }
 
@@ -133,6 +148,7 @@ bool CClientTXD::IsImportableModel ( unsigned short usModelID )
 
 void CClientTXD::Restream ( unsigned short usModelID )
 {
+#if 0
     if ( CClientVehicleManager::IsValidModel ( usModelID ) )
     {
         m_pManager->GetVehicleManager ()->RestreamVehicles ( usModelID );
@@ -145,24 +161,19 @@ void CClientTXD::Restream ( unsigned short usModelID )
             m_pManager->GetPickupManager ()->RestreamPickups ( usModelID );
         }
         m_pManager->GetObjectManager ()->RestreamObjects ( usModelID );
-        g_pGame->GetModelInfo ( usModelID )->RestreamIPL ();
+        g_pGame->GetModelInfo ( usModelID )->RestreamModel ();
     }
     else if ( CClientPlayerManager::IsValidModel ( usModelID ) )
     {
         m_pManager->GetPedManager ()->RestreamPeds ( usModelID );
     }
-}
+#else
+    // Experimental code.
+    CModelInfo *modelInfo = g_pGame->GetModelInfo( usModelID );
 
-// Load file contents into supplied buffer
-bool CClientTXD::LoadFileData( CBuffer& buffer )
-{
-    buffer.LoadFromFile( m_strFilename );
-    g_pClientGame->GetResourceManager()->ValidateResourceFile( m_strFilename, buffer );
-    return g_pCore->GetNetwork()->CheckFile( "txd", m_strFilename, buffer );
-}
-
-// Return true if data looks like TXD file contents
-bool CClientTXD::IsTXDData ( const SString& strData )
-{
-    return strData.length() > 32 && memcmp( strData, "\x16\x00\x00\x00", 4 ) == 0;
+    if ( modelInfo )
+    {
+        g_pGame->GetModelManager()->UpdateWorldTextures( modelInfo->GetTextureDictionaryID() );
+    }
+#endif
 }

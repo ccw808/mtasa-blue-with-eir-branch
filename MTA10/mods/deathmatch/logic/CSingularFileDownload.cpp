@@ -26,8 +26,6 @@ CSingularFileDownload::CSingularFileDownload ( CResource* pResource, const char 
     // Store the provided checksum
     m_ProvidedChecksum = checksum;
 
-    m_bBeingDeleted = false;
-
     GenerateClientChecksum();
 
     if ( !DoesClientAndServerChecksumMatch () )
@@ -68,10 +66,7 @@ bool CSingularFileDownload::ProgressCallBack ( double sizeJustDownloaded, double
 
 void CSingularFileDownload::CallFinished ( bool bSuccess )
 {
-    // Flag file as loadable
-    g_pClientGame->GetResourceManager()->OnDownloadedResourceFile( GetName() );
-
-    if ( !m_bBeingDeleted && m_pResource )
+    if ( m_pResource )
     {
         // Call the onClientbFileDownloadComplete event
         CLuaArguments Arguments;
@@ -83,17 +78,9 @@ void CSingularFileDownload::CallFinished ( bool bSuccess )
 }
 
 
-void CSingularFileDownload::Cancel ( void )
-{
-    m_bBeingDeleted = true;
-    m_pResource = NULL;
-
-    // TODO: Cancel also in Net
-}
-
 bool CSingularFileDownload::DoesClientAndServerChecksumMatch ( void )
 {
-    return ( m_LastClientChecksum == m_ProvidedChecksum );
+    return ( m_LastClientChecksum.CompareWithLegacy ( m_ProvidedChecksum ) );
 }
 
 CChecksum CSingularFileDownload::GenerateClientChecksum ( void )

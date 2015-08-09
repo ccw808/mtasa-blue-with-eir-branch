@@ -18,6 +18,7 @@ class CPacket;
 #define __CPACKET_H
 
 #include "../../Config.h"
+#include "net/Packets.h"
 #include <net/CNetServer.h>
 
 class CElement;

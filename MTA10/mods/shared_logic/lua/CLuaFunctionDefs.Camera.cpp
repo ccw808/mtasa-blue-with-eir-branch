@@ -114,22 +114,13 @@ int CLuaFunctionDefs::GetCameraGoggleEffect ( lua_State *luaVM )
 
 int CLuaFunctionDefs::SetCameraMatrix ( lua_State* luaVM )
 {
-    CVector vecPosition; CVector vecLookAt; float fRoll = 0.0f; float fFOV = 70.0f;
+    CVector vecPosition;
+    CVector vecLookAt;
+    float fRoll = 0.0f;
+    float fFOV = 70.0f;
     CScriptArgReader argStream ( luaVM );
-
-    if ( argStream.NextIsUserDataOfType <CLuaMatrix> () ) {
-        CLuaMatrix* pMatrix;
-        argStream.ReadUserData ( pMatrix );
-
-        vecPosition = pMatrix->GetPosition ();
-        vecLookAt = pMatrix->GetRotation ();
-    }
-    else
-    {
-        argStream.ReadVector3D ( vecPosition );
-        argStream.ReadVector3D ( vecLookAt, CVector () );
-    }
-
+    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadVector3D ( vecLookAt, CVector() );
     argStream.ReadNumber ( fRoll, 0.0f );
     argStream.ReadNumber ( fFOV, 70.0f );
     if ( fFOV <= 0.0f || fFOV >= 180.0f )
@@ -137,7 +128,7 @@ int CLuaFunctionDefs::SetCameraMatrix ( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        if ( CStaticFunctionDefinitions::SetCameraMatrix ( vecPosition, &vecLookAt, fRoll, fFOV ) )
+        if ( CStaticFunctionDefinitions::SetCameraMatrix ( vecPosition, vecLookAt, fRoll, fFOV ) )
         {
             lua_pushboolean ( luaVM, true );
             return 1;
@@ -156,7 +147,7 @@ int CLuaFunctionDefs::SetCameraTarget ( lua_State* luaVM )
 //  bool setCameraTarget ( element target = nil ) or setCameraTarget ( float x, float y, float z )
 
     CScriptArgReader argStream ( luaVM );
-    if ( argStream.NextIsUserDataOfType<CClientEntity> () )
+    if ( argStream.NextIsUserData () )
     {
         CClientEntity* pTarget;
         argStream.ReadUserData ( pTarget );
@@ -259,16 +250,6 @@ int CLuaFunctionDefs::SetCameraClip ( lua_State* luaVM )
 
     lua_pushboolean ( luaVM, true );
     return 1;
-}
-
-int CLuaFunctionDefs::GetCameraClip (lua_State* luaVM)
-{
-    bool bObjects, bVehicles;
-    m_pManager->GetCamera ()->GetCameraClip ( bObjects, bVehicles );
-
-    lua_pushboolean ( luaVM, bObjects );
-    lua_pushboolean ( luaVM, bVehicles );
-    return 2;
 }
 
 int CLuaFunctionDefs::SetCameraViewMode ( lua_State* luaVM )

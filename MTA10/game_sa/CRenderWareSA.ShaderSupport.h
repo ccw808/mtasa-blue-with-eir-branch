@@ -223,3 +223,8 @@ struct STexNameInfo
     int iDebugCounter2;
 #endif
 };
+
+// Exports.
+void OnMY_RwTextureDestroy_Mid ( RwTexture* pTexture );
+void _cdecl OnStreamingAddedTxd ( DWORD dwTxdId );
+void _cdecl OnStreamingRemoveTxd ( DWORD dwTxdId );

@@ -1,6 +1,7 @@
 #pragma message("Compiling precompiled header.\n")
 
 #define WIN32_LEAN_AND_MEAN
+
 #define NOMINMAX
 #include <windows.h>
 #define MTA_CLIENT
@@ -38,14 +39,12 @@
 #include <net/packetenums.h>
 #include <game/CGame.h>
 #include <CVector.h>
-#include <CVector4D.h>
 #include <CMatrix4.h>
 #include <CQuat.h>
 #include <CSphere.h>
 #include <CBox.h>
 #include <ijsify.h>
 #include <Common.h>
-#include "net/Packets.h"
 #include "Enums.h"
 #include "net/SyncStructures.h"
 #include "CIdArray.h"
@@ -73,7 +72,6 @@
 #include <CClientPed.h>
 #include <CClientPlayerClothes.h>
 #include <CClientPlayerVoice.h>
-#include <CClientPointLights.h>
 #include <CClientProjectileManager.h>
 #include <CClientStreamSector.h>
 #include <CClientStreamSectorRow.h>
@@ -87,7 +85,6 @@
 #include <CClientMaterial.h>
 #include <CClientTexture.h>
 #include <CClientShader.h>
-#include <CClientWebBrowser.h>
 #include <CClientEffect.h>
 #include <CCustomData.h>
 #include <CElementArray.h>
@@ -105,9 +102,7 @@
 #include <CScriptArgReader.h>
 #include <luadefs/CLuaDefs.h>
 #include <luadefs/CLuaClassDefs.h>
-#include <luadefs/CLuaVector2Defs.h>
-#include <luadefs/CLuaVector3Defs.h>
-#include <luadefs/CLuaVector4Defs.h>
+#include <luadefs/CLuaVectorDefs.h>
 #include <luadefs/CLuaMatrixDefs.h>
 #include <luadefs/CLuaTaskDefs.h>
 #include <luadefs/CLuaFxDefs.h>
@@ -123,11 +118,13 @@
 #include "CLuaShared.h"
 
 // Deathmatch includes
+#include "Client.h"
 #include "ClientCommands.h"
 #include "CClient.h"
 #include "CEvents.h"
 #include "HeapTrace.h"
 #include "logic/CClientGame.h"
+#include "net/Packets.h"
 #include "logic/CGameEntityXRefManager.h"
 #include "logic/CClientModelCacheManager.h"
 #include "logic/CClientPerfStatManager.h"

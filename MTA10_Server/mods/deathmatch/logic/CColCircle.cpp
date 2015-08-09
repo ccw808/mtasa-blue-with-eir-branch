@@ -15,11 +15,9 @@
 
 using namespace std;
 
-CColCircle::CColCircle ( CColManager* pManager, CElement* pParent, const CVector2D& vecPosition, float fRadius, CXMLNode* pNode, bool bIsPartnered ) : CColShape ( pManager, pParent, pNode, bIsPartnered )
+CColCircle::CColCircle ( CColManager* pManager, CElement* pParent, const CVector& vecPosition, float fRadius, CXMLNode* pNode, bool bIsPartnered ) : CColShape ( pManager, pParent, pNode, bIsPartnered )
 {
-    m_vecPosition.fX = vecPosition.fX;
-    m_vecPosition.fY = vecPosition.fY;
-    m_vecPosition.fZ = SPATIAL_2D_Z;
+    m_vecPosition = vecPosition;
     m_fRadius = fRadius;
     UpdateSpatialData ();
 }

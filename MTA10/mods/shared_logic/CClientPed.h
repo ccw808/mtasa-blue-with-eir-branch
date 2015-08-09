@@ -23,6 +23,7 @@ class CClientPed;
 #include "CClientStreamElement.h"
 
 #include <multiplayer/CMultiplayer.h>
+#include "net/Packets.h"
 #include "CClientPad.h"
 
 class CClientCamera;
@@ -149,8 +150,8 @@ public:
     virtual CSphere             GetWorldBoundingSphere      ( void );
 
     void                        GetPosition                 ( CVector& vecPosition ) const;
-    void                        SetPosition                 ( const CVector& vecPosition )              { SetPosition ( vecPosition, true, true ); }
-    void                        SetPosition                 ( const CVector& vecPosition, bool bResetInterpolation, bool bAllowGroundLoadFreeze = true );
+    void                        SetPosition                 ( const CVector& vecPosition )              { SetPosition ( vecPosition, true ); }
+    void                        SetPosition                 ( const CVector& vecPosition, bool bResetInterpolation );
 
     void                        SetInterior                 ( unsigned char ucInterior );
 
@@ -524,7 +525,6 @@ public:
     unsigned long               m_ulLastTimeBeganStand;
     unsigned long               m_ulLastTimeMovedWhileCrouched;
     unsigned long               m_ulLastTimePressedLeftOrRight;
-    unsigned long               m_ulLastTimeUseGunCrouched;
     unsigned long               m_ulLastTimeSprintPressed;
     unsigned long               m_ulBlockSprintReleaseTime;
     bool                        m_bWasSprintButtonDown;
@@ -572,7 +572,6 @@ public:
     CVector                     m_vecTurnSpeed;
     eWeaponSlot                 m_CurrentWeaponSlot;
     SFixedArray < eWeaponType, WEAPONSLOT_MAX > m_WeaponTypes;
-    SFixedArray < ushort, WEAPONSLOT_MAX > m_usWeaponAmmo;
     bool                        m_bHasJetPack;
     CClientPlayerClothes*       m_pClothes;
     eFightingStyle              m_FightingStyle;

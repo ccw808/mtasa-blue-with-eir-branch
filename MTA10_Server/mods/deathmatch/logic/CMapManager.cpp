@@ -57,7 +57,7 @@ CMapManager::CMapManager ( CBlipManager* pBlipManager,
     m_pRootElement = new CDummy ( NULL, NULL, NULL );
     m_pRootElement->SetTypeName ( "root" );
 
-    m_llLastRespawnTime = 0;
+    m_ulLastRespawnTime = 0;
 
     // Create the weather manager
     m_pBlendedWeather = new CBlendedWeather ( m_pServerClock );
@@ -691,10 +691,10 @@ void CMapManager::SpawnPlayer ( CPlayer& Player, const CVector& vecPosition, flo
 void CMapManager::DoRespawning ( void )
 {
     // Time to do the next search for respawnable things?
-    if ( SharedUtil::GetModuleTickCount64 () >= m_llLastRespawnTime + 1000 )
+    if ( GetTickCount32 () >= m_ulLastRespawnTime + 1000 )
     {
         // Update the time
-        m_llLastRespawnTime = SharedUtil::GetModuleTickCount64 ();
+        m_ulLastRespawnTime = GetTickCount32 ();
 
         // Do the respawning
         DoPickupRespawning ();
@@ -706,9 +706,11 @@ void CMapManager::DoRespawning ( void )
 void CMapManager::DoPickupRespawning ( void )
 {
     // Grab the current time
-    CTickCount currentTime = CTickCount::Now();
+    unsigned long ulCurrentTime = GetTime ();
 
     // Loop through each pickup looking for respawnable ones
+    unsigned long ulLastUsedTime;
+    unsigned long ulCreationTime;
     CPickup* pPickup;
     list < CPickup* > ::const_iterator iterPickups = m_pPickupManager->IterBegin ();
     for ( ; iterPickups != m_pPickupManager->IterEnd (); iterPickups++ )
@@ -716,13 +718,14 @@ void CMapManager::DoPickupRespawning ( void )
         pPickup = *iterPickups;
 
         // Do we have to respawn this one and is it time to?
-        const CTickCount lastUsedTime = pPickup->GetLastUsedTime ();
-        const CTickCount creationTime = pPickup->GetCreationTime ();
+        ulLastUsedTime = pPickup->GetLastUsedTime ();
+        ulCreationTime = pPickup->GetCreationTime ();
+        
 
         if ( pPickup->IsEnabled () == false )
         {
             // Allow time for the element to be at least sent client side before allowing collisions otherwise it's possible to get a collision before the pickup is created. DO NOT WANT! - Caz
-            if ( currentTime >= ( creationTime + CTickCount( 100LL ) ) && pPickup->HasDoneDelayHack() == false )
+            if ( ulCurrentTime >= ( ulCreationTime + 100 ) && pPickup->HasDoneDelayHack() == false )
             {
                 // make sure we only happen once.
                 pPickup->SetDoneDelayHack ( true );
@@ -730,7 +733,7 @@ void CMapManager::DoPickupRespawning ( void )
             }
         }
 
-        if ( !pPickup->IsSpawned () && lastUsedTime != CTickCount( 0LL ) && currentTime >= ( lastUsedTime + CTickCount( (long long)pPickup->GetRespawnIntervals() ) ) )
+        if ( !pPickup->IsSpawned () && ulLastUsedTime != 0 && ulCurrentTime >= ( ulLastUsedTime + pPickup->GetRespawnIntervals () ) )
         {            
             // Set it as spawned
             pPickup->SetSpawned ( true );
@@ -822,67 +825,67 @@ bool CMapManager::ParseVisibleToData ( CPerPlayerEntity& Entity, char* szData )
 
 void CMapManager::DoVehicleRespawning ( void )
 {
+    // TODO: needs speeding up (no good looping through thousands of vehicles each frame)
+
     CVehicleSpawnPacket VehicleSpawnPacket;
 
-    // Loop through all vehicles with respawn enabled
-    list < CVehicle* >& respawnEnabledList = m_pVehicleManager->GetRespawnEnabledVehicles ( );
-
-    list < CVehicle* > ::const_iterator iter = respawnEnabledList.begin ( );
-    for ( ; iter != respawnEnabledList.end ( ); ++iter )
+    // Loop through all the vehicles
+    list < CVehicle* > ::const_iterator iter = m_pVehicleManager->IterBegin ();
+    for ( ; iter != m_pVehicleManager->IterEnd (); iter++ )
     {
         CVehicle* pVehicle = *iter;
 
-        // No need to respawn vehicles if they're being deleted anyway
-        if ( pVehicle->IsBeingDeleted ( ) )
-            continue;
-
-        // Did we get deserted?
-        bool bDeserted = ( !pVehicle->GetFirstOccupant ( ) );
-        bool bRespawn = false;
-        bool bExploded = false;
-
-        if ( bDeserted )
+        // It's been set to respawn
+        if ( pVehicle->GetRespawnEnabled () )
         {
-            // If moved, or idle timer not running, restart idle timer
-            if ( !pVehicle->IsStationary ( ) || !pVehicle->IsIdleTimerRunning ( ) )
-                pVehicle->RestartIdleTimer ( );
-        }
-        else
-        {
-            // Stop idle timer if car is occupied
-            pVehicle->StopIdleTimer ( );
-        }
+            // Did we get deserted?
+            bool bDeserted = ( !pVehicle->GetFirstOccupant () );
+            bool bRespawn = false;
+            bool bExploded = false;
+
+            if ( bDeserted )
+            {
+                // If moved, or idle timer not running, restart idle timer
+                if ( !pVehicle->IsStationary () || !pVehicle->IsIdleTimerRunning () )
+                    pVehicle->RestartIdleTimer ();
+            }
+            else
+            {
+                // Stop idle timer if car is occupied
+                pVehicle->StopIdleTimer ();
+            }
 
 
-        // Been blown long enough?
-        if ( pVehicle->IsBlowTimerFinished ( ) )
-        {
-            bRespawn = true;
-            bExploded = true;
-        }
-
-        // Been deserted long enough?
-        else if ( bDeserted && pVehicle->IsIdleTimerFinished ( ) )
-        {
-            // Check is far enough away from respawn point (Ignore first 20 units on z)
-            CVector vecDif = pVehicle->GetRespawnPosition ( ) - pVehicle->GetPosition ( );
-            vecDif.fZ = Max ( 0.f, fabsf ( vecDif.fZ ) - 20.f );
-            if ( vecDif.LengthSquared ( ) > 2 * 2 )
+            // Been blown long enough?
+            if ( pVehicle->IsBlowTimerFinished () )
+            {
                 bRespawn = true;
-            pVehicle->StopIdleTimer ( );
-        }
+                bExploded = true;
+            }
 
-        // Need to respawn?
-        if ( bRespawn )
-        {
-            // Respawn it and add it to the packet
-            pVehicle->Respawn ( );
-            VehicleSpawnPacket.Add ( pVehicle );
+            // Been deserted long enough?
+            else if ( bDeserted && pVehicle->IsIdleTimerFinished () )
+            {
+                // Check is far enough away from respawn point (Ignore first 20 units on z)
+                CVector vecDif = pVehicle->GetRespawnPosition () - pVehicle->GetPosition ();
+                vecDif.fZ = Max ( 0.f, fabsf ( vecDif.fZ ) - 20.f );
+                if ( vecDif.LengthSquared () > 2 * 2 )
+                    bRespawn = true;
+                pVehicle->StopIdleTimer ();
+            }
 
-            // Call the respawn event
-            CLuaArguments Arguments;
-            Arguments.PushBoolean ( bExploded );
-            pVehicle->CallEvent ( "onVehicleRespawn", Arguments );
+            // Need to respawn?
+            if ( bRespawn )
+            {
+                // Respawn it and add it to the packet
+                pVehicle->Respawn ();
+                VehicleSpawnPacket.Add ( pVehicle );
+    
+                // Call the respawn event
+                CLuaArguments Arguments;
+                Arguments.PushBoolean ( bExploded );
+                pVehicle->CallEvent ( "onVehicleRespawn", Arguments );
+            }
         }
     }
 

@@ -164,9 +164,6 @@ int CLuaFunctionDefs::SetTimer ( lua_State* luaVM )
                 CLuaTimer* pLuaTimer = luaMain->GetTimerManager ()->AddTimer ( iLuaFunction, CTickCount ( dTimeInterval ), uiTimesToExecute, Arguments );
                 if ( pLuaTimer )
                 {
-                    // Set our timer debug info (in case we don't have any debug info which is usually when you do setTimer(destroyElement, 50, 1) or such)
-                    pLuaTimer->SetLuaDebugInfo ( g_pClientGame->GetScriptDebugging()->GetLuaDebugInfo( luaVM ) );
-
                     lua_pushtimer ( luaVM, pLuaTimer );
                     return 1;
                 }
@@ -338,10 +335,9 @@ int CLuaFunctionDefs::GetTickCount_ ( lua_State* luaVM )
 
 int CLuaFunctionDefs::GetCTime ( lua_State* luaVM )
 {
-    // table getRealTime( [int seconds = current], bool localTime = true )
+    // table getRealTime( [int seconds = current] )
     time_t timer;
     time ( &timer );
-    bool bLocalTime = true;
     CScriptArgReader argStream ( luaVM );
 
     if ( argStream.NextCouldBeNumber ( ) )
@@ -353,15 +349,7 @@ int CLuaFunctionDefs::GetCTime ( lua_State* luaVM )
         }
     }
 
-    if ( argStream.NextIsBool() )
-        argStream.ReadBool( bLocalTime );
-
-    tm * time;
-    if ( bLocalTime )
-        time = localtime( &timer );
-    else
-        time = gmtime( &timer );
-
+    tm * time = localtime ( &timer );
     if ( time == NULL )
         argStream.SetCustomError ( "seconds is out of range" );
 
@@ -506,11 +494,13 @@ int CLuaFunctionDefs::GetValidPedModels ( lua_State* luaVM )
 int CLuaFunctionDefs::GetDistanceBetweenPoints2D ( lua_State* luaVM )
 {
 //  float getDistanceBetweenPoints2D ( float x1, float y1, float x2, float y2 )
-    CVector2D vecPointA; CVector2D vecPointB;
+    CVector vecPointA; CVector vecPointB;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector2D ( vecPointA );
-    argStream.ReadVector2D ( vecPointB );
+    argStream.ReadNumber ( vecPointA.fX );
+    argStream.ReadNumber ( vecPointA.fY );
+    argStream.ReadNumber ( vecPointB.fX );
+    argStream.ReadNumber ( vecPointB.fY );
 
     if ( !argStream.HasErrors () )
     {
@@ -532,8 +522,12 @@ int CLuaFunctionDefs::GetDistanceBetweenPoints3D ( lua_State* luaVM )
     CVector vecPointA; CVector vecPointB;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecPointA );
-    argStream.ReadVector3D ( vecPointB );
+    argStream.ReadNumber ( vecPointA.fX );
+    argStream.ReadNumber ( vecPointA.fY );
+    argStream.ReadNumber ( vecPointA.fZ );
+    argStream.ReadNumber ( vecPointB.fX );
+    argStream.ReadNumber ( vecPointB.fY );
+    argStream.ReadNumber ( vecPointB.fZ );
 
     if ( !argStream.HasErrors () )
     {
@@ -584,8 +578,12 @@ int CLuaFunctionDefs::InterpolateBetween ( lua_State* luaVM )
     float fEasingPeriod; float fEasingAmplitude; float fEasingOvershoot;
 
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector3D ( vecPointA );
-    argStream.ReadVector3D ( vecPointB );
+    argStream.ReadNumber ( vecPointA.fX );
+    argStream.ReadNumber ( vecPointA.fY );
+    argStream.ReadNumber ( vecPointA.fZ );
+    argStream.ReadNumber ( vecPointB.fX );
+    argStream.ReadNumber ( vecPointB.fY );
+    argStream.ReadNumber ( vecPointB.fZ );
     argStream.ReadNumber ( fProgress );
     argStream.ReadEnumString ( easingType );
     argStream.ReadNumber ( fEasingPeriod, 0.3f );
@@ -651,30 +649,6 @@ int CLuaFunctionDefs::Sha256 ( lua_State* luaVM )
     lua_pushboolean ( luaVM, false );
     return 1;
 }
-
-
-int CLuaFunctionDefs::Hash ( lua_State* luaVM )
-{
-//  string hash ( string type, string data )
-    EHashFunctionType hashFunction; SString strSourceData;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadEnumString ( hashFunction );
-    argStream.ReadString ( strSourceData );
-
-    if ( !argStream.HasErrors () )
-    {
-        SString strResult = GenerateHashHexString ( hashFunction, strSourceData );
-        lua_pushstring ( luaVM, strResult.ToLower() );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
 
 int CLuaFunctionDefs::TeaEncode ( lua_State* luaVM )
 {
@@ -756,7 +730,7 @@ int CLuaFunctionDefs::Base64decode ( lua_State* luaVM )
     {
         SString result;
         Base64::decode ( str, result );
-        lua_pushlstring ( luaVM, result, result.length() );
+        lua_pushstring ( luaVM, result );
         return 1;
     }
     else
@@ -875,24 +849,13 @@ int CLuaFunctionDefs::GetNetworkStats ( lua_State* luaVM )
         lua_settable   ( luaVM, -3 );
 
         lua_pushstring ( luaVM, "encryptionStatus" );
-        lua_pushnumber ( luaVM, 1 );
+        lua_pushnumber ( luaVM, stats.encryptionStatus );
         lua_settable   ( luaVM, -3 );
 
         return 1;
     }
 
     lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaFunctionDefs::IsOOPEnabled ( lua_State* luaVM )
-{
-    CLuaMain* pLuaMain = m_pLuaManager->GetVirtualMachine ( luaVM );
-    if ( pLuaMain )
-        lua_pushboolean ( luaVM, pLuaMain->IsOOPEnabled () );
-    else
-        lua_pushnil ( luaVM );
-
     return 1;
 }
 
@@ -936,21 +899,6 @@ int CLuaFunctionDefs::GetVersion ( lua_State* luaVM )
     return 1;
 }
 
-int CLuaFunctionDefs::GetLocalization ( lua_State* luaVM )
-{
-    lua_createtable ( luaVM, 0, 2 );
-
-    lua_pushstring ( luaVM, "code" );
-    lua_pushstring ( luaVM, g_pCore->GetLocalization()->GetLanguageCode ().c_str() );
-    lua_settable   ( luaVM, -3 );
-
-    lua_pushstring ( luaVM, "name" );
-    lua_pushstring ( luaVM, g_pCore->GetLocalization()->GetLanguageName ().c_str() );
-    lua_settable   ( luaVM, -3 );
-
-    return 1;
-}
-
 int CLuaFunctionDefs::UtfLen ( lua_State* luaVM )
 {
 
@@ -966,7 +914,7 @@ int CLuaFunctionDefs::UtfLen ( lua_State* luaVM )
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
     
-    lua_pushboolean ( luaVM, false );
+    lua_pushnil ( luaVM );
     return 1;
 }
 
@@ -1025,13 +973,9 @@ int CLuaFunctionDefs::UtfSub ( lua_State* luaVM )
         {
             strUTF = strUTF.substr(start-1, end-start+1);
             lua_pushstring(luaVM, UTF16ToMbUTF8(strUTF).c_str());
-            return 1;
         }
-        else
-        {
+        else 
             lua_pushliteral(luaVM, "");
-            return 1;
-        }
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
@@ -1068,7 +1012,7 @@ int CLuaFunctionDefs::UtfChar ( lua_State* luaVM )
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
 
-    lua_pushboolean ( luaVM, false );
+    lua_pushnil ( luaVM );
     return 1;
 }
 
@@ -1089,7 +1033,7 @@ int CLuaFunctionDefs::UtfCode ( lua_State* luaVM )
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
 
-    lua_pushboolean ( luaVM, false );
+    lua_pushnil ( luaVM );
     return 1;
 }
 
@@ -1283,16 +1227,14 @@ int CLuaFunctionDefs::PregReplace ( lua_State* luaVM )
 
 int CLuaFunctionDefs::PregMatch ( lua_State* luaVM )
 {
-//  table pregMatch ( string base, string pattern, uint/string flags = 0, int maxResults = 100000 )
+//  table pregMatch ( string base, string pattern, uint/string flags = 0 )
     SString strBase, strPattern;
     pcrecpp::RE_Options pOptions;
-    int iMaxResults;
 
     CScriptArgReader argStream ( luaVM );
     argStream.ReadString ( strBase );
     argStream.ReadString ( strPattern );
     ReadPregFlags( argStream, pOptions );
-    argStream.ReadNumber ( iMaxResults, 100000 );
 
     if ( !argStream.HasErrors () )
     {
@@ -1303,7 +1245,7 @@ int CLuaFunctionDefs::PregMatch ( lua_State* luaVM )
         pcrecpp::StringPiece strInput ( strBase );
 
         string strGet; int i = 1;
-        while ( pPattern.FindAndConsume ( &strInput, &strGet ) && i <= iMaxResults ) 
+        while ( pPattern.FindAndConsume ( &strInput, &strGet ) ) 
         {
             lua_pushnumber ( luaVM, i );
             lua_pushstring ( luaVM, strGet.c_str () );

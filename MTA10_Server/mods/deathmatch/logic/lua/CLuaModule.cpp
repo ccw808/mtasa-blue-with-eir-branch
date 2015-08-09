@@ -153,10 +153,7 @@ void CLuaModule::_UnregisterFunctions ( void )
         {
             // points function to nill
             lua_pushnil ( luaVM );
-            lua_setglobal ( luaVM, iter->c_str() );
-
-            // Remove func from CLuaCFunctions
-            CLuaCFunctions::RemoveFunction ( *iter );
+            lua_setglobal ( luaVM, (iter)->c_str());
         }
     }
 }

@@ -18,8 +18,14 @@ using SharedUtil::CalcMTASAPath;
 
 extern CClientGame* g_pClientGame;
 
+#define CGUI_ICON_NETWORK_TROUBLE       "mta\\cgui\\images\\16-message-warn.png"
+
 CClientManager::CClientManager ( void )
 {
+    // Load the connection trouble texture
+    m_pConnectionTroubleTexture = g_pCore->GetGUI ()->CreateTexture ();
+    m_pConnectionTroubleTexture->LoadFromFile ( CalcMTASAPath( CGUI_ICON_NETWORK_TROUBLE ) );
+
     m_pMarkerStreamer = new CClientStreamer ( CClientMarker::IsLimitReached, 600.0f, 300, 300 );
     m_pObjectStreamer = new CClientStreamer ( CClientObjectManager::IsObjectLimitReached, 500.0f, 300, 300 );
     m_pObjectLodStreamer = new CClientStreamer ( CClientObjectManager::IsObjectLimitReached, 1700.0f, 1500, 1500 );
@@ -54,13 +60,12 @@ CClientManager::CClientManager ( void )
     m_pWaterManager = new CClientWaterManager ( this );
     m_pWeaponManager = new CClientWeaponManager ( this );
     m_pEffectManager = new CClientEffectManager ( this );
-    m_pPointLightsManager = new CClientPointLightsManager ( this );
     m_pPacketRecorder = new CClientPacketRecorder ( this );
 
     m_bBeingDeleted = false;
     m_bGameUnloadedFlag = false;
 
-    g_pCore->GetMultiplayer ()->SetLODSystemEnabled ( false );
+    g_pCore->GetGame ()->SetLODSystemEnabled ( false );
     m_pCamera->MakeSystemEntity();
 }
 
@@ -172,8 +177,9 @@ CClientManager::~CClientManager ( void )
     delete m_pWeaponManager;
     m_pWeaponManager = NULL;
 
-    delete m_pPointLightsManager;
-    m_pPointLightsManager = NULL;
+    // Delete the connection trouble texture
+    delete m_pConnectionTroubleTexture;
+    m_pConnectionTroubleTexture = NULL;
 }
 
 //
@@ -301,7 +307,7 @@ void CClientManager::OnLowLODElementCreated ( void )
 {
     // Switch on with first low LOD element
     if ( m_iNumLowLODElements == 0 )
-        g_pCore->GetMultiplayer ()->SetLODSystemEnabled ( true );
+        g_pCore->GetGame ()->SetLODSystemEnabled ( true );
     m_iNumLowLODElements++;
 }
 
@@ -310,5 +316,5 @@ void CClientManager::OnLowLODElementDestroyed ( void )
     // Switch off with last low LOD element
     m_iNumLowLODElements--;
     if ( m_iNumLowLODElements == 0 )
-        g_pCore->GetMultiplayer ()->SetLODSystemEnabled ( false );
+        g_pCore->GetGame ()->SetLODSystemEnabled ( false );
 }

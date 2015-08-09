@@ -44,18 +44,7 @@
 class CAudioEngineSAInterface
 {
 };
-
-class CAEAudioEntityVTBL
-{
-
-};
-
-class CAEAudioEntity
-{
-public:
-    CAEAudioEntityVTBL * vtbl;
-    CEntitySAInterface * pEntity;
-};
+class CAEAudioEntity;
 
 class CAESound
 {

@@ -9,7 +9,7 @@
 *****************************************************************************/
 #include "StdInc.h"
 
-CClientEffect::CClientEffect ( CClientManager * pManager, CFxSystem * pFx, SString strEffectName, ElementID ID )
+CClientEffect::CClientEffect ( CClientManager * pManager, CFxSystem * pFx, ElementID ID )
     : ClassInit ( this )
     , CClientEntity ( ID )
 {
@@ -18,25 +18,21 @@ CClientEffect::CClientEffect ( CClientManager * pManager, CFxSystem * pFx, SStri
     m_pManager->GetEffectManager ()->AddToList ( this );
     SetTypeName ( "effect" );
 
+
     m_pFxSystem->PlayAndKill();
-    m_strEffectName = strEffectName;
-    m_fMaxDensity = pFx->GetEffectDensity ( ) * 2;
 }
 
 CClientEffect::~CClientEffect ( )
 {
+    if(m_pFxSystem != NULL)
+        g_pGame->GetFxManager()->DestroyFxSystem(m_pFxSystem);
+
     Unlink();
 }
 
 void CClientEffect::Unlink()
 {
-    m_pManager->GetEffectManager ( )->RemoveFromList ( this );
-
-    if ( m_pFxSystem != NULL )
-    {
-        g_pGame->GetFxManager ( )->DestroyFxSystem ( m_pFxSystem );
-        m_pFxSystem = NULL;
-    }
+    m_pManager->GetEffectManager()->RemoveFromList ( this );
 }
 
 void CClientEffect::GetPosition(CVector &vecPosition) const
@@ -66,38 +62,19 @@ void CClientEffect::SetEffectSpeed ( float fSpeed )
     m_pFxSystem->SetEffectSpeed(fSpeed);
 }
 
-
 float CClientEffect::GetEffectSpeed ( ) const
 {
     return m_pFxSystem->GetEffectSpeed();
 }
 
-bool CClientEffect::SetEffectDensity ( float fDensity )
+void CClientEffect::SetEffectDensity ( float fDensity )
 {
-    if ( fDensity >= 0 )
-    {
-        if ( fDensity <= m_fMaxDensity )
-        {
-            m_pFxSystem->SetEffectDensity ( fDensity );
-            return true;
-        }
-    }
-    return false;
+    m_pFxSystem->SetEffectDensity(fDensity);
 }
 
 float CClientEffect::GetEffectDensity ( ) const
 {
     return m_pFxSystem->GetEffectDensity();
-}
-
-void CClientEffect::SetDrawDistance ( float fDrawDistance )
-{
-    m_pFxSystem->SetDrawDistance( fDrawDistance );
-}
-
-float CClientEffect::GetDrawDistance ( ) const
-{
-    return m_pFxSystem->GetDrawDistance();
 }
 
 void CClientEffect::SetRotationRadians ( const CVector& vecRotation )

@@ -17,8 +17,16 @@ class CColModelSAInterface;
 class CColModel
 {
 public:
-    virtual CColModelSAInterface *   GetInterface    ( void ) = 0;
-    virtual void                     Destroy         ( void ) = 0;
+    virtual                         ~CColModel      ( void )    {}
+
+    typedef std::vector <unsigned short> imports_t;
+
+    virtual imports_t               GetImportList   ( void ) const = 0;
+
+    virtual bool                    Replace         ( modelId_t id ) = 0;
+    virtual bool                    IsReplaced      ( modelId_t id ) const = 0;
+    virtual bool                    Restore         ( modelId_t id ) = 0;
+    virtual void                    RestoreAll      ( void ) = 0;
 };
 
 #endif

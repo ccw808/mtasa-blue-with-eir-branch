@@ -132,23 +132,16 @@ Section "Data files" SEC01
 	File "${FILES_ROOT}\MTA San Andreas\mta\bass_aac.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\bass_ac3.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\bass_fx.dll"
-	File "${FILES_ROOT}\MTA San Andreas\mta\bassopus.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\bassmix.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\tags.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\chatboxpresets.xml"
 	File "${FILES_ROOT}\MTA San Andreas\mta\sa.dat"
+	File "${FILES_ROOT}\MTA San Andreas\mta\pthreadVC2.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\XInput9_1_0_mta.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\vea.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\vog.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\vvo.dll"
 	File "${FILES_ROOT}\MTA San Andreas\mta\vvof.dll"
-	
-	File "${FILES_ROOT}\MTA San Andreas\mta\d3dcompiler_43.dll"
-	File "${FILES_ROOT}\MTA San Andreas\mta\d3dcompiler_47.dll"
-	File "${FILES_ROOT}\MTA San Andreas\mta\ffmpegsumo.dll"
-	File "${FILES_ROOT}\MTA San Andreas\mta\libEGL.dll"
-	File "${FILES_ROOT}\MTA San Andreas\mta\libGLESv2.dll"
-	File "${FILES_ROOT}\MTA San Andreas\mta\wow_helper.exe"
 
 	SetOutPath "$INSTDIR\skins\Classic"
     File "${FILES_ROOT}\MTA San Andreas\skins\Classic\CGUI.is.xml"
@@ -192,6 +185,9 @@ Section "Data files" SEC01
 	
 	SetOutPath "$INSTDIR\MTA\cgui\images\serverbrowser"
 	File "${FILES_ROOT}\MTA San Andreas\mta\cgui\images\serverbrowser\*.png"
+
+	SetOutPath "$INSTDIR\server"
+	File "${FILES_ROOT}\MTA San Andreas\server\pthreadVC2.dll"
 
 	SetOutPath "$INSTDIR\server\mods\deathmatch"
 	File "${FILES_ROOT}\MTA San Andreas\server\mods\deathmatch\libmysql.dll"

@@ -25,7 +25,6 @@
 #define FUNC_CObject_Create             0x5A1F60
 #define FUNC_CObject_Explode            0x5A1340
 #define FUNC_CGlass_WindowRespondsToCollision 0x71BC40
-#define FUNC_CObject_AddToControlCodeList 0x59F400 // Dynamic objects-combinations like garage doors, train crossings, cranes use this to be processed
 
 class CObjectInfo
 {
@@ -57,6 +56,10 @@ public:
 class CObjectSAInterface : public CPhysicalSAInterface
 {
 public:
+    void __thiscall             _PreRender( void );
+
+    void __thiscall             SetupFixedLighting( void );
+
     void* pObjectList; // 312
     uint8 pad1; // 316
     uint8 pad2; // 317
@@ -75,11 +78,11 @@ public:
     uint32 b0x100 : 1; // 321
     uint32 b0x200 : 1;
     uint32 b0x400 : 1;
-    uint32 bIsTrainNearCrossing : 1; // Train crossing will be opened if flag is set (distance < 120.0f)
+    uint32 b0x800 : 1;
     uint32 b0x1000 : 1;
     uint32 b0x2000 : 1;
-    uint32 bIsDoorMoving : 1;
-    uint32 bIsDoorOpen : 1;
+    uint32 b0x4000 : 1;
+    uint32 b0x8000 : 1;
 
     uint32 b0x10000 : 1; // 322
     uint32 bUpdateScale : 1;
@@ -87,8 +90,8 @@ public:
     uint32 b0x80000 : 1;
     uint32 b0x100000 : 1;
     uint32 b0x200000 : 1;
-    uint32 b0x400000 : 1;
-    uint32 b0x800000 : 1;
+    uint32 bFadingOutClump : 1;
+    uint32 bFixedLighting : 1;
 
     uint32 b0x1000000 : 1; // 323
     uint32 b0x2000000 : 1;
@@ -104,7 +107,7 @@ public:
     uint8 pad5; // 326
     uint8 pad6; // 327
     uint8 pad7; // 328
-    uint8 pad8; // 329
+    CColLighting objLighting; // 329
     uint16 pad9; // 330
     uint8 pad10; // 332
     uint8 pad11; // 333
@@ -115,27 +118,31 @@ public:
     uint32 pad15; // 344
     float fScale; // 348
     CObjectInfo* pObjectInfo; // 352
-    CFireSAInterface* pFire; // 356
+    uint32 pad16; // 356
     uint16 pad17; // 360
     uint16 pad18; // 362
     uint32 pad19; // 364
-    CEntitySAInterface* pLinkedObjectDummy; // 368  CDummyObject - Is used for dynamic objects like garage doors, train crossings etc.
-    uint32 pad21; // 372
+    CEntitySAInterface* pGarageDoorDummy; // 368  CDummyObject - Might be used for other dynamic objects
+    unsigned int objEffectSysTime; // 372
     uint32 pad22; // 376
 };
 C_ASSERT(sizeof(CObjectSAInterface) == 0x17C);
 
-class CObjectSA : public virtual CObject, public virtual CPhysicalSA
+class CObjectSA : public virtual CObject, public CPhysicalSA
 {
 private:
     unsigned char               m_ucAlpha;
     bool                        m_bIsAGangTag;
     CVector                     m_vecScale;
 
+    unsigned int                m_poolIndex;
+
 public:
                                 CObjectSA           ( CObjectSAInterface * objectInterface );
                                 CObjectSA           ( DWORD dwModel, bool bBreakingDisabled );
                                 ~CObjectSA          ( void );
+
+    unsigned int                GetPoolIndex        ( void ) const          { return m_poolIndex; }
 
     inline CObjectSAInterface * GetObjectInterface  ( void )    { return ( CObjectSAInterface * ) GetInterface (); }
 
@@ -158,6 +165,8 @@ public:
 private:
     void                        CheckForGangTag     ( );
 };
+
+#include "CObjectSA.render.h"
 
 /*
 #define COBJECTSA_DEFINED

@@ -131,7 +131,7 @@ SString GetPatchExeAdminReason( bool bUseExeCopy, const SExePatchedStatus& reqSt
 //
 //
 //////////////////////////////////////////////////////////
-uint64 GetExeFileSize( bool bUseExeCopy )
+uint GetExeFileSize( bool bUseExeCopy )
 {
     SString strGTAEXEPath = GetExePathFilename( bUseExeCopy );
     return FileSize( strGTAEXEPath );
@@ -172,19 +172,6 @@ SString GetExePathFilename( bool bUseExeCopy )
         return strGTAEXEPath;
     }
     return "unknown";
-}
-
-
-//////////////////////////////////////////////////////////
-//
-// GetUsingExePathFilename
-//
-// Return full path and filename of exe we will probably be using
-//
-//////////////////////////////////////////////////////////
-SString GetUsingExePathFilename( void )
-{
-    return GetExePathFilename( ShouldUseExeCopy() );
 }
 
 

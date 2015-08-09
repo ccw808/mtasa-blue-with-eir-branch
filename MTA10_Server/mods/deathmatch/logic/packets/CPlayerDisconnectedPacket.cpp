@@ -36,9 +36,9 @@ bool CPlayerDisconnectedPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
     BitStream.WriteBits ( &m_eType, 5 );
 
-    if ( m_eType == BAN || m_eType == BANNED_SERIAL || m_eType == BANNED_IP )
+    if ( m_Duration )
     {
-        SString strDuration = SString("%llu",(long long)m_Duration);
+        SString strDuration = SString("%llu",m_Duration);
         BitStream.WriteString ( strDuration );
     }
 

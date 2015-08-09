@@ -22,9 +22,6 @@ CKeysyncPacket::CKeysyncPacket ( CPlayer * pPlayer )
 }
 
 
-//
-// NOTE: Any changes to this function will require similar changes to CSimKeysyncPacket::Read()
-//
 bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
 {
     // Got a player to write?
@@ -38,10 +35,28 @@ bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
             return false;
 
         // Read the rotations
-        SKeysyncRotation rotation;
-        BitStream.Read ( &rotation );
-        float fPlayerCurrentRotation = rotation.data.fPlayerRotation;
-        float fCameraRotation = rotation.data.fCameraRotation;
+        float fPlayerCurrentRotation;
+        float fCameraRotation;
+        if ( BitStream.Version () >= 0x2C )
+        {
+            SKeysyncRotation rotation;
+            BitStream.Read ( &rotation );
+            fPlayerCurrentRotation = rotation.data.fPlayerRotation;
+            fCameraRotation = rotation.data.fCameraRotation;
+        }
+        else
+        {
+            fPlayerCurrentRotation = pSourcePlayer->GetRotation ();
+            fCameraRotation = pSourcePlayer->GetCameraRotation ();
+        }
+
+        // Skip old bullet sync data
+        if ( BitStream.Version () == 0x2D )
+        {
+            bool bDummy;
+            BitStream.ReadBit ( bDummy );
+            BitStream.ReadBit ( bDummy );
+        }
 
         // Flags
         SKeysyncFlags flags;
@@ -53,7 +68,7 @@ bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
         pSourcePlayer->SetChoking ( flags.data.bIsChoking );
 
         // If he's shooting or aiming
-        if ( ControllerState.ButtonCircle || ControllerState.RightShoulder1 )
+        if ( ControllerState.ButtonCircle || ( ControllerState.RightShoulder1 && BitStream.Version () >= 0x2C ) )
         {
             bool bHasWeapon = BitStream.ReadBit ();
 
@@ -156,18 +171,18 @@ bool CKeysyncPacket::Read ( NetBitStreamInterface& BitStream )
 
         // Set the controller states
         pSourcePlayer->GetPad ()->NewControllerState ( ControllerState );
-        pSourcePlayer->SetRotation ( fPlayerCurrentRotation );
-        pSourcePlayer->SetCameraRotation ( fCameraRotation );
-
+        if ( BitStream.Version () >= 0x2C )
+        {
+            pSourcePlayer->SetRotation ( fPlayerCurrentRotation );
+            pSourcePlayer->SetCameraRotation ( fCameraRotation );
+        }
         return true;
     }
     
     return false;
 }
 
-//
-// NOTE: Any changes to this function will require similar changes to CSimKeysyncPacket::Write()
-//
+
 bool CKeysyncPacket::Write ( NetBitStreamInterface& BitStream ) const
 {
     // Got a player to write?
@@ -185,10 +200,21 @@ bool CKeysyncPacket::Write ( NetBitStreamInterface& BitStream ) const
         WriteSmallKeysync ( ControllerState, BitStream );
 
         // Write the rotations
-        SKeysyncRotation rotation;
-        rotation.data.fPlayerRotation = pSourcePlayer->GetRotation ();
-        rotation.data.fCameraRotation = pSourcePlayer->GetCameraRotation ();
-        BitStream.Write ( &rotation );
+        if ( BitStream.Version () >= 0x2C )
+        {
+            SKeysyncRotation rotation;
+            rotation.data.fPlayerRotation = pSourcePlayer->GetRotation ();
+            rotation.data.fCameraRotation = pSourcePlayer->GetCameraRotation ();
+            BitStream.Write ( &rotation );
+        }
+
+        // Skip old bullet sync data
+        if ( BitStream.Version () == 0x2D )
+        {
+            bool bDummy = 0;
+            BitStream.WriteBit ( bDummy );
+            BitStream.WriteBit ( bDummy );
+        }
 
         // Flags
         SKeysyncFlags flags;
@@ -201,7 +227,7 @@ bool CKeysyncPacket::Write ( NetBitStreamInterface& BitStream ) const
         BitStream.Write ( &flags );
 
         // If he's shooting or aiming
-        if ( ControllerState.ButtonCircle || ControllerState.RightShoulder1 )
+        if ( ControllerState.ButtonCircle || ( ControllerState.RightShoulder1 && BitStream.Version () >= 0x2C ) )
         {
             // Write his current weapon slot
             unsigned int uiSlot = pSourcePlayer->GetWeaponSlot ();

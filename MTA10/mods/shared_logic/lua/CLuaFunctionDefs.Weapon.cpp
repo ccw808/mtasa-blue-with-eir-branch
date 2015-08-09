@@ -169,20 +169,6 @@ int CLuaFunctionDefs::SetWeaponProperty ( lua_State* luaVM )
             }
         }
         else
-        if ( weaponProperty == WEAPON_FIRE_ROTATION )
-        {
-            CVector vecRotation;
-            argStream.ReadVector3D ( vecRotation );
-            if ( !argStream.HasErrors () )
-            {
-                if ( CStaticFunctionDefinitions::SetWeaponProperty ( pWeapon, weaponProperty, vecRotation ) )
-                {
-                    lua_pushboolean ( luaVM, true );
-                    return 1;
-                }
-            }
-        }
-        else
         {
             float fData = 0.0f;
             argStream.ReadNumber( fData );
@@ -405,7 +391,7 @@ int CLuaFunctionDefs::SetWeaponFlags ( lua_State* luaVM )
             argStream.ReadBool ( bData );
             if ( CStaticFunctionDefinitions::SetWeaponFlags( pWeapon, flag, bData ) )
             {
-                lua_pushboolean( luaVM, true );
+                lua_pushboolean( luaVM, bData );
                 return 1;
             }
         }
@@ -424,7 +410,6 @@ int CLuaFunctionDefs::SetWeaponFlags ( lua_State* luaVM )
                 if ( CStaticFunctionDefinitions::SetWeaponFlags( pWeapon, flags ) )
                 {
                     lua_pushboolean( luaVM, true );
-                    return 1;
                 }
             }
         }

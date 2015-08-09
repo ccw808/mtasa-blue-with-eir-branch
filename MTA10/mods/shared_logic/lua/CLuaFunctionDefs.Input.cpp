@@ -42,9 +42,11 @@ int CLuaFunctionDefs::GetCursorPosition ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetCursorPosition ( lua_State* luaVM )
 {
-    CVector2D vecPosition;
+    float fX = 0.0f;
+    float fY = 0.0f;
     CScriptArgReader argStream ( luaVM );
-    argStream.ReadVector2D ( vecPosition );
+    argStream.ReadNumber ( fX );
+    argStream.ReadNumber ( fY );
 
     if ( !argStream.HasErrors ( ) )
     {
@@ -55,16 +57,16 @@ int CLuaFunctionDefs::SetCursorPosition ( lua_State* luaVM )
 
         CVector2D vecResolution = g_pCore->GetGUI ()->GetResolution ();
 
-        if ( vecPosition.fX < 0 )
-            vecPosition.fX = 0.0f;
-        else if ( vecPosition.fX > vecResolution.fX )
-            vecPosition.fX = vecResolution.fX;
-        if ( vecPosition.fY < 0 )
-            vecPosition.fY = 0.0f;
-        else if ( vecPosition.fY > vecResolution.fY )
-            vecPosition.fY = vecResolution.fY;
+        if ( fX < 0 )
+            fX = 0.0f;
+        else if ( fX > vecResolution.fX )
+            fX = vecResolution.fX;
+        if ( fY < 0 )
+            fY = 0.0f;
+        else if ( fY > vecResolution.fY )
+            fY = vecResolution.fY;
 
-        g_pCore->CallSetCursorPos ( ( int ) vecPosition.fX + ( int ) windowPos.x, ( int ) vecPosition.fY + ( int ) windowPos.y );
+        g_pCore->CallSetCursorPos ( ( int ) fX + ( int ) windowPos.x, ( int ) fY + ( int ) windowPos.y );
         lua_pushboolean ( luaVM, true );
         return 1;
     }
@@ -572,7 +574,7 @@ int CLuaFunctionDefs::GetKeyBoundToFunction ( lua_State* luaVM )
                             // ACHTUNG: DOES IT FIND THE CORRECT LUA REF HERE?
                             if ( iLuaFunction == pBind->m_iLuaFunction )
                             {
-                                lua_pushstring ( luaVM, pBind->boundControl->szControl );
+                                lua_pushstring ( luaVM, pBind->boundKey->szKey );
                                 return 1;
                             }
                             break;

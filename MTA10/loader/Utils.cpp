@@ -468,26 +468,26 @@ std::vector < DWORD > MyEnumProcesses ( void )
 ///////////////////////////////////////////////////////////////////////////
 DWORD FindProcessId ( const SString& processName )
 {
-    PROCESSENTRY32 processInfo;
-    processInfo.dwSize = sizeof ( processInfo );
+	PROCESSENTRY32 processInfo;
+	processInfo.dwSize = sizeof ( processInfo );
 
-    HANDLE processesSnapshot = CreateToolhelp32Snapshot ( TH32CS_SNAPPROCESS, NULL );
-    if ( processesSnapshot == INVALID_HANDLE_VALUE )
-        return 0;
+	HANDLE processesSnapshot = CreateToolhelp32Snapshot ( TH32CS_SNAPPROCESS, NULL );
+	if ( processesSnapshot == INVALID_HANDLE_VALUE )
+		return 0;
 
-    Process32First ( processesSnapshot , &processInfo );
+	Process32First ( processesSnapshot , &processInfo );
     do
-    {
-        if ( processName.CompareI ( processInfo.szExeFile ) )
-        {
-            CloseHandle ( processesSnapshot );
-            return processInfo.th32ProcessID;
-        }
-    }
-    while ( Process32Next ( processesSnapshot, &processInfo ) );
-    
-    CloseHandle ( processesSnapshot );
-    return 0;
+	{
+		if ( processName.CompareI ( processInfo.szExeFile ) )
+		{
+			CloseHandle ( processesSnapshot );
+			return processInfo.th32ProcessID;
+		}
+	}
+	while ( Process32Next ( processesSnapshot, &processInfo ) );
+	
+	CloseHandle ( processesSnapshot );
+	return 0;
 }
 
 
@@ -1110,43 +1110,6 @@ SString GetRealOSVersion ( void )
 
 ///////////////////////////////////////////////////////////////
 //
-// GetRealOSBuildNumber
-//
-// Ignoring compatibility mode
-//
-///////////////////////////////////////////////////////////////
-SString GetRealOSBuildNumber( void )
-{
-    uint uiBuild = 0;
-    uint uiRev = 0;
-
-    SLibVersionInfo fileInfo;
-    if ( GetLibVersionInfo( "ntdll.dll", &fileInfo ) )
-    {
-        uiBuild = HIWORD( fileInfo.dwFileVersionLS );
-        uiRev = LOWORD( fileInfo.dwFileVersionLS );
-    }
-
-    return SString( "%u.%u", uiBuild, uiRev );
-}
-
-
-///////////////////////////////////////////////////////////////
-//
-// IsVS2013RuntimeInstalled
-//
-// Only checks registry settings, so install could still be invalid
-//
-///////////////////////////////////////////////////////////////
-bool IsVS2013RuntimeInstalled( void )
-{
-    SString strInstall = GetSystemRegistryValue( (uint)HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\DevDiv\\vc\\Servicing\\12.0\\RuntimeMinimum", "Install" );
-    return strInstall == "\x01";
-}
-
-
-///////////////////////////////////////////////////////////////
-//
 // IsUserAdmin
 //
 //
@@ -1198,11 +1161,6 @@ bool IsVistaOrHigher ( void )
 {
     int iMajor = atoi ( GetRealOSVersion () );
     return iMajor >= 6;
-}
-
-bool IsWin8OrHigher ( void )
-{
-    return GetRealOSVersion () >= "6.2";
 }
 
 
@@ -1748,12 +1706,22 @@ void MaybeShowCopySettingsDialog ( void )
 
     // Copy some directories if empty
     SString strCurrentNewsDir = PathJoin ( GetMTADataPath (), "news" );
+    SString strCurrentPrivDir = PathJoin ( GetMTASAPath (), "mods", "deathmatch", "priv" );
+    SString strCurrentResourcesDir = PathJoin ( GetMTASAPath (), "mods", "deathmatch", "resources" );
 
     SString strPreviousDataPath = PathJoin ( GetSystemCommonAppDataPath(), "MTA San Andreas All", strPreviousVersion );
     SString strPreviousNewsDir = PathJoin ( strPreviousDataPath, "news" );
+    SString strPreviousPrivDir = PathJoin ( strPreviousPath, "mods", "deathmatch", "priv" );
+    SString strPreviousResourcesDir = PathJoin ( strPreviousPath, "mods", "deathmatch", "resources" );
 
     if ( IsDirectoryEmpty( strCurrentNewsDir ) && DirectoryExists( strPreviousNewsDir ) )
         DirectoryCopy ( strPreviousNewsDir, strCurrentNewsDir );
+
+    if ( IsDirectoryEmpty( strCurrentPrivDir ) && DirectoryExists( strPreviousPrivDir ) )
+        DirectoryCopy ( strPreviousPrivDir, strCurrentPrivDir );
+
+    if ( IsDirectoryEmpty( strCurrentResourcesDir ) && DirectoryExists( strPreviousResourcesDir ) )
+        DirectoryCopy ( strPreviousResourcesDir, strCurrentResourcesDir, true, 100 );
 }
 
 
@@ -1923,9 +1891,6 @@ void BsodDetectionPreLaunch( void )
             {
                 SetApplicationSetting( "diagnostics", "user-confirmed-bsod-time", strMinidumpTime );
                 IncApplicationSettingInt( DIAG_MINIDUMP_CONFIRMED_COUNT );
-
-                // BSOD might be caused by progress animation, so flag for it to be disabled
-                SetApplicationSettingInt( GENERAL_PROGRESS_ANIMATION_DISABLE, 1 );
             }
         }
     }
@@ -1974,7 +1939,6 @@ void ForbodenProgramsMessage ( void )
 {
     std::vector < SString > forbodenList;
     forbodenList.push_back( "ProcessHacker" );
-    forbodenList.push_back( "CheatEngine" );
 
     SString strResult;
     std::vector < DWORD > processIdList = MyEnumProcesses ();
@@ -2130,106 +2094,6 @@ BOOL CALLBACK MyEnumThreadWndProc( HWND hwnd, LPARAM lParam )
 bool IsDeviceSelectionDialogOpen( DWORD dwThreadId )
 {
     return !EnumThreadWindows( dwThreadId, MyEnumThreadWndProc, 0 );
-}
-
-
-//////////////////////////////////////////////////////////
-//
-// Reg helpers for DeleteCompatibilityEntries
-//
-//
-//////////////////////////////////////////////////////////
-LONG RegEnumValueString( HKEY hKey, DWORD dwIndex, WString& strOutName )
-{
-    wchar_t buf[2048] = {0};
-    DWORD dwBufSizeChars = NUMELMS( buf );
-    long result = RegEnumValueW( hKey, dwIndex, buf, &dwBufSizeChars, 0, NULL, NULL, NULL );
-    strOutName = buf;
-    return result;
-}
-
-LONG RegQueryValueString( HKEY hKey, LPCWSTR lpValueName, WString& strOutData )
-{
-    wchar_t buf[2048] = {0};
-    DWORD dwBufSizeBytes = sizeof( buf );
-    DWORD dwType = REG_SZ;
-    long result = RegQueryValueExW( hKey, lpValueName, NULL, &dwType, (BYTE*)buf, &dwBufSizeBytes );
-    strOutData = buf;
-    return result;
-}
-
-LONG RegSetValueString( HKEY hKey, LPCWSTR lpValueName, const WString& strData )
-{
-    DWORD dwSizeChars = strData.length() + 1;
-    DWORD dwSizeBytes = dwSizeChars * sizeof( WCHAR );
-    return RegSetValueExW( hKey, lpValueName, 0, REG_SZ, (const BYTE*)*strData, dwSizeBytes );
-}
-
-
-//////////////////////////////////////////////////////////
-//
-// WriteCompatibilityEntries
-//
-// Based on a story by Towncivilian
-//
-// Returns false if admin needed
-//
-//////////////////////////////////////////////////////////
-bool WriteCompatibilityEntries( const WString& strProgName, const WString& strSubKey, HKEY hKeyRoot, uint uiFlags, const WString& strNewData )
-{
-    bool bResult = false;
-
-    // Try open/create key for wrting - Failure means admin is required
-    HKEY hKey;
-    if ( RegCreateKeyExW( hKeyRoot, strSubKey, NULL, NULL, 0, KEY_READ | KEY_WRITE | uiFlags, NULL, &hKey, NULL ) == ERROR_SUCCESS )
-    {
-        bResult = true;
-        if ( !strNewData.empty() )
-        {
-            // Write new setting
-            if ( RegSetValueString( hKey, strProgName, strNewData ) != ERROR_SUCCESS )
-                bResult = false;
-        }
-        else
-        {
-            // No setting, so delete the registry value
-            if ( RegDeleteValueW( hKey, strProgName ) != ERROR_SUCCESS )
-                bResult = false;
-        }
-
-        RegCloseKey( hKey );
-    }
-
-    return bResult;
-}
-
-
-//////////////////////////////////////////////////////////
-//
-// ReadCompatibilityEntries
-//
-// Returns all compatibility entries in a space delimited string
-// Note: Windows 8 can have flag characters for the first field. (Have seen ~ $ and ~$)
-//
-//////////////////////////////////////////////////////////
-WString ReadCompatibilityEntries( const WString& strProgName, const WString& strSubKey, HKEY hKeyRoot, uint uiFlags )
-{
-    WString strResult;
-
-    // Try read only open - Failure probably means the key does not exist
-    HKEY hKey;
-    if ( RegOpenKeyExW( hKeyRoot, strSubKey, NULL, KEY_READ | uiFlags, &hKey ) == ERROR_SUCCESS )
-    {
-        WString strData; 
-        if ( RegQueryValueString( hKey, strProgName, strData ) == ERROR_SUCCESS )
-        {
-            strResult = strData;
-        }
-
-        RegCloseKey ( hKey );
-    }
-
-    return strResult;
 }
 
 

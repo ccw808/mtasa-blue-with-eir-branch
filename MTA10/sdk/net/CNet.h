@@ -27,7 +27,6 @@ namespace EDownloadMode
         RESOURCE_INITIAL_FILES,
         RESOURCE_SINGULAR_FILES,
         CALL_REMOTE,
-        WEBBROWSER_LISTS,
     };
 }
 using EDownloadMode::EDownloadModeType;
@@ -64,7 +63,7 @@ public:
     };
 
     virtual void                        ResetNetwork                ( void ) = 0;
-    virtual bool                        StartNetwork                ( const char* szServerHost, unsigned short usServerPort, bool bPacketTag = false ) = 0;
+    virtual bool                        StartNetwork                ( const char* szServerHost, unsigned short usServerPort, const char* szServerPassword = NULL ) = 0;
     virtual void                        StopNetwork                 ( void ) = 0;
 
     virtual void                        SetFakeLag                  ( unsigned short usPacketLoss, unsigned short usMinExtraPing, unsigned short usExtraPingVariance, int iKBPSLimit ) = 0;
@@ -119,7 +118,7 @@ public:
     virtual void                        ResetStub                   ( DWORD dwType, va_list ) = 0;
 
     virtual const char*                 GetCurrentServerId          ( bool bPreviousVer ) = 0;
-    virtual bool                        CheckFile                   ( const char* szType, const char* szFilename, const CBuffer& buffer = CBuffer() ) = 0;
+    virtual bool                        CheckFile                   ( const char* szType, const char* szFilename ) = 0;
 
     virtual uint                        GetExtendedErrorCode        ( void ) = 0;
     virtual void                        SetTimeoutTime              ( uint uiTimeoutTime ) = 0;

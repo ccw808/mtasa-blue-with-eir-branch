@@ -40,11 +40,11 @@ namespace
 
     SString MakeCPUUsageString( const SThreadCPUTimes& info )
     {
-        SString strResult( "%s%% (Avg: %s%%)", *CPerfStatManager::GetScaledFloatString( info.fUserPercent ), *CPerfStatManager::GetScaledFloatString( info.fUserPercentAvg ) );
-        if ( info.fKernelPercent >= 1 )
-            strResult += SString( " (Sys: %d%%)", (int)info.fKernelPercent );
-
-        return strResult;
+        if ( info.fKernelPercent < 1 )
+            return SString( "%s%%", *CPerfStatManager::GetScaledFloatString( info.fUserPercent ) );
+    
+        return SString( "%s%% (Sys: %d%%)", *CPerfStatManager::GetScaledFloatString( info.fUserPercent )
+                                          , (int)info.fKernelPercent );
     }
 
     #define UDP_PACKET_OVERHEAD (28LL)
@@ -284,7 +284,7 @@ void CPerfStatServerInfoImpl::GetStats ( CPerfStatResult* pResult, const std::ma
 
     // Calculate current rates
     long long llIncomingBytesPS = CPerfStatManager::GetPerSecond ( m_llDeltaGameBytesRecv, m_DeltaTickCount.ToLongLong () );
-    //long long llIncomingBytesPSBlocked = CPerfStatManager::GetPerSecond ( m_llDeltaGameBytesRecvBlocked, m_DeltaTickCount.ToLongLong () );
+    long long llIncomingBytesPSBlocked = CPerfStatManager::GetPerSecond ( m_llDeltaGameBytesRecvBlocked, m_DeltaTickCount.ToLongLong () );
     long long llOutgoingBytesPS = CPerfStatManager::GetPerSecond ( m_llDeltaGameBytesSent, m_DeltaTickCount.ToLongLong () );
     long long llOutgoingBytesResentPS = CPerfStatManager::GetPerSecond ( m_llDeltaGameBytesResent, m_DeltaTickCount.ToLongLong () );
     SString strIncomingPacketsPS = CPerfStatManager::GetPerSecondString ( m_llDeltaGamePacketsRecv, m_DeltaTickCount.ToDouble () );
@@ -294,10 +294,10 @@ void CPerfStatServerInfoImpl::GetStats ( CPerfStatResult* pResult, const std::ma
 
     // Estimate total network usage
     long long llIncomingPacketsPS = CPerfStatManager::GetPerSecond ( m_llDeltaGamePacketsRecv, m_DeltaTickCount.ToLongLong () );
-    //long long llIncomingPacketsPSBlocked = CPerfStatManager::GetPerSecond ( m_llDeltaGamePacketsRecvBlocked, m_DeltaTickCount.ToLongLong () );
+    long long llIncomingPacketsPSBlocked = CPerfStatManager::GetPerSecond ( m_llDeltaGamePacketsRecvBlocked, m_DeltaTickCount.ToLongLong () );
     long long llOutgoingPacketsPS = CPerfStatManager::GetPerSecond ( m_llDeltaGamePacketsSent, m_DeltaTickCount.ToLongLong () );
     long long llNetworkUsageBytesPS = ( llIncomingPacketsPS + llOutgoingPacketsPS ) * UDP_PACKET_OVERHEAD + llIncomingBytesPS + llOutgoingBytesPS;
-    //long long llNetworkUsageBytesPSInclBlocked = ( llIncomingPacketsPS + llIncomingPacketsPSBlocked + llOutgoingPacketsPS ) * UDP_PACKET_OVERHEAD + llIncomingBytesPS + llIncomingBytesPSBlocked + llOutgoingBytesPS;
+    long long llNetworkUsageBytesPSInclBlocked = ( llIncomingPacketsPS + llIncomingPacketsPSBlocked + llOutgoingPacketsPS ) * UDP_PACKET_OVERHEAD + llIncomingBytesPS + llIncomingBytesPSBlocked + llOutgoingBytesPS;
 
     // Calculate uptime
     time_t tUptime = time ( NULL ) - m_tStartTime;
@@ -337,11 +337,10 @@ void CPerfStatServerInfoImpl::GetStats ( CPerfStatResult* pResult, const std::ma
 
     m_OptionsList.push_back ( StringPair ( "MinClientVersion",          g_pGame->CalculateMinClientRequirement () ) );
     m_OptionsList.push_back ( StringPair ( "RecommendedClientVersion",  pConfig->GetRecommendedClientVersion () ) );
+    m_OptionsList.push_back ( StringPair ( "NetworkEncryptionEnabled",  SString ( "%d", pConfig->GetNetworkEncryptionEnabled () ) ) );
     m_OptionsList.push_back ( StringPair ( "VoiceEnabled",              SString ( "%d", pConfig->IsVoiceEnabled () ) ) );
     m_OptionsList.push_back ( StringPair ( "Busy sleep time",           SString ( "%d ms", pConfig->GetPendingWorkToDoSleepTime () ) ) );
     m_OptionsList.push_back ( StringPair ( "Idle sleep time",           SString ( "%d ms", pConfig->GetNoWorkToDoSleepTime () ) ) );
-    if ( pConfig->GetServerLogicFpsLimit () )
-        m_OptionsList.push_back ( StringPair ( "Logic FPS limit",           SString ( "%d", pConfig->GetServerLogicFpsLimit () ) ) );
     m_OptionsList.push_back ( StringPair ( "BandwidthReductionMode",    pConfig->GetSetting ( "bandwidth_reduction" ) ) );
     m_OptionsList.push_back ( StringPair ( "LightSyncEnabled",          SString ( "%d", g_pBandwidthSettings->bLightSyncEnabled ) ) );
     m_OptionsList.push_back ( StringPair ( "ThreadNetEnabled",          SString ( "%d", pConfig->GetThreadNetEnabled () ) ) );
@@ -367,6 +366,8 @@ void CPerfStatServerInfoImpl::GetStats ( CPerfStatResult* pResult, const std::ma
         m_OptionsList.push_back ( StringPair ( "Ped syncer distance",      SString ( "%d", g_TickRateSettings.iPedSyncerDistance ) ) );
     if ( defaultRates.iUnoccupiedVehicleSyncerDistance != g_TickRateSettings.iUnoccupiedVehicleSyncerDistance )
         m_OptionsList.push_back ( StringPair ( "Unoccupied vehicle syncer distance",      SString ( "%d", g_TickRateSettings.iUnoccupiedVehicleSyncerDistance ) ) );
+    if ( defaultRates.bAltVehPartsStateSync != g_TickRateSettings.bAltVehPartsStateSync )
+        m_OptionsList.push_back ( StringPair ( "Alt vehicle parts state sync",  SString ( "%d", g_TickRateSettings.bAltVehPartsStateSync ) ) );
 
     m_InfoList.push_back ( StringPair ( "Logic thread CPU",  MakeCPUUsageString( m_MainThreadCPUTimes ) ) );
     m_InfoList.push_back ( StringPair ( "Sync thread CPU",   MakeCPUUsageString( g_SyncThreadCPUTimes ) ) );
@@ -393,19 +394,6 @@ void CPerfStatServerInfoImpl::GetStats ( CPerfStatResult* pResult, const std::ma
         m_InfoList.push_back ( StringPair ( "DB thread core #",          SString ( "%d", g_DatabaseThreadCPUTimes.uiProcessorNumber ) ) );
 
         m_InfoList.push_back ( StringPair ( "Lowest connected player version",  g_pGame->GetPlayerManager()->GetLowestConnectedPlayerVersion() ) );
-    }
-
-    SAllocationStats httpAllocationStats;
-    EHS::StaticGetAllocationStats( httpAllocationStats );
-    m_InfoList.push_back ( StringPair ( "HTTP allocated active",    SString ( "%d KB", httpAllocationStats.uiActiveKBAllocated ) ) );
-
-    if ( bIncludeDebugInfo )
-    {
-        m_InfoList.push_back ( StringPair ( "HTTP requests active",     SString ( "%d", httpAllocationStats.uiActiveNumRequests ) ) );
-        m_InfoList.push_back ( StringPair ( "HTTP responses active",    SString ( "%d", httpAllocationStats.uiActiveNumResponses ) ) );
-        m_InfoList.push_back ( StringPair ( "HTTP allocated total",     SString ( "%d MB", httpAllocationStats.uiTotalKBAllocated / 1024 ) ) );
-        m_InfoList.push_back ( StringPair ( "HTTP requests total",      SString ( "%d", httpAllocationStats.uiTotalNumRequests ) ) );
-        m_InfoList.push_back ( StringPair ( "HTTP responses total",     SString ( "%d", httpAllocationStats.uiTotalNumResponses ) ) );
 
         // Get net performance stats
         if ( m_NetPerformanceStatsUpdateTimer.Get() > 2000 )

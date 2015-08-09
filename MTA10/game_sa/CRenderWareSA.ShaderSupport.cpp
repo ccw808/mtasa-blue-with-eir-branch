@@ -42,11 +42,6 @@ int CRenderWareSA::ms_iRenderingType = 0;
 ////////////////////////////////////////////////////////////////
 
 // Hooks for creating txd create and destroy events
-#define HOOKPOS_CTxdStore_SetupTxdParent       0x731D55
-DWORD RETURN_CTxdStore_SetupTxdParent =        0x731D5B;
-#define HOOKPOS_CTxdStore_RemoveTxd         0x731E90
-DWORD RETURN_CTxdStore_RemoveTxd =          0x731E96;
-
 //
 // STxdStreamEvent stores the txd create and destroy events for the current frame
 //
@@ -83,27 +78,6 @@ void _cdecl OnStreamingAddedTxd ( DWORD dwTxdId )
     ms_txdStreamEventList.push_back ( STxdStreamEvent ( true, usTxdId ) );
 }
 
-// called from streaming on TXD create
-void _declspec(naked) HOOK_CTxdStore_SetupTxdParent ()
-{
-    _asm
-    {
-        // Hooked from 731D55  6 bytes
-
-        // eax - txd id
-        pushad
-        push eax
-        call OnStreamingAddedTxd
-        add esp, 4
-        popad
-
-        // orig
-        mov     esi, ds:00C8800Ch 
-        jmp     RETURN_CTxdStore_SetupTxdParent  // 731D5B
-    }
-}
-
-
 ////////////////////////////////////////////////////////////////
 // Txd remove
 ////////////////////////////////////////////////////////////////
@@ -117,27 +91,6 @@ void _cdecl OnStreamingRemoveTxd ( DWORD dwTxdId )
     ms_txdStreamEventList.push_back ( STxdStreamEvent ( false, usTxdId ) );
 }
 
-// called from streaming on TXD destroy
-void _declspec(naked) HOOK_CTxdStore_RemoveTxd ()
-{
-    _asm
-    {
-        // Hooked from 731E90  6 bytes
-
-        // esi - txd id + 20000
-        pushad
-        push esi
-        call OnStreamingRemoveTxd
-        add esp, 4
-        popad
-
-        // orig
-        mov     ecx, ds:00C8800Ch
-        jmp     RETURN_CTxdStore_RemoveTxd      // 731E96
-    }
-}
-
-
 ////////////////////////////////////////////////////////////////
 //
 // CRenderWareSA::InitTextureWatchHooks
@@ -146,8 +99,6 @@ void _declspec(naked) HOOK_CTxdStore_RemoveTxd ()
 ////////////////////////////////////////////////////////////////
 void CRenderWareSA::InitTextureWatchHooks ( void )
 {
-    HookInstall ( HOOKPOS_CTxdStore_SetupTxdParent, (DWORD)HOOK_CTxdStore_SetupTxdParent, 6 );
-    HookInstall ( HOOKPOS_CTxdStore_RemoveTxd, (DWORD)HOOK_CTxdStore_RemoveTxd, 6 );
 }
 
 
@@ -712,7 +663,7 @@ void OnMY_RwTextureSetName( DWORD dwAddrCalledFrom, RwTexture* pTexture, const c
         strReplacementName = SString( "cj_ped_%s", szName );
 
     if ( !strReplacementName.empty() )
-        pGame->GetRenderWareSA()->SpecialAddedTexture( pTexture, strReplacementName );
+        pGame->GetRenderWare()->SpecialAddedTexture( pTexture, strReplacementName );
 }
 
 // Hook info
@@ -751,32 +702,8 @@ void _declspec(naked) HOOK_RwTextureSetName ()
 //////////////////////////////////////////////////////////////////////////////////////////
 void OnMY_RwTextureDestroy_Mid( RwTexture* pTexture )
 {
-    pGame->GetRenderWareSA()->SpecialRemovedTexture( pTexture );
+    pGame->GetRenderWare()->SpecialRemovedTexture( pTexture );
 }
-
-// Hook info
-#define HOOKPOS_RwTextureDestroy_Mid_US     0x07F3834
-#define HOOKSIZE_RwTextureDestroy_Mid_US    5
-#define HOOKPOS_RwTextureDestroy_Mid_EU     0x07F3874
-#define HOOKSIZE_RwTextureDestroy_Mid_EU    5
-DWORD RETURN_RwTextureDestroy_Mid_US =      0x07F3839;
-DWORD RETURN_RwTextureDestroy_Mid_EU =      0x07F3879;
-DWORD RETURN_RwTextureDestroy_Mid_BOTH =    0;
-void _declspec(naked) HOOK_RwTextureDestroy_Mid ()
-{
-    _asm
-    {
-        pushad
-        push    esi
-        call    OnMY_RwTextureDestroy_Mid
-        add     esp, 4*1
-        popad
-
-        push    0x08E23CC
-        jmp     RETURN_RwTextureDestroy_Mid_BOTH
-    }
-}
-
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -1010,7 +937,6 @@ inner:
 void CRenderWareSA::StaticSetHooks( void )
 {
    EZHookInstall( RwTextureSetName );
-   EZHookInstall( RwTextureDestroy_Mid );
    EZHookInstall( RwIm3DRenderIndexedPrimitive );
    EZHookInstall( RwIm3DRenderPrimitive );
    EZHookInstall( RwIm2DRenderIndexedPrimitive );

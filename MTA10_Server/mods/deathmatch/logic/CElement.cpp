@@ -127,9 +127,6 @@ CElement::~CElement ( void )
     // Remove from spatial database
     GetSpatialDatabase ()->RemoveEntity ( this );
 
-    if ( GetID() != INVALID_ELEMENT_ID && GetID() >= MAX_SERVER_ELEMENTS )
-        CLogger::ErrorPrintf( "ERROR: Element ID is incorrect (%08x) (Type:%d)\n", GetID().Value(), GetType() );
-
     // Deallocate our unique ID
     CElementIDs::PushUniqueID ( this );
 
@@ -150,18 +147,6 @@ const CVector & CElement::GetPosition ( void )
     return m_vecPosition;
 }
 
-
-void CElement::GetMatrix( CMatrix& matrix )
-{
-    matrix = CMatrix();
-    matrix.vPos = GetPosition();
-}
-
-
-void CElement::SetMatrix( const CMatrix& matrix )
-{
-    SetPosition( matrix.vPos );
-}
 
 // Static function
 uint CElement::GetTypeHashFromString ( const SString& strTypeName )
@@ -982,12 +967,6 @@ CElement* CElement::FindChildIndex ( const char* szName, unsigned int uiIndex, u
             CElement* pElement = (*iter)->FindChildIndex ( szName, uiIndex, uiCurrentIndex, true );
             if ( pElement )
             {
-                if ( pElement->IsBeingDeleted() )
-                {
-                    // If it's being deleted right now we cannot return it. 
-                    // Since we found a match we have to abort the search here.
-                    return NULL;
-                }
                 return pElement;
             }
         }
@@ -1024,12 +1003,6 @@ CElement* CElement::FindChildByTypeIndex ( unsigned int uiTypeHash, unsigned int
             CElement* pElement = (*iter)->FindChildByTypeIndex ( uiTypeHash, uiIndex, uiCurrentIndex, true );
             if ( pElement )
             {
-                if (pElement->IsBeingDeleted())
-                {
-                    // If it's being deleted right now we cannot return it. 
-                    // Since we found a match we have to abort the search here.
-                    return NULL;
-                }
                 return pElement;
             }
         }
@@ -1280,12 +1253,6 @@ unsigned char CElement::GenerateSyncTimeContext ( void )
     // Increment the sync time index
     ++m_ucSyncTimeContext;
 
-    #ifdef MTA_DEBUG
-    if ( GetType ( ) == EElementType::PLAYER )
-    {
-        CLogger::LogPrintf ( "Sync Context Updated from %i to %i.\n", m_ucSyncTimeContext - 1, m_ucSyncTimeContext );
-    }
-    #endif
     // It can't be 0 because that will make it not work when wraps around
     if ( m_ucSyncTimeContext == 0 )
         ++m_ucSyncTimeContext;
@@ -1312,8 +1279,8 @@ static t_mapEntitiesFromRoot    ms_mapEntitiesFromRoot;
 static bool                     ms_bEntitiesFromRootInitialized = false;
 
 // CFastHashMap helpers
-unsigned int GetEmptyMapKey ( unsigned int* )   { return (unsigned int)0xFFFFFFFF; }
-unsigned int GetDeletedMapKey ( unsigned int* ) { return (unsigned int)0xFFFFFFFE; }
+static unsigned int GetEmptyMapKey ( unsigned int* )   { return (unsigned int)0xFFFFFFFF; }
+static unsigned int GetDeletedMapKey ( unsigned int* ) { return (unsigned int)0xFFFFFFFE ; }
 
 
 void CElement::StartupEntitiesFromRoot ()

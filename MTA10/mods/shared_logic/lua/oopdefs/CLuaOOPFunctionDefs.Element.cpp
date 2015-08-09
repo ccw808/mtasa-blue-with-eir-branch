@@ -42,38 +42,16 @@ int CLuaOOPDefs::GetElementPosition ( lua_State* luaVM )
 
     if ( !argStream.HasErrors () )
     {
-        CVector vecPosition;
-        pEntity->GetPosition ( vecPosition );
+        CVector vector;
+        pEntity->GetPosition ( vector );
 
-        lua_pushvector ( luaVM, vecPosition );
+        lua_pushvector ( luaVM, vector );
         return 1;
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaOOPDefs::GetElementVelocity( lua_State* luaVM )
-{
-    CClientEntity* pEntity = NULL;
-
-    CScriptArgReader argStream( luaVM );
-    argStream.ReadUserData( pEntity );
-
-    if ( !argStream.HasErrors() )
-    {
-        CVector vecVelocity;
-        CStaticFunctionDefinitions::GetElementVelocity( *pEntity, vecVelocity );
-
-        lua_pushvector( luaVM, vecVelocity );
-        return 1;
-    }
-    else
-        m_pScriptDebugging->LogCustom( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean( luaVM, false );
     return 1;
 }
 
@@ -86,57 +64,14 @@ int CLuaOOPDefs::GetElementRotation ( lua_State* luaVM )
 
     if ( !argStream.HasErrors () )
     {
-        CMatrix matrix;
-        CVector vecRotation;
-        pEntity->GetMatrix ( matrix );
-        
-        vecRotation = matrix.GetRotation ( );
-        ConvertRadiansToDegrees ( vecRotation );
+        CVector vector;
+        pEntity->GetRotationDegrees ( vector );
 
-        lua_pushvector ( luaVM, vecRotation );
+        lua_pushvector ( luaVM, vector );
         return 1;
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-int CLuaOOPDefs::SetElementRotation ( lua_State* luaVM )
-{
-    CClientEntity* pEntity = NULL;
-    CVector vecRotation;
-
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadVector3D ( vecRotation );
-
-    if ( !argStream.HasErrors ( ) )
-    {
-        CMatrix matrix;
-        pEntity->GetMatrix ( matrix );
-
-        ConvertDegreesToRadians ( vecRotation );
-
-        matrix.SetRotation ( vecRotation );
-
-        pEntity->SetMatrix ( matrix );
-
-        ConvertRadiansToDegrees ( vecRotation );
-
-        eEulerRotationOrder rotationOrder = EULER_DEFAULT;
-        if ( pEntity->GetType() == CCLIENTOBJECT )
-            rotationOrder = EULER_ZYX;
-
-        if ( CStaticFunctionDefinitions::SetElementRotation ( *pEntity, vecRotation, rotationOrder, true ) )
-        {
-            lua_pushboolean ( luaVM, true );
-            return 1;
-        }
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage ( ) );
 
     lua_pushboolean ( luaVM, false );
     return 1;

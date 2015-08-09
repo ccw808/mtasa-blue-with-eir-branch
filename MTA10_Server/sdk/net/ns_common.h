@@ -107,6 +107,7 @@ struct NetStatistics
     uint    messagesInResendBuffer;
     bool    isLimitedByCongestionControl;
     bool    isLimitedByOutgoingBandwidthLimit;
+    int     encryptionStatus;
 
     // Copy of raknet statistics
     NetRawStatistics raw;

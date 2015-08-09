@@ -42,9 +42,6 @@ class CProxyDirect3D9 : public IDirect3D9
     virtual HMONITOR __stdcall      GetAdapterMonitor           ( UINT Adapter );
     virtual HRESULT  __stdcall      CreateDevice                ( UINT Adapter, D3DDEVTYPE DeviceType, HWND hFocusWindow, DWORD BehaviorFlags, D3DPRESENT_PARAMETERS* pPresentationParameters, IDirect3DDevice9** ppReturnedDeviceInterface );
 
-    static HMONITOR                 StaticGetAdapterMonitor     ( UINT Adapter );
-    static IDirect3D9*              StaticGetDirect3D           ( void );
-
     private:
 
     IDirect3D9 *    m_pDevice;

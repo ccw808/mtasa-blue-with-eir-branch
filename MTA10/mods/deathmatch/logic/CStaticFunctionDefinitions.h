@@ -63,7 +63,7 @@ public:
     static CClientEntity*               GetElementChild                     ( CClientEntity& Entity, unsigned int uiIndex );
     static bool                         GetElementMatrix                    ( CClientEntity& Entity, CMatrix& matrix );
     static bool                         GetElementPosition                  ( CClientEntity& Entity, CVector & vecPosition );
-    static bool                         GetElementRotation                  ( CClientEntity& Entity, CVector & vecRotation, eEulerRotationOrder rotationOrder );
+    static bool                         GetElementRotation                  ( CClientEntity& Entity, CVector & vecRotation, const char* szRotationOrder );
     static bool                         GetElementVelocity                  ( CClientEntity& Entity, CVector& vecVelocity );
     static bool                         GetElementInterior                  ( CClientEntity& Entity, unsigned char& ucInterior );
     static bool                         GetElementZoneName                  ( CClientEntity& Entity, SString& strOutName, bool bCitiesOnly = false );
@@ -93,7 +93,7 @@ public:
     static bool                         RemoveElementData                   ( CClientEntity& Entity, const char* szName );
     static bool                         SetElementMatrix                    ( CClientEntity& Entity, const CMatrix& matrix );
     static bool                         SetElementPosition                  ( CClientEntity& Entity, const CVector& vecPosition, bool bWarp = true );
-    static bool                         SetElementRotation                  ( CClientEntity& Entity, const CVector& vecRotation, eEulerRotationOrder rotationOrder, bool bNewWay );
+    static bool                         SetElementRotation                  ( CClientEntity& Entity, const CVector& vecRotation, const char* szRotationOrder, bool bNewWay );
     static bool                         SetElementVelocity                  ( CClientEntity& Element, const CVector& vecVelocity );
     static bool                         SetElementParent                    ( CClientEntity& Element, CClientEntity& Parent, CLuaMain* pLuaMain );
     static bool                         SetElementInterior                  ( CClientEntity& Entity, unsigned char ucInterior, bool bSetPosition, CVector& vecPosition );
@@ -109,7 +109,6 @@ public:
     static bool                         SetElementFrozen                    ( CClientEntity& Entity, bool bFrozen );
     static bool                         SetLowLodElement                    ( CClientEntity& Entity, CClientEntity* pLowLodEntity );
     static bool                         SetElementCallPropagationEnabled    ( CClientEntity& Entity, bool bEnabled );
-    static bool                         IsElementFrozenWaitingForGroundToLoad ( CClientEntity& Entity, bool& bWaitingForGroundToLoad );
 
     // Radio funcs
     static bool                         SetRadioChannel                     ( unsigned char& ucChannel );
@@ -126,7 +125,7 @@ public:
     // Player set funcs
     static bool                         ShowPlayerHudComponent              ( eHudComponent component, bool bShow );
     static bool                         IsPlayerHudComponentVisible         ( eHudComponent component, bool& bOutIsVisible );
-    static bool                         SetPlayerMoney                      ( long lMoney, bool bInstant );
+    static bool                         SetPlayerMoney                      ( long lMoney );
     static bool                         GivePlayerMoney                     ( long lMoney );
     static bool                         TakePlayerMoney                     ( long lMoney );
     static bool                         SetPlayerNametagText                ( CClientEntity& Entity, const char* szText );
@@ -167,11 +166,10 @@ public:
     static bool                         GetPedOxygenLevel                   ( CClientPed& Ped, float& fOxygen );
     
     static bool                         SetPedWeaponSlot                    ( CClientEntity& Entity, int iSlot );
-    static bool                         GivePedWeapon                       ( CClientEntity& Entity, uchar ucWeaponID, ushort usWeaponAmmo, bool bSetAsCurrent );
     static bool                         SetPedRotation                      ( CClientEntity& Entity, float fRotation, bool bNewWay );
     static bool                         SetPedCanBeKnockedOffBike           ( CClientEntity& Entity, bool bCanBeKnockedOffBike );
     static bool                         SetPedAnimation                     ( CClientEntity& Entity, const char * szBlockName, const char * szAnimName, int iTime, bool bLoop, bool bUpdatePosition, bool bInterruptable, bool bFreezeLastFrame );
-    static bool                         SetPedAnimationProgress             ( CClientEntity& Entity, const SString& strAnimName, float fProgress );
+    static bool                         SetPedAnimationProgress             ( CClientEntity& Entity, const char * szAnimName, float fProgress );
     static bool                         SetPedMoveAnim                      ( CClientEntity& Entity, unsigned int iMoveAnim );
     static bool                         AddPedClothes                       ( CClientEntity& Entity, const char* szTexture, const char* szModel, unsigned char ucType );
     static bool                         RemovePedClothes                    ( CClientEntity& Entity, unsigned char ucType );
@@ -304,16 +302,6 @@ public:
 
     // Fire funcs
     static bool                         CreateFire                          ( CVector& vecPosition, float fSize );
-    
-    // Light funcs
-    static CClientPointLights*          CreateLight                         ( CResource& Resource, int iMode, const CVector& vecPosition, float fRadius, SColor color, CVector& vecDirection );
-    static bool                         GetLightType                        ( CClientPointLights* pLight, int& iMode );
-    static bool                         GetLightRadius                      ( CClientPointLights* pLight, float& fRadius );
-    static bool                         GetLightColor                       ( CClientPointLights* pLight, SColor& outColor );
-    static bool                         GetLightDirection                   ( CClientPointLights* pLight, CVector& vecDirection );
-    static bool                         SetLightRadius                      ( CClientPointLights* pLight, float fRadius );
-    static bool                         SetLightColor                       ( CClientPointLights* pLight, SColor color );
-    static bool                         SetLightDirection                   ( CClientPointLights* pLight, CVector vecDirection );
 
     // Audio funcs
     static bool                         PlaySoundFrontEnd                   ( unsigned char ucSound );
@@ -357,7 +345,7 @@ public:
     static bool                         GetCameraInterior                   ( unsigned char & ucInterior );
 
     // Camera set funcs
-    static bool                         SetCameraMatrix                     ( const CVector& vecPosition, CVector* pvecLookAt, float fRoll, float fFOV );
+    static bool                         SetCameraMatrix                     ( const CVector& vecPosition, const CVector& vecLookAt, float fRoll, float fFOV );
     static bool                         SetCameraTarget                     ( CClientEntity * pEntity );
     static bool                         SetCameraTarget                     ( const CVector& vecTarget );
     static bool                         SetCameraInterior                   ( unsigned char ucInterior );
@@ -509,9 +497,9 @@ public:
     static bool                         GetCloudsEnabled                    ( void );
     static bool                         GetTrafficLightState                ( unsigned char& ucState );
     static bool                         AreTrafficLightsLocked              ( bool& bLocked );
-    static bool                         RemoveWorldBuilding                 ( unsigned short usModelToRemove, float fDistance, float fX, float fY, float fZ, char cInterior, uint& uiOutAmount );
-    static bool                         RestoreWorldBuildings               ( uint& uiOutAmount );
-    static bool                         RestoreWorldBuilding                ( unsigned short usModelToRestore, float fDistance, float fX, float fY, float fZ, char cInterior, uint& uiOutAmount );
+    static bool                         RemoveWorldBuilding                 ( unsigned short usModelToRemove, float fDistance, float fX, float fY, float fZ, char cInterior );
+    static bool                         RestoreWorldBuildings               ( void );
+    static bool                         RestoreWorldBuilding                ( unsigned short usModelToRestore, float fDistance, float fX, float fY, float fZ, char cInterior );
  
     static bool                         SetTime                             ( unsigned char ucHour, unsigned char ucMin );
     static bool                         GetSkyGradient                      ( unsigned char& ucTopRed, unsigned char& ucTopGreen, unsigned char& ucTopBlue, unsigned char& ucBottomRed, unsigned char& ucBottomGreen, unsigned char& ucBottomBlue );
@@ -563,14 +551,14 @@ public:
     static bool                         ToggleAllControls                   ( bool bGTAControls, bool bMTAControls, bool bEnabled );
 
     // Projectile functions
-    static CClientProjectile *          CreateProjectile                    ( CResource& Resource, CClientEntity& Creator, unsigned char ucWeaponType, CVector& vecOrigin, float fForce, CClientEntity* pTarget,  CVector& vecRotation, CVector& vecVelocity, unsigned short usModel = 0 );
+    static CClientProjectile *          CreateProjectile                    ( CResource& Resource, CClientEntity& Creator, unsigned char ucWeaponType, CVector& vecOrigin, float fForce, CClientEntity* pTarget, CVector* pvecRotation = NULL, CVector* pvecVelocity = NULL, unsigned short usModel = 0 );
 
     // Shape create funcs
-    static CClientColCircle*            CreateColCircle                     ( CResource& Resource, const CVector2D& vecPosition, float fRadius );
+    static CClientColCircle*            CreateColCircle                     ( CResource& Resource, const CVector& vecPosition, float fRadius );
     static CClientColCuboid*            CreateColCuboid                     ( CResource& Resource, const CVector& vecPosition, const CVector& vecSize );
     static CClientColSphere*            CreateColSphere                     ( CResource& Resource, const CVector& vecPosition, float fRadius );
-    static CClientColRectangle*         CreateColRectangle                  ( CResource& Resource, const CVector2D& vecPosition, const CVector2D& vecSize );
-    static CClientColPolygon*           CreateColPolygon                    ( CResource& Resource, const CVector2D& vecPosition );
+    static CClientColRectangle*         CreateColRectangle                  ( CResource& Resource, const CVector& vecPosition, const CVector2D& vecSize );
+    static CClientColPolygon*           CreateColPolygon                    ( CResource& Resource, const CVector& vecPosition );
     static CClientColTube*              CreateColTube                       ( CResource& Resource, const CVector& vecPosition, float fRadius, float fHeight );
     static CClientColShape*             GetElementColShape                  ( CClientEntity* pEntity );
     static void                         RefreshColShapeColliders            ( CClientColShape *pColShape );
@@ -584,8 +572,6 @@ public:
     static bool                         GetWeaponProperty                   ( CClientWeapon * pWeapon, eWeaponProperty eProperty, short &sData );
     static bool                         GetWeaponProperty                   ( CClientWeapon * pWeapon, eWeaponProperty eProperty, float &fData );
     static bool                         SetWeaponProperty                   ( CClientWeapon * pWeapon, eWeaponProperty eProperty, float fData );
-    static bool                         SetWeaponProperty                   ( CClientWeapon * pWeapon, eWeaponProperty eProperty, const CVector& vecData );
-    static bool                         GetWeaponProperty                   ( CClientWeapon * pWeapon, eWeaponProperty eProperty, CVector& vecData );
     static bool                         SetWeaponState                      ( CClientWeapon * pWeapon, eWeaponState weaponState );
     static bool                         SetWeaponTarget                     ( CClientWeapon * pWeapon, CClientEntity * pTarget, int boneTarget );
     static bool                         SetWeaponTarget                     ( CClientWeapon * pWeapon, CVector vecTarget );
@@ -608,7 +594,6 @@ public:
     static bool                         GetTickCount_                       ( double& dCount );
 
     // Map funcs
-    static bool                         ForcePlayerMap                      ( bool & bForced );
     static bool                         IsPlayerMapForced                   ( bool & bForced );
     static bool                         IsPlayerMapVisible                  ( bool & bVisible );
     static bool                         GetPlayerMapBoundingBox             ( CVector &vecMin, CVector &vecMax );
@@ -680,8 +665,6 @@ public:
     static bool                         GetSoundMaxDistance                 ( CClientPlayer& Player, float& fDistance );
     static bool                         GetSoundMetaTags                    ( CClientPlayer& Player, const SString& strFormat, SString& strMetaTags );
     static bool                         SetSoundEffectEnabled               ( CClientPlayer& Player, const SString& strEffectName, bool bEnable );
-    static bool                         SetSoundPan                         ( CClientPlayer& Player, float fPan );
-    static bool                         GetSoundPan                         ( CClientPlayer& Player, float& fPan );
     
 
     // Handling funcs 

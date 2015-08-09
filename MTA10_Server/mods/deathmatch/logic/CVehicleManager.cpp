@@ -632,12 +632,9 @@ void CVehicleManager::GetVehiclesOfType ( unsigned int uiModel, lua_State* luaVM
     list < CVehicle* > ::iterator iter = m_List.begin ();
     for ( ; iter != m_List.end () ; ++iter )
     {
-        if ( (*iter)->GetModel () == uiModel )
-        {
-            // Add it to the table
-            lua_pushnumber ( luaVM, ++uiIndex );
-            lua_pushelement ( luaVM, *iter );
-            lua_settable ( luaVM, -3 );
-        }
+        // Add it to the table
+        lua_pushnumber ( luaVM, ++uiIndex );
+        lua_pushelement ( luaVM, *iter );
+        lua_settable ( luaVM, -3 );
     }
 }

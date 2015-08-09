@@ -291,14 +291,7 @@ void CRadarMap::DoRender ( void )
                 // Calculate the size of the area
                 vecSize.fX = static_cast < float > ( fX / fRatio );
                 vecSize.fY = static_cast < float > ( fY / fRatio );
-
-                SColor color = pArea->GetColor ();
-                if ( pArea->IsFlashing () )
-                {
-                    color.A = static_cast < unsigned char > ( color.A * pArea->GetAlphaFactor () );
-                }
-
-                g_pCore->GetGraphics ()->DrawRectangle ( vecPos.fX, vecPos.fY, vecSize.fX, -vecSize.fY, color );
+                g_pCore->GetGraphics ()->DrawRectangle ( vecPos.fX, vecPos.fY, vecSize.fX, -vecSize.fY, pArea->GetColor () );
             }
         }
 
@@ -371,14 +364,14 @@ void CRadarMap::InternalSetRadarEnabled ( bool bEnabled )
         m_bDebugVisible = g_pCore->IsDebugVisible ();
 
         g_pGame->GetHud ()->Disable ( true );
-        g_pMultiplayer->HideRadar ( true );
+        g_pGame->HideRadar ( true );
         g_pCore->SetChatVisible ( false );
         g_pCore->SetDebugVisible ( false );
     }
     else
     {
         g_pGame->GetHud ()->Disable ( false );
-        g_pMultiplayer->HideRadar ( false );
+        g_pGame->HideRadar ( false );
         g_pCore->SetChatVisible ( m_bChatVisible );
         g_pCore->SetDebugVisible ( m_bDebugVisible );
     }

@@ -206,6 +206,10 @@ void CClientPed::Init ( CClientManager* pManager, unsigned long ulModelID, bool 
     m_MovementStateNames[MOVEMENTSTATE_FALL]        =    "fall";
     m_MovementStateNames[MOVEMENTSTATE_CLIMB]       =    "climb";
 
+    // Set up render modes.
+    m_pRenderModeManager = new renderModeManager( this );
+    m_pRenderModes = new entityRenderModes_t( *m_pRenderModeManager );
+
     // Create the player model
     if ( m_bIsLocalPlayer )
     {
@@ -290,14 +294,6 @@ CClientPed::~CClientPed ( void )
     // We have a player model?
     if ( m_pPlayerPed )
     {
-        // Do we have the in_water task? #3973: Peds destroyed in water leave water circles
-        CTask * pTask = m_pTaskManager->GetTask ( TASK_PRIORITY_EVENT_RESPONSE_NONTEMP );
-        if ( pTask && pTask->GetTaskType () == TASK_COMPLEX_IN_WATER )
-        {
-            // Kill the task immediately
-            pTask->MakeAbortable ( m_pPlayerPed, ABORT_PRIORITY_IMMEDIATE, NULL );
-        }
-        
         // Destroy the player model
         if ( m_bIsLocalPlayer )
         {
@@ -312,8 +308,6 @@ CClientPed::~CClientPed ( void )
     // Delete our clothes
     delete m_pClothes;
     m_pClothes = NULL;
-
-    delete m_LastSyncedData;
 
     // Remove us from any occupied vehicle
     CClientVehicle::UnpairPedAndVehicle ( this );
@@ -359,14 +353,7 @@ float CClientPed::GetStat ( unsigned short usStat )
 {
     if ( m_bIsLocalPlayer )
     {
-        if ( g_pGame->GetPedContext ( ) == NULL )
-        {
-            return g_pGame->GetStats ( )->GetStatValue ( usStat );
-        }
-        else
-        {
-            return g_pMultiplayer->GetLocalStatValue ( usStat );
-        }
+        return g_pGame->GetStats()->GetStatValue ( usStat );
     }
     else
     {
@@ -425,12 +412,6 @@ bool CClientPed::SetMatrix ( const CMatrix& Matrix )
         m_pPlayerPed->SetMatrix ( const_cast < CMatrix* > ( &Matrix ) );
     }
 
-    // Update rotation
-    CVector vecRotation = Matrix.GetRotation();
-    SetCurrentRotation ( vecRotation.fZ );
-    if ( !IS_PLAYER ( this ) )
-        SetCameraRotation ( -vecRotation.fZ );
-
     if ( m_Matrix.vPos != Matrix.vPos )
     {
         UpdateStreamPosition ( Matrix.vPos );
@@ -475,7 +456,7 @@ void CClientPed::GetPosition ( CVector& vecPosition ) const
 }
 
 
-void CClientPed::SetPosition ( const CVector& vecPosition, bool bResetInterpolation, bool bAllowGroundLoadFreeze )
+void CClientPed::SetPosition ( const CVector& vecPosition, bool bResetInterpolation )
 {
     // We have a player ped?
     if ( m_pPlayerPed )
@@ -491,7 +472,7 @@ void CClientPed::SetPosition ( const CVector& vecPosition, bool bResetInterpolat
                 {
                     // If move is big enough, do ground checks
                     float DistanceMoved = ( m_Matrix.vPos - vecPosition ).Length ();
-                    if ( DistanceMoved > 50 && !IsFrozen () && bAllowGroundLoadFreeze )
+                    if ( DistanceMoved > 50 && !IsFrozen () )
                         SetFrozenWaitingForGroundToLoad ( true );
                 }
 
@@ -835,35 +816,6 @@ void CClientPed::GetControllerState ( CControllerState& ControllerState )
         if ( pVehicle && !pVehicle->IsEngineOn() )
         {
             ControllerState.ButtonCross = 0;
-        }
-        // Fix for GTA bug allowing vehicles to be controlled while dead.
-        if ( pVehicle && IsDying ( ) )
-        {
-            // camera
-            ControllerState.LeftStickX = 0;
-            ControllerState.LeftStickY = 0;
-            ControllerState.RightStickX = 0;
-            ControllerState.RightStickY = 0;
-            // brake
-            ControllerState.ButtonSquare = 0;
-            // enter/exit
-            ControllerState.ButtonTriangle = 0;
-            // nos/fire
-            ControllerState.ButtonCircle = 0;
-            // accelerate
-            ControllerState.ButtonCross = 0;
-            // handbrake/missiles
-            ControllerState.RightShoulder1 = 0;
-            if ( pVehicle && pVehicle->GetVehicleType() == CLIENTVEHICLE_PLANE )
-            {
-                // rudders
-                ControllerState.RightShoulder2 = 0;
-                ControllerState.LeftShoulder2 = 0;
-            }
-            // Horn/sirens/police spotlight/hover
-            ControllerState.ShockButtonL = 0;
-            // raise/lower landing gear
-            ControllerState.ShockButtonR = 0;
         }
     }
     else
@@ -1370,7 +1322,7 @@ void CClientPed::WarpIntoVehicle ( CClientVehicle* pVehicle, unsigned int uiSeat
         if ( IsFrozenWaitingForGroundToLoad () )
         {
             SetFrozenWaitingForGroundToLoad ( false );
-            pVehicle->SetFrozenWaitingForGroundToLoad ( true, true );
+            pVehicle->SetFrozenWaitingForGroundToLoad ( true );
         }
         CVector vecPosition;
         GetPosition ( vecPosition );
@@ -1379,7 +1331,7 @@ void CClientPed::WarpIntoVehicle ( CClientVehicle* pVehicle, unsigned int uiSeat
         float fDist = ( vecPosition - vecVehiclePosition ).Length ();
         if ( fDist > 50 && !pVehicle->IsFrozen () )
         {
-            pVehicle->SetFrozenWaitingForGroundToLoad ( true, true );
+            pVehicle->SetFrozenWaitingForGroundToLoad ( true );
         }
     }
 
@@ -1816,12 +1768,6 @@ void CClientPed::Kill ( eWeaponType weaponType, unsigned char ucBodypart, bool b
             pTask->MakeAbortable ( m_pPlayerPed, ABORT_PRIORITY_URGENT, NULL );
         }
 
-        // Make sure to remove the jetpack task before setting death tasks (Issue #7860)
-        if ( HasJetPack ( ) )
-        {
-            SetHasJetPack ( false );
-        }
-
         if ( bSetDirectlyDead )
         {
             // TODO: Avoid the animation, try to make it go directly to the last animation frame.
@@ -1923,9 +1869,6 @@ bool CClientPed::IsFrozenWaitingForGroundToLoad ( void ) const
 
 void CClientPed::SetFrozenWaitingForGroundToLoad ( bool bFrozen )
 {
-    // Currently only for local player
-    dassert( m_bIsLocalPlayer );
-
     if ( !g_pGame->IsASyncLoadingEnabled ( true ) )
         return;
 
@@ -1935,8 +1878,7 @@ void CClientPed::SetFrozenWaitingForGroundToLoad ( bool bFrozen )
 
         if ( bFrozen )
         {
-            // Set auto unsuspend time in case changes prevent second call
-            g_pGame->SuspendASyncLoading ( true, 5000 );
+            g_pGame->SuspendASyncLoading ( true );
 
             m_fGroundCheckTolerance = 0.f;
             m_fObjectsAroundTolerance = -1.f;
@@ -2163,7 +2105,6 @@ void CClientPed::RemoveWeapon ( eWeaponType weaponType )
         if ( m_WeaponTypes [ i ] == weaponType )
         {
             m_WeaponTypes [ i ] = WEAPONTYPE_UNARMED;
-            m_usWeaponAmmo [ i ] = 0;
             if ( m_CurrentWeaponSlot == ( eWeaponSlot ) i )
             {
                 m_CurrentWeaponSlot = WEAPONSLOT_TYPE_UNARMED;
@@ -2187,10 +2128,7 @@ void CClientPed::RemoveAllWeapons ( void )
     }
 
     for ( int i = 0 ; i < (int)WEAPONSLOT_MAX ; i++ )
-    {
         m_WeaponTypes [ i ] = WEAPONTYPE_UNARMED;
-        m_usWeaponAmmo [ i ] = 0;
-    }
     m_CurrentWeaponSlot = WEAPONSLOT_TYPE_UNARMED;
 }
 
@@ -2575,7 +2513,7 @@ void CClientPed::StreamedInPulse ( bool bDoStandardPulses )
         {
             m_iLoadAllModelsCounter--;
             if ( GetModelInfo () )
-                g_pGame->GetStreaming()->LoadAllRequestedModels( false, "CClientPed::StreamedInPulse - m_iLoadAllModelsCounter" );
+                g_pGame->GetStreaming()->LoadAllRequestedModels( false );//, "CClientPed::StreamedInPulse - m_iLoadAllModelsCounter" );
         }
 
         if ( m_bPendingRebuildPlayer )
@@ -2735,8 +2673,7 @@ void CClientPed::StreamedInPulse ( bool bDoStandardPulses )
         unsigned char ucAlpha = m_ucAlpha;
         // Are we in a different interior to the camera? set our alpha to 0
         if ( m_ucInterior != g_pGame->GetWorld ()->GetCurrentArea () ) ucAlpha = 0;
-        RpClump * pClump = m_pPlayerPed->GetRpClump ();
-        if ( pClump ) g_pGame->GetVisibilityPlugins ()->SetClumpAlpha ( pClump, ucAlpha );
+        m_pPlayerPed->SetAlpha( ucAlpha );
 
         // Grab our current position
         CVector vecPosition = *m_pPlayerPed->GetPosition ();
@@ -3074,57 +3011,24 @@ void CClientPed::ApplyControllerStateFixes ( CControllerState& Current )
             }
         }
 
-        // Make sure crouching
-        pTask = m_pTaskManager->GetTaskSecondary ( TASK_SECONDARY_DUCK );
-        if ( pTask && pTask->GetTaskType () == TASK_SIMPLE_DUCK )
+        // If crouching and aiming, don't allow uncrouch button if just pressed left/right
+        pTask = m_pTaskManager->GetTaskSecondary ( TASK_SECONDARY_ATTACK );
+        if ( pTask && pTask->GetTaskType () == TASK_SIMPLE_USE_GUN )
         {
-            // Check for left/right
-            if ( Current.LeftStickX != 0 )
-                m_ulLastTimePressedLeftOrRight = ulNow;
-
-            // If crouching and aiming, don't allow uncrouch button if just pressed left/right, or just aimed
-            pTask = m_pTaskManager->GetTaskSecondary ( TASK_SECONDARY_ATTACK );
-            if ( ( pTask && pTask->GetTaskType () == TASK_SIMPLE_USE_GUN ) || ( Current.RightShoulder1 != 0 ) )
-                m_ulLastTimeUseGunCrouched = ulNow;
-
-            // Maybe cancel crouch/sprint/jump to prevent quickstand
-            if ( ( ulNow - m_ulLastTimePressedLeftOrRight < 500.f * fSpeedRatio ) && 
-                 ( ulNow - m_ulLastTimeUseGunCrouched < 500.f * fSpeedRatio ) )
+            // Make sure crouching
+            pTask = m_pTaskManager->GetTaskSecondary ( TASK_SECONDARY_DUCK );
+            if ( pTask && pTask->GetTaskType () == TASK_SIMPLE_DUCK )
             {
-                Current.ShockButtonL = 0; 
-                Current.ButtonCross = 0;
-                Current.ButtonSquare = 0;
-            }
+                // Check for left/right
+                if ( Current.LeftStickX == 0 )
+                    m_ulLastTimePressedLeftOrRight = 0;
+                else
+                if ( m_ulLastTimePressedLeftOrRight == 0 )
+                    m_ulLastTimePressedLeftOrRight = ulNow;
 
-        }
-    }
-    else
-    {
-        // If we are a normal ped
-        if ( GetType() == eClientEntityType::CCLIENTPED )
-        {
-            // Do we have a weapon?
-            CWeapon * pWeapon = GetWeapon ();
-            if ( pWeapon )
-            {
-                // Weapon wielding slot?
-                eWeaponSlot slot = pWeapon->GetSlot ();
-                if ( slot != WEAPONSLOT_TYPE_UNARMED && slot != WEAPONSLOT_TYPE_MELEE )
-                {
-                    eWeaponType eWeapon = pWeapon->GetType ( );
-                    // No Ammo left?
-                    float fSkill = GetStat ( g_pGame->GetStats ()->GetSkillStatIndex ( eWeapon ) );
-                    CWeaponStat* pWeaponStat = g_pGame->GetWeaponStatManager ( )->GetWeaponStatsFromSkillLevel ( eWeapon, fSkill );
-                    if ( ( pWeapon->GetAmmoInClip ( ) == 0 && pWeaponStat->GetMaximumClipAmmo ( ) > 0 ) && pWeapon->GetAmmoTotal () == 0 )
-                    {
-                        pTask = m_pTaskManager->GetTaskSecondary ( TASK_SECONDARY_ATTACK );
-                        if ( pTask && pTask->GetTaskType ( ) == TASK_SIMPLE_USE_GUN )
-                        {
-                            // disable the fire control state.
-                            m_Pad.SetControlState ( "fire", false );
-                        }
-                    }
-                }
+                // Maybe cancel crouch
+                if ( ulNow - m_ulLastTimePressedLeftOrRight < 500.f * fSpeedRatio )
+                    Current.ShockButtonL = 0; 
             }
         }
     }
@@ -3536,9 +3440,7 @@ void CClientPed::_CreateModel ( void )
         for ( int i = 0 ; i < (int)WEAPONSLOT_MAX ; i++ )
         {
             if ( m_WeaponTypes [ i ] != WEAPONTYPE_UNARMED )
-            {
-                GiveWeapon ( m_WeaponTypes [ i ], m_usWeaponAmmo [ i ] );
-            }
+                GiveWeapon ( m_WeaponTypes [ i ], 1 );   // TODO: store ammo for each weapon
         }
 
         m_pPlayerPed->SetCurrentWeaponSlot ( m_CurrentWeaponSlot );
@@ -3558,6 +3460,9 @@ void CClientPed::_CreateModel ( void )
 
         // Reattach to an entity + any entities attached to this
         ReattachEntities ();
+
+        // Apply render modes.
+        m_pRenderModeManager->Apply();
 
         // Warp it into a vehicle, if necessary
         if ( m_pOccupiedVehicle )
@@ -3602,7 +3507,7 @@ void CClientPed::_CreateLocalModel ( void )
 {
     // Init the local player and grab the pointers
     g_pGame->InitLocalPlayer ();
-    m_pPlayerPed = dynamic_cast < CPlayerPed* > ( g_pGame->GetPools ()->GetPedFromRef ( (DWORD)1 ) );
+    m_pPlayerPed = dynamic_cast < CPlayerPed* > ( g_pGame->GetPools ()->GetPedFromRef ( (DWORD)0 ) );
     
     if ( m_pPlayerPed )
     {
@@ -3631,6 +3536,9 @@ void CClientPed::_CreateLocalModel ( void )
 
         // Rebuild him so he gets his clothes
         RebuildModel ();
+        
+        // Apply render modes.
+        m_pRenderModeManager->Apply();
 
         // Validate
         m_pManager->RestoreEntity ( this );
@@ -3643,28 +3551,15 @@ void CClientPed::_CreateLocalModel ( void )
 
 void CClientPed::_DestroyModel ()
 {
-    // Store ped ammo
-    if ( GetType () == CCLIENTPED )
-    {
-        for ( uchar i = 0 ; i < (uchar)WEAPONSLOT_MAX ; i++ )
-        {
-            if ( m_WeaponTypes [ i ] != WEAPONTYPE_UNARMED )
-            {
-                CWeapon * pWeapon = GetWeapon ( m_WeaponTypes [ i ] );
-                if ( pWeapon )
-                {
-                    m_usWeaponAmmo [ i ] = static_cast < ushort > ( pWeapon->GetAmmoTotal ( ) );
-                }
-            }
-        }
-    }
-
     // Remove our linked contact entity
     if ( m_pCurrentContactEntity )
     {
         m_pCurrentContactEntity->RemoveContact ( this );
         m_pCurrentContactEntity = NULL;
     }
+
+    // Store render modes.
+    m_pRenderModeManager->Update();
 
     // Remember the player position
     m_Matrix.vPos = *m_pPlayerPed->GetPosition ();
@@ -3744,6 +3639,9 @@ void CClientPed::_DestroyLocalModel ()
 
         pVehicle->RemoveStreamReference ();
     }
+
+    // Store render modes.
+    m_pRenderModeManager->Update();
 
     // Invalidate
     m_pManager->InvalidateEntity ( this );
@@ -4062,14 +3960,6 @@ void CClientPed::InternalWarpIntoVehicle ( CVehicle* pGameVehicle )
     {
         // Reset whatever task
         m_pTaskManager->RemoveTask ( TASK_PRIORITY_PRIMARY );
-
-        // check we aren't in the fall and get up task
-        CTask * pTaskPhysicalResponse = m_pTaskManager->GetTask ( TASK_PRIORITY_PHYSICAL_RESPONSE );
-        // check our physical response task
-        if ( pTaskPhysicalResponse && strcmp ( pTaskPhysicalResponse->GetTaskName ( ), "TASK_COMPLEX_FALL_AND_GET_UP" ) == 0 )
-        {
-            m_pTaskManager->RemoveTask ( TASK_PRIORITY_PHYSICAL_RESPONSE );
-        }
 
         // Create a task to warp the player in and execute it
         CTaskSimpleCarSetPedInAsDriver* pInTask = g_pGame->GetTasks ()->CreateTaskSimpleCarSetPedInAsDriver ( pGameVehicle );
@@ -4632,7 +4522,7 @@ bool CClientPed::GetShotData ( CVector * pvecOrigin, CVector * pvecTarget, CVect
     float fRotation = GetCurrentRotation ();
 
     // Grab the target range of the current weapon
-    float fSkill = 1000.0f; //  GetStat ( g_pGame->GetStats ( )->GetSkillStatIndex ( pWeapon->GetType ( ) ) );
+    float fSkill = GetStat ( g_pGame->GetStats ()->GetSkillStatIndex ( pWeapon->GetType () ) );
     CWeaponStat* pCurrentWeaponInfo = g_pGame->GetWeaponStatManager ( )->GetWeaponStatsFromSkillLevel ( pWeapon->GetType (), fSkill );
     float fRange = pCurrentWeaponInfo->GetWeaponRange ();
 
@@ -5085,7 +4975,7 @@ float CClientPed::GetDistanceFromCentreOfMassToBaseOfModel ( void )
     {
         return m_pPlayerPed->GetDistanceFromCentreOfMassToBaseOfModel ();
     }
-   return 0.0f;
+   return 0.0f;;
 }
 
 
@@ -5563,8 +5453,7 @@ void CClientPed::SetDoingGangDriveby ( bool bDriveby )
         }
         else if ( bDriveby )
         {
-            bool bRight = ( GetOccupiedVehicleSeat ( ) % 2 == 0 ) ? false : true;
-            CTask * pTask = g_pGame->GetTasks ()->CreateTaskSimpleGangDriveBy ( NULL, NULL, 0.0f, 0, 0, bRight );
+            CTask * pTask = g_pGame->GetTasks ()->CreateTaskSimpleGangDriveBy ( NULL, NULL, 0.0f, 0, 0, false );
             if ( pTask )
             {
                 pTask->SetAsPedTask ( m_pPlayerPed, TASK_PRIORITY_PRIMARY );
@@ -6037,7 +5926,7 @@ void CClientPed::HandleWaitingForGroundToLoad ( void )
 
     // Load load load
     if ( GetModelInfo () )
-        g_pGame->GetStreaming()->LoadAllRequestedModels ( false, "CClientPed::HandleWaitingForGroundToLoad" );
+        g_pGame->GetStreaming()->LoadAllRequestedModels ( false );//, "CClientPed::HandleWaitingForGroundToLoad" );
 
     // Start out with a fairly big radius to check, and shrink it down over time
     float fUseRadius = 50.0f * ( 1.f - Max ( 0.f, m_fObjectsAroundTolerance ) );

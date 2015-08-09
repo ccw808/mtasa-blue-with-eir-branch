@@ -63,17 +63,6 @@ enum eDelayedSyncVehicleData
     DELAYEDSYNC_VEHICLE_TURNSPEED,
 };
 
-namespace EComponentBase
-{
-    enum EComponentBaseType
-    {
-        WORLD,
-        ROOT,
-        PARENT,
-    };
-}
-using EComponentBase::EComponentBaseType;
-
 struct SDelayedSyncVehicleData
 {
     unsigned long       ulTime;
@@ -110,11 +99,10 @@ struct SVehicleComponentData
         m_bRotationChanged = false;
         m_bVisible = true;
     }
-    SString m_strParentName;
-    CVector m_vecComponentPosition;         // Parent relative
-    CVector m_vecComponentRotation;         // Parent relative radians
-    CVector m_vecOriginalComponentPosition; // Parent relative
-    CVector m_vecOriginalComponentRotation; // Parent relative radians
+    CVector m_vecComponentPosition;
+    CVector m_vecComponentRotation;
+    CVector m_vecOriginalComponentPosition;
+    CVector m_vecOriginalComponentRotation;
     bool m_bPositionChanged;
     bool m_bRotationChanged;
     bool m_bVisible;
@@ -145,7 +133,7 @@ public:
 
     void                        GetPosition             ( CVector& vecPosition ) const;
     void                        SetPosition             ( const CVector& vecPosition )      { SetPosition ( vecPosition, true ); }
-    void                        SetPosition             ( const CVector& vecPosition, bool bResetInterpolation, bool bAllowGroundLoadFreeze = true );
+    void                        SetPosition             ( const CVector& vecPosition, bool bResetInterpolation );
 
     void                        UpdatePedPositions      ( const CVector& vecPosition );
 
@@ -303,7 +291,7 @@ public:
     void                        SetFrozen               ( bool bFrozen );
     void                        SetScriptFrozen         ( bool bFrozen )                    { m_bScriptFrozen = bFrozen; };
     bool                        IsFrozenWaitingForGroundToLoad      ( void ) const;
-    void                        SetFrozenWaitingForGroundToLoad     ( bool bFrozen, bool bDisableAsyncLoading );
+    void                        SetFrozenWaitingForGroundToLoad     ( bool bFrozen );
 
     CClientVehicle*             GetPreviousTrainCarriage( void );
     CClientVehicle*             GetNextTrainCarriage    ( void );
@@ -312,7 +300,6 @@ public:
     inline bool                 IsChainEngine           ( void )                            { return m_bChainEngine; };
     void                        SetIsChainEngine        ( bool bChainEngine = true, bool bTemporary = false );
     CClientVehicle*             GetChainEngine          ( void );
-    bool                        IsTrainConnectedTo      ( CClientVehicle * pTrailer );
 
     bool                        IsDerailed              ( void );
     void                        SetDerailed             ( bool bDerailed );
@@ -364,10 +351,10 @@ public:
     float                       GetDirtLevel            ( void );
     void                        SetDirtLevel            ( float fDirtLevel );
 	
-    char                        GetNitroCount           ( void );
-    float                       GetNitroLevel           ( void );
-    void                        SetNitroCount           ( char cCount );
-    void                        SetNitroLevel           ( float fLevel );
+    inline char                 GetNitroCount           ( void )                            { return m_pVehicle->GetNitroCount (); }
+    inline float                GetNitroLevel           ( void )                            { return m_pVehicle->GetNitroLevel (); }
+    inline void                 SetNitroCount           ( char cCount )                     { m_pVehicle->SetNitroCount ( cCount ); }
+    inline void                 SetNitroLevel           ( float fLevel )                    { m_pVehicle->SetNitroLevel ( fLevel ); }
 
     bool                        IsNitroInstalled        ( void );
 
@@ -460,33 +447,26 @@ public:
     void                        SetVehicleFlags             ( bool bEnable360, bool bEnableRandomiser, bool bEnableLOSCheck, bool bEnableSilent );
     void                        RemoveVehicleSirens         ( void );
 
-    bool                        ResetComponentPosition  ( const SString& vehicleComponent );
-    bool                        SetComponentPosition    ( const SString& vehicleComponent, CVector vecPosition, EComponentBaseType base = EComponentBase::PARENT );
-    bool                        GetComponentPosition    ( const SString& vehicleComponent, CVector &vecPosition, EComponentBaseType base = EComponentBase::PARENT );
+    bool                        ResetComponentPosition  ( SString vehicleComponent );
+    bool                        SetComponentPosition    ( SString vehicleComponent, CVector vecPosition );
+    bool                        GetComponentPosition    ( SString vehicleComponent, CVector &vecPosition );
     
-    bool                        ResetComponentRotation  ( const SString& vehicleComponent );
-    bool                        SetComponentRotation    ( const SString& vehicleComponent, CVector vecRotation, EComponentBaseType base = EComponentBase::PARENT );
-    bool                        GetComponentRotation    ( const SString& vehicleComponent, CVector &vecRotation, EComponentBaseType base = EComponentBase::PARENT );
+    bool                        ResetComponentRotation  ( SString vehicleComponent );
+    bool                        SetComponentRotation    ( SString vehicleComponent, CVector vecRotation );
+    bool                        GetComponentRotation    ( SString vehicleComponent, CVector &vecRotation );
 
-    bool                        SetComponentVisible     ( const SString& vehicleComponent, bool bVisible );
-    bool                        GetComponentVisible     ( const SString& vehicleComponent, bool &bVisible );
+    bool                        SetComponentVisible     ( SString vehicleComponent, bool bVisible );
+    bool                        GetComponentVisible     ( SString vehicleComponent, bool &bVisible );
     std::map < SString, SVehicleComponentData > ::iterator ComponentsBegin ( void )                               { return m_ComponentData.begin (); }
     std::map < SString, SVehicleComponentData > ::iterator ComponentsEnd   ( void )                               { return m_ComponentData.end (); }
     
-    bool                        DoesSupportUpgrade      ( const SString& strFrameName );
+    bool                        DoesSupportUpgrade      ( SString strFrameName );
 
     bool                        AreHeliBladeCollisionsEnabled              ( void )                              { return m_bEnableHeliBladeCollisions; }
 
     void                        SetHeliBladeCollisionsEnabled              ( bool bEnable )                    { m_bEnableHeliBladeCollisions = bEnable; }
 
-    bool                        OnVehicleFallThroughMap                    ( );
-
 protected:
-    void                        ConvertComponentRotationBase        ( const SString& vehicleComponent, CVector& vecInOutRotation, EComponentBaseType inputBase, EComponentBaseType outputBase );
-    void                        ConvertComponentPositionBase        ( const SString& vehicleComponent, CVector& vecInOutPosition, EComponentBaseType inputBase, EComponentBaseType outputBase );
-    void                        ConvertComponentMatrixBase          ( const SString& vehicleComponent, CMatrix& matInOutOrientation, EComponentBaseType inputBase, EComponentBaseType outputBase );
-    void                        GetComponentParentToRootMatrix      ( const SString& vehicleComponent, CMatrix& matOutParentToRoot );
-
     void                        StreamIn                ( bool bInstantly );
     void                        StreamOut               ( void );
 
@@ -495,7 +475,6 @@ protected:
 
     bool                        DoCheckHasLandingGear   ( void );
     void                        HandleWaitingForGroundToLoad ( void );
-    bool                        DoesNeedToWaitForGroundToLoad ( void );
 
     void                        StreamedInPulse         ( void );
 
@@ -590,8 +569,6 @@ protected:
     float                       m_fHeliRotorSpeed;
     const CHandlingEntry*       m_pOriginalHandlingEntry;
     CHandlingEntry*             m_pHandlingEntry;
-    float                       m_fNitroLevel;
-    char                        m_cNitroCount;
 
     bool                        m_bChainEngine;
     bool                        m_bIsDerailed;
@@ -653,9 +630,6 @@ protected:
     uint                        m_uiForceLocalZCounter;
 
     bool                        m_bEnableHeliBladeCollisions;
-    CMatrix                     m_matCreate;
-    unsigned char               m_ucFellThroughMapCount;
-
 public:
 #ifdef MTA_DEBUG
     CClientPlayer *             m_pLastSyncer;
@@ -665,7 +639,6 @@ public:
     SLastSyncedVehData*         m_LastSyncedData;
     SSirenInfo                  m_tSirenBeaconInfo;
     std::map<SString, SVehicleComponentData>  m_ComponentData;
-    bool                        m_bAsyncLoadingDisabled;
 
 };
 

@@ -58,9 +58,6 @@ public:
 
     CPlayer*                GetPlayer               ( void ) const                  { return m_pPlayer; }
 
-    uchar                   GenerateSyncTimeContext ( void );
-    bool                    CanUpdateSync           ( uchar ucRemote );
-
 private:
     CPlayer *               m_pPlayer;
     eCameraMode             m_Mode;
@@ -71,7 +68,6 @@ private:
     CElement *              m_pTarget;
     float                   m_fRoll;
     float                   m_fFOV;
-    uchar                   m_ucSyncTimeContext;
 };
 
 #endif

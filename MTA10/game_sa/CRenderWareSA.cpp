@@ -7,6 +7,7 @@
 *               and miscellaneous rendering functions
 *  DEVELOPERS:  Cecill Etheredge <ijsf@gmx.net>
 *               arc_
+*               Martin Turski <quiret@gmx.de>
 *
 *  Multi Theft Auto is available from http://www.multitheftauto.com/
 *  RenderWare is © Criterion Software
@@ -19,9 +20,14 @@
 #include "gamesa_renderware.hpp"
 #include "CRenderWareSA.ShaderMatching.h"
 
+// Include this for texture loading tools.
+#include "CStreamingSA.utils.hxx"
+
 extern CGameSA * pGame;
 
+RwInterface **ppRwInterface = (RwInterface**)0x00C97B24;
 
+extern CBaseModelInfoSAInterface **ppModelInfo;
 
 // RwFrameForAllObjects struct and callback used to replace dynamic vehicle parts
 struct SReplaceParts
@@ -169,13 +175,6 @@ static RpAtomic* LoadAtomicsCB (RpAtomic * atomic, SLoadAtomics * data)
     return atomic;
 }
 
-
-/////////////////////////////////////////////////////////////////////////////
-//
-//  CRenderWareSA
-//
-//
-/////////////////////////////////////////////////////////////////////////////
 CRenderWareSA::CRenderWareSA ( eGameVersion version )
 {
     InitRwFunctions( version );
@@ -185,23 +184,36 @@ CRenderWareSA::CRenderWareSA ( eGameVersion version )
     m_iRenderingEntityType = TYPE_MASK_WORLD;
     m_GTAVertexShadersDisabledTimer.SetMaxIncrement( 1000, true );
     m_bGTAVertexShadersEnabled = true;
+
+    // Initialize sub modules
+    RenderWareMem_Init();
+    RenderWareRender_Init();
+    RwStream_Init();
+    RenderCallbacks_Init();
+    RenderWareLighting_Init();
+    RenderWareUtilsD3D9_Init();
 }
 
 
 CRenderWareSA::~CRenderWareSA ( void )
 {
+    // Shutdown sub modules
+    RenderWareUtilsD3D9_Shutdown();
+    RenderWareLighting_Shutdown();
+    RenderCallbacks_Shutdown();
+    RwStream_Shutdown();
+    RenderWareRender_Shutdown();
+    RenderWareMem_Shutdown();
+
     SAFE_DELETE ( m_pMatchChannelManager );
 }
 
 
 // Reads and parses a TXD file specified by a path (szTXD)
-RwTexDictionary * CRenderWareSA::ReadTXD ( const CBuffer& fileData )
+RwTexDictionary * CRenderWareSA::ReadTXD ( const char *szTXD )
 {
     // open the stream
-    RwBuffer buffer;
-    buffer.ptr = (void*)fileData.GetData();
-    buffer.size = fileData.GetSize();
-    RwStream * streamTexture = RwStreamOpen ( STREAM_TYPE_BUFFER, STREAM_MODE_READ, &buffer );
+    RwStream * streamTexture = RwStreamOpen ( STREAM_TYPE_FILENAME, STREAM_MODE_READ, (void*)szTXD );
 
     // check for errors
     if ( streamTexture == NULL )
@@ -210,13 +222,13 @@ RwTexDictionary * CRenderWareSA::ReadTXD ( const CBuffer& fileData )
     // TXD header id: 0x16
     // find our txd chunk (dff loads textures, so correct loading order is: txd, dff)
     if ( RwStreamFindChunk ( streamTexture, 0x16, NULL, NULL ) == false )
-    {
-        RwStreamClose ( streamTexture, NULL );
         return NULL;
-    }
 
     // read the texture dictionary from our model (txd)
-    RwTexDictionary *pTex = RwTexDictionaryGtaStreamRead ( streamTexture );
+    RwTexDictionary *pTex = RwTexDictionaryStreamReadEx ( streamTexture );
+
+    // Set it as global emitter for some funky business
+    g_textureEmitter = pTex;
 
     // close the stream
     RwStreamClose ( streamTexture, NULL );
@@ -229,50 +241,126 @@ RwTexDictionary * CRenderWareSA::ReadTXD ( const CBuffer& fileData )
 // Reads and parses a DFF file specified by a path (szDFF) into a CModelInfo identified by the object id (usModelID)
 // bLoadEmbeddedCollisions should be true for vehicles
 // Any custom TXD should be imported before this call
-RpClump * CRenderWareSA::ReadDFF ( const CBuffer& fileData, unsigned short usModelID, bool bLoadEmbeddedCollisions )
+RpClump * CRenderWareSA::ReadDFF ( const char *szDFF, unsigned short id, bool bLoadEmbeddedCollisions, CColModel*& colOut )
 {
-    // Set correct TXD as materials are processed at the same time
-    if ( usModelID != 0 )
-    {
-        unsigned short usTxdId = ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID]->usTextureDictionary;
-        SetTextureDict ( usTxdId );
-    }
+    if ( id > MAX_MODELS-1 )
+        return NULL;
 
+#if 0
     // open the stream
-    RwBuffer buffer;
-    buffer.ptr = (void*)fileData.GetData();
-    buffer.size = fileData.GetSize();
-    RwStream * streamModel = RwStreamOpen ( STREAM_TYPE_BUFFER, STREAM_MODE_READ, &buffer );
+    RwStream *streamModel = RwStreamCreateTranslated( file );
+#else
+    RwStream *streamModel = RwStreamOpen( STREAM_TYPE_FILENAME, STREAM_MODE_READ, (void*)szDFF );
+#endif
 
-    // get the modelinfo array
-    DWORD *pPool = ( DWORD* ) ARRAY_ModelInfo;
-
-    // check for errors
     if ( streamModel == NULL )
         return NULL;
 
     // DFF header id: 0x10
     // find our dff chunk
-    if ( RwStreamFindChunk ( streamModel, 0x10, NULL, NULL ) == false )
-    {
-        RwStreamClose ( streamModel, NULL );
+    if ( !RwStreamFindChunk( streamModel, 0x10, NULL, NULL ) )
         return NULL;
+
+    CBaseModelInfoSAInterface *model = ppModelInfo[id];
+    CTxdInstanceSA *txd;
+    bool txdReference;
+
+    // We want to look up texture dictionaries exactly like GTA:SA is doing it.
+    TextureLookupApplicator *txdLookupPtr = NULL;
+    
+    CColLoaderModelAcquisition *colAcq;
+
+    if ( id != 0 )
+    {
+        CModelLoadInfoSA *info = &Streaming::GetModelLoadInfo( id );
+
+        // The_GTA: Clumps and atomics load their requirements while being read in this rwStream
+        // We therefor have to prepare all resources so it can retrive them; textures and animations!
+        if ( model )
+        {
+            txd = TextureManager::GetTxdPool()->Get( model->usTextureDictionary );
+
+            if ( !txd->m_txd )
+            {
+                CStreamingSA *streamer = pGame->GetStreaming();
+
+                // VERY IMPORTANT: find a way to load the texDictionary and animation ourselves here!
+                // We need to isolate this process from CStreaming, because CStreaming includes the model replacement fix
+                // If you try to load a dff with a replaced model, the collision might crash you if you delete
+                // a model which uses the same collision; the crash does not happen if all DFFs have a own collision
+                // A fix would be to clone the collision somehow, but loading resources ourselves is required too!
+                // Eventually: custom clump, txd and col async loading functions in Lua
+
+                // Load all requirements
+                streamer->RequestModel( id, 0x10 );
+                streamer->LoadAllRequestedModels( true );
+
+                // We delete the RenderWare associations in this clump to free resources since GTA:SA loaded the 
+                // actual model's dff by now, which we do not need
+                // The only thing we need is the reference to the texture container and possibly the collision (?)
+                txd->Reference();
+                txdReference = true;
+
+                // TODO: make sure that atomic model infos do not delete the associated collision.
+                // Otherwise we have to preserve it here! Last time I checked it did not happen.
+
+                // Tell GTA:SA to unload the resources, to cleanup associations
+                streamer->FreeModel( id );
+            }
+            else
+                txdReference = false;
+
+            // For atomics we have to set the current texture container so it loads from it properly
+            if ( model->GetRwModelType() == RW_ATOMIC )
+                txd->SetCurrent();
+
+            // Use this struct to load textures exactly like GTA:SA does.
+            txdLookupPtr = new TextureLookupApplicator( id );
+        }
+
+        if ( bLoadEmbeddedCollisions )
+        {
+            // rockstar's collision hack: set the global particle emitter to the modelinfo pointer of this model
+            colAcq = new CColLoaderModelAcquisition;
+        }
     }
 
-    // rockstar's collision hack: set the global particle emitter to the modelinfo pointer of this model
-    if ( bLoadEmbeddedCollisions )
-        RpPrtStdGlobalDataSetStreamEmbedded ( ( void* ) pPool[usModelID] );
-
     // read the clump with all its extensions
-    RpClump * pClump = RpClumpStreamRead ( streamModel );
+    RpClump *pClump = RpClumpStreamRead( streamModel );
 
-    // reset collision hack
-    if ( bLoadEmbeddedCollisions )
-        RpPrtStdGlobalDataSetStreamEmbedded ( NULL );
+    if ( id != 0 )
+    {
+        if ( bLoadEmbeddedCollisions )
+        {
+            CColModelSAInterface *col = colAcq->GetCollision();
+
+            // Store the collision we retrieved (if there is one)
+            colOut = ( col ) ? ( new CColModelSA( col, true ) ) : NULL;
+
+            // reset model schemantic loader
+            delete colAcq;
+        }
+        else
+            colOut = NULL;
+
+        if ( txdLookupPtr != NULL )
+        {
+            delete txdLookupPtr;
+        }
+
+        if ( model )
+        {
+            // We do not have to preserve the texture container, as RenderWare is smart enough to hold references
+            // to textures itself
+            if ( txdReference )
+                txd->Dereference();
+        }
+    }
+    else
+        colOut = NULL;
 
     // close the stream
-    RwStreamClose ( streamModel, NULL );
-
+    RwStreamClose( streamModel, NULL );
     return pClump;
 }
 
@@ -337,94 +425,57 @@ bool CRenderWareSA::DoContainTheSameGeometry ( RpClump* pClumpA, RpClump* pClump
 
 
 // Replaces a vehicle/weapon/ped model
-void CRenderWareSA::ReplaceModel ( RpClump* pNew, unsigned short usModelID, DWORD dwFunc )
+void CRenderWareSA::ReplaceModel ( RpClump* pNew, unsigned short usModelID )
 {
-    CModelInfo* pModelInfo = pGame->GetModelInfo ( usModelID );
+    CModelInfoSA* pModelInfo = pGame->GetModelInfo ( usModelID );
     if ( pModelInfo )
     {
-        RpClump* pOldClump = (RpClump *)pModelInfo->GetRwObject ();
-        if ( !DoContainTheSameGeometry ( pNew, pOldClump, NULL ) )
+        CBaseModelInfoSAInterface *info = pModelInfo->GetInterface();
+
+        // We can only function on clump models
+        if ( info->GetRwModelType() == RW_CLUMP )
         {
-            if ( pModelInfo->IsVehicle ( ) )
+            RpClump* pOldClump = (RpClump *)pModelInfo->GetRwObject ();
+            if ( !DoContainTheSameGeometry ( pNew, pOldClump, NULL ) )
             {
-                // Reset our valid upgrade list
-                pModelInfo->ResetSupportedUpgrades ( );
+                // Make new clump container for the model geometry
+                // Clone twice as the geometry render order seems to be reversed each time it is cloned.
+                RpClump* pTemp = RpClumpClone ( pNew );
+                RpClump* pNewClone = RpClumpClone ( pTemp );
+                RpClumpDestroy ( pTemp );
+
+                // ModelInfo::SetClump
+                ((CClumpModelInfoSAInterface*)pModelInfo->GetInterface())->SetClump( pNewClone );
+
+                // Destroy old clump container
+                RpClumpDestroy ( pOldClump );
             }
-
-            // Make new clump container for the model geometry
-            // Clone twice as the geometry render order seems to be reversed each time it is cloned.
-            RpClump* pTemp = RpClumpClone ( pNew );
-            RpClump* pNewClone = RpClumpClone ( pTemp );
-            RpClumpDestroy ( pTemp );
-
-            // Calling CVehicleModelInfo::SetClump() allocates a new CVehicleStructure.
-            // So let's delete the old one first to avoid CPool<CVehicleStructure> depletion.
-            if ( dwFunc == FUNC_LoadVehicleModel )
-            {
-                CVehicleModelInfoSAInterface* pVehicleModelInfoInterface = (CVehicleModelInfoSAInterface*)pModelInfo->GetInterface ();
-                if ( pVehicleModelInfoInterface->pSomeInfo )
-                {
-                    DWORD dwDeleteFunc = FUNC_CVehicleStructure_delete;
-                    CVehicleStructure* pSomeInfo = pVehicleModelInfoInterface->pSomeInfo;
-                    __asm
-                    {
-                        mov     eax, pSomeInfo
-                        push    eax
-                        call    dwDeleteFunc
-                        add     esp, 4
-                    }
-                    pVehicleModelInfoInterface->pSomeInfo = NULL;
-                }
-            }
-
-            // ModelInfo::SetClump
-            CBaseModelInfoSAInterface* pModelInfoInterface = pModelInfo->GetInterface ();
-            __asm
-            {
-                mov     ecx, pModelInfoInterface
-                push    pNewClone
-                call    dwFunc
-            }
-
-            // Destroy old clump container
-            RpClumpDestroy ( pOldClump );
         }
     }
 }
 
-// Replaces a vehicle model
-void CRenderWareSA::ReplaceVehicleModel ( RpClump* pNew, unsigned short usModelID )
-{
-    ReplaceModel ( pNew, usModelID, FUNC_LoadVehicleModel );
-}
-
-// Replaces a weapon model
-void CRenderWareSA::ReplaceWeaponModel ( RpClump * pNew, unsigned short usModelID )
-{
-    ReplaceModel ( pNew, usModelID, FUNC_LoadWeaponModel );
-}
-
-// Replaces a ped model
-void CRenderWareSA::ReplacePedModel ( RpClump * pNew, unsigned short usModelID )
-{
-    ReplaceModel ( pNew, usModelID, FUNC_LoadPedModel );
-}
-
 // Reads and parses a COL3 file
-CColModel * CRenderWareSA::ReadCOL ( const CBuffer& fileData )
+CColModel * CRenderWareSA::ReadCOL ( const char * szCOLFile )
 {
-    if ( fileData.GetSize() < sizeof( ColModelFileHeader ) + 16 )
+    if ( !szCOLFile )
         return NULL;
 
-    const ColModelFileHeader& header = *(ColModelFileHeader*)fileData.GetData();
+    // Read the file
+    FILE* pFile = fopen ( szCOLFile, "rb" );
+    if ( !pFile )
+        return NULL;
 
+    // Create a new CColModel
+    CColModelSA* pColModel = new CColModelSA ();
+
+    ColModelFileHeader header = { 0 };
+    fread ( &header, sizeof(ColModelFileHeader), 1, pFile );
+    
     // Load the col model
     if ( header.version[0] == 'C' && header.version[1] == 'O' && header.version[2] == 'L' )
     {
-        unsigned char* pModelData = (unsigned char*)fileData.GetData() + sizeof( ColModelFileHeader );
-
-        // Create a new CColModel
-        CColModelSA* pColModel = new CColModelSA ();
+        char* pModelData = new char [ header.size - 0x18 ];
+        fread ( pModelData, header.size - 0x18, 1, pFile );
 
         if ( header.version[3] == 'L' )
         {
@@ -438,12 +489,44 @@ CColModel * CRenderWareSA::ReadCOL ( const CBuffer& fileData )
         {
             LoadCollisionModelVer3 ( pModelData, header.size - 0x18, pColModel->GetInterface (), NULL );
         }
+        else if ( header.version[3] = '4' )
+        {
+            LoadCollisionModelVer4 ( pModelData, header.size - 0x18, pColModel->GetInterface(), NULL );
+        }
 
-        // Return the collision model
-        return pColModel;
+        delete[] pModelData;
+    }
+    else
+    {
+        delete pColModel;
+        fclose ( pFile );
+        return NULL;
     }
 
-    return NULL;
+    fclose ( pFile );
+
+    // Return the collision model
+    return pColModel;
+}
+
+// Positions the front seat by reading out the vector from the 'ped_frontseat' atomic in the clump (RpClump*)
+// and changing the vector in the CModelInfo class identified by the model id (usModelID)
+bool CRenderWareSA::PositionFrontSeat ( RpClump *pClump, unsigned short usModelID )
+{
+    // get the modelinfo array (+5Ch contains a pointer to vehicle specific dummy data)
+    DWORD *pPool = ( DWORD* ) ARRAY_ModelInfo;
+    DWORD *pVehicleDummies = ( DWORD* ) ( pPool[usModelID] + 0x5C );
+
+    // read out the 'ped_frontseat' frame
+    RwFrame * pPedFrontSeat = RwFrameFindFrame ( RpGetFrame ( pClump ), "ped_frontseat" );
+    if ( pPedFrontSeat == NULL )
+        return false;
+
+    // in the vehicle specific dummy data, +30h contains the front seat vector
+    CVector *vecFrontSeat = ( CVector* ) ( pVehicleDummies + 0x30 );
+    *vecFrontSeat = pPedFrontSeat->modelling.vPos;
+
+    return true;
 }
 
 // Loads all atomics from a clump into a container struct and returns the number of atomics it loaded
@@ -462,11 +545,12 @@ unsigned int CRenderWareSA::LoadAtomics ( RpClump * pClump, RpAtomicContainer * 
 typedef struct
 {
     unsigned short usTxdID;
+    unsigned short modelId;
     RpClump* pClump;
 } SAtomicsReplacer;
 RpAtomic* AtomicsReplacer ( RpAtomic* pAtomic, SAtomicsReplacer* pData )
 {
-    ( (void (*)(RpAtomic*, void*))FUNC_AtomicsReplacer ) ( pAtomic, pData->pClump );
+    RpClumpAtomicActivator( pAtomic, pData->modelId );
     // The above function adds a reference to the model's TXD. Remove it again.
     CTxdStore_RemoveRef ( pData->usTxdID );
     return pAtomic;
@@ -487,8 +571,8 @@ void CRenderWareSA::ReplaceAllAtomicsInModel ( RpClump * pNew, unsigned short us
             SAtomicsReplacer data;
             data.usTxdID = ((CBaseModelInfoSAInterface**)ARRAY_ModelInfo)[usModelID]->usTextureDictionary;
             data.pClump = pCopy;
+            data.modelId = usModelID;
 
-            MemPutFast < DWORD > ( (DWORD*)DWORD_AtomicsReplacerModelID, usModelID );
             RpClumpForAllAtomics ( pCopy, AtomicsReplacer, &data );
 
             // Get rid of the now empty copied clump
@@ -590,7 +674,13 @@ void CRenderWareSA::DestroyDFF ( RpClump * pClump )
 void CRenderWareSA::DestroyTXD ( RwTexDictionary * pTXD )
 {
     if ( pTXD )
+    {
+        // If this is a global emitter, unset it
+        if ( g_textureEmitter == pTXD )
+            g_textureEmitter = NULL;
+
         RwTexDictionaryDestroy ( pTXD );
+    }
 }
 
 // Destroys a texture instance
@@ -605,17 +695,12 @@ void CRenderWareSA::DestroyTexture ( RwTexture* pTex )
 
 void CRenderWareSA::RwTexDictionaryRemoveTexture ( RwTexDictionary* pTXD, RwTexture* pTex )
 {
-    if ( pTex->txd != pTXD )
-        return;
-
-    pTex->TXDList.next->prev = pTex->TXDList.prev;
-    pTex->TXDList.prev->next = pTex->TXDList.next;
-    pTex->txd = NULL;
+    pTex->RemoveFromDictionary();
 }
 
 short CRenderWareSA::CTxdStore_GetTxdRefcount ( unsigned short usTxdID )
 {
-    return *(short *)( *(*(DWORD **)0xC8800C) + 0xC*usTxdID + 4 );
+    return TextureManager::GetTxdPool()->Get( usTxdID )->m_references;
 }
 
 bool CRenderWareSA::RwTexDictionaryContainsTexture ( RwTexDictionary* pTXD, RwTexture* pTex )
@@ -759,14 +844,13 @@ bool CRenderWareSA::StaticGetTextureCB ( RwTexture* texture, std::vector < RwTex
 // Only called by CRenderItemManager::GetVisibleTextureNames ?
 //
 ////////////////////////////////////////////////////////////////
-const char* CRenderWareSA::GetTextureName ( CD3DDUMMY* pD3DData )
+const SString& CRenderWareSA::GetTextureName ( CD3DDUMMY* pD3DData )
 {
     STexInfo** ppTexInfo = MapFind ( m_D3DDataTexInfoMap, pD3DData );
     if ( ppTexInfo )
         return (*ppTexInfo)->strTextureName;
-    if ( !pD3DData )
-        return FAKE_NAME_NO_TEXTURE;
-    return "";
+    static SString strDummy;
+    return strDummy;
 }
 
 
@@ -786,4 +870,24 @@ CD3DDUMMY* GetDeletedMapKey ( CD3DDUMMY** )
 RwFrame * CRenderWareSA::GetFrameFromName ( RpClump * pRoot, SString strName )
 {
     return RwFrameFindFrame ( RpGetFrame ( pRoot ), strName );
+}
+
+void CRenderWareSA::EnableEnvMapRendering( bool enabled )
+{
+    RenderCallbacks::SetEnvMapRenderingEnabled( enabled );
+}
+
+bool CRenderWareSA::IsEnvMapRenderingEnabled( void ) const
+{
+    return RenderCallbacks::IsEnvMapRenderingEnabled();
+}
+
+void CRenderWareSA::SetWorldRenderMode( eWorldRenderMode mode )
+{
+    Entity::SetWorldRenderMode( mode );
+}
+
+eWorldRenderMode CRenderWareSA::GetWorldRenderMode( void ) const
+{
+    return Entity::GetWorldRenderMode();
 }

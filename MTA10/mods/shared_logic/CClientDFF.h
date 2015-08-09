@@ -21,7 +21,7 @@ struct SLoadedClumpInfo
 {
     SLoadedClumpInfo ( void ) : bTriedLoad ( false ), pClump ( NULL ) {} 
     bool     bTriedLoad;
-    RpClump* pClump;
+    CModel*  pClump;
 };
 
 
@@ -31,12 +31,12 @@ class CClientDFF : public CClientEntity
     friend class CClientDFFManager;
 
 public:
-                                    CClientDFF              ( class CClientManager* pManager, ElementID ID );
+                                    CClientDFF              ( class CClientManager* pManager, ElementID ID, bool directCache = false );
                                     ~CClientDFF             ( void );
 
     eClientEntityType               GetType                 ( void ) const              { return CCLIENTDFF; }
 
-    bool                            LoadDFF                 ( const SString& strFile, bool bIsRawData );
+    bool                            LoadDFF                 ( const char* szFile, unsigned short usModel );
 
     bool                            ReplaceModel            ( unsigned short usModel, bool bAlphaTransparency );
 
@@ -44,8 +44,6 @@ public:
 
     void                            RestoreModel            ( unsigned short usModel );
     void                            RestoreModels           ( void );
-
-    static bool                     IsDFFData               ( const SString& strData );
 
     // Sorta a hack that these are required by CClientEntity...
     void                            Unlink                  ( void ) {};
@@ -56,19 +54,21 @@ protected:
     void                            UnloadDFF               ( void );
     void                            InternalRestoreModel    ( unsigned short usModel );
 
-    bool                            ReplaceObjectModel      ( RpClump* pClump, ushort usModel, bool bAlphaTransparency );
-    bool                            ReplaceVehicleModel     ( RpClump* pClump, ushort usModel, bool bAlphaTransparency );
-    bool                            ReplaceWeaponModel      ( RpClump* pClump, ushort usModel, bool bAlphaTransparency );
-    bool                            ReplacePedModel         ( RpClump* pClump, ushort usModel, bool bAlphaTransparency );
+    bool                            ReplaceObjectModel      ( CModel* pClump, ushort usModel, bool bAlphaTransparency );
+    bool                            ReplaceVehicleModel     ( CModel* pClump, ushort usModel, bool bAlphaTransparency );
+    bool                            ReplaceWeaponModel      ( CModel* pClump, ushort usModel, bool bAlphaTransparency );
+    bool                            ReplacePedModel         ( CModel* pClump, ushort usModel, bool bAlphaTransparency );
 
-    RpClump*                        GetLoadedClump          ( ushort usModelId );
+    CModel*                         GetLoadedClump          ( ushort usModelId );
 
     class CClientDFFManager*        m_pDFFManager;
 
     SString                         m_strDffFilename;
-    CBuffer                         m_RawDataBuffer;
-    bool                            m_bIsRawData;
     std::map < ushort, SLoadedClumpInfo > m_LoadedClumpInfoMap;
+
+    SLoadedClumpInfo                m_persistentClump;
+
+    bool                            m_usePersistentClump;
 
     std::list < unsigned short >    m_Replaced;
 };

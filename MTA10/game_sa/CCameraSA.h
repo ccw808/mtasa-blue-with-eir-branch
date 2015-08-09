@@ -87,18 +87,30 @@ class CTrainCamNode
 
 /*** END PURE R* CLASSES ***/
 
-class CCameraSAInterface 
+class CCameraSAInterface : public CPlaceableSAInterface
 {
 public:
-    // CPlaceable
-    CPlaceableSAInterface   Placeable;
-    // End CPlaceable
+    bool __thiscall         IsSphereVisible             ( const CVector& pos, float radius, const RwMatrix& transform );
+    float __thiscall        GetGroundLevel              ( unsigned int type );
+    unsigned int __thiscall GetMusicFadeType            ( void ) const;
+
+    void __thiscall         SetFadeColor                ( unsigned char red, unsigned char green, unsigned char blue );
+    void __thiscall         Fade                        ( float fadeDuration, unsigned short direction );
+
+    int __thiscall          GetFadeDirection            ( void ) const;
+
+    CCamSAInterface&        GetActiveCam                ( void )                    { return Cams[ActiveCam]; }
+
+    int __thiscall          GetActiveCamLookDirection   ( void );
+
 
     //move these out the class, have decided to set up a mirrored enumerated type thingy at the top
+#if 0
     bool    m_bAboveGroundTrainNodesLoaded;
     bool    m_bBelowGroundTrainNodesLoaded;
     bool    m_bCamDirectlyBehind;   
     bool    m_bCamDirectlyInFront;  
+#endif
     bool    m_bCameraJustRestored;
     bool    m_bcutsceneFinished;
     bool    m_bCullZoneChecksOn;
@@ -325,7 +337,7 @@ public:
     FLOAT m_fAttachedCamAngle; // for giving the attached camera a tilt.
 
     // RenderWare camera pointer
-    DWORD * m_pRwCamera; // was RwCamera *
+    RwCamera * m_pRwCamera; // was RwCamera *
     ///stuff for cut scenes
     CEntitySAInterface *pTargetEntity;
     CEntitySAInterface *pAttachedEntity;
@@ -340,22 +352,24 @@ public:
 //  protected:
 #if 0
     // Original
-    CMatrix_Padded m_cameraMatrix;
-    CMatrix_Padded m_cameraMatrixOld;
-    CMatrix_Padded m_viewMatrix;
-    CMatrix_Padded m_matInverse;
-    CMatrix_Padded m_matMirrorInverse;
-    CMatrix_Padded m_matMirror;
+    RwMatrix m_cameraMatrix;
+    RwMatrix m_cameraMatrixOld;
+    RwMatrix m_viewMatrix;
+    RwMatrix m_matInverse;
+    RwMatrix m_matMirrorInverse;
+    RwMatrix m_matMirror;
 #else
     // Looks more likely to be this
-    CMatrix_Padded m_cameraMatrix;
+    RwMatrix m_cameraMatrix;
     int unk1[2];
-    CMatrix_Padded m_cameraMatrixOld;
+    RwMatrix m_cameraMatrixOld;
     int unk2[2];
-    CMatrix_Padded m_viewMatrix;
+    RwMatrix m_viewMatrix;
     int unk3[2];
-    CMatrix_Padded m_matInverse;
-    int unk4[26];
+    RwMatrix m_matInverse;
+    int unk4[2];
+    RwMatrix m_matMirrorInverse;                            // 2708
+    int unk5[8];                                            // 2772
 #endif
 
     CVector m_vecFrustumNormals[4];
@@ -400,6 +414,16 @@ public:
 };
 // C_ASSERT(sizeof(CCameraSAInterface) == 0xD78);
 
+
+namespace Camera
+{
+    inline CCameraSAInterface&     GetInterface( void )
+    {
+        return *(CCameraSAInterface*)0x00B6F028;
+    }
+};
+
+
 class CCameraSA : public CCamera
 {
     friend class COffsets;
@@ -443,7 +467,6 @@ public:
     RwMatrix *                  GetLTM ( void );
     CEntity *                   GetTargetEntity ( void );
     void                        SetCameraClip ( bool bObjects, bool bVehicles );
-    void                        GetCameraClip ( bool &bObjects, bool &bVehicles );
     BYTE                        GetCameraViewMode ( void );
     VOID                        SetCameraViewMode ( BYTE dwCamMode );
     void                        RestoreLastGoodState ( void );
@@ -452,5 +475,8 @@ public:
 private:
     static unsigned long        FUNC_RwFrameGetLTM;
 };
+
+void Camera_Init( void );
+void Camera_Shutdown( void );
 
 #endif

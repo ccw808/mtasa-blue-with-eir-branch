@@ -73,12 +73,6 @@
     <Filter Include="Resource Files\output">
       <UniqueIdentifier>{4a26eed3-0f7c-400a-b106-efff6f2b1bb6}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Source Files\logic\oopdefs">
-      <UniqueIdentifier>{3769e3ec-6cde-45c2-9bf0-b30dd16010ec}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="Header Files\logic\oopdefs">
-      <UniqueIdentifier>{802fad09-80e2-4684-80cf-b3145bd3809c}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="CServer.cpp">
@@ -720,6 +714,9 @@
     <ClCompile Include="logic\lua\CLuaCFunctions.cpp">
       <Filter>Source Files\logic\lua</Filter>
     </ClCompile>
+    <ClCompile Include="logic\lua\CLuaFunctionDefinitions.cpp">
+      <Filter>Source Files\logic\lua</Filter>
+    </ClCompile>
     <ClCompile Include="logic\lua\CLuaFunctionParseHelpers.cpp">
       <Filter>Source Files\logic\lua</Filter>
     </ClCompile>
@@ -882,129 +879,6 @@
     <ClCompile Include="..\..\..\Shared\animation\CPositionRotationAnimation.cpp">
       <Filter>Source Files\shared\animation</Filter>
     </ClCompile>
-    <ClCompile Include="logic\lua\CLuaMatrix.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\oopdefs\CLuaOOPFunctionDefs.Camera.cpp">
-      <Filter>Source Files\logic\oopdefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\oopdefs\CLuaOOPFunctionDefs.Element.cpp">
-      <Filter>Source Files\logic\oopdefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\oopdefs\CLuaOOPFunctionDefs.Ped.cpp">
-      <Filter>Source Files\logic\oopdefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\luadefs\CLuaMatrixDefs.cpp">
-      <Filter>Source Files\logic\luadefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaVector2.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaVector3.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaVector4.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\luadefs\CLuaVector3Defs.cpp">
-      <Filter>Source Files\logic\luadefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\luadefs\CLuaVector4Defs.cpp">
-      <Filter>Source Files\logic\luadefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\luadefs\CLuaVector2Defs.cpp">
-      <Filter>Source Files\logic\luadefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\CPerfStat.PlayerPacketUsage.cpp">
-      <Filter>Source Files\logic</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\oopdefs\CLuaOOPFunctionDefs.Player.cpp">
-      <Filter>Source Files\logic\oopdefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\oopdefs\CLuaOOPFunctionDefs.Marker.cpp">
-      <Filter>Source Files\logic\oopdefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\oopdefs\CLuaOOPFunctionDefs.Connection.cpp">
-      <Filter>Source Files\logic\oopdefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\oopdefs\CLuaOOPFunctionDefs.ACL.cpp">
-      <Filter>Source Files\logic\oopdefs</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Marker.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Database.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Account.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Event.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Player.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Team.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Server.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Weapon.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Ped.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Vehicle.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Blip.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Object.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.RadarArea.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Water.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.ColShape.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.UTF.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Utility.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Ban.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Crypt.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.PREG.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Timer.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Clothing.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\CLuaFunctionDefs.Misc.cpp">
-      <Filter>Source Files\logic\lua</Filter>
-    </ClCompile>
-    <ClCompile Include="logic\lua\oopdefs\CLuaOOPFunctionDefs.RadarArea.cpp">
-      <Filter>Source Files\logic\oopdefs</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="logic\CLightsyncManager.h">
@@ -1026,6 +900,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="gccHashSupport.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Server.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="StdInc.h">
@@ -1658,6 +1535,9 @@
     <ClInclude Include="logic\lua\CLuaCFunctions.h">
       <Filter>Header Files\logic\lua</Filter>
     </ClInclude>
+    <ClInclude Include="logic\lua\CLuaFunctionDefinitions.h">
+      <Filter>Header Files\logic\lua</Filter>
+    </ClInclude>
     <ClInclude Include="logic\lua\CLuaFunctionParseHelpers.h">
       <Filter>Header Files\logic\lua</Filter>
     </ClInclude>
@@ -1837,33 +1717,6 @@
     </ClInclude>
     <ClInclude Include="..\..\..\Shared\animation\TInterpolation.h">
       <Filter>Header Files\shared\animation</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\lua\oopdefs\CLuaOOPDefs.h">
-      <Filter>Header Files\logic\oopdefs</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\luadefs\CLuaMatrixDefs.h">
-      <Filter>Header Files\logic\luadefs</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\lua\CLuaVector2.h">
-      <Filter>Header Files\logic\lua</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\lua\CLuaVector3.h">
-      <Filter>Header Files\logic\lua</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\lua\CLuaVector4.h">
-      <Filter>Header Files\logic\lua</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\luadefs\CLuaVector3Defs.h">
-      <Filter>Header Files\logic\luadefs</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\luadefs\CLuaVector4Defs.h">
-      <Filter>Header Files\logic\luadefs</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\luadefs\CLuaVector2Defs.h">
-      <Filter>Header Files\logic\luadefs</Filter>
-    </ClInclude>
-    <ClInclude Include="logic\lua\CLuaFunctionDefs.h">
-      <Filter>Header Files\logic\lua</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

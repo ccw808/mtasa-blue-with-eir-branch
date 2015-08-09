@@ -23,7 +23,7 @@ int CLuaFunctionDefs::EngineLoadCOL ( lua_State* luaVM )
 {
     SString strFile = "";
     CScriptArgReader argStream ( luaVM );
-    // Grab the COL filename or data
+    // Grab the COL filename
     argStream.ReadString ( strFile );
 
     if ( !argStream.HasErrors ( ) )
@@ -36,10 +36,10 @@ int CLuaFunctionDefs::EngineLoadCOL ( lua_State* luaVM )
             CResource* pResource = pLuaMain->GetResource ();
             if ( pResource )
             {
-                bool bIsRawData = CClientColModel::IsCOLData( strFile );
+                
                 SString strPath;
                 // Is this a legal filepath?
-                if ( bIsRawData || CResourceManager::ParseResourcePathInput( strFile, pResource, strPath ) )
+                if ( CResourceManager::ParseResourcePathInput( strFile, pResource, strPath ) )
                 {
                     // Grab the resource root entity
                     CClientEntity* pRoot = pResource->GetResourceCOLModelRoot ();
@@ -48,7 +48,7 @@ int CLuaFunctionDefs::EngineLoadCOL ( lua_State* luaVM )
                     CClientColModel* pCol = new CClientColModel ( m_pManager, INVALID_ELEMENT_ID );
 
                     // Attempt loading the file
-                    if ( pCol->LoadCol ( bIsRawData ? strFile : strPath, bIsRawData ) )
+                    if ( pCol->LoadCol ( strPath ) )
                     {
                         // Success. Make it a child of the resource collision root
                         pCol->SetParent ( pRoot );
@@ -61,11 +61,11 @@ int CLuaFunctionDefs::EngineLoadCOL ( lua_State* luaVM )
                     {
                         // Delete it again. We failed
                         delete pCol;
-                        argStream.SetCustomError( bIsRawData ? "raw data" : strFile, "Error loading COL" );
+                        argStream.SetCustomError( strFile, "Error loading COL" );
                     }
                 }
                 else
-                    argStream.SetCustomError( bIsRawData ? "raw data" : strFile, "Bad file path" );
+                    argStream.SetCustomError( strFile, "Bad file path" );
             }
         }
     }
@@ -81,9 +81,13 @@ int CLuaFunctionDefs::EngineLoadCOL ( lua_State* luaVM )
 int CLuaFunctionDefs::EngineLoadDFF ( lua_State* luaVM )
 {
     SString strFile = "";
+    int modelIndex;
+    bool usePersistent;
     CScriptArgReader argStream ( luaVM );
-    // Grab the DFF filename or data (model ID ignored after 1.3.1)
+
     argStream.ReadString ( strFile );
+    argStream.ReadNumber ( modelIndex, 0 );
+    argStream.ReadBool ( usePersistent, false );
 
     if ( !argStream.HasErrors ( ) )
     {
@@ -95,19 +99,18 @@ int CLuaFunctionDefs::EngineLoadDFF ( lua_State* luaVM )
             CResource* pResource = pLuaMain->GetResource ();
             if ( pResource )
             {
-                bool bIsRawData = CClientDFF::IsDFFData( strFile );
                 SString strPath;
                 // Is this a legal filepath?
-                if ( bIsRawData || CResourceManager::ParseResourcePathInput( strFile, pResource, strPath ) )
+                if ( CResourceManager::ParseResourcePathInput( strFile, pResource, strPath ) )
                 {
                     // Grab the resource root entity
                     CClientEntity* pRoot = pResource->GetResourceDFFRoot ();
 
                     // Create a DFF element
-                    CClientDFF* pDFF = new CClientDFF ( m_pManager, INVALID_ELEMENT_ID );
+                    CClientDFF* pDFF = new CClientDFF ( m_pManager, INVALID_ELEMENT_ID, usePersistent );
 
                     // Try to load the DFF file
-                    if ( pDFF->LoadDFF ( bIsRawData ? strFile : strPath, bIsRawData ) )
+                    if ( pDFF->LoadDFF ( strPath, modelIndex ) )
                     {
                         // Success loading the file. Set parent to DFF root
                         pDFF->SetParent ( pRoot );
@@ -120,11 +123,11 @@ int CLuaFunctionDefs::EngineLoadDFF ( lua_State* luaVM )
                     {
                         // Delete it again
                         delete pDFF;
-                        argStream.SetCustomError( bIsRawData ? "raw data" : strFile, "Error loading DFF" );
+                        argStream.SetCustomError( strFile, "Error loading DFF" );
                     }
                 }
                 else
-                    argStream.SetCustomError( bIsRawData ? "raw data" : strFile, "Bad file path" );
+                    argStream.SetCustomError( strFile, "Bad file path" );
             }
         }
     }
@@ -142,7 +145,7 @@ int CLuaFunctionDefs::EngineLoadTXD ( lua_State* luaVM )
     SString strFile = "";
     bool bFilteringEnabled = true;
     CScriptArgReader argStream ( luaVM );
-    // Grab the TXD filename or data
+    // Grab the TXD filename
     argStream.ReadString ( strFile );
     if ( argStream.NextIsBool() )   // Some scripts have a number here (in error)
         argStream.ReadBool ( bFilteringEnabled, true );
@@ -157,10 +160,9 @@ int CLuaFunctionDefs::EngineLoadTXD ( lua_State* luaVM )
             CResource* pResource = pLuaMain->GetResource ();
             if ( pResource )
             {
-                bool bIsRawData = CClientTXD::IsTXDData( strFile );
                 SString strPath;
                 // Is this a legal filepath?
-                if ( bIsRawData || CResourceManager::ParseResourcePathInput( strFile, pResource, strPath ) )
+                if ( CResourceManager::ParseResourcePathInput( strFile, pResource, strPath ) )
                 {
                     // Grab the resource root entity
                     CClientEntity* pRoot = pResource->GetResourceTXDRoot ();
@@ -169,7 +171,7 @@ int CLuaFunctionDefs::EngineLoadTXD ( lua_State* luaVM )
                     CClientTXD* pTXD = new CClientTXD ( m_pManager, INVALID_ELEMENT_ID );
 
                     // Try to load the TXD file
-                    if ( pTXD->LoadTXD ( bIsRawData ? strFile : strPath, bFilteringEnabled, bIsRawData ) )
+                    if ( pTXD->LoadTXD ( strPath, bFilteringEnabled ) )
                     {
                         // Success loading the file. Set parent to TXD root
                         pTXD->SetParent ( pRoot );
@@ -182,15 +184,15 @@ int CLuaFunctionDefs::EngineLoadTXD ( lua_State* luaVM )
                     {
                         // Delete it again
                         delete pTXD;
-                        argStream.SetCustomError( bIsRawData ? "raw data" : strFile, "Error loading TXD" );
+                        m_pScriptDebugging->LogCustom ( luaVM, SString ( "Load error @ '%s' [Unable to load '%s']", "engineLoadTXD", *strFile ) );
                     }
                 }
                 else
-                    argStream.SetCustomError( bIsRawData ? "raw data" : strFile, "Bad file path" );
+                    m_pScriptDebugging->LogBadPointer ( luaVM, "string", 1 );
             }
         }
     }
-    if ( argStream.HasErrors() )
+    else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
 
     // We failed
@@ -728,5 +730,377 @@ int CLuaFunctionDefs::EngineGetVisibleTextureNames ( lua_State* luaVM )
 
     // We failed
     lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+
+int CLuaFunctionDefs::EngineIsModelBeingUsed ( lua_State *luaVM )
+{
+    // bool engineIsModelBeingUsed ( int modelIndex )
+    // Returns whether MTA uses the model denoted by modelIndex.
+    int modelIndex;
+
+    CScriptArgReader argStream( luaVM );
+    argStream.ReadNumber( modelIndex );
+
+    if ( !argStream.HasErrors() )
+    {
+        CModelInfo *modelInfo = g_pGame->GetModelInfo ( modelIndex );
+
+        if ( modelInfo )
+        {
+            // If the reference count is greater than zero, we use that model.
+            bool isUsed = ( modelInfo->GetRefCount() > 0 );
+
+            lua_pushboolean( luaVM, isUsed );
+            return 1;
+        }
+    }
+    else
+        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+
+    // We failed
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+
+// Debug function, not intended for use in scripts.
+int CLuaFunctionDefs::DiagnoseEntity( lua_State *luaVM )
+{
+    CClientEntity *entity = NULL;
+
+    CScriptArgReader argStream( luaVM );
+    argStream.ReadUserData( entity );
+
+    if ( !argStream.HasErrors() )
+    {
+        // Call a game_sa diagnosis function (if possible).
+        CEntity *theEntity = entity->GetGameEntity();
+
+        if ( theEntity )
+        {
+            g_pGame->DiagnoseEntity( theEntity );
+
+            lua_pushboolean( luaVM, true );
+            return 1;
+        }
+    }
+    else
+        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+
+    // We failed
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+
+int CLuaFunctionDefs::EngineStreamingSetProperty( lua_State *luaVM )
+{
+    // bool engineStreamingSetProperty ( string propName, var value )
+    // https://wiki.multitheftauto.com/wiki/MTA:Eir/functions/engineStreamingSetProperty
+    SString propertyName;
+
+    CScriptArgReader argStream( luaVM );
+    argStream.ReadString( propertyName );
+
+    if ( !argStream.HasErrors() )
+    {
+        if ( propertyName == "strictNodeDistrib" )
+        {
+            bool enabled;
+            argStream.ReadBool( enabled );
+
+            if ( !argStream.HasErrors() )
+            {
+                g_pGame->GetStreaming()->SetStrictNodeDistribution( enabled );
+            }
+        }
+        else if ( propertyName == "infiniteStreaming" )
+        {
+            bool enabled;
+            argStream.ReadBool( enabled );
+
+            if ( !argStream.HasErrors() )
+            {
+                g_pGame->GetStreaming()->SetInfiniteStreamingEnabled( enabled );
+            }
+        }
+        else if ( propertyName == "gcOnDemand" )
+        {
+            bool enabled;
+            argStream.ReadBool( enabled );
+
+            if ( !argStream.HasErrors() )
+            {
+                g_pGame->GetStreaming()->SetGarbageCollectOnDemand( enabled );
+            }
+        }
+        else if ( propertyName == "nodeStealing" )
+        {
+            bool enabled;
+            argStream.ReadBool( enabled );
+
+            if ( !argStream.HasErrors() )
+            {
+                g_pGame->GetStreaming()->SetStreamingNodeStealingAllowed( enabled );
+            }
+        }
+        else if ( propertyName == "isFibered" )
+        {
+            bool enabled;
+            argStream.ReadBool( enabled );
+
+            if ( !argStream.HasErrors() )
+            {
+                g_pGame->GetStreaming()->EnableFiberedLoading( enabled );
+            }
+        }
+        else if ( propertyName == "fiberedPerfMult" )
+        {
+            double perfMult;
+            argStream.ReadNumber( perfMult );
+
+            if ( !argStream.HasErrors() )
+            {
+                g_pGame->GetStreaming()->SetFiberedPerfMultiplier( perfMult );
+            }
+        }
+        else
+            argStream.SetCustomError( "invalid property name" );
+    }
+    
+    // Output error message if not successful.
+    bool successful = ( argStream.HasErrors() == false );
+
+    if ( !successful )
+    {
+        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+    }
+
+    // We failed
+    lua_pushboolean ( luaVM, successful );
+    return 1;
+}
+
+
+int CLuaFunctionDefs::EngineStreamingGetProperty( lua_State *luaVM )
+{
+    // var engineStreamingGetProperty ( string propName )
+    // https://wiki.multitheftauto.com/wiki/MTA:Eir/functions/engineStreamingGetProperty
+    SString propertyName;
+
+    CScriptArgReader argStream( luaVM );
+    argStream.ReadString( propertyName );
+
+    if ( !argStream.HasErrors() )
+    {
+        if ( propertyName == "strictNodeDistrib" )
+        {
+            lua_pushboolean( luaVM,
+                g_pGame->GetStreaming()->IsStrictNodeDistributionEnabled()
+            );
+            return 1;
+        }
+        else if ( propertyName == "infiniteStreaming" )
+        {
+            lua_pushboolean( luaVM,
+                g_pGame->GetStreaming()->IsInfiniteStreamingEnabled()
+            );
+            return 1;
+        }
+        else if ( propertyName == "gcOnDemand" )
+        {
+            lua_pushboolean( luaVM,
+                g_pGame->GetStreaming()->IsGarbageCollectOnDemandEnabled()
+            );
+            return 1;
+        }
+        else if ( propertyName == "nodeStealing" )
+        {
+            lua_pushboolean( luaVM,
+                g_pGame->GetStreaming()->IsStreamingNodeStealingAllowed()
+            );
+            return 1;
+        }
+        else if ( propertyName == "isFibered" )
+        {
+            lua_pushboolean( luaVM,
+                g_pGame->GetStreaming()->IsFiberedLoadingEnabled()
+            );
+            return 1;
+        }
+        else if ( propertyName == "fiberedPerfMult" )
+        {
+            lua_pushnumber( luaVM,
+                g_pGame->GetStreaming()->GetFiberedPerfMultiplier()
+            );
+            return 1;
+        }
+        else
+            argStream.SetCustomError( "invalid property name" );
+    }
+    
+    if ( argStream.HasErrors() )
+    {
+        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage() );
+    }
+
+    // We failed
+    lua_pushboolean ( luaVM, false );
+    return 1;
+}
+
+
+int CLuaFunctionDefs::EngineGetActiveStreamingEntityCount( lua_State *luaVM )
+{
+    // int engineGetActiveStreamingEntityCount ()
+    // https://wiki.multitheftauto.com/wiki/MTA:Eir/functions/engineGetActiveStreamingEntityCount
+    lua_pushnumber( luaVM, g_pGame->GetStreaming()->GetActiveStreamingEntityCount() );
+    return 1;
+}
+
+
+int CLuaFunctionDefs::EngineGetActiveStreamingFreeSlotCount( lua_State *luaVM )
+{
+    // int engineGetActiveStreamingFreeSlotCount ()
+    // https://wiki.multitheftauto.com/wiki/MTA:Eir/functions/engineGetActiveStreamingFreeSlotCount
+    lua_pushnumber( luaVM, g_pGame->GetStreaming()->GetFreeStreamingEntitySlotCount());
+    return 1;
+}
+
+inline void CreateLuaTableOfEntityList( lua_State *L, CStreaming::entityList_t& list )
+{
+    lua_newtable( L );
+    
+    unsigned int n = 0;
+
+    for ( CStreaming::entityList_t::iterator iter = list.begin(); iter != list.end(); ++iter )
+    {
+        CEntity *gameEntity = *iter;
+
+        if ( CClientEntity *clientEntity = g_pClientGame->GetManager()->FindEntity( gameEntity ) )
+        {
+            lua_pushelement( L, clientEntity );
+            lua_rawseti( L, -2, ++n );
+        }
+    }
+}
+
+
+int CLuaFunctionDefs::EngineGetActiveStreamingEntities( lua_State *luaVM )
+{
+    // table engineGetActiveStreamingEntities ()
+    // https://wiki.multitheftauto.com/wiki/MTA:Eir/functions/engineGetActiveStreamingEntities
+    CreateLuaTableOfEntityList( luaVM, g_pGame->GetStreaming()->GetActiveStreamingEntities() );
+    return 1;
+}
+
+
+int CLuaFunctionDefs::EngineGetGamePoolLimits( lua_State *luaVM )
+{
+    // dict engineGetGamePoolLimits ()
+    // https://wiki.multitheftauto.com/wiki/MTA:Eir/functions/engineGetGamePoolLimits
+    lua_newtable( luaVM );
+
+    CPools *pools = g_pGame->GetPools();
+
+    for ( unsigned int n = 0; n < MAX_POOLS; n++ )
+    {
+        lua_newtable( luaVM );
+
+        lua_pushstring( luaVM, pools->GetPoolName( (ePools)n ) );
+        lua_setfield( luaVM, -2, "name" );
+
+        lua_pushnumber( luaVM, pools->GetNumberOfUsedSpaces( (ePools)n ) );
+        lua_setfield( luaVM, -2, "usedCount" );
+
+        lua_pushnumber( luaVM, pools->GetPoolCapacity( (ePools)n ) );
+        lua_setfield( luaVM, -2, "maxCount" );
+
+        lua_rawseti( luaVM, -2, n + 1 );
+    }
+
+    return 1;
+}
+
+
+int CLuaFunctionDefs::EngineGetStreamingInfo( lua_State *luaVM )
+{
+    // dict engineGetStreamingInfo ()
+    // https://wiki.multitheftauto.com/wiki/MTA:Eir/functions/engineGetStreamingInfo
+    lua_newtable( luaVM );
+
+    CStreaming::streamingInfo info;
+
+    g_pGame->GetStreaming()->GetStreamingInfo( info );
+
+    lua_pushnumber( luaVM, info.usedMemory );
+    lua_setfield( luaVM, -2, "usedMemory" );
+
+    lua_pushnumber( luaVM, info.maxMemory );
+    lua_setfield( luaVM, -2, "maxMemory" );
+
+    lua_pushnumber( luaVM, info.numberOfRequests );
+    lua_setfield( luaVM, -2, "numberOfRequests" );
+
+    lua_pushnumber( luaVM, info.numberOfPriorityRequests );
+    lua_setfield( luaVM, -2, "numberOfPriorityRequests" );
+
+    lua_pushnumber( luaVM, info.numberOfSlicers );
+    lua_setfield( luaVM, -2, "numberOfSlicers" );
+
+    lua_pushnumber( luaVM, info.numberOfRequestsPerSlicer );
+    lua_setfield( luaVM, -2, "numberOfRequestsPerSlicer" );
+
+    lua_pushnumber( luaVM, info.activeStreamingThread );
+    lua_setfield( luaVM, -2, "activeStreamingThread" );
+
+    lua_pushboolean( luaVM, info.isBusy );
+    lua_setfield( luaVM, -2, "isBusy" );
+
+    lua_pushboolean( luaVM, info.isLoadingBigModel );
+    lua_setfield( luaVM, -2, "isLoadingBigModel" );
+
+    return 1;
+}
+
+
+DECLARE_ENUM( eWorldRenderMode );
+
+IMPLEMENT_ENUM_BEGIN( eWorldRenderMode )
+    ADD_ENUM( WORLD_RENDER_ORIGINAL,            "original" )
+    ADD_ENUM( WORLD_RENDER_MESHLOCAL_ALPHAFIX,  "meshlocal_alphafix" )
+    ADD_ENUM( WORLD_RENDER_SCENE_ALPHAFIX,      "scene_alphafix" )
+IMPLEMENT_ENUM_END( "world-render-mode" )
+
+int CLuaFunctionDefs::EngineSetWorldRenderMode ( lua_State *L )
+{
+    eWorldRenderMode renderMode;
+
+    CScriptArgReader argStream( L );
+    argStream.ReadEnumString( renderMode );
+
+    if ( !argStream.HasErrors() )
+    {
+        g_pGame->GetRenderWare()->SetWorldRenderMode( renderMode );
+
+        lua_pushboolean( L, true );
+        return 1;
+    }
+    else
+        m_pScriptDebugging->LogCustom ( L, argStream.GetFullErrorMessage() );
+
+    lua_pushboolean( L, false );
+    return 1;
+}
+
+int CLuaFunctionDefs::EngineGetWorldRenderMode ( lua_State *L )
+{
+    eWorldRenderMode renderMode = g_pGame->GetRenderWare()->GetWorldRenderMode();
+
+    SString modeString = EnumToString( renderMode );
+
+    lua_pushlstring( L, modeString.c_str(), modeString.size() );
     return 1;
 }

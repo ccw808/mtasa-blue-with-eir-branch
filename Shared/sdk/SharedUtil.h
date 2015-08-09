@@ -43,6 +43,16 @@ typedef float               FLOAT;      //  32
 // a) long (and therefore DWORD) is 64 bits when compiled using 64 bit GCC 
 // b) char range can be -127 to 128 or 0 to 255 depending on compiler options/mood
 
+#ifndef AINLINE
+#ifdef _MSC_VER
+#define AINLINE __forceinline
+#elif __linux__
+#define AINLINE __attribute__((always_inline))
+#else
+#define AINLINE
+#endif
+#endif
+
 
 #include <assert.h>
 #include "SharedUtil.Defines.h"

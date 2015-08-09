@@ -12,7 +12,6 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#include "CBassAudio.h"
 
 using SharedUtil::CalcMTASAPath;
 using std::list;
@@ -37,9 +36,7 @@ CClientSoundManager::CClientSoundManager ( CClientManager* pClientManager )
     if (!BASS_PluginLoad ( "bass_aac.dll", 0 ) && BASS_ErrorGetCode () != BASS_ERROR_ALREADY)
         g_pCore->GetConsole()->Printf ( "BASS ERROR %d in PluginLoad AAC", BASS_ErrorGetCode() );
     if (!BASS_PluginLoad ( "bass_ac3.dll", 0 ) && BASS_ErrorGetCode () != BASS_ERROR_ALREADY)
-        g_pCore->GetConsole ( )->Printf ( "BASS ERROR %d in PluginLoad AC3", BASS_ErrorGetCode ( ) );
-    if ( !BASS_PluginLoad ( "bassopus.dll", 0 ) && BASS_ErrorGetCode ( ) != BASS_ERROR_ALREADY )
-        g_pCore->GetConsole ( )->Printf ( "BASS ERROR %d in PluginLoad OPUS", BASS_ErrorGetCode ( ) );
+        g_pCore->GetConsole()->Printf ( "BASS ERROR %d in PluginLoad AC3", BASS_ErrorGetCode() );
 
     BASS_SetConfig ( BASS_CONFIG_NET_PREBUF, 0 );
     BASS_SetConfig ( BASS_CONFIG_NET_PLAYLIST, 1 ); // Allow playlists
@@ -68,7 +65,6 @@ CClientSoundManager::CClientSoundManager ( CClientManager* pClientManager )
 
 CClientSoundManager::~CClientSoundManager ( void )
 {
-    ProcessStopQueues( true );
     BASS_Stop();
     BASS_Free();
 }
@@ -118,8 +114,7 @@ void CClientSoundManager::DoPulse ( void )
             g_pClientGame->GetElementDeleter()->Delete ( pSound );
         }
     }
-    UpdateDistanceStreaming ( vecCameraPosition );
-    ProcessStopQueues();
+    UpdateDistanceStreaming ( vecPosition );
 }
 
 void CClientSoundManager::SetDimension ( unsigned short usDimension )
@@ -192,22 +187,14 @@ CClientSound* CClientSoundManager::PlaySound3D ( void* pMemory, unsigned int uiL
 
 CClientSound* CClientSoundManager::PlayGTASFX ( eAudioLookupIndex containerIndex, int iBankIndex, int iAudioIndex, bool bLoop )
 {
+    if ( !GetSFXStatus ( containerIndex ) )
+        return NULL;
+
     void* pAudioData;
     unsigned int uiAudioLength;
 
-    if (containerIndex == AUDIO_LOOKUP_RADIO)
-    {
-        if (!g_pGame->GetAudioContainer()->GetRadioAudioData((eRadioStreamIndex) iBankIndex, iAudioIndex, pAudioData, uiAudioLength))
-            return NULL;
-    }
-    else
-    {
-        if (!GetSFXStatus(containerIndex))
-            return NULL;
-
-        if (!g_pGame->GetAudioContainer()->GetAudioData(containerIndex, iBankIndex, iAudioIndex, pAudioData, uiAudioLength))
-            return NULL;
-    }
+    if ( !g_pGame->GetAudioContainer ()->GetAudioData ( containerIndex, iBankIndex, iAudioIndex, pAudioData, uiAudioLength ) )
+        return NULL;
 
     CClientSound* pSound = PlaySound2D ( pAudioData, uiAudioLength, bLoop );
     if ( pSound )
@@ -220,22 +207,14 @@ CClientSound* CClientSoundManager::PlayGTASFX ( eAudioLookupIndex containerIndex
 
 CClientSound* CClientSoundManager::PlayGTASFX3D ( eAudioLookupIndex containerIndex, int iBankIndex, int iAudioIndex, const CVector& vecPosition, bool bLoop )
 {
+    if ( !GetSFXStatus ( containerIndex ) )
+        return NULL;
+
     void* pAudioData;
     unsigned int uiAudioLength;
 
-    if (containerIndex == AUDIO_LOOKUP_RADIO)
-    {
-        if (!g_pGame->GetAudioContainer()->GetRadioAudioData((eRadioStreamIndex) iBankIndex, iAudioIndex, pAudioData, uiAudioLength))
-            return NULL;
-    }
-    else
-    {
-        if (!GetSFXStatus(containerIndex))
-            return NULL;
-
-        if (!g_pGame->GetAudioContainer()->GetAudioData(containerIndex, iBankIndex, iAudioIndex, pAudioData, uiAudioLength))
-            return NULL;
-    }
+    if ( !g_pGame->GetAudioContainer ()->GetAudioData ( containerIndex, iBankIndex, iAudioIndex, pAudioData, uiAudioLength ) )
+        return NULL;
 
     CClientSound* pSound = PlaySound3D ( pAudioData, uiAudioLength, vecPosition, bLoop );
     if ( pSound )
@@ -368,57 +347,5 @@ void CClientSoundManager::UpdateDistanceStreaming ( const CVector& vecListenerPo
         else
         if ( fDistance < 20 )
             pSound->DistanceStreamIn ();
-    }
-}
-
-
-//
-// Add a BASS sound to be stopped
-//
-void CClientSoundManager::QueueChannelStop( DWORD pSound )
-{
-    // Always not main thread
-    dassert( !IsMainThread() );
-    m_CS.Lock ();
-    m_ChannelStopQueue.push_back( pSound );
-    m_CS.Unlock ();
-}
-
-//
-// Add a CBassAudio to be stopped
-//
-void CClientSoundManager::QueueAudioStop( CBassAudio* pAudio )
-{
-    // Always main thread
-    dassert( IsMainThread() );
-    MapSet( m_AudioStopQueue, pAudio, CElapsedTime() );
-}
-
-//
-// Process pending sounds to be stopped
-//
-void CClientSoundManager::ProcessStopQueues( bool bFlush )
-{
-    if ( !m_ChannelStopQueue.empty() )
-    {
-        m_CS.Lock ();
-        std::vector < DWORD > channelStopList = m_ChannelStopQueue;
-        m_ChannelStopQueue.clear();
-        m_CS.Unlock ();
-        for( unsigned int i = 0 ; i < channelStopList.size() ; i++ )
-        {
-            BASS_ChannelStop( channelStopList[i] );
-        }
-    }
-
-    for( std::map < CBassAudio*, CElapsedTime >::iterator iter = m_AudioStopQueue.begin() ; iter != m_AudioStopQueue.end() ; )
-    {
-        if ( iter->second.Get() > 100 || bFlush )
-        {
-            delete iter->first; // This will cause BASS_ChannelStop
-            m_AudioStopQueue.erase( iter++ );
-        }
-        else
-            ++iter;
     }
 }

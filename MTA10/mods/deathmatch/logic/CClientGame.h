@@ -74,7 +74,6 @@ struct SMiscGameSettings
 {
     bool bUseAltPulseOrder;
     bool bAllowFastSprintFix;
-    bool bAllowBadDrivebyHitboxFix;
 };
 
 class CClientGame
@@ -124,7 +123,6 @@ public:
         SCRIPTFILE,
         WATER,
         WEAPON,
-        POINTLIGHTS,
         UNKNOWN,
     };
 
@@ -192,7 +190,6 @@ public:
         GLITCH_CLOSEDAMAGE,
         GLITCH_HITANIM,
         GLITCH_FASTSPRINT,
-        GLITCH_BADDRIVEBYHITBOX,
         NUM_GLITCHES
     };
     class CStoredWeaponSlot
@@ -373,7 +370,7 @@ public:
     void                                SetGameSpeed                    ( float fSpeed );
     void                                SetMinuteDuration               ( unsigned long ulDelay );
     inline long                         GetMoney                        ( void )                        { return m_lMoney; }
-    void                                SetMoney                        ( long lMoney, bool bInstant = false );
+    void                                SetMoney                        ( long lMoney );
     void                                SetWanted                       ( DWORD dwWanted );
 
     void                                ResetAmmoInClip                 ( void );
@@ -434,8 +431,6 @@ public:
     void                                ChangeFloatPrecision            ( bool bHigh );
     bool                                IsHighFloatPrecision            ( void ) const;
 
-    bool                                TriggerBrowserRequestResultEvent( const std::vector<SString>& newPages );
-
 private:
 
     // CGUI Callbacks
@@ -486,6 +481,7 @@ private:
     void                                QuitPlayer                      ( CClientPlayer* pPlayer, eQuitReason Reason );
 
     void                                Event_OnIngame                  ( void );
+    void                                Event_OnIngameAndReady          ( void );
     void                                Event_OnIngameAndConnected      ( void );
 
     static bool                         StaticDamageHandler             ( CPed* pDamagePed, CEventDamage * pEvent );
@@ -508,18 +504,16 @@ private:
     static bool                         StaticHeliKillHandler           ( CVehicleSAInterface* pHeli, CEntitySAInterface* pHitInterface );
     static bool                         StaticObjectDamageHandler       ( CObjectSAInterface* pObjectInterface, float fLoss, CEntitySAInterface* pAttackerInterface );
     static bool                         StaticObjectBreakHandler        ( CObjectSAInterface* pObjectInterface, CEntitySAInterface* pAttackerInterface );
-    static bool                         StaticWaterCannonHandler ( CVehicleSAInterface* pCannonVehicle, CPedSAInterface* pHitPed );
-    static bool                         StaticVehicleFellThroughMapHandler  ( CVehicleSAInterface* pVehicle );
+    static bool                         StaticWaterCannonHandler        ( CVehicleSAInterface* pCannonVehicle, CPedSAInterface* pHitPed );
     static void                         StaticGameObjectDestructHandler     ( CEntitySAInterface* pObject );
     static void                         StaticGameVehicleDestructHandler    ( CEntitySAInterface* pVehicle );
     static void                         StaticGamePlayerDestructHandler     ( CEntitySAInterface* pPlayer );
     static void                         StaticGameProjectileDestructHandler ( CEntitySAInterface* pProjectile );
-    static void                         StaticGameModelRemoveHandler        ( ushort usModelId );
+    static void                         StaticGameModelRemoveHandler        ( modelId_t uiModelIndex );
     static void                         StaticWorldSoundHandler         ( uint uiGroup, uint uiIndex );
     static void                         StaticGameEntityRenderHandler   ( CEntitySAInterface* pEntity );
     static void                         StaticTaskSimpleBeHitHandler    ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
     static void                         StaticFxSystemDestructionHandler ( void * pFxSAInterface );
-    static AnimationId                  StaticDrivebyAnimationHandler   ( AnimationId animGroup, AssocGroupId animId );
 
     bool                                DamageHandler                   ( CPed* pDamagePed, CEventDamage * pEvent );
     void                                DeathHandler                    ( CPed* pKilledPed, unsigned char ucDeathReason, unsigned char ucBodyPart );
@@ -540,7 +534,6 @@ private:
     bool                                ObjectDamageHandler             ( CObjectSAInterface* pObjectInterface, float fLoss, CEntitySAInterface* pAttackerInterface );
     bool                                ObjectBreakHandler              ( CObjectSAInterface* pObjectInterface, CEntitySAInterface* pAttackerInterface );
     bool                                WaterCannonHitHandler           ( CVehicleSAInterface* pCannonVehicle, CPedSAInterface* pHitPed );
-    bool                                VehicleFellThroughMapHandler    ( CVehicleSAInterface* pVehicle );
     void                                GameObjectDestructHandler       ( CEntitySAInterface* pObject );
     void                                GameVehicleDestructHandler      ( CEntitySAInterface* pVehicle );
     void                                GamePlayerDestructHandler       ( CEntitySAInterface* pPlayer );
@@ -548,7 +541,6 @@ private:
     void                                GameModelRemoveHandler          ( ushort usModelId );
     void                                WorldSoundHandler               ( uint uiGroup, uint uiIndex );
     void                                TaskSimpleBeHitHandler          ( CPedSAInterface* pPedAttacker, ePedPieceTypes hitBodyPart, int hitBodySide, int weaponId );
-    AnimationId                         DrivebyAnimationHandler         ( AnimationId animGroup, AssocGroupId animId );
 
     static bool                         StaticProcessMessage            ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
     bool                                ProcessMessage                  ( HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam );
@@ -580,8 +572,6 @@ public:
     void                                SetMiscGameSettings             ( const SMiscGameSettings& settings )       { m_MiscGameSettings = settings; }
     const SMiscGameSettings&            GetMiscGameSettings             ( void )                                    { return m_MiscGameSettings; }
     bool                                IsUsingAlternatePulseOrder      ( bool bAdvanceDelayCounter = false );
-    void                                SetFileCacheRoot                ( void );
-    const char*                         GetFileCacheRoot                ( void )                                    { return m_strFileCacheRoot; }
 
 private:
     eStatus                             m_Status;
@@ -611,7 +601,6 @@ private:
     CClientPathManager*                 m_pPathManager;
     CClientTeamManager*                 m_pTeamManager;
     CClientPedManager*                  m_pPedManager;
-    CClientPointLightsManager*          m_pPointLightsManager;
     CClientProjectileManager*           m_pProjectileManager;
     CRPCFunctions*                      m_pRPCFunctions;
     CUnoccupiedVehicleSync*             m_pUnoccupiedVehicleSync;
@@ -794,7 +783,6 @@ private:
     bool                                m_bLastKeyWasEscapeCancelled;
     std::set < SString >                m_AllowKeyUpMap;
     uint                                m_uiPrecisionCallDepth;
-    SString                             m_strFileCacheRoot;
 };
 
 extern CClientGame* g_pClientGame;

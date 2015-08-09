@@ -33,10 +33,6 @@ public:
     std::map<SString,SString>   GetAvailableLanguages       ( void );
     bool                        IsLocalized                 ( void );
     SString                     GetLanguageDirectory        ( void );
-    SString                     GetLanguageCode             ( void );
-    SString                     GetLanguageName             ( void );
-
-    static void                 LogCallback                 ( const std::string& str );
 
 private:
     Dictionary                  m_CurrentDict; 

@@ -233,17 +233,6 @@ int CLuaFunctionDefs::GetPedTotalAmmo ( lua_State* luaVM )
                 lua_pushnumber ( luaVM, usAmmo );
                 return 1;
             }
-            else if ( pPed->m_usWeaponAmmo [ ucSlot ] )
-            {
-                // The ped musn't be streamed in, so we can get the stored value instead
-                ushort usAmmo = 1;
-                
-                if ( CWeaponNames::DoesSlotHaveAmmo ( ucSlot ) )
-                    usAmmo = pPed->m_usWeaponAmmo [ ucSlot ];
-                
-                lua_pushnumber ( luaVM, usAmmo );
-                return 1;
-            }
         }
         else
             m_pScriptDebugging->LogBadPointer ( luaVM, "ped", 1 );
@@ -944,40 +933,6 @@ int CLuaFunctionDefs::SetPedWeaponSlot ( lua_State* luaVM )
 }
 
 
-int CLuaFunctionDefs::GivePedWeapon ( lua_State* luaVM )
-{
-    // Verify the argument
-    CClientEntity* pEntity = NULL;
-    uchar ucWeaponType = 0;
-    ushort usAmmo = 0;
-    bool bSetAsCurrent = false;
-    CScriptArgReader argStream ( luaVM );
-    argStream.ReadUserData ( pEntity );
-    argStream.ReadNumber ( ucWeaponType );
-    argStream.ReadNumber ( usAmmo, 30 );
-    argStream.ReadBool ( bSetAsCurrent, false );
-
-    if ( !argStream.HasErrors ( ) )
-    {
-        if ( pEntity )
-        {
-            if ( CStaticFunctionDefinitions::GivePedWeapon ( *pEntity, ucWeaponType, usAmmo, bSetAsCurrent ) )
-            {
-                lua_pushboolean ( luaVM, true );
-                return 1;
-            }
-        }
-        else
-            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
-    }
-    else
-        m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
-
-    lua_pushboolean ( luaVM, false );
-    return 1;
-}
-
-
 int CLuaFunctionDefs::GetPedClothes ( lua_State* luaVM )
 {
     // Verify the argument
@@ -1642,7 +1597,9 @@ int CLuaFunctionDefs::SetPedLookAt ( lua_State* luaVM )
     CClientEntity * pTarget = NULL;
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
-    argStream.ReadVector3D ( vecPosition );
+    argStream.ReadNumber ( vecPosition.fX );
+    argStream.ReadNumber ( vecPosition.fY );
+    argStream.ReadNumber ( vecPosition.fZ );
     argStream.ReadNumber ( iTime, 3000 );
     if ( argStream.NextIsUserData ( ) )
     {
@@ -1797,7 +1754,9 @@ int CLuaFunctionDefs::SetPedAimTarget ( lua_State* luaVM )
     CVector vecTarget;
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
-    argStream.ReadVector3D ( vecTarget );
+    argStream.ReadNumber ( vecTarget.fX );
+    argStream.ReadNumber ( vecTarget.fY );
+    argStream.ReadNumber ( vecTarget.fZ );
 
     if ( !argStream.HasErrors ( ) )
     {
@@ -1932,9 +1891,11 @@ int CLuaFunctionDefs::SetPedAnimation ( lua_State* luaVM )
 
 int CLuaFunctionDefs::SetPedAnimationProgress( lua_State* luaVM )
 {
-//  bool setPedAnimationProgress ( ped thePed, string animName, float progress )
-    CClientEntity* pEntity; SString strAnimName; float fProgress;
-
+    // Verify the argument
+    CClientEntity* pEntity = NULL;
+    SString strBlockName = "";
+    SString strAnimName = "";
+    float fProgress = 0.0f;
     CScriptArgReader argStream ( luaVM );
     argStream.ReadUserData ( pEntity );
     argStream.ReadString ( strAnimName, "" );
@@ -1942,11 +1903,29 @@ int CLuaFunctionDefs::SetPedAnimationProgress( lua_State* luaVM )
 
     if ( !argStream.HasErrors ( ) )
     {
-        if ( CStaticFunctionDefinitions::SetPedAnimationProgress ( *pEntity, strAnimName, fProgress ) )
+        if ( pEntity )
         {
-            lua_pushboolean ( luaVM, true );
-            return 1;
+            const char * szAnimName = strAnimName.c_str ( );
+            float fProgress = 0.0f;
+            if ( strAnimName != "" ) 
+            {
+                if ( CStaticFunctionDefinitions::SetPedAnimationProgress ( *pEntity, szAnimName, fProgress ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
+            else
+            {
+                if ( CStaticFunctionDefinitions::SetPedAnimationProgress ( *pEntity, NULL, fProgress ) )
+                {
+                    lua_pushboolean ( luaVM, true );
+                    return 1;
+                }
+            }
         }
+        else
+            m_pScriptDebugging->LogBadPointer ( luaVM, "element", 1 );
     }
     else
         m_pScriptDebugging->LogCustom ( luaVM, argStream.GetFullErrorMessage () );
@@ -2090,18 +2069,6 @@ int CLuaFunctionDefs::GetWeaponProperty ( lua_State* luaVM )
                 if ( CStaticFunctionDefinitions::GetWeaponProperty ( pWeapon, eProp, sData ) )
                 {
                     lua_pushnumber ( luaVM, sData );
-                    return 1;
-                }
-            }
-            else
-            if ( eProp == WEAPON_FIRE_ROTATION )
-            {
-                CVector vecWeaponInfo;
-                if ( CStaticFunctionDefinitions::GetWeaponProperty ( pWeapon, eProp, vecWeaponInfo ) )
-                {
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fX );
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fY );
-                    lua_pushnumber ( luaVM, vecWeaponInfo.fZ );
                     return 1;
                 }
             }

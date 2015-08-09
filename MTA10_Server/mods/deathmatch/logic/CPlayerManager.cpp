@@ -31,10 +31,9 @@ void CPlayerManager::DoPulse ( void )
 {
     // TODO: Low Priorityy: No need to do this every frame. Could be done every minute or so.
     // Remove any players that have been connected for very long (90 sec) but hasn't reached the verifying step
-    unsigned long long ullTimeNow = GetTickCount64_ ();
     for ( list < CPlayer* > ::const_iterator iter = m_Players.begin () ; iter != m_Players.end (); iter++ )
     {
-        if ( (*iter)->GetStatus () == STATUS_CONNECTED && ullTimeNow > (*iter)->GetTimeConnected () + 90000 )
+        if ( (*iter)->GetStatus () == STATUS_CONNECTED && GetTime () > (*iter)->GetTimeConnected () + 90000 )
         {
             // Tell the console he timed out due during connect
             CLogger::LogPrintf ( "INFO: %s (%s) timed out during connect\n", (*iter)->GetNick (), (*iter)->GetSourceIP () );
@@ -55,14 +54,6 @@ void CPlayerManager::DoPulse ( void )
 
 CPlayer* CPlayerManager::Create ( const NetServerPlayerID& PlayerSocket )
 {
-    // Check socket is free
-    CPlayer* pOtherPlayer = MapFindRef( m_SocketPlayerMap, PlayerSocket );
-    if ( pOtherPlayer )
-    {
-        CLogger::ErrorPrintf ( "Attempt to re-use existing connection for player '%s'\n", pOtherPlayer->GetName().c_str() );
-        return NULL;     
-    }
-
     // Create the new player
     CPlayer* pPlayer = new CPlayer ( this, m_pScriptDebugging, PlayerSocket );
 
@@ -141,6 +132,7 @@ void CPlayerManager::DeleteAll ( void )
 }
 
 
+// TODO [28-Feb-2009] packetOrdering is currently always PACKET_ORDERING_GAME
 void CPlayerManager::BroadcastOnlyJoined ( const CPacket& Packet, CPlayer* pSkip )
 {
     // Make a list of players to send this packet to
@@ -154,27 +146,6 @@ void CPlayerManager::BroadcastOnlyJoined ( const CPacket& Packet, CPlayer* pSkip
         if ( pPlayer != pSkip && pPlayer->IsJoined () )
         {
             sendList.push_back ( pPlayer );
-        }
-    }
-
-    CPlayerManager::Broadcast ( Packet, sendList );
-}
-
-
-void CPlayerManager::BroadcastDimensionOnlyJoined ( const CPacket& Packet, ushort usDimension, CPlayer* pSkip )
-{
-    // Make a list of players to send this packet to
-    CSendList sendList;
-
-    // Send the packet to each ingame player on the server except the skipped one
-    list < CPlayer* > ::const_iterator iter = m_Players.begin ();
-    for ( ; iter != m_Players.end (); iter++ )
-    {
-        CPlayer* pPlayer = *iter;
-        if ( pPlayer != pSkip && pPlayer->IsJoined () )
-        {
-            if ( pPlayer->GetDimension() == usDimension )
-                sendList.push_back ( pPlayer );
         }
     }
 

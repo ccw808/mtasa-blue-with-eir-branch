@@ -281,11 +281,10 @@ bool CXMLNodeImpl::GetTagContent ( float& fContent )
 }
 
 
-void CXMLNodeImpl::SetTagContent ( const char* szText, bool bCDATA )
+void CXMLNodeImpl::SetTagContent ( const char* szText )
 {
     m_pNode->Clear();
     TiXmlText* pNewNode = new TiXmlText ( szText );
-    pNewNode->SetCDATA ( bCDATA );
     m_pNode->LinkEndChild ( pNewNode );
     m_Children.clear();
 }
@@ -359,7 +358,7 @@ CXMLNode* CXMLNodeImpl::CopyNode ( CXMLNode *pParent )
     list < CXMLNode* > ::iterator iter;
     for ( iter = ChildrenCopy.begin (); iter != ChildrenCopy.end (); iter++ )
     {
-        (*iter)->CopyNode ( pNew );
+        pNew->AddToList ( (*iter)->CopyNode ( pNew ) );
     }
 
     return dynamic_cast < CXMLNode* > ( pNew );

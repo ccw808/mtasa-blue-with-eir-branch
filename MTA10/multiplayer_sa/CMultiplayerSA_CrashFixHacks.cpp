@@ -10,7 +10,7 @@
 *****************************************************************************/
 
 #include "StdInc.h"
-#include "../game_sa/CTasksSA.h"
+#include "../game_sa/CModelInfoSA.h"
 
 void CPlayerPed__ProcessControl_Abort();
 
@@ -42,7 +42,6 @@ void CPlayerPed__ProcessControl_Abort();
 // Support for crash stats
 //
 void OnCrashAverted ( uint uiId );
-void OnEnterCrashZone ( uint uiId );
 
 void _cdecl CrashAverted ( DWORD id )
 {
@@ -65,6 +64,7 @@ void _cdecl CrashAverted ( DWORD id )
 
 
 ////////////////////////////////////////////////////////////////////////
+// VEHICLE ATOMIC RENDER CRASH FIX
 #define HOOKPOS_CrashFix_Misc1                              0x5D9A6E
 #define HOOKSIZE_CrashFix_Misc1                             6
 DWORD RETURN_CrashFix_Misc1 =                               0x5D9A74;
@@ -89,6 +89,7 @@ void _declspec(naked) HOOK_CrashFix_Misc1 ()
 
 
 ////////////////////////////////////////////////////////////////////////
+// ENTITY COLLISION MODEL IS ZERO CRASH FIX
 #define HOOKPOS_CrashFix_Misc2                              0x6B18B0
 #define HOOKSIZE_CrashFix_Misc2                             9
 DWORD RETURN_CrashFix_Misc2 =                               0x6B18B9;
@@ -279,6 +280,7 @@ void _declspec(naked) HOOK_CrashFix_Misc9 ()
 
 
 ////////////////////////////////////////////////////////////////////////
+// SOMEBODY GOOFED WITH CODE - CRASH
 // #5468  3/3
 #define HOOKPOS_CrashFix_Misc10                             0x5334FE
 #define HOOKSIZE_CrashFix_Misc10                            6
@@ -396,6 +398,7 @@ void _declspec(naked) HOOK_CrashFix_Misc14 ()
 
 
 ////////////////////////////////////////////////////////////////////////
+// STREAMING RUNTIME THREAD RACE CONDITION FATAL ERROR FREEZE FIX
 void _cdecl DoWait ( HANDLE hHandle )
 {
     DWORD dwWait = 4000;
@@ -580,95 +583,30 @@ void _declspec(naked) HOOK_CrashFix_Misc19 ()
     }
 }
 
+
 ////////////////////////////////////////////////////////////////////////
-// Handle CPlaceable::RemoveMatrix having wrong data
-#define HOOKPOS_CrashFix_Misc20                             0x54F3B0
-#define HOOKSIZE_CrashFix_Misc20                            6
-DWORD RETURN_CrashFix_Misc20 =                              0x54F3B6;
-void _declspec(naked) HOOK_CrashFix_Misc20 ()
-{
-#if TEST_CRASH_FIXES
-    SIMULATE_ERROR_BEGIN( 10 )
-        _asm
-        {
-            mov     ecx, 0
-        }
-    SIMULATE_ERROR_END
-#endif
-    _asm
-    {
-        cmp     ecx, 0
-        je      cont        // Skip much code if ecx is zero
-
-        // continue standard path
-        sub     esp, 10h 
-        mov     eax, [ecx+14h] 
-        jmp     RETURN_CrashFix_Misc20
-
-    cont:
-        CRASH_AVERTED( 20 )
-        retn
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
 // Handle CTaskSimpleCarFallOut::FinishAnimFallOutCB having wrong data
-//
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-bool IsTaskSimpleCarFallOutValid( CAnimBlendAssociationSAInterface* pAnimBlendAssociation, CTaskSimpleCarFallOutSAInterface* pTask )
-{
-    if ( pTask->VTBL != (TaskVTBL*)VTBL_CTaskSimpleCarFallOut )
-    {
-        AddReportLog( 8530, SString( "IsTaskSimpleCarFallOutValid fail - pTask->VTBL: %08x", pTask->VTBL ), 5 );
-        return false;
-    }
-
-    if ( pTask->pVehicle )
-    {
-        CVehicle* pVehicle = pGameInterface->GetPools ()->GetVehicle ( (DWORD*) pTask->pVehicle );
-        if ( !pVehicle )
-        {
-            // Task looks valid, but vehicle is not recognised by MTA
-            AddReportLog( 8531, SString( "IsTaskSimpleCarFallOutValid invalid vehicle ptr - pTask->pVehicle: %08x", pTask->pVehicle ), 5 );
-            pTask->pVehicle = NULL;
-            return true;
-        }
-    }
-
-    return true;
-}
-
-#define HOOKPOS_CrashFix_Misc21                             0x648EE0
-#define HOOKSIZE_CrashFix_Misc21                            7
-DWORD RETURN_CrashFix_Misc21 =                              0x648EE7;
+#define HOOKPOS_CrashFix_Misc21                             0x648EF6
+#define HOOKSIZE_CrashFix_Misc21                            6
+DWORD RETURN_CrashFix_Misc21 =                              0x648EFC;
 void _declspec(naked) HOOK_CrashFix_Misc21 ()
 {
 #if TEST_CRASH_FIXES
     SIMULATE_ERROR_BEGIN( 10 )
         _asm
         {
-            mov     [esp+8], 0x10
+            mov     ecx, 0x10
         }
     SIMULATE_ERROR_END
 #endif
 
     _asm
     {
-        pushad
-        push    [esp+32+4*2]
-        push    [esp+32+4*2]
-        call    IsTaskSimpleCarFallOutValid
-        add     esp, 4*2
-        cmp     al,0
-        popad
-        je      cont  // Skip much code if CTaskSimpleCarFallOut is not valid
+        cmp     ecx, 0x480
+        jb      cont  // Skip much code if ecx is low
 
         // continue standard path
-        mov     eax, [esp+8]
-        mov     ecx, [eax+10h]
+        mov     edx, [ecx+590h]
         jmp     RETURN_CrashFix_Misc21
 
     cont:
@@ -936,7 +874,6 @@ void _declspec(naked) HOOK_CrashFix_Misc28 ()
         test    eax, eax
         jne     cont
 
-        CRASH_AVERTED( 28 )
         // Skip much code
         jmp     RETURN_CrashFix_Misc28B
 
@@ -980,46 +917,8 @@ void _declspec(naked) HOOK_CrashFix_Misc29 ()
         jmp     RETURN_CrashFix_Misc29
 
 cont:
-        CRASH_AVERTED( 29 )
         // Skip much code
         jmp     RETURN_CrashFix_Misc29B
-    }
-}
-
-
-////////////////////////////////////////////////////////////////////////
-// Handle CAnimBlendAssociation::SetFinishCallback with invalid ecx
-#define HOOKPOS_CrashFix_Misc30                             0x4CEBE8
-#define HOOKSIZE_CrashFix_Misc30                            7
-#define HOOKCHECK_CrashFix_Misc30                           0xC7
-DWORD RETURN_CrashFix_Misc30 =                              0x4CEBEF;
-DWORD RETURN_CrashFix_Misc30B =                             0x4CEBF5;
-void _declspec(naked) HOOK_CrashFix_Misc30 ()
-{
-#if TEST_CRASH_FIXES
-    SIMULATE_ERROR_BEGIN( 10 )
-        _asm
-        {
-            mov     ecx, 0
-        }
-    SIMULATE_ERROR_END
-#endif
-
-    _asm
-    {
-        // Check for incorrect pointer
-        cmp     ecx, 0
-        jz      cont
-
-        // Execute replaced code
-        mov     dword ptr [ecx+30h], 1
-        // Continue standard path
-        jmp     RETURN_CrashFix_Misc30
-
-cont:
-        CRASH_AVERTED( 30 )
-        // Skip much code
-        jmp     RETURN_CrashFix_Misc30B
     }
 }
 
@@ -1248,148 +1147,6 @@ inner:
 
 //////////////////////////////////////////////////////////////////////////////////////////
 //
-// Train crossings: Detach barrier from post (to be able to create objects 1373 and 1374 separately)
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-#define HOOKPOS_CObject_Destructor_TrainCrossing_Check 0x59F7A8
-#define HOOKSIZE_CObject_Destructor_TrainCrossing_Check 5
-DWORD RETURN_CObject_Destructor_TrainCross_Check = 0x59F7AD;
-DWORD RETURN_CObject_Destructor_TrainCross_INVALID = 0x59F811;
-void _declspec(naked) HOOK_CObject_Destructor_TrainCrossing_Check ()
-{
-    _asm
-    {
-        test eax, eax // Check if pLinkedBarrierPost exists
-        jz jmp_invalid // Skip the barrier stuff
-
-        mov ecx, [eax+14h] // Execute replaced code
-        test ecx, ecx
-        jmp RETURN_CObject_Destructor_TrainCross_Check
-
-    jmp_invalid:
-        jmp RETURN_CObject_Destructor_TrainCross_INVALID
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// GTA doesn't reset the furniture object counter, so do it manually everytime before GTA furnishes an interior (Interior_c::Init)
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-#define HOOKPOS_ResetFurnitureObjectCounter 0x593BF0
-#define HOOKSIZE_ResetFurnitureObjectCounter 6
-DWORD RETURN_ResetFurnitureObjectCounter = 0x593BF6;
-void _declspec(naked) HOOK_ResetFurnitureObjectCounter ()
-{
-    *(int*)0xBB3A18 = 0; // InteriorManager_c::ms_objectCounter
-
-    _asm
-    {
-        // original instruction
-        mov eax, fs:[0]
-        jmp RETURN_ResetFurnitureObjectCounter
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// CVolumetricShadowMgr_Render
-//
-// Custom models can cause problems for volumetric shadows.
-// Record when volumetric shadows are being rendered so we can disable them if a crash occurs.
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CVolumetricShadowMgr_Render_Pre( void )
-{
-    OnEnterCrashZone( 1 );
-}
-
-void OnMY_CVolumetricShadowMgr_Render_Post( void )
-{
-    OnEnterCrashZone( 0 );
-}
-
-// Hook info
-#define HOOKPOS_CVolumetricShadowMgr_Render                 0x7113B0
-#define HOOKSIZE_CVolumetricShadowMgr_Render                8
-#define HOOKCHECK_CVolumetricShadowMgr_Render               0x83
-DWORD RETURN_CVolumetricShadowMgr_Render =                  0x7113B8;
-void _declspec(naked) HOOK_CVolumetricShadowMgr_Render()
-{
-    _asm
-    {
-        pushad
-        call    OnMY_CVolumetricShadowMgr_Render_Pre
-        popad
-
-        call inner
-
-        pushad
-        call    OnMY_CVolumetricShadowMgr_Render_Post
-        popad
-        retn
-
-inner:
-        // Replaced code
-        sub     esp, 18h  
-        mov     ecx, 0A9AE00h 
-        jmp     RETURN_CVolumetricShadowMgr_Render
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
-// CVolumetricShadowMgr_Update
-//
-// Custom models can cause problems for volumetric shadows.
-// Record when volumetric shadows are being updated so we can disable them if a crash occurs.
-//
-//////////////////////////////////////////////////////////////////////////////////////////
-void OnMY_CVolumetricShadowMgr_Update_Pre( void )
-{
-    OnEnterCrashZone( 2 );
-}
-
-void OnMY_CVolumetricShadowMgr_Update_Post( void )
-{
-    OnEnterCrashZone( 0 );
-}
-
-// Hook info
-#define HOOKPOS_CVolumetricShadowMgr_Update                 0x711D90
-#define HOOKSIZE_CVolumetricShadowMgr_Update                5
-#define HOOKCHECK_CVolumetricShadowMgr_Update               0xB9
-DWORD RETURN_CVolumetricShadowMgr_Update =                  0x711D95;
-void _declspec(naked) HOOK_CVolumetricShadowMgr_Update()
-{
-    _asm
-    {
-        pushad
-        call    OnMY_CVolumetricShadowMgr_Update_Pre
-        popad
-
-        push    [esp+4*1]
-        call inner
-        add     esp, 4*1
-
-        pushad
-        call    OnMY_CVolumetricShadowMgr_Update_Post
-        popad
-        retn
-
-inner:
-        // Replaced code
-        mov     ecx, 0A9AE00h  
-        jmp     RETURN_CVolumetricShadowMgr_Update
-    }
-}
-
-
-//////////////////////////////////////////////////////////////////////////////////////////
-//
 // Setup hooks for CrashFixHacks
 //
 //////////////////////////////////////////////////////////////////////////////////////////
@@ -1414,7 +1171,7 @@ void CMultiplayerSA::InitHooks_CrashFixHacks ( void )
     //EZHookInstall ( CrashFix_Misc17 );
     EZHookInstall ( CrashFix_Misc18 );
     //EZHookInstall ( CrashFix_Misc19 );
-    EZHookInstall ( CrashFix_Misc20 );
+    //EZHookInstall ( CrashFix_Misc20 ); see CGameSA::CPlaceableSA.cpp
     EZHookInstall ( CrashFix_Misc21 );
     EZHookInstall ( CrashFix_Misc22 );
     EZHookInstall ( CrashFix_Misc23 );
@@ -1424,12 +1181,7 @@ void CMultiplayerSA::InitHooks_CrashFixHacks ( void )
     EZHookInstall ( CrashFix_Misc27 );
     EZHookInstall ( CrashFix_Misc28 );
     EZHookInstall ( CrashFix_Misc29 );
-    EZHookInstallChecked ( CrashFix_Misc30 );
     EZHookInstall ( CClumpModelInfo_GetFrameFromId );
-    EZHookInstallChecked ( CEntity_GetBoundRect );
-    EZHookInstallChecked ( CVehicle_AddUpgrade );
-    EZHookInstall ( CObject_Destructor_TrainCrossing_Check );
-    EZHookInstall ( ResetFurnitureObjectCounter );
-    EZHookInstallChecked ( CVolumetricShadowMgr_Render );
-    EZHookInstallChecked ( CVolumetricShadowMgr_Update );
+    EZHookInstall ( CEntity_GetBoundRect );
+    EZHookInstall ( CVehicle_AddUpgrade );
 }

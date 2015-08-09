@@ -41,6 +41,7 @@
 #define MAX_RESOURCE_NAME_LENGTH    255
 #define MAX_FUNCTION_NAME_LENGTH    50
 #define MAX_RESOURCE_VERSION_LENGTH 100
+#define INVALID_COMPILED_SCRIPT_CUTOFF_DATE     "2014-06-10"
 
 struct SVersion
 {
@@ -224,7 +225,7 @@ private:
     bool                    ReadIncludedHTML ( CXMLNode * root );
     bool                    ReadIncludedExports ( CXMLNode * root );
     bool                    ReadIncludedFiles ( CXMLNode * root );
-    bool                    CreateVM ( bool bEnableOOP );
+    bool                    CreateVM ( void );
     bool                    DestroyVM ( void );
     void                    TidyUp ( void );
     ResponseCode            HandleRequestActive ( HttpRequest * ipoHttpRequest, HttpResponse * ipoHttpResponse, class CAccount* account );
@@ -295,9 +296,9 @@ public:
     bool                    GetCompatibilityStatus ( SString& strOutStatus );
 
     void                    AddTemporaryInclude ( CResource * resource );
-    SString                 GetFailureReason ( void )
+    const std::string&      GetFailureReason ( void )
     { 
-        return m_strFailureReason.TrimEnd( "\n" ); 
+        return m_strFailureReason; 
     }
     inline CXMLNode *       GetSettingsNode ( void ) { return m_pNodeSettings; }
     inline CXMLNode *       GetStorageNode ( void ) { return m_pNodeStorage; }
@@ -333,7 +334,6 @@ public:
     inline void             SetPersistent ( bool bPersistent ) { m_bIsPersistent = bPersistent; }
     bool                    ExtractFile ( const char * szFilename );
     bool                    DoesFileExistInZip ( const char * szFilename );
-    bool                    HasGoneAway ( void );
     bool                    GetFilePath ( const char * szFilename, string& strPath );
     inline const std::string&   GetResourceDirectoryPath () { return m_strResourceDirectoryPath; };
     inline const std::string&   GetResourceCacheDirectoryPath () { return m_strResourceCachePath; };
@@ -378,7 +378,6 @@ public:
     bool                IsOOPEnabledInMetaXml           ( void )                                { return m_bOOPEnabledInMetaXml; }
     bool                CheckFunctionRightCache         ( lua_CFunction f, bool* pbOutAllowed );
     void                UpdateFunctionRightCache        ( lua_CFunction f, bool bAllowed );
-    bool                IsFilenameUsed                  ( const SString& strFilename, bool bClient );
 
 protected:
     SString             GetAutoGroupName                ( void );

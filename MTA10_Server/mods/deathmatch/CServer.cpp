@@ -117,13 +117,12 @@ bool CServer::PendingWorkToDo ( void )
     return false;
 }
 
-bool CServer::GetSleepIntervals ( int& iSleepBusyMs, int& iSleepIdleMs, int& iLogicFpsLimit )
+bool CServer::GetSleepIntervals ( int& iSleepBusyMs, int& iSleepIdleMs )
 {
     if ( m_pGame && g_pNetServer )
     {
         iSleepBusyMs = m_pGame->GetConfig ()->GetPendingWorkToDoSleepTime ();
         iSleepIdleMs = m_pGame->GetConfig ()->GetNoWorkToDoSleepTime ();
-        iLogicFpsLimit = m_pGame->GetConfig ()->GetServerLogicFpsLimit ();
         return true;
     }
     return false;

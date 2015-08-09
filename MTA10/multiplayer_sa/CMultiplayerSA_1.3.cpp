@@ -12,13 +12,9 @@
 
 #include "StdInc.h"
 
-extern CCoreInterface* g_pCore;
-
 #define FUNC_CPed__RenderTargetMarker                       0x60BA80
 
 WaterCannonHitHandler* m_pWaterCannonHitHandler = NULL;
-
-VehicleFellThroughMapHandler* m_pVehicleFellThroughMapHandler = NULL;
 
 #define HOOKPOS_CEventHitByWaterCannon                      0x729899
 DWORD RETURN_CWaterCannon_PushPeds_RETN = 0x7298A7;
@@ -85,35 +81,15 @@ DWORD RETN_CTaskSimpleJetpack_ProcessInputDisabled           =  0x67E821;
 DWORD RETN_CTaskSimplePlayerOnFoot_ProcessWeaponFire             =  0x685ABF;
 DWORD RETN_CTaskSimplePlayerOnFoot_ProcessWeaponFire_Call        =  0x540670;
 
-#define HOOKPOS_CObject_PreRender                   0x59FE69
-DWORD RETURN_CObject_PreRender =                    0x59FE6F;
-
 #define HOOKPOS_CWorld_RemoveFallenPeds                     0x565D0D
 DWORD RETURN_CWorld_RemoveFallenPeds_Cont               =   0x565D13;
 DWORD RETURN_CWorld_RemoveFallenPeds_Cancel             =   0x565E6F;
-
-#define HOOKPOS_CWorld_RemoveFallenCars                     0x565F52
-DWORD RETURN_CWorld_RemoveFallenCars_Cont               =   0x565F59;
-DWORD RETURN_CWorld_RemoveFallenCars_Cancel             =   0x56609B;
 
 #define HOOKPOS_CVehicleModelInterface_SetClump             0x4C9606
 DWORD RETURN_CVehicleModelInterface_SetClump            =   0x4C9611;
 
 #define HOOKPOS_CBoat_ApplyDamage                           0x6F1C32
 DWORD RETURN_CBoat_ApplyDamage                          =   0x6F1C3E;
-
-#define HOOKPOS_CProjectile_FixTearGasCrash                 0x4C0403
-DWORD RETURN_CProjectile_FixTearGasCrash_Fix              = 0x4C05B9;
-DWORD RETURN_CProjectile_FixTearGasCrash_Cont             = 0x4C0409;
-
-#define HOOKPOS_CVehicle_ProcessTyreSmoke_Initial           0x6DE8A2
-#define HOOKPOS_CVehicle_ProcessTyreSmoke_Burnouts          0x6DF197
-#define HOOKPOS_CVehicle_ProcessTyreSmoke_Braking           0x6DECED
-#define HOOKPOS_CVehicle_ProcessTyreSmoke_HookAddress       0x6DF308
-
-#define HOOKPOS_CProjectile_FixExplosionLocation            0x738A77
-DWORD   RETURN_CProjectile_FixExplosionLocation           = 0x738A86;
-
 
 void HOOK_CVehicle_ProcessStuff_TestSirenTypeSingle ( );
 void HOOK_CVehicle_ProcessStuff_PostPushSirenPositionSingle ( );
@@ -135,13 +111,9 @@ void HOOK_CVehicle_ProcessStuff_StartPointLightCode ( );
 void HOOK_CTaskSimpleJetpack_ProcessInput ( );
 void HOOK_CTaskSimplePlayerOnFoot_ProcessWeaponFire ( );
 void HOOK_CTaskSimpleJetpack_ProcessInputFixFPS2 ( );
-void HOOK_CObject_PreRender ( );
 void HOOK_CWorld_RemoveFallenPeds ( );
-void HOOK_CWorld_RemoveFallenCars ( );
 void HOOK_CVehicleModelInterface_SetClump ( );
 void HOOK_CBoat_ApplyDamage ( );
-void HOOK_CProjectile_FixTearGasCrash ( );
-void HOOK_CProjectile_FixExplosionLocation ( );
 
 void CMultiplayerSA::Init_13 ( void )
 {
@@ -178,39 +150,27 @@ void CMultiplayerSA::InitHooks_13 ( void )
     HookInstall ( HOOKPOS_CTaskSimpleJetpack_ProcessInput, (DWORD) HOOK_CTaskSimpleJetpack_ProcessInput, 5 );
     HookInstall ( HOOKPOS_CTaskSimplePlayerOnFoot_ProcessWeaponFire, (DWORD) HOOK_CTaskSimplePlayerOnFoot_ProcessWeaponFire, 5 );
 
-    HookInstall ( HOOKPOS_CObject_PreRender, (DWORD)HOOK_CObject_PreRender, 6 );
-
-    HookInstall ( HOOKPOS_CWorld_RemoveFallenPeds, (DWORD) HOOK_CWorld_RemoveFallenPeds, 6 );
-
-    HookInstall ( HOOKPOS_CWorld_RemoveFallenCars, (DWORD) HOOK_CWorld_RemoveFallenCars, 5 );
+    HookInstall ( HOOKPOS_CWorld_RemoveFallenPeds, (DWORD)HOOK_CWorld_RemoveFallenPeds, 6 );
 
     HookInstall ( HOOKPOS_CVehicleModelInterface_SetClump, (DWORD)HOOK_CVehicleModelInterface_SetClump, 7 );
 
     HookInstall ( HOOKPOS_CBoat_ApplyDamage, (DWORD)HOOK_CBoat_ApplyDamage, 12 );
-
-    HookInstall ( HOOKPOS_CProjectile_FixTearGasCrash, (DWORD) HOOK_CProjectile_FixTearGasCrash, 6 );
     
-    HookInstall ( HOOKPOS_CProjectile_FixExplosionLocation, (DWORD)HOOK_CProjectile_FixExplosionLocation, 12 );
-
     InitHooks_ClothesSpeedUp ();
     EnableHooks_ClothesMemFix ( true );
     InitHooks_FixBadAnimId ();
     InitHooks_HookDestructors ();
-    InitHooks_RwResources ();
-    InitHooks_ClothesCache ();
+    //InitHooks_RwResources (); MOVED TO CGameSA
+    //InitHooks_ClothesCache (); MOVED TO CGameSA
     InitHooks_Files ();
     InitHooks_Weapons ();
-    InitHooks_Rendering ();
+    //InitHooks_Rendering (); MOVED TO CGameSA
 }
 
 void CMultiplayerSA::InitMemoryCopies_13 ( void )
 {
     // Memory based fixes go here
     //MemSet ( (void*)0x6AB35A, 0x90, 12 ); // Ignore some retarded R* if statement that checks if the model is the buffalo and jumps the siren code even though it doesn't have a siren anyway
-
-    // Pass on loading priority to dependent models
-    MemPut < BYTE > ( 0x040892A, 0x53 );
-    MemPut < BYTE > ( 0x040892B, 0x90 );
 
     MemPut < BYTE > ( 0x04341C0, 0xC3 );    // Skip CCarCtrl::GenerateRandomCars
 
@@ -861,7 +821,7 @@ void _declspec(naked) HOOK_CVehicle_ProcessStuff_TestCameraPosition ( )
 }
 bool DisableVehicleSiren ( )
 {
-    if ( pVehicleWithTheSiren && pVehicleWithTheSiren->vtbl != NULL )
+    if ( pVehicleWithTheSiren )
     {
         CVehicle * pVehicle = pGameInterface->GetPools ()->GetVehicle ( (DWORD *)pVehicleWithTheSiren );
         if ( pVehicle && ( pVehicle->IsSirenSilentEffectEnabled ( ) || pVehicle->GetModelIndex ( ) == 420 || pVehicle->GetModelIndex ( ) == 438 ) )
@@ -1256,7 +1216,7 @@ bool AllowJetPack ( )
     }
     return false;
 }
-
+DWORD dwReturnCTaskSimpleJetpackProcessInput = 0x67E7FC;
 void _declspec(naked) HOOK_CTaskSimpleJetpack_ProcessInput ( )
 {
     _asm
@@ -1277,6 +1237,13 @@ void _declspec(naked) HOOK_CTaskSimpleJetpack_ProcessInput ( )
         _asm
         {
             popad
+            jnz DisabledProcessInput
+            mov ecx, [eax+18h]
+            shr ecx, 1
+            test bl, cl
+            jz DisabledProcessInput
+            jmp dwReturnCTaskSimpleJetpackProcessInput
+DisabledProcessInput:
             jmp RETN_CTaskSimpleJetpack_ProcessInputDisabled
         }
     }
@@ -1305,53 +1272,6 @@ void _declspec(naked) HOOK_CTaskSimplePlayerOnFoot_ProcessWeaponFire ( )
             popad
             call RETN_CTaskSimplePlayerOnFoot_ProcessWeaponFire_Call
             jmp RETN_CTaskSimplePlayerOnFoot_ProcessWeaponFire
-        }
-    }
-}
-
-CVector vecObjectScale;
-CObjectSAInterface* pCurrentObject;
-bool CObject_GetScale()
-{
-    CObject* pObject = pGameInterface->GetPools ()->GetObjectA ( (DWORD *)pCurrentObject );
-    if ( pObject )
-    {
-        vecObjectScale = *pObject->GetScale ();
-        return true;
-    }
-    return false;
-}
-
-
-void _declspec(naked) HOOK_CObject_PreRender ()
-{
-    _asm
-    {
-        pushad
-        mov pCurrentObject, esi
-    }
-    
-    if ( CObject_GetScale() )
-    {
-        _asm
-        {
-            popad
-
-            push 1
-            lea edx, vecObjectScale
-
-            jmp RETURN_CObject_PreRender
-        }
-    }
-    else
-    {
-        // Do unmodified method if we don't know about this object
-        _asm
-        {
-            popad
-            push 1
-            lea edx, [esp+14h]
-            jmp RETURN_CObject_PreRender
         }
     }
 }
@@ -1394,54 +1314,6 @@ RemoveFallenPeds_Cancel:
         jmp RETURN_CWorld_RemoveFallenPeds_Cont
     }
 }
-
-void CMultiplayerSA::SetVehicleFellThroughMapHandler ( VehicleFellThroughMapHandler * pHandler )
-{
-    m_pVehicleFellThroughMapHandler = pHandler;
-}
-
-CVehicleSAInterface * pFallingVehicleInterface;
-bool CWorld_Remove_FallenVehiclesCheck ( )
-{
-    CVehicle* pVehicle = pGameInterface->GetPools ( )->GetVehicle ( (DWORD *) pFallingVehicleInterface );
-    if ( pVehicle &&
-        m_pVehicleFellThroughMapHandler ( pFallingVehicleInterface ) )
-    {
-        // Disallow
-        return true;
-    }
-    // Allow
-    return false;
-}
-
-DWORD HOOK_CWorld_RemoveFallenCars_Cont1 = 0x565F57;
-
-void _declspec( naked ) HOOK_CWorld_RemoveFallenCars ( )
-{
-    // If the vehicle fell through the map give it another try to respawn.
-    _asm
-    {
-        pushad
-        mov pFallingVehicleInterface, esi
-    }
-    if ( CWorld_Remove_FallenVehiclesCheck ( ) )
-    {
-        _asm
-        {
-            popad
-            jmp RETURN_CWorld_RemoveFallenCars_Cancel
-        }
-    }
-    _asm
-    {
-        popad
-        mov eax, [esi + 14h]
-        test eax, eax
-        jz 565F57h
-        jmp RETURN_CWorld_RemoveFallenCars_Cont
-    }
-}
-
 
 void CMultiplayerSA::SetPedTargetingMarkerEnabled(bool bEnable)
 {
@@ -1520,181 +1392,5 @@ boatCanBeDamaged:
     {
         pop eax
         jmp RETURN_CBoat_ApplyDamage
-    }
-}
-
-// fixes a crash where a vehicle is the source of a tear gas projectile.
-void _declspec( naked ) HOOK_CProjectile_FixTearGasCrash ( )
-{
-    _asm
-    {
-        cmp ebp, 0h
-        je cont
-        mov ecx, [ebp+47Ch]
-        // no terminators in this time period
-        jmp RETURN_CProjectile_FixTearGasCrash_Cont
-    cont :
-        // come with me if you want to live
-        jmp RETURN_CProjectile_FixTearGasCrash_Fix
-        // dundundundundun
-        // dundundundundun
-    }
-}
-
-void CMultiplayerSA::SetBoatWaterSplashEnabled ( bool bEnabled )
-{
-    if ( bEnabled )
-    {    
-        // Enable water splashing by restoring the original code
-        MemPut < BYTE > ( 0x6DD167, 0x0F );
-        MemPut < BYTE > ( 0x6DD168, 0x85 );
-        MemPut < BYTE > ( 0x6DD169, 0x6D );
-        MemPut < BYTE > ( 0x6DD16A, 0x05 );
-        MemPut < BYTE > ( 0x6DD16B, 0x00 );
-        MemPut < BYTE > ( 0x6DD16C, 0x00 );
-    }
-    else
-    {  
-        // Disable water splashing by forcing a jump to the end of the function
-        MemPut < BYTE > ( 0x6DD167, 0xE9 );
-        MemPut < BYTE > ( 0x6DD168, 0x6E );
-        MemPut < BYTE > ( 0x6DD169, 0x05 );
-        MemPut < BYTE > ( 0x6DD16A, 0x00 );
-        MemPut < BYTE > ( 0x6DD16B, 0x00 );
-        MemPut < BYTE > ( 0x6DD16C, 0x00 );
-    }
-}
-
-DWORD dwReturnAddressTyreSmoke = 0x6DE8A8;
-DWORD dwReturnIgnorePed = 0x6DF3B9;
-CPedSAInterface * pTyreSmokePed = NULL;
-
-bool IsPlayerPedLocal ( )
-{
-    CPed * pPed = pGameInterface->GetPools ()->GetPed ( (DWORD*) pTyreSmokePed );
-    if ( pPed )
-    {
-        CPed* pLocalPlayerPed = pGameInterface->GetPools ()->GetPedFromRef ( (DWORD)1 );
-        if ( pPed != NULL && pLocalPlayerPed != NULL )
-        {
-            if ( pLocalPlayerPed == pPed )
-            {
-                return true;
-            }
-        }
-    }
-    return false;
-}
-
-// makes sure remote player tyre smoke isn't processed when tyre smoke is in the "off" position
-void _declspec( naked ) HOOK_CMultiplayerSA_ToggleTyreSmoke ( )
-{
-    _asm
-    {
-        pushad
-        mov pTyreSmokePed, ecx
-    }
-
-    if ( !IsPlayerPedLocal ( ) )
-    {
-        _asm
-        {
-            popad
-            jmp dwReturnIgnorePed
-        }
-    }
-
-    _asm
-    {
-        popad
-        test eax, 20000h
-        jnz 06DF3B9h
-        jmp dwReturnAddressTyreSmoke
-    }
-}
-
-void CMultiplayerSA::SetTyreSmokeEnabled ( bool bEnabled )
-{
-    SetBoatWaterSplashEnabled ( bEnabled );
-    if ( bEnabled )
-    {      
-        // revert changes made by disable. 
-        // this is the start of the function and ensures that remote vehicles aren't processed for tyre smoke
-        MemPut < BYTE > ( 0x6DE8A2, 0x0F );
-        MemPut < BYTE > ( 0x6DE8A3, 0x85 );
-        MemPut < BYTE > ( 0x6DE8A4, 0x11 );
-        MemPut < BYTE > ( 0x6DE8A5, 0x0B );
-        MemPut < BYTE > ( 0x6DE8A6, 0x00 );
-        MemPut < BYTE > ( 0x6DE8A7, 0x00 );
-
-        // This ensures that the local vehicle tyre smoke while doing burnouts isn't rendered
-        MemPut < BYTE > ( 0x6DF197, 0x8B );
-        MemPut < BYTE > ( 0x6DF198, 0x44 );
-        MemPut < BYTE > ( 0x6DF199, 0x24 );
-        MemPut < BYTE > ( 0x6DF19A, 0x28 );
-        MemPut < BYTE > ( 0x6DF19B, 0x50 );
-
-        // This ensures that the local vehicle tyre smoke under braking isn't rendered
-        MemPut < BYTE > ( 0x6DECED, 0x0F );
-        MemPut < BYTE > ( 0x6DECEE, 0x85 );
-        MemPut < BYTE > ( 0x6DECEF, 0xA2 );
-        MemPut < BYTE > ( 0x6DECF0, 0x01 );
-        MemPut < BYTE > ( 0x6DECF1, 0x00 );
-    }
-    else
-    {
-        // this is the start of the function and ensures that remote vehicles aren't processed for tyre smoke
-        HookInstall ( HOOKPOS_CVehicle_ProcessTyreSmoke_Initial, (DWORD)HOOK_CMultiplayerSA_ToggleTyreSmoke, 6 );
-        // This ensures that the local vehicle tyre smoke while doing burnouts isn't rendered
-        HookInstall ( HOOKPOS_CVehicle_ProcessTyreSmoke_Burnouts, HOOKPOS_CVehicle_ProcessTyreSmoke_HookAddress, 5 );
-        // This ensures that the local vehicle tyre smoke under braking isn't rendered
-        HookInstall ( HOOKPOS_CVehicle_ProcessTyreSmoke_Braking, HOOKPOS_CVehicle_ProcessTyreSmoke_HookAddress, 5 );
-    }
-}
-CPhysicalSAInterface * pExplosionEntity;
-
-void UpdateExplosionLocation ( )
-{
-    if ( pExplosionEntity )
-    {
-        // project backwards 20% of our velocity just to catch us going too far
-        CVector vecStart = pExplosionEntity->Placeable.matrix->vPos + ( pExplosionEntity->m_vecLinearVelocity * 0.20f );
-        // project forwards 120% to look for collisions forwards
-        CVector vecEnd = vecStart - ( pExplosionEntity->m_vecLinearVelocity * 1.20f );
-        // calculate our actual impact position
-        if ( pGameInterface->GetWorld()->CalculateImpactPosition ( vecStart, vecEnd ) )
-        {            
-            // Apply it
-            if ( pExplosionEntity->Placeable.matrix )
-            {
-                pExplosionEntity->Placeable.matrix->vPos = vecEnd;
-            }
-            else
-            {
-                pExplosionEntity->Placeable.m_transform.m_translate = vecEnd;
-            }
-        }
-    }
-}
-
-void _declspec(naked) HOOK_CProjectile_FixExplosionLocation ( )
-{
-    _asm
-    {
-        mov pExplosionEntity, esi
-        pushad
-    }
-    UpdateExplosionLocation ( );
-    _asm
-    {
-        popad
-        mov eax, [esi+14h]
-        test eax, eax
-        jz skip
-        add eax, 30h
-        jmp RETURN_CProjectile_FixExplosionLocation
-skip:
-        lea eax, [esi+4]
-        jmp RETURN_CProjectile_FixExplosionLocation
     }
 }

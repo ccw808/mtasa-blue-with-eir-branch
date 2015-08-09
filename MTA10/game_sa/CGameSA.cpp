@@ -35,12 +35,16 @@ float* CGameSA::VAR_OldTimeStep;
 float* CGameSA::VAR_TimeStep;
 unsigned long* CGameSA::VAR_Framelimiter;
 
-/**
- * \todo allow the addon to change the size of the pools (see 0x4C0270 - CPools::Initialise) (in start game?)
- */
+CFileTranslator *gameFileRoot;
+
+
 CGameSA::CGameSA()
 {
     pGame = this;
+
+    // Setup the global game file root, which has to be our current directory
+    gameFileRoot = g_pCore->GetFileSystem()->CreateTranslator( "/" );
+
     m_bAsyncScriptEnabled = false;
     m_bAsyncScriptForced = false;
     m_bASyncLoadingSuspended = false;
@@ -63,6 +67,12 @@ CGameSA::CGameSA()
     {
         ModelInfo [i].SetModelID ( i );
     }
+
+    // Monitor GTA:SA file system activity.
+    FileMgr::InitHooks();
+
+    // Streaming resources init
+    IMG_Initialize();
 
     DEBUG_TRACE("CGameSA::CGameSA()");
     this->m_pAudioEngine            = new CAudioEngineSA((CAudioEngineSAInterface*)CLASS_CAudioEngine);
@@ -95,6 +105,9 @@ CGameSA::CGameSA()
     this->m_pControllerConfigManager = new CControllerConfigManagerSA();
     this->m_pProjectileInfo         = new CProjectileInfoSA();
     this->m_pRenderWare             = new CRenderWareSA( version );
+    this->m_pRwExtensionManager     = new CRwExtensionManagerSA;
+    this->m_textureManager          = new CTextureManagerSA;
+    this->m_modelManager            = new CModelManagerSA;
     this->m_pHandlingManager        = new CHandlingManagerSA ();
     this->m_pEventList              = new CEventListSA();
     this->m_pGarages                = new CGaragesSA ( (CGaragesSAInterface *)CLASS_CGarages);
@@ -104,11 +117,34 @@ CGameSA::CGameSA()
     this->m_pVisibilityPlugins      = new CVisibilityPluginsSA;
     this->m_pKeyGen                 = new CKeyGenSA;
     this->m_pRopes                  = new CRopesSA;
+    this->m_pRecordings             = new CRecordingsSA;
     this->m_pFx                     = new CFxSA ( (CFxSAInterface *)CLASS_CFx );
     this->m_pFxManager              = new CFxManagerSA ( (CFxManagerSAInterface *)CLASS_CFxManager );
     this->m_pWaterManager           = new CWaterManagerSA ();
     this->m_pWeaponStatsManager     = new CWeaponStatManagerSA ();
     this->m_pPointLights            = new CPointLightsSA ();
+    this->m_pExecutiveManager       = new CExecutiveManagerSA;
+
+    // Initialize static (internal) extensions
+    RenderWarePipeline_Init();
+    RenderWareAPI_Init();
+    Transformation_Init();
+    QuadTree_Init();
+    Cache_Init();
+    Placeable_Init();
+    Camera_Init();
+    ColModel_Init();
+    Entity_Init();
+    //Physical_Init();
+    //Objects_Init();
+    //Ped_Init();
+    ObjectRender_Init();
+    Streamer_Init();
+    ModelInfo_Init();
+    VehicleModels_Init();
+    VehicleRender_Init();
+    PlayerInfo_Init();
+    HUD_Init();
 
     // Normal weapon types (WEAPONSKILL_STD)
     for ( int i = 0; i < NUM_WeaponInfosStdSkill; i++)
@@ -170,6 +206,7 @@ CGameSA::CGameSA()
     m_Cheats [ CHEAT_HEALTARMORMONEY  ] = new SCheatSA((BYTE *)VAR_HealthArmorMoney, false);
 
     // Change pool sizes here
+    // todo: make these functions actually do something.
     m_pPools->SetPoolCapacity ( TASK_POOL, 5000 );                  // Default is 500
     m_pPools->SetPoolCapacity ( OBJECT_POOL, 700 );                 // Default is 350
     m_pPools->SetPoolCapacity ( EVENT_POOL, 5000 );                 // Default is 200
@@ -178,18 +215,17 @@ CGameSA::CGameSA()
     m_pPools->SetPoolCapacity ( ENV_MAP_ATOMIC_POOL, 4000 );        // Default is 1024
     m_pPools->SetPoolCapacity ( SPEC_MAP_MATERIAL_POOL, 16000 );    // Default is 4096
 
-    // Increase streaming object instances list size
-    MemPut < WORD > ( 0x05B8E55, 30000 );         // Default is 12000
-    MemPut < WORD > ( 0x05B8EB0, 30000 );         // Default is 12000
-
     CModelInfoSA::StaticSetHooks ();
     CPlayerPedSA::StaticSetHooks ();
     CRenderWareSA::StaticSetHooks ();
     CRenderWareSA::StaticSetClothesReplacingHooks ();
     CTasksSA::StaticSetHooks ();
     CPedSA::StaticSetHooks ();
-    CSettingsSA::StaticSetHooks ();
-    CFxSystemSA::StaticSetHooks ();
+
+    // Stuff that needs investigating.
+    InitHooks_ClothesCache ();
+    InitHooks_Rendering ();
+    InitHooks_RwResources ();
 }
 
 CGameSA::~CGameSA ( void )
@@ -202,40 +238,74 @@ CGameSA::~CGameSA ( void )
         delete reinterpret_cast < CWeaponInfoSA* > ( WeaponInfos [i] );
     }
 
-    delete reinterpret_cast < CFxSA * > ( m_pFx );
-    delete reinterpret_cast < CRopesSA * > ( m_pRopes );
-    delete reinterpret_cast < CKeyGenSA * > ( m_pKeyGen );
-    delete reinterpret_cast < CVisibilityPluginsSA * > ( m_pVisibilityPlugins );
-    delete reinterpret_cast < CStreamingSA * > ( m_pStreaming );
-    delete reinterpret_cast < CAnimManagerSA* > ( m_pAnimManager );
-    delete reinterpret_cast < CTasksSA* > ( m_pTasks );
-    delete reinterpret_cast < CTaskManagementSystemSA* > ( m_pTaskManagementSystem );
-    delete reinterpret_cast < CHandlingManagerSA* > ( m_pHandlingManager );
-    delete reinterpret_cast < CPopulationSA* > ( m_pPopulation );
-    delete reinterpret_cast < CPathFindSA* > ( m_pPathFind );
-    delete reinterpret_cast < CFontSA* > ( m_pFont );
-    delete reinterpret_cast < CStatsSA* > ( m_pStats );
-    delete reinterpret_cast < CTextSA* > ( m_pText );
-    delete reinterpret_cast < CMenuManagerSA* > ( m_pMenuManager );
-    delete reinterpret_cast < CWeatherSA* > ( m_pWeather );
-    delete reinterpret_cast < CAERadioTrackManagerSA* > ( m_pCAERadioTrackManager );
-    delete reinterpret_cast < CTheCarGeneratorsSA* > ( m_pTheCarGenerators );
-    delete reinterpret_cast < CPadSA* > ( m_pPad );
-    delete reinterpret_cast < C3DMarkersSA* > ( m_p3DMarkers );
-    delete reinterpret_cast < CFireManagerSA* > ( m_pFireManager );
-    delete reinterpret_cast < CHudSA* > ( m_pHud );
-    delete reinterpret_cast < CExplosionManagerSA* > ( m_pExplosionManager );
-    delete reinterpret_cast < CPickupsSA* > ( m_pPickups );
-    delete reinterpret_cast < CCheckpointsSA* > ( m_pCheckpoints );
-    delete reinterpret_cast < CCoronasSA* > ( m_pCoronas );
-    delete reinterpret_cast < CCameraSA* > ( m_pCamera );
-    delete reinterpret_cast < CRadarSA* > ( m_pRadar );
-    delete reinterpret_cast < CClockSA* > ( m_pClock );
-    delete reinterpret_cast < CPoolsSA* > ( m_pPools );
-    delete reinterpret_cast < CWorldSA* > ( m_pWorld );
-    delete reinterpret_cast < CAudioEngineSA* > ( m_pAudioEngine );
-    delete reinterpret_cast < CAudioContainerSA* > ( m_pAudioContainer );
-    delete reinterpret_cast < CPointLightsSA * > ( m_pPointLights );
+    // Shutdown the static (internal) extensions
+    HUD_Shutdown();
+    PlayerInfo_Shutdown();
+    VehicleRender_Shutdown();
+    VehicleModels_Shutdown();
+    ModelInfo_Shutdown();
+    Streamer_Shutdown();
+    ObjectRender_Shutdown();
+    //Ped_Shutdown();
+    //Objects_Shutdown();
+    //Physical_Shutdown();
+    Entity_Shutdown();
+    ColModel_Shutdown();
+    Camera_Shutdown();
+    Placeable_Shutdown();
+    Cache_Shutdown();
+    QuadTree_Shutdown();
+    Transformation_Shutdown();
+    RenderWareAPI_Shutdown();
+    RenderWarePipeline_Shutdown();
+
+    delete m_pExecutiveManager;
+    delete m_pFxManager;
+    delete m_pFx;
+    delete m_pRecordings;
+    delete m_pRopes;
+    delete m_pKeyGen;
+    delete m_pVisibilityPlugins;
+    delete m_pStreaming;
+    delete m_pAnimManager;
+    delete m_modelManager;
+    delete m_textureManager;
+    delete m_pRwExtensionManager;
+    delete m_pRenderWare;
+    delete m_pTasks;
+    delete m_pTaskManagementSystem;
+    delete m_pHandlingManager;
+    delete m_pPopulation;
+    delete m_pPathFind;
+    delete m_pFont;
+    delete m_pStats;
+    delete m_pText;
+    delete m_pMenuManager;
+    delete m_pWeather;
+    delete m_pCAERadioTrackManager;
+    delete m_pTheCarGenerators;
+    delete m_pPad;
+    delete m_p3DMarkers;
+    delete m_pFireManager;
+    delete m_pHud;
+    delete m_pExplosionManager;
+    delete m_pPickups;
+    delete m_pCheckpoints;
+    delete m_pCoronas;
+    delete m_pCamera;
+    delete m_pRadar;
+    delete m_pClock;
+    delete m_pPools;
+    delete m_pWorld;
+    delete m_pAudioContainer;
+    delete m_pAudioEngine;
+    delete m_pPointLights;
+
+    // Terminate streaming resources
+    IMG_Shutdown();
+
+    // Terminate file system monitoring.
+    FileMgr::ShutdownHooks();
 }
 
 CWeaponInfo * CGameSA::GetWeaponInfo(eWeaponType weapon, eWeaponSkill skill)
@@ -284,7 +354,7 @@ bool CGameSA::IsInForeground ()
     return *VAR_IsForegroundWindow;
 }
 
-CModelInfo  * CGameSA::GetModelInfo(DWORD dwModelID )
+CModelInfoSA  * CGameSA::GetModelInfo(DWORD dwModelID )
 { 
     DEBUG_TRACE("CModelInfo * CGameSA::GetModelInfo(DWORD dwModelID )");
     if (dwModelID < MODELINFO_MAX) 
@@ -354,7 +424,7 @@ BOOL CGameSA::InitLocalPlayer(  )
     if ( pools )
     {
         //* HACKED IN HERE FOR NOW *//
-        CPedSAInterface* pInterface = pools->GetPedInterface ( (DWORD)1 );
+        CPedSAInterface* pInterface = pools->GetPedInterface ( (DWORD)0 );
 
         if ( pInterface )
         {
@@ -460,6 +530,18 @@ void CGameSA::Reset ( void )
         m_pHud->Disable ( false );
         m_pHud->SetComponentVisible ( HUD_ALL, true );
     }
+
+    // Notify modules which want it.
+    HUD_OnReset();
+
+    // Reset ubiqitous managers.
+    Streaming::Reset();
+
+    EntityRender_Reset();
+
+    // Reset rendering systems.
+    RenderCallbacks_Reset();
+    RenderWareLighting_Reset();
 }
 
 void CGameSA::Terminate ( void )
@@ -482,6 +564,55 @@ void CGameSA::Initialize ( void )
 
     // *Sebas* Hide the GTA:SA Main menu.
     MemPutFast < BYTE > ( CLASS_CMenuManager+0x5C, 0 );
+}
+
+void CGameSA::OnPreFrame()
+{
+    // Update the executive manager.
+    m_pExecutiveManager->DoPulse();
+}
+
+void CGameSA::OnFrame()
+{
+}
+
+void CGameSA::DiagnoseEntity( CEntity *theEntity )
+{
+    // Do some checking why our entity fails.
+    CEntitySAInterface *gameEntity = theEntity->GetInterface();
+
+    RwObject *rwobj = gameEntity->GetRwObject();
+
+#if 0
+    if ( !rwobj )
+    {
+        gameEntity->CreateRwObject();
+
+        rwobj = gameEntity->GetRwObject();
+
+        if ( !rwobj )
+        {
+            CModelLoadInfoSA& loadInfo = Streaming::GetModelLoadInfo( gameEntity->GetModelIndex() );
+
+            if ( loadInfo.m_eLoading == MODEL_UNAVAILABLE )
+            {
+                Streaming::RequestModel( gameEntity->GetModelIndex(), 0x10 );
+                Streaming::LoadAllRequestedModels( true );
+
+                gameEntity->CreateRwObject();
+            }
+        }
+    }
+#endif
+
+    if ( gameEntity->nType == ENTITY_TYPE_VEHICLE )
+    {
+        RpClump *vehClump = (RpClump*)rwobj;
+
+        RpClumpVehicleVerifyIntegrity( vehClump );
+    }
+
+    __asm nop
 }
 
 eGameVersion CGameSA::GetGameVersion ( void )
@@ -559,6 +690,23 @@ unsigned long CGameSA::GetMinuteDuration ( void )
 void CGameSA::SetMinuteDuration ( unsigned long ulTime )
 {
     MemPutFast < unsigned long > ( 0xB7015C, ulTime );
+}
+
+void CGameSA::HideRadar( bool hide )
+{
+    return HUD::HideRadar( hide );
+}
+
+bool CGameSA::IsRadarHidden( void )
+{
+    return HUD::IsRadarHidden();
+}
+
+void CGameSA::SetCenterOfWorld( CEntity *streamingEntity, const CVector *pos, float heading )
+{
+    CEntitySA *entity = dynamic_cast <CEntitySA*> ( streamingEntity );
+
+    World::SetCenterOfWorld( entity ? entity->GetInterface() : NULL, pos, heading );
 }
 
 bool CGameSA::IsCheatEnabled ( const char* szCheatName )
@@ -641,28 +789,13 @@ void CGameSA::SetAsyncLoadingFromScript ( bool bScriptEnabled, bool bScriptForce
     m_bAsyncScriptForced = bScriptForced;
 }
 
-void CGameSA::SuspendASyncLoading ( bool bSuspend, uint uiAutoUnsuspendDelay )
+void CGameSA::SuspendASyncLoading ( bool bSuspend )
 {
     m_bASyncLoadingSuspended = bSuspend;
-    // Setup auto unsuspend time if required
-    if ( uiAutoUnsuspendDelay && bSuspend )
-        m_llASyncLoadingAutoUnsuspendTime = CTickCount::Now() + CTickCount( (long long)uiAutoUnsuspendDelay );
-    else
-        m_llASyncLoadingAutoUnsuspendTime = CTickCount();
 }
 
 bool CGameSA::IsASyncLoadingEnabled ( bool bIgnoreSuspend )
 {
-    // Process auto unsuspend time if set
-    if ( m_llASyncLoadingAutoUnsuspendTime.ToLongLong() != 0 )
-    {
-        if ( CTickCount::Now() > m_llASyncLoadingAutoUnsuspendTime )
-        {
-            m_llASyncLoadingAutoUnsuspendTime = CTickCount();
-            m_bASyncLoadingSuspended = false;
-        }
-    }
-
     if ( m_bASyncLoadingSuspended && !bIgnoreSuspend )
         return false;
 
@@ -733,6 +866,7 @@ bool CGameSA::HasCreditScreenFadedOut ( void )
 void CGameSA::FlushPendingRestreamIPL ( void )
 {
     CModelInfoSA::StaticFlushPendingRestreamIPL ();
+    CModelInfoSA::StaticFlushPendingRestreamModel ();
     m_pRenderWare->ResetStats ();
 }
 
@@ -777,6 +911,93 @@ void CGameSA::OnPedContextChange ( CPed* pPedContext )
 CPed* CGameSA::GetPedContext ( void )
 {
     if ( !m_pPedContext )
-        m_pPedContext = pGame->GetPools ()->GetPedFromRef ( (DWORD)1 );
+        m_pPedContext = pGame->GetPools ()->GetPedFromRef ( (DWORD)0 );
     return m_pPedContext;
+}
+
+/*=========================================================
+    OpenGlobalStream
+
+    Arguments:
+        filename - MTA filepath descriptor
+        mode - ANSI C opening mode ("w", "rb+", "a", ...)
+    Purpose:
+        Opens a MTA stream handle by dispatching the filename.
+        It currently tries to access...
+            the mod (mods/deathmatch) root,
+            the MTA (MTA San Andreas 1.x/MTA/) root and
+            the game (Rockstar Games/GTA San Andreas/)...
+        in the order: Files from the deathmatch root will
+        override files from the MTA root and the game root.
+        Returns the MTA stream handle if successful (filepath valid,
+        contextual [points inside one of the roots], not filesystem
+        locked).
+=========================================================*/
+CFile* OpenGlobalStream( const char *filename, const char *mode )
+{
+    CFile *file;
+
+#ifdef MULTI_RENDERWARE_ROOT
+    // Attempt to access the deathmatch directory
+    if ( file = core->GetModRoot()->Open( filename, mode ) )
+        return file;
+
+    // Attempt to access the MTA directory
+    if ( file = core->GetMTARoot()->Open( filename, mode ) )
+        return file;
+#endif //MULTI_RENDERWARE_ROOT
+
+    // Attempt to access the GTA:SA directory
+    if ( file = FileMgr::GetCurDirTranslator()->Open( filename, mode ) )
+        return file;
+
+    // (off-topic) TODO: accept read-only access to the game directory
+    // MTA team has voiced their concern about game directory access; TOD (topic of discussion)
+    // I see this feature as optional anyway ;)
+    return NULL;
+}
+
+/*=========================================================
+    NormalizeRadians
+
+    Arguments:
+        radians - angle value
+    Purpose:
+        Normalizes the radians to a comparable result and
+        returns them.
+    Binary offsets:
+        (1.0 US and 1.0 EU): 0x0053CB50
+=========================================================*/
+float __cdecl NormalizeRadians( float radians )
+{
+    radians = Clamp( -25.0f, radians, 25.0f );
+
+    while ( radians >= M_PI )
+        radians -= (float)( M_PI * 2 );
+
+    while ( radians < -M_PI )
+        radians += (float)( M_PI * 2 );
+
+    return radians;
+}
+
+// Render Mode validation API.
+eRenderModeValueType CGameSA::GetPreferedEntityRenderModeType( eEntityRenderMode rMode )
+{
+    return EntityRender::GetPreferedEntityRenderModeType( rMode );
+}
+
+rModeResult CGameSA::ValidateEntityRenderModeBool( eEntityRenderMode rMode, bool value )
+{
+    return EntityRender::ValidateEntityRenderModeBool( rMode, value );
+}
+
+rModeResult CGameSA::ValidateEntityRenderModeFloat( eEntityRenderMode rMode, float value )
+{
+    return EntityRender::ValidateEntityRenderModeFloat( rMode, value );
+}
+
+rModeResult CGameSA::ValidateEntityRenderModeInt( eEntityRenderMode rMode, int value )
+{
+    return EntityRender::ValidateEntityRenderModeInt( rMode, value );
 }

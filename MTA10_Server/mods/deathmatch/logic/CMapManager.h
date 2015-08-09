@@ -117,7 +117,7 @@ private:
 
     CDummy*                     m_pRootElement;
 
-    long long                   m_llLastRespawnTime;
+    unsigned int                m_ulLastRespawnTime;
 
     CBlendedWeather*            m_pBlendedWeather;
 };

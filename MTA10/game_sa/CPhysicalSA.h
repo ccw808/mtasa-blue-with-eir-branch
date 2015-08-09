@@ -25,8 +25,7 @@
 #define FUNC_ProcessCollision                   0x54DFB0
 #define FUNC_AttachEntityToEntity               0x54D570
 #define FUNC_DetatchEntityFromEntity            0x5442F0
-#define FUNC_CPhysical_AddToMovingList          0x542800
-#define FUNC_CPhysical_RemoveFromMovingList     0x542860
+#define FUNC_AddToControlProcessList            0x542800
 
 #define PHYSICAL_MAXNOOFCOLLISIONRECORDS        6
 
@@ -36,41 +35,49 @@ public:
     float pad1; // 56
     uint32 pad2; // 60
 
-    uint32 b0x01 : 1; // 64
-    uint32 bApplyGravity : 1;
-    uint32 bDisableFriction : 1;
-    uint32 bCollidable : 1; 
-    uint32 b0x10 : 1;
-    uint32 bDisableMovement : 1;
-    uint32 b0x40 : 1;
-    uint32 b0x80 : 1;
+    union
+    {
+        struct
+        {
+            uint32 b0x01 : 1; // 64
+            uint32 bApplyGravity : 1;
+            uint32 bDisableFriction : 1;
+            uint32 bCollidable : 1; 
+            uint32 b0x10 : 1;
+            uint32 bDisableMovement : 1;
+            uint32 b0x40 : 1;
+            uint32 b0x80 : 1;
 
-    uint32 bSubmergedInWater : 1; // 65
-    uint32 bOnSolidSurface : 1;
-    uint32 bBroken : 1;
-    uint32 b0x800 : 1; // ref @ 0x6F5CF0
-    uint32 b0x1000 : 1;//
-    uint32 b0x2000 : 1;//
-    uint32 b0x4000 : 1;//
-    uint32 b0x8000 : 1;//
+            uint32 bSubmergedInWater : 1; // 65
+            uint32 bOnSolidSurface : 1;
+            uint32 bBroken : 1;
+            uint32 b0x800 : 1; // ref @ 0x6F5CF0
+            uint32 b0x1000 : 1;//
+            uint32 b0x2000 : 1;//
+            uint32 b0x4000 : 1;//
+            uint32 b0x8000 : 1;//
 
-    uint32 b0x10000 : 1; // 66
-    uint32 b0x20000 : 1; // ref @ CPhysical__processCollision
-    uint32 bBulletProof : 1;
-    uint32 bFireProof : 1;
-    uint32 bCollisionProof : 1;
-    uint32 bMeeleProof : 1;
-    uint32 bInvulnerable : 1;
-    uint32 bExplosionProof : 1;
+            uint32 b0x10000 : 1; // 66
+            uint32 b0x20000 : 1; // ref @ CPhysical__processCollision
+            uint32 bBulletProof : 1;
+            uint32 bFireProof : 1;
+            uint32 bCollisionProof : 1;
+            uint32 bMeeleProof : 1;
+            uint32 bInvulnerable : 1;
+            uint32 bExplosionProof : 1;
 
-    uint32 b0x1000000 : 1; // 67
-    uint32 bAttachedToEntity : 1;
-    uint32 b0x4000000 : 1;
-    uint32 bTouchingWater : 1;
-    uint32 bEnableCollision : 1;
-    uint32 bDestroyed : 1;
-    uint32 b0x40000000 : 1;
-    uint32 b0x80000000 : 1;
+            uint32 b0x1000000 : 1; // 67
+            uint32 bAttachedToEntity : 1;
+            uint32 b0x4000000 : 1;
+            uint32 bTouchingWater : 1;
+            uint32 bEnableCollision : 1;
+            uint32 bDestroyed : 1;
+            uint32 b0x40000000 : 1;
+            uint32 b0x80000000 : 1;
+        };
+
+        unsigned int physicalFlags;
+    };
 
     CVector    m_vecLinearVelocity; // 68
     CVector    m_vecAngularVelocity; // 80
@@ -105,15 +112,14 @@ public:
     CVector m_vecAttachedOffset;    // 256
     CVector m_vecAttachedRotation;    // 268
     CVector m_vecUnk;    // 280
-    uint32 m_pad4; // 292
-    class CPtrNodeDoubleLink* m_pControlCodeNodeLink; // 296
+    uint32 m_pad4[2]; // 292
     float m_fLighting; // 300
     float m_fLighting2; // 304
     class CShadowDataSA *m_pShadowData; // 308
 };
 C_ASSERT(sizeof(CPhysicalSAInterface) == 0x138);
 
-class CPhysicalSA : public virtual CPhysical, public virtual CEntitySA
+class CPhysicalSA : public virtual CPhysical, public CEntitySA
 {
 public:
     virtual void RestoreLastGoodPhysicsState ( void );
@@ -121,8 +127,8 @@ public:
     CVector *   GetTurnSpeed                ( CVector * vecTurnSpeed );
     CVector *   GetMoveSpeedInternal        ( CVector * vecMoveSpeed );
     CVector *   GetTurnSpeedInternal        ( CVector * vecTurnSpeed );
-    void        SetMoveSpeed                ( CVector * vecMoveSpeed );
-    void        SetTurnSpeed                ( CVector * vecTurnSpeed );
+    VOID        SetMoveSpeed                ( CVector * vecMoveSpeed );
+    VOID        SetTurnSpeed                ( CVector * vecTurnSpeed );
 
     float       GetMass                     ( void );
     void        SetMass                     ( float fMass );
@@ -133,8 +139,8 @@ public:
     float       GetBuoyancyConstant         ( void );
     void        SetBuoyancyConstant         ( float fBuoyancyConstant );
 
-    void        ProcessCollision            ( void );
-    void        AddToMovingList             ( void );
+    VOID        ProcessCollision            ( void );
+    void        AddToControlProcessList     ( void );
 
     float       GetDamageImpulseMagnitude   ( void );
     void        SetDamageImpulseMagnitude   ( float fMagnitude );

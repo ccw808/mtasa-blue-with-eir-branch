@@ -11,7 +11,6 @@
 *****************************************************************************/
 
 #include <CVector.h>
-#include <CVector2D.h>
 
 struct ID3DXFont;
 struct IDirect3DBaseTexture9;
@@ -29,7 +28,6 @@ class CShaderItem;
 class CShaderInstance;
 class CRenderTargetItem;
 class CScreenSourceItem;
-class CWebBrowserItem;
 class CRenderItemManager;
 class CD3DDUMMY;
 class CEffectCloner;
@@ -38,7 +36,6 @@ class CClientEntityBase;
 struct SShaderItemLayers;
 typedef CShaderItem CSHADERDUMMY;
 enum eAspectRatio;
-class CWebViewInterface;
 
 #define RDEFAULT            ((uint) -1)
 
@@ -141,7 +138,6 @@ public:
     virtual CShaderItem*        CreateShader                        ( const SString& strFullFilePath, const SString& strRootPath, SString& strOutStatus, float fPriority, float fMaxDistance, bool bLayered, bool bDebug, int iTypeMask ) = 0;
     virtual CRenderTargetItem*  CreateRenderTarget                  ( uint uiSizeX, uint uiSizeY, bool bWithAlphaChannel, bool bForce = false ) = 0;
     virtual CScreenSourceItem*  CreateScreenSource                  ( uint uiSizeX, uint uiSizeY ) = 0;
-    virtual CWebBrowserItem*    CreateWebBrowser                    ( uint uiSizeX, uint uiSizeY ) = 0;
     virtual bool                SetRenderTarget                     ( CRenderTargetItem* pItem, bool bClear ) = 0;
     virtual void                EnableSetRenderTargetOldVer         ( bool bEnable ) = 0;
     virtual bool                IsSetRenderTargetEnabledOldVer      ( void ) = 0;
@@ -194,7 +190,7 @@ struct SShaderTransform
     CVector vecRotCenOffset;
     bool bRotCenOffsetOriginIsScreen;
 
-    CVector2D vecPersCenOffset;
+    CVector vecPersCenOffset;
     bool bPersCenOffsetOriginIsScreen;
 };
 
@@ -221,7 +217,6 @@ enum eRenderItemClassTypes
     CLASS_CFileTextureItem,
     CLASS_CRenderTargetItem,
     CLASS_CScreenSourceItem,
-    CLASS_CWebBrowserItem,
 };
 
 
@@ -306,8 +301,8 @@ class CEffectWrap : public CRenderItem
 {
     DECLARE_CLASS( CEffectWrap, CRenderItem )
                     CEffectWrap             ( void ) : ClassInit ( this ) {}
-    virtual bool    ApplyCommonHandles      ( void ) = 0;
-    virtual bool    ApplyMappedHandles      ( void ) = 0;
+    virtual void    ApplyCommonHandles      ( void ) = 0;
+    virtual void    ApplyMappedHandles      ( void ) = 0;
     virtual void    ReadParameterHandles    ( void ) = 0;
 
     ID3DXEffect*    m_pD3DEffect;
@@ -318,7 +313,6 @@ class CEffectWrap : public CRenderItem
     D3DXHANDLE      hLightAmbient, hLightDiffuse, hLightSpecular, hLightDirection;
     D3DXHANDLE      hDepthBuffer;
     D3DXHANDLE      hViewMainScene, hWorldMainScene, hProjectionMainScene;
-    bool            m_bUsesCommonHandles;
 
     std::map < SString, D3DXHANDLE > m_texureHandleMap;
     std::map < SString, D3DXHANDLE > m_valueHandleMap;
@@ -374,6 +368,15 @@ class CShaderItem : public CMaterialItem
     virtual void    SetTransform            ( const SShaderTransform& transform );
     virtual bool    GetUsesVertexShader     ( void );
 
+    virtual void    Begin                   ( unsigned int& numPasses );
+    virtual void    BeginPass               ( unsigned int pass );
+    virtual void    EndPass                 ( void );
+    virtual bool    IsComputing             ( void );
+    virtual void    End                     ( void );
+
+    virtual void    UpdateParams            ( void );
+    virtual void    UpdatePipelineParams    ( void );
+
     CEffectWrap*        m_pEffectWrap;
     float               m_fPriority;
     uint                m_uiCreateTime;
@@ -420,6 +423,8 @@ class CShaderInstance : public CMaterialItem
     SShaderTransform    m_Transform;
     bool                m_bHasModifiedTransform;
     std::map < D3DXHANDLE, SShaderValue > m_currentSetValues;
+
+    bool            m_isComputing;
 };
 
 
@@ -507,24 +512,4 @@ class CScreenSourceItem : public CTextureItem
 
     IDirect3DSurface9*  m_pD3DRenderTargetSurface;
     uint                m_uiRevision;
-};
-
-////////////////////////////////////////////////////////////////
-////////////////////////////////////////////////////////////////
-//
-// CWebBrowserItem - webbrowser texture
-//
-class CWebBrowserItem : public CTextureItem
-{
-    DECLARE_CLASS(CWebBrowserItem, CTextureItem)
-                    CWebBrowserItem         ( void ) : ClassInit ( this ) {}
-    virtual void    PostConstruct           ( CRenderItemManager* pRenderItemManager, uint uiSizeX, uint uiSizeY );
-    virtual void    PreDestruct             ( void );
-    virtual bool    IsValid                 ( void );
-    virtual void    OnLostDevice            ( void );
-    virtual void    OnResetDevice           ( void );
-    void            CreateUnderlyingData    ( void );
-    void            ReleaseUnderlyingData   ( void );
-
-    IDirect3DSurface9*    m_pD3DRenderTargetSurface;
 };

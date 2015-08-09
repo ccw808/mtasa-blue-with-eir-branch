@@ -72,7 +72,6 @@ public:
 
     void                SetAlpha                    ( float fAlpha );
     float               GetAlpha                    ( void );
-    float               GetEffectiveAlpha           ( void );
     void                SetInheritsAlpha            ( bool bInheritsAlpha );
     bool                GetInheritsAlpha            ( void );
 

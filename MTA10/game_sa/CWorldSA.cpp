@@ -15,6 +15,127 @@
 *****************************************************************************/
 
 #include "StdInc.h"
+
+/*=========================================================
+    World::AddEntity
+
+    Arguments:
+        entity - the entity to add into the world
+    Purpose:
+        Links the given entity into the world so it is
+        processed by the game loop.
+    Binary offsets:
+        (1.0 US and 1.0 EU): 0x00563220
+=========================================================*/
+void __cdecl World::AddEntity( CEntitySAInterface *entity )
+{
+    pGame->GetWorld()->Add( entity, World_Native );
+}
+
+/*=========================================================
+    World::RemoveEntity
+
+    Arguments:
+        entity - the entity to remove from the world
+    Purpose:
+        Unlinks the given entity from the game. It will no
+        longer be processed by the game loop.
+    Binary offsets:
+        (1.0 US and 1.0 EU): 0x00563280
+=========================================================*/
+void __cdecl World::RemoveEntity( CEntitySAInterface *entity )
+{
+    pGame->GetWorld()->Remove( entity, World_Native );
+}
+
+/*=========================================================
+    World::SetCenterOfWorld (MTA extension)
+
+    Arguments:
+        streamingEntity - entity used for streaming reference
+        pos - center of world position, if NULL then
+              custom center of world disabled
+        heading - player heading
+    Purpose:
+        Sets a fixed center of world for dynamic streaming
+        purposes.
+=========================================================*/
+static bool isCenterOfWorldSet = false;
+static CVector centerOfWorld = CVector( 0, 0, 0 );
+static float falseHeading = 0.0f;
+static CEntitySAInterface *_streamingEntity = NULL;
+
+void World::SetCenterOfWorld( CEntitySAInterface *streamingEntity, const CVector *pos, float heading )
+{
+    if ( pos )
+    {
+        centerOfWorld = *pos;
+
+        _streamingEntity = streamingEntity;
+
+        falseHeading = heading;
+        isCenterOfWorldSet = true;
+    }
+    else 
+    {
+        _streamingEntity = NULL;
+        isCenterOfWorldSet = false;
+    }
+}
+
+/*=========================================================
+    World::GetCenterOfWorld (MTA extension)
+
+    Arguments:
+        pos - pointer to write the center into
+    Purpose:
+        Returns a boolean whether a static center of world
+        was set by MTA. If true, then the center of world
+        is written into pos.
+=========================================================*/
+bool World::GetCenterOfWorld( CVector& pos )
+{
+    if ( !isCenterOfWorldSet )
+        return false;
+
+    pos = centerOfWorld;
+    return true;
+}
+
+bool World::IsCenterOfWorldSet( void )
+{
+    return isCenterOfWorldSet;
+}
+
+const CVector& World::GetCenterOfWorld( void )
+{
+    return centerOfWorld;
+}
+
+/*=========================================================
+    World::GetStreamingEntity (MTA extension)
+
+    Purpose:
+        Returns the entity which is used for streaming
+        reference (can be NULL).
+=========================================================*/
+CEntitySAInterface* World::GetStreamingEntity( void )
+{
+    return _streamingEntity;
+}
+
+/*=========================================================
+    World::GetFalseHeading (MTA extension)
+
+    Purpose:
+        Returns a false heading used when center of world
+        streaming is active.
+=========================================================*/
+float World::GetFalseHeading( void )
+{
+    return falseHeading;
+}
+
 CWorldSA::CWorldSA ( )
 {
     m_pBuildingRemovals = new std::multimap< unsigned short, SBuildingRemoval* >;
@@ -31,7 +152,7 @@ void CWorldSA::Add ( CEntity * pEntity, eDebugCaller CallerId )
     if ( pEntitySA )
     {
         CEntitySAInterface * pInterface = pEntitySA->GetInterface();
-        if ( (DWORD)pInterface->vtbl == VTBL_CPlaceable )
+        if ( *(DWORD*)pInterface == VTBL_CPlaceable )
         {
             SString strMessage ( "Caller: %i ", CallerId );
             LogEvent ( 506, "CWorld::Add ( CEntity * ) Crash", "", strMessage );
@@ -52,7 +173,7 @@ void CWorldSA::Add ( CEntitySAInterface * entityInterface, eDebugCaller CallerId
 {
     DEBUG_TRACE("VOID CWorldSA::Add ( CEntitySAInterface * entityInterface )");
     DWORD dwFunction = FUNC_Add;
-    if ( (DWORD)entityInterface->vtbl == VTBL_CPlaceable )
+    if ( *(DWORD*)entityInterface == VTBL_CPlaceable )
     {
         SString strMessage ( "Caller: %i ", CallerId );
         LogEvent ( 506, "CWorld::Add ( CEntitySAInterface * ) Crash", "", strMessage );
@@ -74,7 +195,7 @@ void CWorldSA::Remove ( CEntity * pEntity, eDebugCaller CallerId )
     if ( pEntitySA )
     {
         CEntitySAInterface * pInterface = pEntitySA->GetInterface();
-        if ( (DWORD)pInterface->vtbl == VTBL_CPlaceable )
+        if ( *(DWORD*)pInterface == VTBL_CPlaceable )
         {
             SString strMessage ( "Caller: %i ", CallerId );
             LogEvent ( 507, "CWorld::Remove ( CEntity * ) Crash", "", strMessage );
@@ -93,7 +214,7 @@ void CWorldSA::Remove ( CEntity * pEntity, eDebugCaller CallerId )
 void CWorldSA::Remove ( CEntitySAInterface * entityInterface, eDebugCaller CallerId )
 {
     DEBUG_TRACE("VOID CWorldSA::Remove ( CEntitySAInterface * entityInterface )");
-    if ( (DWORD)entityInterface->vtbl == VTBL_CPlaceable )
+    if ( *(DWORD*)entityInterface == VTBL_CPlaceable )
     {
         SString strMessage ( "Caller: %i ", CallerId );
         LogEvent ( 507, "CWorld::Remove ( CEntitySAInterface * ) Crash", "", strMessage );
@@ -154,28 +275,9 @@ bool CWorldSA::TestLineSphere(CVector * vecStart, CVector * vecEnd, CVector * ve
 }
 
 
-void ConvertMatrixToEulerAngles ( const CMatrix_Padded& matrixPadded, float& fX, float& fY, float& fZ )
+void ConvertMatrixToEulerAngles ( const RwMatrix& matrixPadded, float& fX, float& fY, float& fZ )
 {
-    // Convert the given matrix to a padded matrix
-    //CMatrix_Padded matrixPadded ( Matrix );
-
-    // Grab its pointer and call gta's func
-    const CMatrix_Padded* pMatrixPadded = &matrixPadded;
-    DWORD dwFunc = FUNC_CMatrix__ConvertToEulerAngles;
-
-    float* pfX = &fX;
-    float* pfY = &fY;
-    float* pfZ = &fZ;
-    int iUnknown = 21;
-    _asm
-    {
-        push    iUnknown
-            push    pfZ
-            push    pfY
-            push    pfX
-            mov     ecx, pMatrixPadded
-            call    dwFunc
-    }
+    matrixPadded.GetRotationRad( fX, fY, fZ );
 }
 
 
@@ -508,12 +610,10 @@ void CWorldSA::SetOcclusionsEnabled ( bool bEnabled )
     {
         MemPut < BYTE > ( FUNC_COcclusion_ProcessBeforeRendering, 0xC3 );   // retn
         MemPutFast < int > ( VAR_COcclusion_NumActiveOccluders, 0 );
-        MemCpy ( (void*)CALL_CCullZones_FindTunnelAttributesForCoors, "\xB8\x80\x28\x00\x00", 5 );  // mov eax, 0x2880
     }
     else
     {
         MemPut < BYTE > ( FUNC_COcclusion_ProcessBeforeRendering, 0x51 );   // Standard value
-        MemCpy ( (void*)CALL_CCullZones_FindTunnelAttributesForCoors, "\xE8\xDE\x82\x1D\x00", 5 );   // call 0x72D9F0
     }
 }
 
@@ -553,9 +653,9 @@ int CWorldSA::FindClosestRailTrackNode ( const CVector& vecPosition, uchar& ucOu
         {
             for ( int i = 0; i < aNumTrackNodes[ucTrackId]; ++i )
             {
-                SRailNodeSA& railNode = aTrackNodes[ucTrackId][i];
+                SRailNodeSA pRailNode = aTrackNodes[ucTrackId][i];
 
-                float fDistance = sqrt ( pow(vecPosition.fZ - railNode.sZ * 0.125f, 2) + pow(vecPosition.fY - railNode.sY * 0.125f, 2) + pow(vecPosition.fX - railNode.sX * 0.125f, 2) );
+                float fDistance = sqrt ( pow(vecPosition.fZ - pRailNode.sZ * 0.125f, 2) + pow(vecPosition.fY - pRailNode.sY * 0.125f, 2) + pow(vecPosition.fX - pRailNode.sX * 0.125f, 2) );
                 if ( fDistance < fMinDistance )
                 {
                     fMinDistance = fDistance;
@@ -592,7 +692,14 @@ int CWorldSA::FindClosestRailTrackNode ( const CVector& vecPosition, uchar& ucOu
     return iNodeId;*/
 }
 
-void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, float fX, float fY, float fZ, char cInterior, uint* pOutAmount )
+bool CWorldSA::ProcessVerticalLine( const CVector& pos, float distance, CColPointSAInterface& colPoint, CEntitySAInterface **hitEntity,
+                                    bool unk1, bool unk2, bool unk3, bool unk4, bool unk5, bool unk6, bool unk7 )
+{
+    return ((bool (__cdecl*)( const CVector&, float, CColPointSAInterface&, CEntitySAInterface **, bool, bool, bool, bool, bool, bool, bool ))0x005674E0)
+                              ( pos, distance, colPoint, hitEntity, unk1, unk2, unk3, unk4, unk5, unk6, unk7 );
+}
+
+void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, float fX, float fY, float fZ, char cInterior )
 {    
     // New building Removal
     SBuildingRemoval* pRemoval = new SBuildingRemoval();
@@ -606,7 +713,6 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
     m_pBuildingRemovals->insert ( std::pair<unsigned short, SBuildingRemoval*> ( usModelToRemove, pRemoval ) );
 
     bool bFound = false;
-    uint uiAmount = 0;
     // Init loop variables
     std::pair < std::multimap < unsigned short, sDataBuildingRemovalItem*>::iterator, std::multimap < unsigned short, sDataBuildingRemovalItem* >::iterator> iterators = m_pDataBuildings->equal_range ( usModelToRemove );
     std::multimap < unsigned short, sDataBuildingRemovalItem* > ::const_iterator iter = iterators.first;
@@ -644,7 +750,7 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
                         // if the building type is dummy or building and it's not already being removed
                         if ( ( pInterface->nType == ENTITY_TYPE_BUILDING || pInterface->nType == ENTITY_TYPE_DUMMY || pInterface->nType == ENTITY_TYPE_OBJECT ) && pInterface->bRemoveFromWorld != 1 )
                         {
-                            if ( (DWORD)(pInterface->vtbl) != VTBL_CPlaceable )
+                            if ( *(DWORD*)(pInterface) != VTBL_CPlaceable )
                             {
                                 // Add the Data Building to the list
                                 pRemoval->AddDataBuilding ( pInterface );
@@ -701,7 +807,7 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
                         // if the building type is dummy or building and it's not already being removed
                         if ( ( pInterface->nType == ENTITY_TYPE_BUILDING || pInterface->nType == ENTITY_TYPE_DUMMY || pInterface->nType == ENTITY_TYPE_OBJECT ) && pInterface->bRemoveFromWorld != 1 )
                         {
-                            if ( (DWORD)(pInterface->vtbl) != VTBL_CPlaceable )
+                            if ( *(DWORD*)(pInterface) != VTBL_CPlaceable )
                             {
                                 // Add the Data Building to the list
                                 pRemoval->AddBinaryBuilding ( pInterface );
@@ -709,7 +815,6 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
                                 Remove ( pInterface, BuildingRemoval2 );
                                 m_pRemovedEntities[(DWORD)pInterface] = true;
                                 bFound = true;
-                                ++uiAmount;
                             }
                         }
                         // Get next LOD ( LOD's can have LOD's so we keep checking pInterface )
@@ -723,16 +828,11 @@ void CWorldSA::RemoveBuilding ( unsigned short usModelToRemove, float fRange, fl
     }
     if ( bFound )
         pGame->GetModelInfo ( usModelToRemove )->RestreamIPL ();
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
 }
 
-bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, float fX, float fY, float fZ, char cInterior, uint* pOutAmount  )
+bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, float fX, float fY, float fZ, char cInterior )
 {        
     bool bSuccess = false;
-    uint uiAmount = 0;
-
     // Init some variables
     std::pair < std::multimap < unsigned short, SBuildingRemoval* >::iterator, std::multimap < unsigned short, SBuildingRemoval* >::iterator> iterators = m_pBuildingRemovals->equal_range ( usModelToRestore );
     std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = iterators.first;
@@ -771,15 +871,18 @@ bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, 
                             if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
                             {
                                 // Don't call this on entities being removed.
-                                if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
+                                // The_GTA: Dude, this check is redundant since we fixed the building streaming bug.
+                                if ( *(DWORD*)(pEntity) != VTBL_CPlaceable )
                                 {
                                     Add ( pEntity, Building_Restore );
                                     m_pRemovedEntities[(DWORD)pEntity] = false;
                                     // If the building isn't streamed in, we won't find the building in the list (because the hook wasn't called) -> removeWorldModel doesn't work next time
                                     AddBinaryBuilding ( pEntity );
-                                    ++uiAmount;
                                 }
                             }
+
+                            // If the building isn't streamed in, we won't find the building in the list (because the hook wasn't called) -> removeWorldModel doesn't work next time
+                            AddBinaryBuilding ( pEntity );
                         }
                         else
                             ++entityIter;
@@ -801,7 +904,7 @@ bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, 
                             // if the building type is dummy or building and it's not already being removed
                             if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
                             {
-                                if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
+                                if ( *(DWORD*)(pEntity) != VTBL_CPlaceable )
                                 {
                                     Add ( pEntity, Building_Restore2 );
                                     m_pRemovedEntities[(DWORD)pEntity] = false;
@@ -887,9 +990,6 @@ bool CWorldSA::RestoreBuilding ( unsigned short usModelToRestore, float fRange, 
             }
         }
     }
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
 
     return bSuccess;
 }
@@ -982,12 +1082,10 @@ bool CWorldSA::IsEntityRemoved ( CEntitySAInterface * pInterface )
 }
 
 // Resets deleted list
-void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
+void CWorldSA::ClearRemovedBuildingLists ( )
 {
     // Ensure no memory leaks by deleting items.
-    uint uiAmount = 0;
     std::multimap < unsigned short, SBuildingRemoval* > ::const_iterator iter = m_pBuildingRemovals->begin ( );
-
     for ( ; iter != m_pBuildingRemovals->end ( ); )
     {
         SBuildingRemoval * pFind = (*iter).second;
@@ -1010,11 +1108,10 @@ void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
                         if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
                         {
                             // Don't call this on entities being removed.
-                            if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
+                            if ( *(DWORD*)(pEntity) != VTBL_CPlaceable )
                             {
                                 Add ( pEntity, BuildingRemovalReset );
                                 m_pRemovedEntities[(DWORD)pEntity] = false;
-                                ++uiAmount;
                             }
                         }
                     }
@@ -1035,7 +1132,7 @@ void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
                         if ( ( pEntity->nType == ENTITY_TYPE_BUILDING || pEntity->nType == ENTITY_TYPE_DUMMY || pEntity->nType == ENTITY_TYPE_OBJECT ) && pEntity->bRemoveFromWorld != 1 )
                         {
                             // Don't call this on entities being removed.
-                            if ( (DWORD)(pEntity->vtbl) != VTBL_CPlaceable )
+                            if ( *(DWORD*)(pEntity) != VTBL_CPlaceable )
                             {
                                 Add ( pEntity, BuildingRemovalReset2 );
                                 m_pRemovedEntities[(DWORD)pEntity] = false;
@@ -1078,9 +1175,6 @@ void CWorldSA::ClearRemovedBuildingLists ( uint* pOutAmount )
     // Create new
     m_pBuildingRemovals = new std::multimap< unsigned short, SBuildingRemoval* >;
     m_pRemovedEntities.clear ( );
-
-    if ( pOutAmount )
-        *pOutAmount = uiAmount;
 }
 
 
@@ -1245,52 +1339,4 @@ void CWorldSA::RemoveWorldBuildingFromLists ( CEntitySAInterface * pInterface )
     m_pRemovedEntities[(DWORD)pInterface] = false;
     m_pAddedEntities[(DWORD)pInterface] = false;
 
-}
-
-bool CWorldSA::CalculateImpactPosition ( const CVector &vecInputStart, CVector &vecInputEnd )
-{
-    // get our position
-    CVector vecStart = vecInputStart;
-    // get our end position by projecting forward a few velocities more
-    CVector vecEnd = vecInputEnd;
-    // grab the difference between our reported and actual end position
-    CVector diff = vecEnd - vecStart;
-    // normalize our difference
-    diff.Normalize ( );
-    // project forward another unit
-    vecEnd = vecEnd + diff * 1;
-    // create a variable to store our collision data
-    CColPoint * pColPoint;
-    // create a variable to store our collision entity
-    CEntity * pCollisionEntity;
-
-    // flags
-    SLineOfSightFlags flags;
-    flags.bCheckCarTires = false;
-    flags.bIgnoreSomeObjectsForCamera = true;
-    flags.bCheckBuildings = true;
-    flags.bCheckPeds = true;
-    flags.bCheckObjects = true;
-    flags.bCheckDummies = true;
-
-    // Include dead peds
-    MemPutFast < DWORD > ( 0xB7CD71, 1 );
-
-    SLineOfSightBuildingResult result;
-    // process forward another 1 unit
-    if ( ProcessLineOfSight ( &vecStart, &vecEnd, &pColPoint, &pCollisionEntity, flags, &result ) )
-    {
-        // set our collision position
-        vecInputEnd = pColPoint->GetPosition ( );
-
-        // destroy our colshape
-        pColPoint->Destroy ( );
-
-        // reset include dead peds
-        MemPutFast < DWORD > ( 0xB7CD71, 0 );
-        return true;
-    }
-    // Include dead peds
-    MemPutFast < DWORD > ( 0xB7CD71, 0 );
-    return false;
 }

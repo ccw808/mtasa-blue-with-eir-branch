@@ -12,7 +12,7 @@
 #ifndef __CFxSystem
 #define __CFxSystem
 
-#include "RenderWare.h"
+// do not include RenderWare.h into virtual logic.
 class CFxSystem
 {
 public:
@@ -28,9 +28,6 @@ public:
 
     virtual void  GetMatrix ( CMatrix & matrix ) = 0;
     virtual void  SetMatrix ( const CMatrix & matrix ) = 0;
-
-    virtual void SetDrawDistance ( float fDrawDistance ) = 0;
-    virtual float GetDrawDistance ( void ) = 0;
 
     virtual void* GetInterface( void ) = 0;
 };

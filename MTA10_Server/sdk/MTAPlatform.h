@@ -130,4 +130,11 @@ extern "C" bool g_bNoTopBar;
 // compatibility
 extern int mymkdir ( const char* dirname );
 
+// Set up export type definition for Win32
+#ifdef WIN32
+    #define MTAEXPORT extern "C" __declspec(dllexport)
+#else
+    #define MTAEXPORT extern "C"
+#endif
+
 #endif

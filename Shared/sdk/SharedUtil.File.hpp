@@ -178,7 +178,7 @@ bool SharedUtil::FileAppend ( const SString& strFilename, const void* pBuffer, u
 //
 // Get a file size
 //
-uint64 SharedUtil::FileSize ( const SString& strFilename  )
+uint SharedUtil::FileSize ( const SString& strFilename  )
 {
     // Open
     FILE* fh = fopen ( strFilename, "rb" );
@@ -186,11 +186,7 @@ uint64 SharedUtil::FileSize ( const SString& strFilename  )
         return 0;
     // Get size
     fseek ( fh, 0, SEEK_END );
-#ifdef WIN32
-    uint64 size = _ftelli64 ( fh );
-#else
-    uint64 size = ftello64 ( fh );
-#endif
+    uint size = ftell ( fh );
     // Close
     fclose ( fh );
     return size;
@@ -392,16 +388,11 @@ SString SharedUtil::GetMTATempPath ( void )
 // C:\Program Files\gta_sa.exe
 SString SharedUtil::GetLaunchPathFilename( void )
 {
-    static SString strLaunchPathFilename;
-    if ( strLaunchPathFilename.empty() )
-    {
-        wchar_t szBuffer[2048];
-        GetModuleFileNameW( NULL, szBuffer, NUMELMS(szBuffer) - 1 );
-        if ( IsShortPathName( szBuffer ) )
-            return GetSystemLongPathName( ToUTF8( szBuffer ) );
-        strLaunchPathFilename = ToUTF8( szBuffer );
-    }
-    return strLaunchPathFilename;
+    wchar_t szBuffer[64000];
+    GetModuleFileNameW( NULL, szBuffer, NUMELMS(szBuffer) - 1 );
+    if ( IsShortPathName( szBuffer ) )
+        return GetSystemLongPathName( ToUTF8( szBuffer ) );
+    return ToUTF8( szBuffer );
 }
 
 // C:\Program Files

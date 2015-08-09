@@ -31,6 +31,12 @@ CModManager::CModManager ( void )
 
     // Load the modlist from the folders in "mta/mods"
     InitializeModList ( CalcMTASAPath( "mods\\" ) );
+
+    // Set up our exception handler
+    #ifndef MTA_DEBUG
+    SetCrashHandlerFilter ( CCrashDumpWriter::HandleExceptionGlobal );
+    CCrashDumpWriter::ReserveMemoryKBForCrashDumpProcessing( 500 );
+    #endif
 }
 
 CModManager::~CModManager ( void )
@@ -143,6 +149,9 @@ CClientBase* CModManager::Load ( const char* szName, const char* szArguments )
         return NULL;
     }
 
+    // Set up the mod root
+    g_pCore->m_modRoot = g_pCore->GetFileSystem()->CreateTranslator( itMod->second.c_str() );
+
     // Get the address of InitClient
     typedef CClientBase* (__cdecl pfnClientInitializer) ( void );     /* FIXME: Should probably not be here */
 
@@ -193,6 +202,11 @@ void CModManager::Unload ( void )
             m_pClientBase->ClientShutdown ();
             m_pClientBase = NULL;
         }
+
+        // Destroy mod root
+        delete CCore::GetSingleton().m_modRoot;
+
+        CCore::GetSingleton().m_modRoot = NULL;
 
         // Unregister the commands it had registered
         CCore::GetSingleton ().GetCommands ()->DeleteAll ();

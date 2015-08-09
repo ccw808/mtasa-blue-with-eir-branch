@@ -89,7 +89,7 @@ public:
     float                           GetHealth               ( void );
     void                            SetHealth               ( float fHealth );
 
-    bool                            IsBreakable             ( bool bCheckModelList = true );
+    bool                            IsBreakable             ( void );
     bool                            SetBreakable            ( bool bBreakable );
     bool                            Break                   ( void );
     inline bool                     IsRespawnEnabled        ( void )                            { return m_bRespawnEnabled; };

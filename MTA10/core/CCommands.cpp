@@ -117,13 +117,9 @@ bool CCommands::Execute ( const char* szCommand, const char* szParametersIn, boo
                 // Split it into command and arguments
                 szCommand = strtok ( szBuffer, " " );
                 szParameters = strtok ( NULL, "\0" );
-                if ( szCommand == NULL )
+                if ( szCommand == 0 )
                 {
                     return false;
-                }
-                if ( szParameters == NULL )
-                {
-                    szParameters = "";
                 }
             }
         }

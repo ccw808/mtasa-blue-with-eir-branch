@@ -29,14 +29,13 @@ public:
     bool                    ProcessPacket                       ( CPacket& Packet );
 
     void                    OverrideSyncer                      ( CVehicle* pVehicle, CPlayer* pPlayer );
-    CPlayer*                FindPlayerCloseToVehicle            ( CVehicle* pVehicle, float fMaxDistance );
-    void                    ResyncForPlayer                     ( CPlayer* pPlayer );
 
 private:
-    void                    Update                              ( void );
+    void                    Update                              ( unsigned long ulCurrentTime );
     void                    UpdateVehicle                       ( CVehicle* pVehicle );
     void                    FindSyncer                          ( CVehicle* pVehicle );
-    
+    CPlayer*                FindPlayerCloseToVehicle            ( CVehicle* pVehicle, float fMaxDistance );
+
     void                    StartSync                           ( CPlayer* pPlayer, CVehicle* pVehicle );
     void                    StopSync                            ( CVehicle* pVehicle );
 
@@ -46,7 +45,7 @@ private:
     CPlayerManager*         m_pPlayerManager;
     CVehicleManager*        m_pVehicleManager;
 
-    CElapsedTime            m_UpdateTimer;
+    unsigned long           m_ulLastSweepTime;
 };
 
 #endif

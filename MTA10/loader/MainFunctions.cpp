@@ -29,8 +29,6 @@ public:
     virtual std::map<SString,SString>   GetAvailableLanguages       ( void ) { return std::map<SString,SString>(); }
     virtual bool                        IsLocalized                 ( void ) { return false; }
     virtual SString                     GetLanguageDirectory        ( void ) { return ""; }
-    virtual SString                     GetLanguageCode             ( void ) { return "en_US"; }
-    virtual SString                     GetLanguageName             ( void ) { return "English"; }
 };
 
 CLocalizationInterface* g_pLocalization = new CLocalizationDummy();
@@ -48,9 +46,10 @@ void InitLocalization( bool bNoFail )
     if ( bDone )
         return;
 
+    const SString strMTASAPath = GetMTASAPath ();
+
     // Check for and load core.dll for localization
-    // Use launch relative path so core.dll can get updated
-    SString strCoreDLL = PathJoin( GetLaunchPath(), "mta", MTA_DLL_NAME );
+    SString strCoreDLL = PathJoin( strMTASAPath, "mta", MTA_DLL_NAME );
     if ( !FileExists ( strCoreDLL ) )
     {
         if ( !bNoFail )
@@ -62,8 +61,6 @@ void InitLocalization( bool bNoFail )
         return ExitProcess( EXIT_ERROR );
     }
 
-    // Use registry setting of mta path for dlls, as they will not be present in update files
-    const SString strMTASAPath = GetMTASAPath ();
     SetDllDirectory( PathJoin( strMTASAPath, "mta" ) );
 
     // See if xinput is loadable (XInput9_1_0.dll is core.dll dependency)
@@ -178,6 +175,12 @@ void HandleDuplicateLaunching( void )
     {
         if ( strcmp ( lpCmdLine, "" ) != 0 )
         {
+            COPYDATASTRUCT cdStruct;
+
+            cdStruct.cbData = strlen(lpCmdLine)+1;
+            cdStruct.lpData = const_cast<char *>((lpCmdLine));
+            cdStruct.dwData = URI_CONNECT;
+
             HWND hwMTAWindow = FindWindow( NULL, "MTA: San Andreas" );
 #ifdef MTA_DEBUG
             if( hwMTAWindow == NULL )
@@ -185,27 +188,10 @@ void HandleDuplicateLaunching( void )
 #endif
             if( hwMTAWindow != NULL )
             {
-                LPWSTR szCommandLine = GetCommandLineW ();
-                int numArgs;
-                LPWSTR* aCommandLineArgs = CommandLineToArgvW ( szCommandLine, &numArgs );
-                for ( int i = 0; i < numArgs; ++i )
-                {
-                    if ( StrCmpW ( aCommandLineArgs[i], L"-c" ) == 0 && numArgs > i )
-                    {
-                        WString wideConnectInfo = aCommandLineArgs[i + 1];
-                        SString strConnectInfo = ToUTF8 ( wideConnectInfo );
-
-                        COPYDATASTRUCT cdStruct;
-                        cdStruct.cbData = strConnectInfo.length () + 1;
-                        cdStruct.lpData = const_cast<char *> ( strConnectInfo.c_str () );
-                        cdStruct.dwData = URI_CONNECT;
-
-                        SendMessage( hwMTAWindow, WM_COPYDATA, NULL, (LPARAM)&cdStruct );
-                        break;
-                    }
-                }
-
-                
+                SendMessage( hwMTAWindow,
+                            WM_COPYDATA,
+                            NULL,
+                            (LPARAM)&cdStruct );
             }
             else
             {
@@ -373,11 +359,9 @@ void PreLaunchWatchDogs ( void )
     //
 
     // Check for unclean stop on previous run
-#ifndef MTA_DEBUG
     if ( WatchDogIsSectionOpen ( "L0" ) )
         WatchDogSetUncleanStop ( true );    // Flag to maybe do things differently if MTA exit code on last run was not 0
     else
-#endif
         WatchDogSetUncleanStop ( false );
 
     SString strCrashFlagFilename = CalcMTASAPath( "mta\\core.log.flag" );
@@ -637,15 +621,16 @@ void CheckDataFiles( void )
     const char* dataFilesFiles [] = { "MTA\\cgui\\images\\background_logo.png"
                                      ,"MTA\\cgui\\images\\radarset\\up.png"
                                      ,"MTA\\cgui\\images\\busy_spinner.png"
-                                     ,"MTA\\cgui\\images\\rect_edge.png"
                                      ,"MTA\\D3DX9_42.dll"
                                      ,"MTA\\D3DCompiler_42.dll"
                                      ,"MTA\\bass.dll"
                                      ,"MTA\\bass_fx.dll"
                                      ,"MTA\\tags.dll"
                                      ,"MTA\\sa.dat"
+                                     ,"MTA\\pthreadVC2.dll"
                                      ,"MTA\\XInput9_1_0_mta.dll"
                                      ,"MTA\\vea.dll"
+                                     ,"server\\pthreadVC2.dll"
                                      ,"server\\mods\\deathmatch\\libmysql.dll"};
 
     for ( uint i = 0 ; i < NUMELMS( dataFilesFiles ) ; i++ )
@@ -670,6 +655,13 @@ void CheckDataFiles( void )
         return ExitProcess( EXIT_ERROR );
     }
 
+    // Check for lua file
+    if ( !FileExists ( PathJoin( strMTASAPath, CHECK_DM_LUA_NAME ) ) )
+    {
+        DisplayErrorMessageBox ( SString(_("Load failed. Please ensure that %s is installed correctly."),CHECK_DM_LUA_NAME), _E("CL19"), "lua-missing" );
+        return ExitProcess( EXIT_ERROR );
+    }
+
     // Make sure the gta executable exists
     if ( !FileExists( PathJoin( strGTAPath, MTA_GTAEXE_NAME ) ) )
     {
@@ -678,7 +670,7 @@ void CheckDataFiles( void )
     }
 
     // Make sure important dll's do not exist in the wrong place
-    const char* dllCheckList[] = { "xmll.dll", "cgui.dll", "netc.dll", "libcurl.dll", "pthread.dll" };
+    const char* dllCheckList[] = { "xmll.dll", "cgui.dll", "netc.dll", "libcurl.dll", "pthreadVC2.dll" };
     for ( int i = 0 ; i < NUMELMS ( dllCheckList ); i++ )
     {
         if ( FileExists( PathJoin( strGTAPath, dllCheckList[i] ) ) )
@@ -703,7 +695,7 @@ void CheckDataFiles( void )
     if ( !VerifyEmbeddedSignature( PathJoin( strMTASAPath, MTA_EXE_NAME ) ) )
     {
         SString strMessage( _("Main file is unsigned. Possible virus activity.\n\nSee online help if MTA does not work correctly.") );
-        #if MTASA_VERSION_BUILD > 0 && defined(MTA_DM_CONNECT_TO_PUBLIC) && !defined(MTA_DEBUG)
+        #if MTASA_VERSION_BUILD > 0 && defined(MTA_DM_CONNECT_TO_PUBLIC)
             DisplayErrorMessageBox( strMessage, _E("CL29"), "maybe-virus1" );
         #endif
     }
@@ -719,6 +711,7 @@ void CheckDataFiles( void )
                                { "BEBA64522AA8265751187E38D1FC0653", "bassmidi.dll", },
                                { "99F4F38007D347CEED482B7C04FDD122", "bassmix.dll", },
                                { "7B52BE6D702AA590DB57A0E135F81C45", "basswma.dll", }, 
+                               { "7812F0F73EDA837E9353B3A433ABC9A9", "pthreadVC2.dll", },
                                { "38D7679D3B8B6D7F16A0AA9BF2A60043", "tags.dll", },
                                { "309D860FC8137E5FE9E7056C33B4B8BE", "vea.dll", },
                                { "0602F672BA595716E64EC4040E6DE376", "vog.dll", },
@@ -730,6 +723,13 @@ void CheckDataFiles( void )
         SString strMd5 = CMD5Hasher::CalculateHexString( PathJoin( strMTASAPath, "mta", integrityCheckList[i].szFilename ) );
         if ( !strMd5.CompareI( integrityCheckList[i].szMd5 ) )
         {
+            // Exit if old pthreadVC2.dll is detected, as it runs incorrectly with the new headers what we are using
+            if ( strMd5.CompareI( "0AB7D0E87F3843F8104B3670F5A9AF62" ) )
+            {
+                DisplayErrorMessageBox ( _("Load failed. Please ensure that the latest data files have been installed correctly."), _E("CL32"), "mta-datafiles-missing" );
+                return ExitProcess( EXIT_ERROR );
+            }
+
             DisplayErrorMessageBox( _("Data files modified. Possible virus activity.\n\nSee online help if MTA does not work correctly."), _E("CL30"), "maybe-virus2" );
             break;
         }    
@@ -761,68 +761,6 @@ void CheckDataFiles( void )
         FileDelete( PathJoin( strGTAPath, "logfile.txt" ) );
         FileDelete( PathJoin( strGTAPath, "shutdown.log" ) );
     }
-}
-
-
-//////////////////////////////////////////////////////////
-//
-// CheckLibVersions
-//
-// Ensure DLLs are the correct version
-//
-//////////////////////////////////////////////////////////
-void CheckLibVersions( void )
-{
-#if MTASA_VERSION_TYPE == VERSION_TYPE_RELEASE
-
-    const char* moduleList [] =     { "MTA\\loader.dll"
-                                     ,"MTA\\cgui.dll"
-                                     ,"MTA\\core.dll"
-                                     ,"MTA\\game_sa.dll"
-                                     ,"MTA\\multiplayer_sa.dll"
-                                     ,"MTA\\netc.dll"
-                                     ,"MTA\\xmll.dll"
-                                     ,"MTA\\game_sa.dll"
-                                     ,"mods\\deathmatch\\client.dll"
-                                     ,"mods\\deathmatch\\pcre3.dll"
-                                    };
-    SString strReqFileVersion;
-    for ( uint i = 0 ; i < NUMELMS( moduleList ) ; i++ )
-    {
-        SString strFilename = moduleList[i];
-#ifdef MTA_DEBUG
-        strFilename = ExtractBeforeExtension( strFilename ) + "_d." + ExtractExtension( strFilename );
-#endif
-        SLibVersionInfo fileInfo;
-        if ( FileExists( CalcMTASAPath( strFilename ) ) )
-        {
-            SString strFileVersion = "0.0.0.0";
-            if ( GetLibVersionInfo( CalcMTASAPath( strFilename ), &fileInfo ) )
-                strFileVersion = SString( "%d.%d.%d.%d", fileInfo.dwFileVersionMS >> 16, fileInfo.dwFileVersionMS & 0xFFFF
-                                                       , fileInfo.dwFileVersionLS >> 16, fileInfo.dwFileVersionLS & 0xFFFF );
-            if ( strReqFileVersion.empty() )
-                strReqFileVersion = strFileVersion;
-            else
-            if ( strReqFileVersion != strFileVersion )
-            {
-                DisplayErrorMessageBox ( SStringX(_( "File version mismatch error."
-                                            " Reinstall MTA:SA if you experience problems.\n" )
-                                            + SString( "\n[%s %s/%s]\n", *strFilename, *strFileVersion, *strReqFileVersion )
-                                            ), _E("CL40"), "bad-file-version" );
-                break;
-            }
-        }
-        else
-        {
-            DisplayErrorMessageBox ( SStringX(_( "Some files are missing."
-                                        " Reinstall MTA:SA if you experience problems.\n" )
-                                        + SString( "\n[%s]\n", *strFilename )
-                                        ), _E("CL41"), "missing-file" );
-            break;
-        }
-    }
-
-#endif
 }
 
 
@@ -912,8 +850,7 @@ int LaunchGame ( SString strCmdLine )
     SString strCoreDLL = PathJoin( strMTASAPath, "mta", MTA_DLL_NAME );
     RemoteLoadLibrary ( piLoadee.hProcess, FromUTF8( strCoreDLL ) );
     WriteDebugEvent( SString( "Loader - Core injected: %s", *strCoreDLL ) );
-    AddReportLog( 7103, "Loader - Core injected" );
-
+    
     // Clear previous on quit commands
     SetOnQuitCommand ( "" );
 
@@ -983,11 +920,9 @@ int LaunchGame ( SString strCmdLine )
                 if ( stuckProcessDetector.UpdateIsStuck() )
                 {
                     WriteDebugEvent( "Detected stuck process at quit" );
-                #ifndef MTA_DEBUG
                     TerminateProcess( piLoadee.hProcess, 1 );
                     status = WAIT_FAILED;
                     break;
-                #endif
                 }
                 status = WaitForSingleObject( piLoadee.hProcess, 1000 );
             }
@@ -996,7 +931,6 @@ int LaunchGame ( SString strCmdLine )
         BsodDetectionOnGameEnd();
     }
 
-    AddReportLog( 7104, "Loader - Finishing" );
     WriteDebugEvent( "Loader - Finishing" );
 
     EndD3DStuff();

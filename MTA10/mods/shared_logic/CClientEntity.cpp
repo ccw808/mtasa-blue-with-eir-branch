@@ -66,11 +66,25 @@ CClientEntity::CClientEntity ( ElementID ID )
 
     m_bWorldIgnored = false;
     g_pCore->UpdateDummyProgress();
+
+    m_pRenderModeManager = NULL;
+    m_pRenderModes = NULL;
 }
 
 
 CClientEntity::~CClientEntity ( void )
 {
+    // Terminate render mode system (if available)
+    if ( m_pRenderModes )
+    {
+        delete m_pRenderModes;
+    }
+
+    if ( m_pRenderModeManager )
+    {
+        delete m_pRenderModeManager;
+    }
+
     // Make sure we won't get deleted later by the element deleter if we've been requested so
     if ( m_bBeingDeleted )
     {
@@ -716,7 +730,6 @@ void CClientEntity::InternalAttachTo ( CClientEntity* pEntity )
                     break;
                 }
                 case CCLIENTOBJECT:
-                case CCLIENTWEAPON:
                 {
                     CObject * pGameObject = static_cast < CClientObject* > ( pEntity )->GetGameObject ();
                     if ( pGameObject )
@@ -1042,10 +1055,6 @@ void CClientEntity::FindAllChildrenByTypeIndex ( unsigned int uiTypeHash, lua_St
 {
     assert ( luaVM );
 
-    // If we're being deleted, skip this
-    if ( IsBeingDeleted ( ) )
-        return;
-
     // Our type matches?
     if ( m_uiTypeHash == uiTypeHash )
     {
@@ -1078,13 +1087,10 @@ void CClientEntity::GetChildren ( lua_State* luaVM )
     CChildListType ::const_iterator iter = m_Children.begin ();
     for ( ; iter != m_Children.end (); iter++ )
     {
-        if ( !( *iter )->IsBeingDeleted ( ) )
-        {
-            // Add it to the table
-            lua_pushnumber ( luaVM, ++uiIndex );
-            lua_pushelement ( luaVM, *iter );
-            lua_settable ( luaVM, -3 );
-        }
+        // Add it to the table
+        lua_pushnumber ( luaVM, ++uiIndex );
+        lua_pushelement ( luaVM, *iter );
+        lua_settable ( luaVM, -3 );
     }
 }
 
@@ -1101,7 +1107,7 @@ void CClientEntity::GetChildrenByType ( const char* szType, lua_State* luaVM )
     for ( ; iter != m_Children.end (); iter++ )
     {
         // Name matches?
-        if ( (*iter)->GetTypeHash() == uiTypeHash && !(*iter)->IsBeingDeleted())
+        if ( (*iter)->GetTypeHash() == uiTypeHash )
         {
             // Add it to the table
             lua_pushnumber ( luaVM, ++uiIndex );
@@ -1188,7 +1194,6 @@ bool CClientEntity::IsAttachable ( void )
         case CCLIENTSOUND:
         case CCLIENTCOLSHAPE:
         case CCLIENTWEAPON:
-        case CCLIENTPOINTLIGHTS:
         {
             return true;
             break;
@@ -1214,7 +1219,6 @@ bool CClientEntity::IsAttachToable ( void )
         case CCLIENTSOUND:
         case CCLIENTCOLSHAPE:
         case CCLIENTCAMERA:
-        case CCLIENTPOINTLIGHTS:
         {
             return true;
             break;
@@ -1264,8 +1268,6 @@ unsigned int CClientEntity::GetTypeID ( const char* szTypeName )
         return CCLIENTRADARAREA;
     else if ( strcmp ( szTypeName, "sound" ) == 0 )
         return CCLIENTSOUND;
-    else if ( strcmp ( szTypeName, "light" ) == 0 )
-        return CCLIENTPOINTLIGHTS;
     else
         return CCLIENTUNKNOWN;
 }
@@ -1495,13 +1497,10 @@ void CClientEntity::GetEntitiesFromRoot ( unsigned int uiTypeHash, lua_State* lu
             if ( !bStreamedIn || !pEntity->IsStreamingCompatibleClass() || 
                  reinterpret_cast < CClientStreamElement* > ( pEntity )->IsStreamedIn() )
             {
-                if ( !pEntity->IsBeingDeleted ( ) )
-                {
-                    // Add it to the table
-                    lua_pushnumber ( luaVM, ++uiIndex );
-                    lua_pushelement ( luaVM, pEntity );
-                    lua_settable ( luaVM, -3 );
-                }
+                // Add it to the table
+                lua_pushnumber ( luaVM, ++uiIndex );
+                lua_pushelement ( luaVM, pEntity );
+                lua_settable ( luaVM, -3 );
             }
         }
     }    
@@ -1603,6 +1602,79 @@ void CClientEntity::_GetEntitiesFromRoot ( unsigned int uiTypeHash, std::map < C
 }
 
 #endif
+
+// Render Mode API functions.
+static rModeResult operationNotSupportedResult( false, "operation not supported" );
+
+rModeResult CClientEntity::SetEntityRenderModeBool( eEntityRenderMode rMode, bool value )
+{
+    if ( m_pRenderModes )
+    {
+        return m_pRenderModes->SetBool( rMode, value );
+    }
+
+    return operationNotSupportedResult;
+}
+
+rModeResult CClientEntity::SetEntityRenderModeFloat( eEntityRenderMode rMode, float value )
+{
+    if ( m_pRenderModes )
+    {
+        return m_pRenderModes->SetFloat( rMode, value );
+    }
+    
+    return operationNotSupportedResult;
+}
+
+rModeResult CClientEntity::SetEntityRenderModeInt( eEntityRenderMode rMode, int value )
+{
+    if ( m_pRenderModes )
+    {
+        return m_pRenderModes->SetInt( rMode, value );
+    }
+
+    return operationNotSupportedResult;
+}
+
+rModeResult CClientEntity::GetEntityRenderModeBool( eEntityRenderMode rMode, bool& value ) const
+{
+    if ( m_pRenderModes )
+    {
+        return m_pRenderModes->GetBool( rMode, value );
+    }
+
+    return operationNotSupportedResult;
+}
+
+rModeResult CClientEntity::GetEntityRenderModeFloat( eEntityRenderMode rMode, float& value ) const
+{
+    if ( m_pRenderModes )
+    {
+        return m_pRenderModes->GetFloat( rMode, value );
+    }
+
+    return operationNotSupportedResult;
+}
+
+rModeResult CClientEntity::GetEntityRenderModeInt( eEntityRenderMode rMode, int& value ) const
+{
+    if ( m_pRenderModes )
+    {
+        return m_pRenderModes->GetInt( rMode, value );
+    }
+
+    return operationNotSupportedResult;
+}
+
+rModeResult CClientEntity::ResetEntityRenderMode( eEntityRenderMode rMode )
+{
+    if ( m_pRenderModes )
+    {
+        return m_pRenderModes->Reset( rMode );
+    }
+
+    return operationNotSupportedResult;
+}
 
 
 bool CClientEntity::IsCollidableWith ( CClientEntity * pEntity )

@@ -81,7 +81,7 @@ public:
     void                DrawText                ( int iLeft, int iTop, int iRight, int iBottom, unsigned long dwColor, const char* wszText, float fScaleX, float fScaleY, unsigned long ulFormat, ID3DXFont * pDXFont = NULL );
     void                DrawText                ( int iX, int iY, unsigned long dwColor, float fScale, const char * szText, ... );
     void                DrawLine3D              ( const CVector& vecBegin, const CVector& vecEnd, unsigned long ulColor, float fWidth = 1.0f );
-    void                DrawRectangle           ( float fX, float fY, float fWidth, float fHeight, unsigned long ulColor, bool bSubPixelPositioning = false );
+    void                DrawRectangle           ( float fX, float fY, float fWidth, float fHeight, unsigned long ulColor );
 
     void                SetBlendMode            ( EBlendModeType blendMode );
     EBlendModeType      GetBlendMode            ( void );
@@ -149,8 +149,7 @@ public:
     void                DrawRectQueued          ( float fX, float fY,
                                                   float fWidth, float fHeight,
                                                   unsigned long ulColor,
-                                                  bool bPostGUI,
-                                                  bool bSubPixelPositioning = false );
+                                                  bool bPostGUI );
 
     void                DrawTextureQueued       ( float fX, float fY,
                                                   float fWidth, float fHeight,
@@ -203,7 +202,6 @@ public:
     void                DidRenderScene          ( void );
     void                SetProgressMessage      ( const SString& strMessage );
     void                DrawProgressMessage     ( bool bPreserveBackbuffer = true );
-    void                DrawRectangleInternal   ( float fX, float fY, float fWidth, float fHeight, unsigned long ulColor, bool bSubPixelPositioning );
 
 private:
     void                OnDeviceCreate          ( IDirect3DDevice9 * pDevice );
@@ -225,6 +223,7 @@ private:
     EBlendModeType      m_CurBlendMode;
 
     LPD3DXSPRITE        m_pDXSprite;
+    IDirect3DTexture9 * m_pDXPixelTexture;
 
     IDirect3DDevice9 *  m_pDevice;
 
@@ -289,7 +288,6 @@ private:
         float           fWidth;
         float           fHeight;
         unsigned long   ulColor;
-        bool            bSubPixelPositioning;
     };
 
     struct sDrawQueueTexture
@@ -356,7 +354,6 @@ private:
     IDirect3DSurface9*                  m_pSavedFrontBufferData;
     CRenderTargetItem*                  m_pTempBackBufferData;
     CTextureItem*                       m_ProgressSpinnerTexture;
-    CTextureItem*                       m_RectangleEdgeTexture;
     SString                             m_strProgressMessage;
     CElapsedTime                        m_FirstDrawnProgressTimer;
     CElapsedTime                        m_LastDrawnProgressTimer;

@@ -13,12 +13,12 @@
 #define __CGAME_MODELINFO
 
 #include "Common.h"
-#include "RenderWare.h"
 #include <CVector.h>
 
 #include <windows.h>
 #include "CColModel.h"
 class CPedModelInfo;
+struct RwObject;
 
 class CBoundingBox
 {
@@ -27,6 +27,75 @@ public:
     CVector vecBoundMax;
     CVector vecBoundOffset;
     float   fRadius;
+};
+
+struct CBounds2D
+{
+    CBounds2D( void )
+    { }
+
+    CBounds2D( float minX, float maxY, float maxX, float minY ) : m_minX( minX ), m_maxY( maxY ), m_maxX( maxX ), m_minY( minY )
+    { }
+
+    CBounds2D( const CBounds2D& right ) : m_minX( right.m_minX ), m_maxY( right.m_maxY ), m_maxX( right.m_maxX ), m_minY( right.m_minY )
+    { }
+
+    // Is bbox inside this?
+    // Method used by R*.
+    // Takes into account that min is lower vector and max is upper vector.
+    inline bool IsInside( const CBounds2D& bbox ) const
+    {
+        return ( bbox.m_minX <= m_maxX && bbox.m_maxX >= m_minX &&
+                 bbox.m_minY <= m_maxY && bbox.m_maxY >= m_minY );
+    }
+
+    inline bool IsInside( const CVector2D& pos ) const
+    {
+        return ( pos.fX >= m_minX && pos.fX <= m_maxX &&
+                 pos.fY >= m_minY && pos.fY <= m_maxY );
+    }
+
+    // Binary offset: 0x004042D0
+    inline bool ContainsPoint( const CVector2D& pos, float subtract ) const
+    {
+        return CBounds2D( m_minX - subtract, subtract + m_maxY, subtract + m_maxX, m_minY - subtract ).IsInside( pos );
+    }
+
+    inline void AddBounds( const CBounds2D& bounds )
+    {
+        if ( bounds.m_minX < m_minX )
+        {
+            m_minX = bounds.m_minX;
+        }
+
+        if ( bounds.m_maxX > m_maxX )
+        {
+            m_maxX = bounds.m_maxX;
+        }
+
+        if ( bounds.m_minY < m_minY )
+        {
+            m_minY = bounds.m_minY;
+        }
+
+        if ( bounds.m_maxY > m_maxY )
+        {
+            m_maxY = bounds.m_maxY;
+        }
+    }
+
+    inline void ExtendBy( float extendBy )
+    {
+        m_minX -= extendBy;
+        m_maxX += extendBy;
+        
+        m_minY -= extendBy;
+        m_maxY += extendBy;
+    }
+
+    // R*: fuck yea, let us confuse dem pplz by switching things 'round, and not using vectors.
+    float m_minX, m_maxY;
+    float m_maxX, m_minY;
 };
 
 enum eVehicleUpgradePosn
@@ -48,6 +117,22 @@ enum eVehicleUpgradePosn
     VEHICLE_UPGRADE_POSN_FRONT_BUMPER,
     VEHICLE_UPGRADE_POSN_REAR_BUMPER,
     VEHICLE_UPGRADE_POSN_MISC,
+};
+
+enum eVehicleType : unsigned int
+{
+    VEHICLE_CAR,
+    VEHICLE_MONSTERTRUCK,
+    VEHICLE_QUADBIKE,
+    VEHICLE_HELI,
+    VEHICLE_PLANE,
+    VEHICLE_BOAT,
+    VEHICLE_TRAIN,
+    VEHICLE_UNKNOWN,
+    VEHICLE_FAKEPLANE,    // what is this?
+    VEHICLE_BIKE,
+    VEHICLE_BICYCLE,
+    VEHICLE_AUTOMOBILETRAILER
 };
 
 struct SVehicleSupportedUpgrades
@@ -131,6 +216,7 @@ public:
     virtual float           GetLODDistance          () = 0;
     virtual void            SetLODDistance          ( float fDistance ) = 0;
     virtual void            RestreamIPL             () = 0;
+    virtual void            RestreamModel           () = 0;
 
     virtual void            ModelAddRef             ( EModelRequestType requestType, const char* szTag/* = NULL*/ ) = 0;
     virtual void            RemoveRef               ( bool bRemoveExtraGTARef = false ) = 0;
@@ -162,8 +248,6 @@ public:
     // Custom collision related functions
     virtual void            SetCustomModel          ( RpClump* pClump ) = 0;
     virtual void            RestoreOriginalModel    ( void ) = 0;
-    virtual void            SetColModel             ( CColModel* pColModel ) = 0;
-    virtual void            RestoreColModel         ( void ) = 0;
 
     // Call this to make sure the custom vehicle models are being used after a load.
     virtual void            MakeCustomModel         ( void ) = 0;

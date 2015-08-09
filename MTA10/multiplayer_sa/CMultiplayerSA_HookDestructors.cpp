@@ -10,6 +10,7 @@
 *****************************************************************************/
 
 #include "StdInc.h"
+#include "../game_sa/CPoolsSA.h"
 
 namespace
 {
@@ -17,7 +18,6 @@ namespace
     GameVehicleDestructHandler*     pGameVehicleDestructHandler     = NULL;
     GamePlayerDestructHandler*      pGamePlayerDestructHandler      = NULL;
     GameProjectileDestructHandler*  pGameProjectileDestructHandler  = NULL;
-    GameModelRemoveHandler*         pGameModelRemoveHandler         = NULL;
 
     #define FUNC_CPtrListSingleLink_Remove  0x0533610
     #define FUNC_CPtrListDoubleLink_Remove  0x05336B0
@@ -145,7 +145,6 @@ namespace
             RemoveEntitySAInterfaceExtraInfo( pEntity );
     }
 }
-
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 //
@@ -439,37 +438,6 @@ inner:
 }
 
 
-////////////////////////////////////////////////////////////////////////////////////////////////
-//
-void _cdecl OnCStreamingRemoveModel ( DWORD calledFrom, ushort usModelId )
-{
-    // Tell client to check for things going away
-    if ( pGameModelRemoveHandler )
-        pGameModelRemoveHandler ( usModelId );
-}
-
-// Hook info
-#define HOOKPOS_CStreamingRemoveModel        0x4089A0
-#define HOOKSIZE_CStreamingRemoveModel       5
-DWORD RETURN_CStreamingRemoveModel =         0x4089A5;
-void _declspec(naked) HOOK_CStreamingRemoveModel()
-{
-    _asm
-    {
-        pushad
-        push    [esp+32+4*1]
-        push    [esp+32+4*1]
-        call    OnCStreamingRemoveModel
-        add     esp, 4*2
-        popad
-
-        push    esi
-        mov     esi, [esp+8]
-        jmp     RETURN_CStreamingRemoveModel
-    }
-}
-
-
 //////////////////////////////////////////////////////////////////////////////////////////
 //
 // Set handlers
@@ -495,12 +463,6 @@ void CMultiplayerSA::SetGameProjectileDestructHandler ( GameProjectileDestructHa
     pGameProjectileDestructHandler = pHandler;
 }
 
-void CMultiplayerSA::SetGameModelRemoveHandler ( GameModelRemoveHandler * pHandler )
-{
-    pGameModelRemoveHandler = pHandler;
-}
-
-
 //////////////////////////////////////////////////////////////////////////////////////////
 //
 // Setup hooks for HookDestructors
@@ -513,7 +475,6 @@ void CMultiplayerSA::InitHooks_HookDestructors ( void )
    EZHookInstall ( CProjectileDestructor );
    EZHookInstall ( CPlayerPedDestructor );
    EZHookInstall ( CEntityDestructor );
-   EZHookInstall ( CStreamingRemoveModel );
    EZHookInstall ( CEntityAddMid1 );
    EZHookInstall ( CEntityAddMid2 );
    EZHookInstall ( CEntityAddMid3 );

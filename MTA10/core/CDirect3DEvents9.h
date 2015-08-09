@@ -31,7 +31,7 @@ class CDirect3DEvents9
     static HRESULT      OnDrawPrimitive             ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount );
     static HRESULT      DrawPrimitiveShader         ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount, CShaderItem* pShaderItem, bool bIsLayer  );
     static HRESULT      OnDrawIndexedPrimitive      ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount );
-    static HRESULT      DrawIndexedPrimitiveShader  ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount, CShaderItem* pShaderItem, bool bIsLayer, bool bCanBecomeActiveShader );
+    static HRESULT      DrawIndexedPrimitiveShader  ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount, CShaderItem* pShaderItem, bool bIsLayer  );
     static HRESULT      DrawPrimitiveGuarded        ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,UINT StartVertex,UINT PrimitiveCount );
     static HRESULT      DrawIndexedPrimitiveGuarded ( IDirect3DDevice9 *pDevice, D3DPRIMITIVETYPE PrimitiveType,INT BaseVertexIndex,UINT MinVertexIndex,UINT NumVertices,UINT startIndex,UINT primCount );
     static HRESULT      CreateVertexBuffer          ( IDirect3DDevice9 *pDevice, UINT Length,DWORD Usage,DWORD FVF,D3DPOOL Pool,IDirect3DVertexBuffer9** ppVertexBuffer,HANDLE* pSharedHandle );
@@ -42,11 +42,14 @@ class CDirect3DEvents9
     static HRESULT      SetVertexDeclaration        ( IDirect3DDevice9 *pDevice, IDirect3DVertexDeclaration9* pDecl );
     static void         CheckForScreenShot          ( void );
     static ERenderFormat DiscoverReadableDepthFormat ( IDirect3DDevice9 *pDevice, D3DMULTISAMPLE_TYPE multisampleType, bool bWindowed );
-    static void         CloseActiveShader           ( void );
 
     static IDirect3DVertexBuffer9*  GetRealVertexBuffer ( IDirect3DVertexBuffer9* pVertexBuffer );
     static IDirect3DIndexBuffer9*   GetRealIndexBuffer  ( IDirect3DIndexBuffer9* pIndexBuffer );
     static IDirect3DBaseTexture9*   GetRealTexture      ( IDirect3DBaseTexture9* pTexture );
 };
+
+// Shader that may be forced for rendering.
+// Used by game_sa.
+extern CShaderItem *g_forceShader;
 
 #endif

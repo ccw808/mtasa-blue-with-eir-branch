@@ -144,7 +144,6 @@ class CVehicle : public CElement
     friend class CPlayer;
 
 public:
-    ZERO_ON_NEW
                                     CVehicle                ( class CVehicleManager* pVehicleManager, CElement* pParent, CXMLNode* pNode, unsigned short usModel, unsigned char ucVariant, unsigned char ucVariant2 );
                                     ~CVehicle               ( void );
 
@@ -177,8 +176,6 @@ public:
     void                            GetRotation             ( CVector& vecRotation );
     void                            GetRotationDegrees      ( CVector& vecRotation );
     void                            SetRotationDegrees      ( const CVector& vecRotation );
-    void                            GetMatrix               ( CMatrix& matrix );
-    void                            SetMatrix               ( const CMatrix& matrix );
 
     inline const CVector&           GetVelocity             ( void )                        { return m_vecVelocity; };
     inline void                     SetVelocity             ( const CVector& vecVelocity )  { m_vecVelocity = vecVelocity; };
@@ -189,6 +186,8 @@ public:
 
     inline float                    GetHealth               ( void )                        { return m_fHealth; };
     inline void                     SetHealth               ( float fHealth )               { m_fHealth = fHealth; };
+    inline unsigned long            GetHealthChangeTime     ( void )                        { return m_ulHealthChangeTime; }
+    inline void                     SetHealthChangeTime     ( unsigned long ulTime )        { m_ulHealthChangeTime = ulTime; }
     inline float                    GetLastSyncedHealth     ( void )                        { return m_fLastSyncedHealthHealth; };
     inline void                     SetLastSyncedHealth     ( float fHealth )               { m_fLastSyncedHealthHealth = fHealth; };
     
@@ -316,7 +315,7 @@ public:
     inline float                    GetRespawnHealth        ( void )                        { return m_fRespawnHealth; };
     inline void                     SetRespawnHealth        ( float fHealth )               { m_fRespawnHealth = fHealth; };
     inline bool                     GetRespawnEnabled       ( void )                        { return m_bRespawnEnabled; }
-    void                            SetRespawnEnabled       ( bool bEnabled );
+    void                            SetRespawnEnabled       ( bool bEnabled )               { m_bRespawnEnabled = bEnabled; }
     void                            SetBlowRespawnInterval  ( unsigned long ulTime )        { m_ulBlowRespawnInterval = ulTime; }
     void                            SetIdleRespawnInterval  ( unsigned long ulTime )        { m_ulIdleRespawnInterval = ulTime; }
 
@@ -346,8 +345,6 @@ public:
     bool                            IsIdleTimerRunning      ( void );
     bool                            IsIdleTimerFinished     ( void );
     bool                            IsStationary            ( void );
-    void                            OnRelayUnoccupiedSync   ( void );
-    void                            HandleDimensionResync   ( void );
 
 private:
     class CVehicleManager*          m_pVehicleManager;
@@ -364,6 +361,7 @@ private:
     CVector                         m_vecTurnSpeed;
     float                           m_fHealth;
     float                           m_fLastSyncedHealthHealth;
+    unsigned long                   m_ulHealthChangeTime;
     CTickCount                      m_llBlowTime;
     CTickCount                      m_llIdleTime;
 
@@ -431,12 +429,9 @@ private:
 
     CTickCount                      m_LastPushedTime;
     CVector                         m_vecStationaryCheckPosition;
-    bool                            m_bNeedsDimensionResync;
-    ushort                          m_usLastUnoccupiedSyncDimension;
 
 public: // 'Safe' variables (that have no need for accessors)
     bool                            m_bDamageProof;
-    uint                            m_uiDamageInfoSendPhase;
     SFixedArray < unsigned char, MAX_DOORS >   m_ucDoorStates;
     SFixedArray < unsigned char, MAX_WHEELS >  m_ucWheelStates;
     SFixedArray < unsigned char, MAX_PANELS >  m_ucPanelStates;

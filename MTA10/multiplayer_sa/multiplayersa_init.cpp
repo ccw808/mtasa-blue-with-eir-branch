@@ -17,7 +17,6 @@
 
 CGame* pGameInterface = 0;
 CMultiplayerSA* pMultiplayer = 0;
-CNet* g_pNet = NULL;
 CCoreInterface* g_pCore = NULL;
 
 //-----------------------------------------------------------
@@ -30,10 +29,9 @@ CMultiplayer* InitMultiplayerInterface(CCoreInterface* pCore)
 {   
     // set the internal pointer to the game class
     pGameInterface = pCore->GetGame ();
-    g_pNet = pCore->GetNetwork ();
+    //g_pNet = pCore->GetNetwork ();        // fix the infinite loop in network module, then we re-enable this.
     g_pCore = pCore;
     assert ( pGameInterface );
-    assert ( g_pNet );
 
     // create an instance of our multiplayer class
     pMultiplayer = new CMultiplayerSA;
@@ -69,11 +67,6 @@ void OnCrashAverted ( uint uiId )
     g_pCore->OnCrashAverted ( uiId );  
 }
 
-void OnEnterCrashZone ( uint uiId )
-{
-    g_pCore->OnEnterCrashZone ( uiId );  
-}
-
 bool GetDebugIdEnabled ( uint uiDebugId )
 {
     return g_pCore->GetDebugIdEnabled ( uiDebugId );  
@@ -82,12 +75,4 @@ bool GetDebugIdEnabled ( uint uiDebugId )
 void LogEvent ( uint uiDebugId, const char* szType, const char* szContext, const char* szBody, uint uiAddReportLogId )
 {
     g_pCore->LogEvent ( uiDebugId, szType, szContext, szBody, uiAddReportLogId );  
-}
-
-void CallGameEntityRenderHandler( CEntitySAInterface* pEntity )
-{
-    // Only call if not a building or a dummy
-    if ( !pEntity || ( pEntity->nType != ENTITY_TYPE_BUILDING && pEntity->nType != ENTITY_TYPE_DUMMY ) )
-        if ( pGameEntityRenderHandler )
-            pGameEntityRenderHandler( pEntity );
 }

@@ -227,9 +227,9 @@ void CResourceChecker::CheckRwFileForIssues ( const string& strPath, const strin
     if ( FILE* pFile = fopen ( strPath.c_str (), "rb" ) )
     {
         struct {
-            int id;
-            int size;
-            int ver;
+            long id;
+            long size;
+            long ver;
         } header = {0,0,0};
 
         // Load the first header

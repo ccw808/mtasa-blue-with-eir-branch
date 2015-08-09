@@ -46,7 +46,6 @@ class CClientManager;
 #include "CClientWaterManager.h"
 #include "CClientWeaponManager.h"
 #include "CClientEffectManager.h"
-#include "CClientPointLightsManager.h"
 
 class CClientProjectileManager;
 class CClientExplosionManager;
@@ -97,7 +96,8 @@ public:
     inline CClientWaterManager*         GetWaterManager             ( void )        { return m_pWaterManager; }
     inline CClientWeaponManager*        GetWeaponManager            ( void )        { return m_pWeaponManager; }
     inline CClientEffectManager*        GetEffectManager            ( void )        { return m_pEffectManager; }
-    inline CClientPointLightsManager*   GetPointLightsManager       ( void )        { return m_pPointLightsManager; }
+
+    inline CGUITexture*                 GetConnectionTroubleTexture ( void )        { return m_pConnectionTroubleTexture; }
 
     inline bool                         IsGameLoaded                ( void )        { return g_pGame->GetSystemState () == 9 && !m_bGameUnloadedFlag && g_pCore->GetNetwork ()->GetServerBitStreamVersion (); }
     inline bool                         IsBeingDeleted              ( void )        { return m_bBeingDeleted; }
@@ -148,7 +148,7 @@ private:
     CClientExplosionManager*            m_pExplosionManager;
     CClientWeaponManager*               m_pWeaponManager;
     CClientEffectManager*               m_pEffectManager;
-    CClientPointLightsManager*          m_pPointLightsManager;
+    CGUITexture*                        m_pConnectionTroubleTexture;
     CClientPacketRecorder*              m_pPacketRecorder;
     bool                                m_bBeingDeleted;
     bool                                m_bGameUnloadedFlag;

@@ -75,7 +75,7 @@ public:
     std::list < CResource* > ::const_iterator  IterBegin        ( void )            { return m_resources.begin (); };
     std::list < CResource* > ::const_iterator  IterEnd          ( void )            { return m_resources.end (); };
 
-    bool                        Refresh                         ( bool bRefreshAll = false, const SString& strJustThisResource = "", bool bShowTiming = false );
+    bool                        Refresh                         ( bool bRefreshAll = false, const SString& strJustThisResource = "" );
     void                        UpgradeResources                ( CResource* pResource = NULL );
     void                        CheckResources                  ( CResource* pResource = NULL );
     inline unsigned int         GetResourceLoadedCount          ( void )            { return m_uiResourceLoadedCount; }
@@ -126,12 +126,6 @@ public:
     void                        RemoveSyncMapElementDataOption      ( CResource* pResource );
     void                        ReevaluateSyncMapElementDataOption  ( void );
 
-    void                        LoadBlockedFileReasons          ( void );
-    void                        SaveBlockedFileReasons          ( void );
-    void                        ClearBlockedFileReason          ( const SString& strFileHash );
-    void                        AddBlockedFileReason            ( const SString& strFileHash, const SString& strReason );
-    SString                     GetBlockedFileReason            ( const SString& strFileHash );
-
 private:
     SString                     m_strResourceDirectory;
     CMappedList < CResource* >  m_resources;
@@ -153,7 +147,6 @@ private:
     CFastHashMap < CResource*, bool >       m_SyncMapElementDataOptionMap;
 
     ushort                      m_usNextNetId;
-    std::map < SString, SString > m_BlockedFileReasonMap;
 };
 
 #endif

@@ -20,7 +20,7 @@
 static unsigned int g_uiValidObjectModels[] = {
     2, 0, 0, 0, 0, 0, 0, 0, 0, -4096, -1053185, 4194303, 16127, 0, 0, 0, 0, 0, 0, -128, 
     -515899393, -134217729, -1, -1, 33554431, -1, -1, -1, -14337, -1, -1, -129, -1, 1073741823, -1, -1, -1, -8387585, -1, -1, 
-    -1, -1, -1, -2146435649, -1, -1, -1, -1, -1, -1, -1, -1, -1, -9, -1, -1, -1, -1, -1, -1, 
+    -1, -1, -536870913, -2146435649, -1, -1, -1, -1, -1, -1, -1, -1, -1, -9, -1, -1, -1, -1, -1, -1, 
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 
     -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -25, -1, -1, -1, -1, -1, -1, -16385, -1, 34080767, 
     2113536, -4825600, -5, -1, -3145729, -1, -16777217, -33, -1, -1, -1, -131, -201326593, -1, -1, -1, -1, -1, -1, -1, 
@@ -312,23 +312,7 @@ void CClientObjectManager::UpdateLimitInfo ( void )
 
 bool CClientObjectManager::IsObjectLimitReached ( void )
 {
-    // Make sure we haven't run out of entry node info's, single link nodes or double link nodes
-    #define MAX_ENTRYINFONODES          3500    // Real limit is 4096
-    #define MAX_POINTERNODESINGLELINK   65000   // Real limit is 70000
-    #define MAX_POINTERNODESDOUBLELINK  3600    // Real limit is 4000
-
-    // If we've run out of either of these limit, don't allow more objects
-    if ( m_iEntryInfoNodeEntries >= MAX_ENTRYINFONODES ||
-         m_iPointerNodeSingleLinkEntries >= MAX_POINTERNODESINGLELINK ||
-         m_iPointerNodeDoubleLinkEntries >= MAX_POINTERNODESDOUBLELINK )
-    {
-        // Limit reached
-        return true;
-    }
-
-    // Allow max 250 objects at once for now.
-    // TODO: The real limit is up to 350 but we're limited by other limits.
-    return g_pGame->GetPools ()->GetObjectCount () >= 500;
+    return g_pGame->GetPools ()->GetObjectCount () == g_pGame->GetPools()->GetPoolCapacity( OBJECT_POOL );
 }
 
 
